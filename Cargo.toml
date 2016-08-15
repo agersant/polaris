@@ -6,6 +6,9 @@ authors = ["Antoine Gersant <antoine.gersant@lesforges.org>"]
 [dependencies.iron]
 version = "0.4.0"
 
+[dependencies.url]
+git = "https://github.com/servo/rust-url"
+
 [dependencies]
 router = "*"
 staticfile = "*"

@@ -1,30 +1,21 @@
+extern crate core;
 extern crate iron;
-extern crate router;
 extern crate mount;
 extern crate staticfile;
+extern crate url;
 
 use iron::prelude::*;
-use iron::status;
-use router::Router;
 use mount::Mount;
 use staticfile::Static;
 
+mod api;
+mod collection;
 
 fn main() {
     let mut mount = Mount::new();
-    mount.mount( "/static/", Static::new("samplemusic/") );
+    let api_handler = api::get_api_handler();
+    mount.mount("/static/", Static::new("samplemusic/"))
+        .mount("/api/", api_handler);
 
-    let mut router = Router::new();
-    router.get("/static/*", mount );
-    router.get("/api/*", |_: &mut Request| {
-        Ok(Response::with((status::Ok, "API")))
-    } );
-    router.get("/web/*", |_: &mut Request| {
-        Ok(Response::with((status::Ok, "Web")))
-    } );
-    router.get("/", |_: &mut Request| {
-        Ok(Response::with((status::Ok, "Home")))
-    } );
-
-    Iron::new(router).http("localhost:3000").unwrap();
+    Iron::new(mount).http("localhost:3000").unwrap();
 }
