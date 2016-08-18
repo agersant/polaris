@@ -18,8 +18,8 @@ pub fn get_api_handler() -> Mount {
 
 fn path_from_request(request: &Request) -> Result<PathBuf, Utf8Error> {
     let path_string = request.url.path().join("/");
-    let decoded_path = percent_decode(path_string.as_bytes()).decode_utf8();
-    decoded_path.map(|s| PathBuf::from(s.deref()))
+    let decoded_path = try!(percent_decode(path_string.as_bytes()).decode_utf8());
+    Ok(PathBuf::from(decoded_path.deref()))
 }
 
 fn browse(request: &mut Request) -> IronResult<Response> {
@@ -27,7 +27,8 @@ fn browse(request: &mut Request) -> IronResult<Response> {
     if path.is_err() {
         return Ok(Response::with((status::BadRequest)));
     }
-    collection::browse(&path.unwrap());
+    let browse_result = collection::browse(&path.unwrap());
+    println!("{:?}", browse_result.unwrap_or(vec![])); // TMP
     Ok(Response::with((status::Ok, "TODO browse data here")))
 }
 
