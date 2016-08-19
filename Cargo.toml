@@ -10,6 +10,9 @@ version = "0.4.0"
 git = "https://github.com/servo/rust-url"
 
 [dependencies]
+rustc-serialize = "0.3"
+
+[dependencies]
 router = "*"
 staticfile = "*"
 mount  = "*"
