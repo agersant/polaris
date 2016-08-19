@@ -1,30 +1,24 @@
 use std::fs;
-use std::io;
 use std::path::Path;
-use std::path::PathBuf;
 
+pub use self::error::CollectionError; 
+
+mod error;
 
 #[derive(Debug, RustcEncodable)]
-pub struct Song(PathBuf);
+pub struct Song {
+    path: String,
+}
 
 #[derive(Debug, RustcEncodable)]
-pub struct Directory(PathBuf);
+pub struct Directory {
+    path: String,
+}
 
 #[derive(Debug, RustcEncodable)]
 pub enum CollectionFile {
     Directory(Directory),
     Song(Song),
-}
-
-pub enum CollectionError
-{
-    Io(io::Error),
-}
-
-impl From<io::Error> for CollectionError {
-    fn from(err: io::Error) -> CollectionError {
-        CollectionError::Io(err)
-    }
 }
 
 pub fn browse(path: &Path) -> Result<Vec<CollectionFile>, CollectionError> {
@@ -38,10 +32,16 @@ pub fn browse(path: &Path) -> Result<Vec<CollectionFile>, CollectionError> {
         let file_meta = try!(file.metadata());
         let file_path = file.path().to_owned();
         if file_meta.is_file() {
-            let collection_file = CollectionFile::Song(Song(file_path));
+            let path_string = try!(file_path.to_str().ok_or(CollectionError::PathDecoding)); 
+            let collection_file = CollectionFile::Song(Song {
+                path: path_string.to_string(),
+            });
             out.push(collection_file);
         } else if file_meta.is_dir() {
-            let collection_file = CollectionFile::Directory(Directory(file_path));
+            let path_string = try!(file_path.to_str().ok_or(CollectionError::PathDecoding)); 
+            let collection_file = CollectionFile::Directory(Directory {
+                path: path_string.to_string(),
+            });
             out.push(collection_file);
         }
     }

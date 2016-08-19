@@ -9,11 +9,13 @@ use rustc_serialize::json;
 use url::percent_encoding::percent_decode;
 
 use collection;
+use collection::CollectionError;
 
-impl From<collection::CollectionError> for IronError {
-    fn from(err: collection::CollectionError) -> IronError {
+impl From<CollectionError> for IronError {
+    fn from(err: CollectionError) -> IronError {
         match err {
-            collection::CollectionError::Io(e) => IronError::new(e, status::NotFound)
+            CollectionError::Io(e) => IronError::new(e, status::NotFound),
+            CollectionError::PathDecoding => IronError::new(err, status::InternalServerError)
         }
     }
 }
