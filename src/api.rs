@@ -19,7 +19,8 @@ impl From<CollectionError> for IronError {
         match err {
             CollectionError::Io(e) => IronError::new(e, status::NotFound),
             CollectionError::PathDecoding => IronError::new(err, status::InternalServerError),
-            CollectionError::ConflictingMount(_) => IronError::new(err, status::BadRequest),
+            CollectionError::ConflictingMount => IronError::new(err, status::BadRequest),
+            CollectionError::PathNotInVfs => IronError::new(err, status::NotFound),
         }
     }
 }

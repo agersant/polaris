@@ -35,22 +35,26 @@ impl Collection {
 impl Collection {
     pub fn browse(&self, path: &Path) -> Result<Vec<CollectionFile>, CollectionError> {
 
-        let full_path = "samplemusic/".to_string() + path.to_str().unwrap(); // TMP use mount directories
+        let full_path = try!(self.vfs.virtual_to_real(path));
+        let full_path = full_path.to_str().unwrap();
         println!("Browsing: {}", full_path);
 
         let mut out = vec![];
         for file in try!(fs::read_dir(full_path)) {
             let file = try!(file);
             let file_meta = try!(file.metadata());
-            let file_path = file.path().to_owned();
+            let file_path = file.path();
+            let file_path = file_path.as_path();
             if file_meta.is_file() {
-                let path_string = try!(file_path.to_str().ok_or(CollectionError::PathDecoding)); 
+                let virtual_path = try!(self.vfs.real_to_virtual(file_path));
+                let path_string = try!(virtual_path.to_str().ok_or(CollectionError::PathDecoding)); 
                 let collection_file = CollectionFile::Song(Song {
                     path: path_string.to_string(),
                 });
                 out.push(collection_file);
             } else if file_meta.is_dir() {
-                let path_string = try!(file_path.to_str().ok_or(CollectionError::PathDecoding)); 
+                let virtual_path = try!(self.vfs.real_to_virtual(file_path));
+                let path_string = try!(virtual_path.to_str().ok_or(CollectionError::PathDecoding));  
                 let collection_file = CollectionFile::Directory(Directory {
                     path: path_string.to_string(),
                 });
