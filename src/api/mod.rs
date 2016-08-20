@@ -1,6 +1,9 @@
 use core::str::Utf8Error;
+use core::ops::DerefMut;
 use std::path::PathBuf;
 use std::ops::Deref;
+use std::sync::Arc;
+use std::sync::Mutex;
 
 use iron::prelude::*;
 use iron::status;
@@ -15,15 +18,28 @@ impl From<CollectionError> for IronError {
     fn from(err: CollectionError) -> IronError {
         match err {
             CollectionError::Io(e) => IronError::new(e, status::NotFound),
-            CollectionError::PathDecoding => IronError::new(err, status::InternalServerError)
+            CollectionError::PathDecoding => IronError::new(err, status::InternalServerError),
+            CollectionError::ConflictingMount(_) => IronError::new(err, status::BadRequest),
         }
     }
 }
 
-pub fn get_api_handler() -> Mount {
+pub fn get_api_handler(collection: Arc<Mutex<collection::Collection>>) -> Mount {
     let mut mount = Mount::new();
-    mount.mount("/browse/", self::browse)
-        .mount("/flatten/", self::flatten);
+    {
+        let collection = collection.clone();
+        mount.mount("/browse/", move |request: &mut Request| {
+            let mut acquired_collection = collection.deref().lock().unwrap();
+            self::browse(request, acquired_collection.deref_mut())
+        } );
+    }
+    {
+        let collection = collection.clone();
+        mount.mount("/flatten/", move |request: &mut Request| {
+            let mut acquired_collection = collection.deref().lock().unwrap();
+            self::flatten(request, acquired_collection.deref_mut())
+        } );
+    }
     mount
 }
 
@@ -33,13 +49,13 @@ fn path_from_request(request: &Request) -> Result<PathBuf, Utf8Error> {
     Ok(PathBuf::from(decoded_path.deref()))
 }
 
-fn browse(request: &mut Request) -> IronResult<Response> {
+fn browse(request: &mut Request, collection: &mut collection::Collection) -> IronResult<Response> {
     let path = path_from_request(request);
     if path.is_err() {
         return Ok(Response::with(status::BadRequest));
     }
     let path = path.unwrap();
-    let browse_result = try!(collection::browse(&path));
+    let browse_result = try!(collection.browse(&path));
 
     let result_json = json::encode(&browse_result);
     if result_json.is_err() {
@@ -51,11 +67,11 @@ fn browse(request: &mut Request) -> IronResult<Response> {
     Ok(Response::with((status::Ok, result_json)))
 }
 
-fn flatten(request: &mut Request) -> IronResult<Response> {
+fn flatten(request: &mut Request, collection: &mut collection::Collection) -> IronResult<Response> {
     let path = path_from_request(request);
     if path.is_err() {
         return Ok(Response::with((status::BadRequest)));
     }
-    collection::flatten(&path.unwrap());
+    collection.flatten(&path.unwrap());
     Ok(Response::with((status::Ok, "TODO Flatten data here")))
 }
