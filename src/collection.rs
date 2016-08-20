@@ -1,10 +1,8 @@
 use std::fs;
 use std::path::Path;
 
-pub use self::error::CollectionError; 
-
-mod error;
-mod vfs;
+use vfs::*;
+use error::*;
 
 #[derive(Debug, RustcEncodable)]
 pub struct Song {
@@ -23,13 +21,13 @@ pub enum CollectionFile {
 }
 
 pub struct Collection {
-    vfs: vfs::Vfs,
+    vfs: Vfs,
 }
 
 impl Collection {
     pub fn new() -> Collection {
         Collection{
-            vfs: vfs::Vfs::new(),
+            vfs: Vfs::new(),
         }
     }
 }

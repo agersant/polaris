@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::path::Path;
 
-use collection::error::CollectionError;
+use error::*;
 
 pub struct Vfs {
 	mount_points: HashMap<String, PathBuf>,

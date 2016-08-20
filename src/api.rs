@@ -11,8 +11,8 @@ use mount::Mount;
 use rustc_serialize::json;
 use url::percent_encoding::percent_decode;
 
-use collection;
-use collection::CollectionError;
+use collection::*;
+use error::*;
 
 impl From<CollectionError> for IronError {
     fn from(err: CollectionError) -> IronError {
@@ -24,7 +24,7 @@ impl From<CollectionError> for IronError {
     }
 }
 
-pub fn get_api_handler(collection: Arc<Mutex<collection::Collection>>) -> Mount {
+pub fn get_api_handler(collection: Arc<Mutex<Collection>>) -> Mount {
     let mut mount = Mount::new();
     {
         let collection = collection.clone();
@@ -49,7 +49,7 @@ fn path_from_request(request: &Request) -> Result<PathBuf, Utf8Error> {
     Ok(PathBuf::from(decoded_path.deref()))
 }
 
-fn browse(request: &mut Request, collection: &mut collection::Collection) -> IronResult<Response> {
+fn browse(request: &mut Request, collection: &mut Collection) -> IronResult<Response> {
     let path = path_from_request(request);
     if path.is_err() {
         return Ok(Response::with(status::BadRequest));
@@ -67,7 +67,7 @@ fn browse(request: &mut Request, collection: &mut collection::Collection) -> Iro
     Ok(Response::with((status::Ok, result_json)))
 }
 
-fn flatten(request: &mut Request, collection: &mut collection::Collection) -> IronResult<Response> {
+fn flatten(request: &mut Request, collection: &mut Collection) -> IronResult<Response> {
     let path = path_from_request(request);
     if path.is_err() {
         return Ok(Response::with((status::BadRequest)));
