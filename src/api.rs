@@ -64,7 +64,6 @@ fn browse(request: &mut Request, collection: &mut Collection) -> IronResult<Resp
     }
     let result_json = result_json.unwrap();
 
-    println!("{:?}", browse_result); // TMP
     Ok(Response::with((status::Ok, result_json)))
 }
 
@@ -73,6 +72,14 @@ fn flatten(request: &mut Request, collection: &mut Collection) -> IronResult<Res
     if path.is_err() {
         return Ok(Response::with((status::BadRequest)));
     }
-    collection.flatten(&path.unwrap());
-    Ok(Response::with((status::Ok, "TODO Flatten data here")))
+    let path = path.unwrap();
+    let flatten_result = try!(collection.flatten(&path));
+
+    let result_json = json::encode(&flatten_result);
+    if result_json.is_err() {
+        return Ok(Response::with(status::InternalServerError));
+    }
+    let result_json = result_json.unwrap();
+
+    Ok(Response::with((status::Ok, result_json)))
 }
