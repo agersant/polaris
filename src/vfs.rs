@@ -10,10 +10,9 @@ pub struct Vfs {
 
 impl Vfs {
 	pub fn new() -> Vfs {
-		let mut instance = Vfs {
+		let instance = Vfs {
 			mount_points: HashMap::new(),
 		};
-		instance.mount( "root", Path::new("samplemusic") );
 		instance
 	}
 
@@ -50,4 +49,29 @@ impl Vfs {
 		}
 		Err(CollectionError::PathNotInVfs)
 	}
+}
+
+#[test]
+fn test_mount() {
+	let mut vfs = Vfs::new();
+	assert!(vfs.mount("root", Path::new("test_dir")).is_ok());
+	assert!(vfs.mount("root", Path::new("another_dir")).is_err());
+}
+
+#[test]
+fn test_virtual_to_real() {
+	let mut vfs = Vfs::new();
+	assert!(vfs.mount("root", Path::new("test_dir")).is_ok());
+	let correct_path = Path::new("test_dir/somewhere/something.png");
+	let found_path = vfs.virtual_to_real(Path::new("root/somewhere/something.png")).unwrap();
+	assert!(found_path == correct_path);
+}
+
+#[test]
+fn test_real_to_virtual() {
+	let mut vfs = Vfs::new();
+	assert!(vfs.mount("root", Path::new("test_dir")).is_ok());
+	let correct_path = Path::new("root/somewhere/something.png");
+	let found_path = vfs.real_to_virtual(Path::new("test_dir/somewhere/something.png")).unwrap();
+	assert!(found_path == correct_path);
 }
