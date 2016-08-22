@@ -5,6 +5,7 @@ extern crate rustc_serialize;
 extern crate staticfile;
 extern crate url;
 
+use std::path::Path;
 use std::sync::Arc;
 use std::sync::Mutex;
 
@@ -22,7 +23,8 @@ use collection::*;
 
 fn main() {
 
-    let collection = Collection::new();
+    let mut collection = Collection::new();
+    collection.mount("root", Path::new("samplemusic/"));
     let collection = Arc::new(Mutex::new(collection));
 
     let mut mount = Mount::new();

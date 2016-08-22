@@ -30,9 +30,11 @@ impl Collection {
             vfs: Vfs::new(),
         }
     }
-}
 
-impl Collection {
+    pub fn mount(&mut self, name: &str, real_path: &Path) -> Result<(), CollectionError> {
+        self.vfs.mount(name, real_path)
+    }
+
     pub fn browse(&self, path: &Path) -> Result<Vec<CollectionFile>, CollectionError> {
 
         let full_path = try!(self.vfs.virtual_to_real(path));

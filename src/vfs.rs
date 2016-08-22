@@ -16,8 +16,7 @@ impl Vfs {
 		instance
 	}
 
-	pub fn mount(&mut self, name: &str, real_path: &Path) -> Result<(), CollectionError>
-	{
+	pub fn mount(&mut self, name: &str, real_path: &Path) -> Result<(), CollectionError> {
 		let name = name.to_string(); 
 		if self.mount_points.contains_key(&name)	{
 			return Err(CollectionError::ConflictingMount);
