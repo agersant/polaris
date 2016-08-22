@@ -26,9 +26,7 @@ pub struct Collection {
 
 impl Collection {
     pub fn new() -> Collection {
-        Collection{
-            vfs: Vfs::new(),
-        }
+        Collection { vfs: Vfs::new() }
     }
 
     pub fn mount(&mut self, name: &str, real_path: &Path) -> Result<(), CollectionError> {
@@ -49,17 +47,14 @@ impl Collection {
             let file_path = file_path.as_path();
             if file_meta.is_file() {
                 let virtual_path = try!(self.vfs.real_to_virtual(file_path));
-                let path_string = try!(virtual_path.to_str().ok_or(CollectionError::PathDecoding)); 
-                let collection_file = CollectionFile::Song(Song {
-                    path: path_string.to_string(),
-                });
+                let path_string = try!(virtual_path.to_str().ok_or(CollectionError::PathDecoding));
+                let collection_file = CollectionFile::Song(Song { path: path_string.to_string() });
                 out.push(collection_file);
             } else if file_meta.is_dir() {
                 let virtual_path = try!(self.vfs.real_to_virtual(file_path));
-                let path_string = try!(virtual_path.to_str().ok_or(CollectionError::PathDecoding));  
-                let collection_file = CollectionFile::Directory(Directory {
-                    path: path_string.to_string(),
-                });
+                let path_string = try!(virtual_path.to_str().ok_or(CollectionError::PathDecoding));
+                let collection_file =
+                    CollectionFile::Directory(Directory { path: path_string.to_string() });
                 out.push(collection_file);
             }
         }

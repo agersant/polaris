@@ -32,14 +32,14 @@ pub fn get_api_handler(collection: Arc<Mutex<Collection>>) -> Mount {
         mount.mount("/browse/", move |request: &mut Request| {
             let mut acquired_collection = collection.deref().lock().unwrap();
             self::browse(request, acquired_collection.deref_mut())
-        } );
+        });
     }
     {
         let collection = collection.clone();
         mount.mount("/flatten/", move |request: &mut Request| {
             let mut acquired_collection = collection.deref().lock().unwrap();
             self::flatten(request, acquired_collection.deref_mut())
-        } );
+        });
     }
     mount
 }

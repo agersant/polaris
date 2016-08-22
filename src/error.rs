@@ -3,8 +3,7 @@ use std::fmt;
 use std::io;
 
 #[derive(Debug)]
-pub enum CollectionError
-{
+pub enum CollectionError {
     PathDecoding,
     Io(io::Error),
     ConflictingMount,
@@ -22,7 +21,9 @@ impl error::Error for CollectionError {
         match *self {
             CollectionError::Io(ref err) => err.description(),
             CollectionError::PathDecoding => "Error while decoding a Path as a UTF-8 string",
-            CollectionError::ConflictingMount => "Attempting to mount multiple directories under the same name",
+            CollectionError::ConflictingMount => {
+                "Attempting to mount multiple directories under the same name"
+            }
             CollectionError::PathNotInVfs => "Requested path does not index a mount point",
         }
     }
@@ -42,8 +43,12 @@ impl fmt::Display for CollectionError {
         match *self {
             CollectionError::Io(ref err) => write!(f, "IO error: {}", err),
             CollectionError::PathDecoding => write!(f, "Path decoding error"),
-            CollectionError::ConflictingMount => write!(f, "Mount point already has a target directory"),
-            CollectionError::PathNotInVfs => write!(f, "Requested path does not index a mount point"),
+            CollectionError::ConflictingMount => {
+                write!(f, "Mount point already has a target directory")
+            }
+            CollectionError::PathNotInVfs => {
+                write!(f, "Requested path does not index a mount point")
+            }
         }
     }
 }
