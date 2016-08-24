@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::Path;
+use std::path::PathBuf;
 
 use vfs::*;
 use error::*;
@@ -11,14 +12,14 @@ pub struct Song {
 }
 
 impl Song {
-    pub fn read(collection: &Collection, file: &fs::DirEntry) -> Result<Song, CollectionError> {
+    pub fn read(collection: &Collection, file: &fs::DirEntry) -> Result<Song, SwineError> {
         let file_meta = try!(file.metadata());
         assert!(file_meta.is_file());
 
         let file_path = file.path();
         let file_path = file_path.as_path();
         let virtual_path = try!(collection.vfs.real_to_virtual(file_path));
-        let path_string = try!(virtual_path.to_str().ok_or(CollectionError::PathDecoding));
+        let path_string = try!(virtual_path.to_str().ok_or(SwineError::PathDecoding));
 
         let display_name = virtual_path.file_stem().unwrap();
         let display_name = display_name.to_str().unwrap();
@@ -40,14 +41,14 @@ pub struct Directory {
 impl Directory {
     pub fn read(collection: &Collection,
                 file: &fs::DirEntry)
-                -> Result<Directory, CollectionError> {
+                -> Result<Directory, SwineError> {
         let file_meta = try!(file.metadata());
         assert!(file_meta.is_dir());
 
         let file_path = file.path();
         let file_path = file_path.as_path();
         let virtual_path = try!(collection.vfs.real_to_virtual(file_path));
-        let path_string = try!(virtual_path.to_str().ok_or(CollectionError::PathDecoding));
+        let path_string = try!(virtual_path.to_str().ok_or(SwineError::PathDecoding));
 
         let display_name = virtual_path.iter().last().unwrap();
         let display_name = display_name.to_str().unwrap();
@@ -75,11 +76,11 @@ impl Collection {
         Collection { vfs: Vfs::new() }
     }
 
-    pub fn mount(&mut self, name: &str, real_path: &Path) -> Result<(), CollectionError> {
+    pub fn mount(&mut self, name: &str, real_path: &Path) -> Result<(), SwineError> {
         self.vfs.mount(name, real_path)
     }
 
-    pub fn browse(&self, path: &Path) -> Result<Vec<CollectionFile>, CollectionError> {
+    pub fn browse(&self, path: &Path) -> Result<Vec<CollectionFile>, SwineError> {
 
         let full_path = try!(self.vfs.virtual_to_real(path));
 
@@ -99,7 +100,7 @@ impl Collection {
         Ok(out)
     }
 
-    fn flatten_internal(&self, path: &Path) -> Result<Vec<Song>, CollectionError> {
+    fn flatten_internal(&self, path: &Path) -> Result<Vec<Song>, SwineError> {
         let files = try!(fs::read_dir(path));
         files.fold(Ok(vec![]), |acc, file| {
             let mut acc = try!(acc);
@@ -118,8 +119,12 @@ impl Collection {
         })
     }
 
-    pub fn flatten(&self, path: &Path) -> Result<Vec<Song>, CollectionError> {
+    pub fn flatten(&self, path: &Path) -> Result<Vec<Song>, SwineError> {
         let real_path = try!(self.vfs.virtual_to_real(path));
         self.flatten_internal(real_path.as_path())
+    }
+
+    pub fn locate(&self, virtual_path: &Path) -> Result<PathBuf, SwineError> {
+        self.vfs.virtual_to_real(virtual_path)
     }
 }
