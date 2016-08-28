@@ -16,18 +16,18 @@ use url::percent_encoding::percent_decode;
 use collection::*;
 use error::*;
 
-impl From<SwineError> for IronError {
-    fn from(err: SwineError) -> IronError {
+impl From<PError> for IronError {
+    fn from(err: PError) -> IronError {
         match err {
-            SwineError::Io(e) => IronError::new(e, status::NotFound),
-            SwineError::PathDecoding => IronError::new(err, status::InternalServerError),
-            SwineError::ConflictingMount => IronError::new(err, status::BadRequest),
-            SwineError::PathNotInVfs => IronError::new(err, status::NotFound),
-            SwineError::CannotServeDirectory => IronError::new(err, status::BadRequest),
-            SwineError::ConfigFileOpenError => IronError::new(err, status::InternalServerError),
-            SwineError::ConfigFileReadError => IronError::new(err, status::InternalServerError),
-            SwineError::ConfigFileParseError => IronError::new(err, status::InternalServerError),
-            SwineError::ConfigMountDirsParseError => IronError::new(err, status::InternalServerError),
+            PError::Io(e) => IronError::new(e, status::NotFound),
+            PError::PathDecoding => IronError::new(err, status::InternalServerError),
+            PError::ConflictingMount => IronError::new(err, status::BadRequest),
+            PError::PathNotInVfs => IronError::new(err, status::NotFound),
+            PError::CannotServeDirectory => IronError::new(err, status::BadRequest),
+            PError::ConfigFileOpenError => IronError::new(err, status::InternalServerError),
+            PError::ConfigFileReadError => IronError::new(err, status::InternalServerError),
+            PError::ConfigFileParseError => IronError::new(err, status::InternalServerError),
+            PError::ConfigMountDirsParseError => IronError::new(err, status::InternalServerError),
         }
     }
 }
@@ -124,7 +124,7 @@ fn serve(request: &mut Request, collection: &mut Collection) -> IronResult<Respo
     };
 
     if !metadata.is_file() {
-        return Err(IronError::new(SwineError::CannotServeDirectory, status::BadRequest));
+        return Err(IronError::new(PError::CannotServeDirectory, status::BadRequest));
     }
 
     Ok(Response::with((status::Ok, real_path)))

@@ -23,7 +23,7 @@ use collection::*;
 fn main() {
 
     let mut collection = Collection::new();
-    collection.load_config(Path::new("Swine.toml")).unwrap();
+    collection.load_config(Path::new("Polaris.toml")).unwrap();
 
     let collection = Arc::new(Mutex::new(collection));
 

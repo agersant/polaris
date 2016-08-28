@@ -15,14 +15,14 @@ pub struct Song {
 }
 
 impl Song {
-    pub fn read(collection: &Collection, file: &fs::DirEntry) -> Result<Song, SwineError> {
+    pub fn read(collection: &Collection, file: &fs::DirEntry) -> Result<Song, PError> {
         let file_meta = try!(file.metadata());
         assert!(file_meta.is_file());
 
         let file_path = file.path();
         let file_path = file_path.as_path();
         let virtual_path = try!(collection.vfs.real_to_virtual(file_path));
-        let path_string = try!(virtual_path.to_str().ok_or(SwineError::PathDecoding));
+        let path_string = try!(virtual_path.to_str().ok_or(PError::PathDecoding));
 
         let display_name = virtual_path.file_stem().unwrap();
         let display_name = display_name.to_str().unwrap();
@@ -44,14 +44,14 @@ pub struct Directory {
 impl Directory {
     pub fn read(collection: &Collection,
                 file: &fs::DirEntry)
-                -> Result<Directory, SwineError> {
+                -> Result<Directory, PError> {
         let file_meta = try!(file.metadata());
         assert!(file_meta.is_dir());
 
         let file_path = file.path();
         let file_path = file_path.as_path();
         let virtual_path = try!(collection.vfs.real_to_virtual(file_path));
-        let path_string = try!(virtual_path.to_str().ok_or(SwineError::PathDecoding));
+        let path_string = try!(virtual_path.to_str().ok_or(PError::PathDecoding));
 
         let display_name = virtual_path.iter().last().unwrap();
         let display_name = display_name.to_str().unwrap();
@@ -83,26 +83,26 @@ impl Collection {
         Collection { vfs: Vfs::new() }
     }
 
-    pub fn load_config(&mut self, config_path: &Path) -> Result<(), SwineError>
+    pub fn load_config(&mut self, config_path: &Path) -> Result<(), PError>
     {
         // Open
         let mut config_file = match File::open(config_path) {
             Ok(c) => c,
-            Err(_) => return Err(SwineError::ConfigFileOpenError),
+            Err(_) => return Err(PError::ConfigFileOpenError),
         };
 
         // Read
         let mut config_file_content = String::new();
         match config_file.read_to_string(&mut config_file_content) {
             Ok(_) => (),
-            Err(_) => return Err(SwineError::ConfigFileReadError),
+            Err(_) => return Err(PError::ConfigFileReadError),
         };
 
         // Parse
         let parsed_config = toml::Parser::new(config_file_content.as_str()).parse();
         let parsed_config = match parsed_config {
             Some(c) => c,
-            None => return Err(SwineError::ConfigFileParseError),
+            None => return Err(PError::ConfigFileParseError),
         };
 
         // Apply
@@ -111,7 +111,7 @@ impl Collection {
         Ok(())
     }
 
-    fn load_config_mount_points(&mut self, config: &toml::Table) -> Result<(), SwineError> {
+    fn load_config_mount_points(&mut self, config: &toml::Table) -> Result<(), PError> {
         let mount_dirs = match config.get(CONFIG_MOUNT_DIRS) {
             Some(s) => s,
             None => return Ok(()),
@@ -119,25 +119,25 @@ impl Collection {
 
         let mount_dirs = match mount_dirs {
             &toml::Value::Array(ref a) => a,
-            _ => return Err(SwineError::ConfigMountDirsParseError),
+            _ => return Err(PError::ConfigMountDirsParseError),
         };
 
         for dir in mount_dirs {
            let name = match dir.lookup(CONFIG_MOUNT_DIR_NAME) {
-               None => return Err(SwineError::ConfigMountDirsParseError),
+               None => return Err(PError::ConfigMountDirsParseError),
                Some(n) => n,
            };
            let name = match name.as_str() {
-               None => return Err(SwineError::ConfigMountDirsParseError),
+               None => return Err(PError::ConfigMountDirsParseError),
                Some(n) => n,
            };
 
            let source = match dir.lookup(CONFIG_MOUNT_DIR_SOURCE) {
-               None => return Err(SwineError::ConfigMountDirsParseError),
+               None => return Err(PError::ConfigMountDirsParseError),
                Some(n) => n,
            };
            let source = match source.as_str() {
-               None => return Err(SwineError::ConfigMountDirsParseError),
+               None => return Err(PError::ConfigMountDirsParseError),
                Some(n) => n,
            };
            let source = PathBuf::from(source);
@@ -148,11 +148,11 @@ impl Collection {
         Ok(())
     }
 
-    pub fn mount(&mut self, name: &str, real_path: &Path) -> Result<(), SwineError> {
+    pub fn mount(&mut self, name: &str, real_path: &Path) -> Result<(), PError> {
         self.vfs.mount(name, real_path)
     }
 
-    pub fn browse(&self, path: &Path) -> Result<Vec<CollectionFile>, SwineError> {
+    pub fn browse(&self, path: &Path) -> Result<Vec<CollectionFile>, PError> {
 
         let full_path = try!(self.vfs.virtual_to_real(path));
 
@@ -172,7 +172,7 @@ impl Collection {
         Ok(out)
     }
 
-    fn flatten_internal(&self, path: &Path) -> Result<Vec<Song>, SwineError> {
+    fn flatten_internal(&self, path: &Path) -> Result<Vec<Song>, PError> {
         let files = try!(fs::read_dir(path));
         files.fold(Ok(vec![]), |acc, file| {
             let mut acc = try!(acc);
@@ -191,12 +191,12 @@ impl Collection {
         })
     }
 
-    pub fn flatten(&self, path: &Path) -> Result<Vec<Song>, SwineError> {
+    pub fn flatten(&self, path: &Path) -> Result<Vec<Song>, PError> {
         let real_path = try!(self.vfs.virtual_to_real(path));
         self.flatten_internal(real_path.as_path())
     }
 
-    pub fn locate(&self, virtual_path: &Path) -> Result<PathBuf, SwineError> {
+    pub fn locate(&self, virtual_path: &Path) -> Result<PathBuf, PError> {
         self.vfs.virtual_to_real(virtual_path)
     }
 }

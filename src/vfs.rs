@@ -14,16 +14,16 @@ impl Vfs {
         instance
     }
 
-    pub fn mount(&mut self, name: &str, real_path: &Path) -> Result<(), SwineError> {
+    pub fn mount(&mut self, name: &str, real_path: &Path) -> Result<(), PError> {
         let name = name.to_string();
         if self.mount_points.contains_key(&name) {
-            return Err(SwineError::ConflictingMount);
+            return Err(PError::ConflictingMount);
         }
         self.mount_points.insert(name, real_path.to_path_buf());
         Ok(())
     }
 
-    pub fn real_to_virtual(&self, real_path: &Path) -> Result<PathBuf, SwineError> {
+    pub fn real_to_virtual(&self, real_path: &Path) -> Result<PathBuf, PError> {
         for (name, target) in &self.mount_points {
             match real_path.strip_prefix(target) {
                 Ok(p) => {
@@ -33,10 +33,10 @@ impl Vfs {
                 Err(_) => (),
             }
         }
-        Err(SwineError::PathNotInVfs)
+        Err(PError::PathNotInVfs)
     }
 
-    pub fn virtual_to_real(&self, virtual_path: &Path) -> Result<PathBuf, SwineError> {
+    pub fn virtual_to_real(&self, virtual_path: &Path) -> Result<PathBuf, PError> {
         for (name, target) in &self.mount_points {
             let mount_path = Path::new(&name);
             match virtual_path.strip_prefix(mount_path) {
@@ -44,7 +44,7 @@ impl Vfs {
                 Err(_) => (),
             }
         }
-        Err(SwineError::PathNotInVfs)
+        Err(PError::PathNotInVfs)
     }
 }
 
