@@ -24,6 +24,10 @@ impl From<SwineError> for IronError {
             SwineError::ConflictingMount => IronError::new(err, status::BadRequest),
             SwineError::PathNotInVfs => IronError::new(err, status::NotFound),
             SwineError::CannotServeDirectory => IronError::new(err, status::BadRequest),
+            SwineError::ConfigFileOpenError => IronError::new(err, status::InternalServerError),
+            SwineError::ConfigFileReadError => IronError::new(err, status::InternalServerError),
+            SwineError::ConfigFileParseError => IronError::new(err, status::InternalServerError),
+            SwineError::ConfigMountDirsParseError => IronError::new(err, status::InternalServerError),
         }
     }
 }

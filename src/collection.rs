@@ -1,6 +1,9 @@
+use std::io::prelude::*;
 use std::fs;
+use std::fs::File;
 use std::path::Path;
 use std::path::PathBuf;
+use toml;
 
 use vfs::*;
 use error::*;
@@ -71,9 +74,78 @@ pub struct Collection {
     vfs: Vfs,
 }
 
+const CONFIG_MOUNT_DIRS : &'static str = "mount_dirs";
+const CONFIG_MOUNT_DIR_NAME : &'static str = "name";
+const CONFIG_MOUNT_DIR_SOURCE : &'static str = "source";
+
 impl Collection {
     pub fn new() -> Collection {
         Collection { vfs: Vfs::new() }
+    }
+
+    pub fn load_config(&mut self, config_path: &Path) -> Result<(), SwineError>
+    {
+        // Open
+        let mut config_file = match File::open(config_path) {
+            Ok(c) => c,
+            Err(_) => return Err(SwineError::ConfigFileOpenError),
+        };
+
+        // Read
+        let mut config_file_content = String::new();
+        match config_file.read_to_string(&mut config_file_content) {
+            Ok(_) => (),
+            Err(_) => return Err(SwineError::ConfigFileReadError),
+        };
+
+        // Parse
+        let parsed_config = toml::Parser::new(config_file_content.as_str()).parse();
+        let parsed_config = match parsed_config {
+            Some(c) => c,
+            None => return Err(SwineError::ConfigFileParseError),
+        };
+
+        // Apply
+        try!(self.load_config_mount_points(&parsed_config));
+
+        Ok(())
+    }
+
+    fn load_config_mount_points(&mut self, config: &toml::Table) -> Result<(), SwineError> {
+        let mount_dirs = match config.get(CONFIG_MOUNT_DIRS) {
+            Some(s) => s,
+            None => return Ok(()),
+        };
+
+        let mount_dirs = match mount_dirs {
+            &toml::Value::Array(ref a) => a,
+            _ => return Err(SwineError::ConfigMountDirsParseError),
+        };
+
+        for dir in mount_dirs {
+           let name = match dir.lookup(CONFIG_MOUNT_DIR_NAME) {
+               None => return Err(SwineError::ConfigMountDirsParseError),
+               Some(n) => n,
+           };
+           let name = match name.as_str() {
+               None => return Err(SwineError::ConfigMountDirsParseError),
+               Some(n) => n,
+           };
+
+           let source = match dir.lookup(CONFIG_MOUNT_DIR_SOURCE) {
+               None => return Err(SwineError::ConfigMountDirsParseError),
+               Some(n) => n,
+           };
+           let source = match source.as_str() {
+               None => return Err(SwineError::ConfigMountDirsParseError),
+               Some(n) => n,
+           };
+           let source = PathBuf::from(source);
+           
+           try!(self.mount(name, source.as_path()));
+        }
+
+        Ok(())
     }
 
     pub fn mount(&mut self, name: &str, real_path: &Path) -> Result<(), SwineError> {

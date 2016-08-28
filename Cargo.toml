@@ -15,3 +15,6 @@ rustc-serialize = "0.3"
 [dependencies]
 router = "*"
 mount  = "*"
+
+[dependencies]
+toml = "0.2"

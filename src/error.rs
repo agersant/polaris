@@ -9,6 +9,10 @@ pub enum SwineError {
     ConflictingMount,
     PathNotInVfs,
     CannotServeDirectory,
+    ConfigFileOpenError,
+    ConfigFileReadError,
+    ConfigFileParseError,
+    ConfigMountDirsParseError,
 }
 
 impl From<io::Error> for SwineError {
@@ -27,6 +31,10 @@ impl error::Error for SwineError {
             }
             SwineError::PathNotInVfs => "Requested path does not index a mount point",
             SwineError::CannotServeDirectory => "Only individual files can be served",
+            SwineError::ConfigFileOpenError => "Could not open config file",
+            SwineError::ConfigFileReadError => "Could not read config file",
+            SwineError::ConfigFileParseError => "Could not parse config file",
+            SwineError::ConfigMountDirsParseError => "Could not parse mount directories in config file",
         }
     }
 
@@ -37,6 +45,10 @@ impl error::Error for SwineError {
             SwineError::ConflictingMount => None,
             SwineError::PathNotInVfs => None,
             SwineError::CannotServeDirectory => None,
+            SwineError::ConfigFileOpenError => None,
+            SwineError::ConfigFileReadError => None,
+            SwineError::ConfigFileParseError => None,
+            SwineError::ConfigMountDirsParseError => None,
         }
     }
 }
@@ -54,6 +66,18 @@ impl fmt::Display for SwineError {
             }
             SwineError::CannotServeDirectory => {
                 write!(f, "Only individual files can be served")
+            }
+            SwineError::ConfigFileOpenError => {
+                write!(f, "Could not open config file")
+            }
+            SwineError::ConfigFileReadError => {
+                write!(f, "Could not read config file")
+            }
+            SwineError::ConfigFileParseError => {
+                write!(f, "Could not parse config file")
+            }
+            SwineError::ConfigMountDirsParseError => {
+                write!(f, "Could not parse mount directories in config file")
             }
         }
     }
