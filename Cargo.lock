@@ -1,5 +1,5 @@
 [root]
-name = "swine"
+name = "polaris"
 version = "0.1.0"
 dependencies = [
  "iron 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",

@@ -1,5 +1,5 @@
 [package]
-name = "swine"
+name = "polaris"
 version = "0.1.0"
 authors = ["Antoine Gersant <antoine.gersant@lesforges.org>"]
 
