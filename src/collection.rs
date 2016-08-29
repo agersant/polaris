@@ -37,9 +37,7 @@ pub struct Directory {
 }
 
 impl Directory {
-    pub fn read(collection: &Collection,
-                path: &Path)
-                -> Result<Directory, PError> {
+    pub fn read(collection: &Collection, path: &Path) -> Result<Directory, PError> {
         let virtual_path = try!(collection.vfs.real_to_virtual(path));
         let path_string = try!(virtual_path.to_str().ok_or(PError::PathDecoding));
 
@@ -64,17 +62,16 @@ pub struct Collection {
     vfs: Vfs,
 }
 
-const CONFIG_MOUNT_DIRS : &'static str = "mount_dirs";
-const CONFIG_MOUNT_DIR_NAME : &'static str = "name";
-const CONFIG_MOUNT_DIR_SOURCE : &'static str = "source";
+const CONFIG_MOUNT_DIRS: &'static str = "mount_dirs";
+const CONFIG_MOUNT_DIR_NAME: &'static str = "name";
+const CONFIG_MOUNT_DIR_SOURCE: &'static str = "source";
 
 impl Collection {
     pub fn new() -> Collection {
         Collection { vfs: Vfs::new() }
     }
 
-    pub fn load_config(&mut self, config_path: &Path) -> Result<(), PError>
-    {
+    pub fn load_config(&mut self, config_path: &Path) -> Result<(), PError> {
         // Open
         let mut config_file = match File::open(config_path) {
             Ok(c) => c,
@@ -113,26 +110,26 @@ impl Collection {
         };
 
         for dir in mount_dirs {
-           let name = match dir.lookup(CONFIG_MOUNT_DIR_NAME) {
-               None => return Err(PError::ConfigMountDirsParseError),
-               Some(n) => n,
-           };
-           let name = match name.as_str() {
-               None => return Err(PError::ConfigMountDirsParseError),
-               Some(n) => n,
-           };
+            let name = match dir.lookup(CONFIG_MOUNT_DIR_NAME) {
+                None => return Err(PError::ConfigMountDirsParseError),
+                Some(n) => n,
+            };
+            let name = match name.as_str() {
+                None => return Err(PError::ConfigMountDirsParseError),
+                Some(n) => n,
+            };
 
-           let source = match dir.lookup(CONFIG_MOUNT_DIR_SOURCE) {
-               None => return Err(PError::ConfigMountDirsParseError),
-               Some(n) => n,
-           };
-           let source = match source.as_str() {
-               None => return Err(PError::ConfigMountDirsParseError),
-               Some(n) => n,
-           };
-           let source = PathBuf::from(source);
-           
-           try!(self.mount(name, source.as_path()));
+            let source = match dir.lookup(CONFIG_MOUNT_DIR_SOURCE) {
+                None => return Err(PError::ConfigMountDirsParseError),
+                Some(n) => n,
+            };
+            let source = match source.as_str() {
+                None => return Err(PError::ConfigMountDirsParseError),
+                Some(n) => n,
+            };
+            let source = PathBuf::from(source);
+
+            try!(self.mount(name, source.as_path()));
         }
 
         Ok(())

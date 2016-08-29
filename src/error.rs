@@ -58,24 +58,12 @@ impl fmt::Display for PError {
         match *self {
             PError::Io(ref err) => write!(f, "IO error: {}", err),
             PError::PathDecoding => write!(f, "Path decoding error"),
-            PError::ConflictingMount => {
-                write!(f, "Mount point already has a target directory")
-            }
-            PError::PathNotInVfs => {
-                write!(f, "Requested path does not index a mount point")
-            }
-            PError::CannotServeDirectory => {
-                write!(f, "Only individual files can be served")
-            }
-            PError::ConfigFileOpenError => {
-                write!(f, "Could not open config file")
-            }
-            PError::ConfigFileReadError => {
-                write!(f, "Could not read config file")
-            }
-            PError::ConfigFileParseError => {
-                write!(f, "Could not parse config file")
-            }
+            PError::ConflictingMount => write!(f, "Mount point already has a target directory"),
+            PError::PathNotInVfs => write!(f, "Requested path does not index a mount point"),
+            PError::CannotServeDirectory => write!(f, "Only individual files can be served"),
+            PError::ConfigFileOpenError => write!(f, "Could not open config file"),
+            PError::ConfigFileReadError => write!(f, "Could not read config file"),
+            PError::ConfigFileParseError => write!(f, "Could not parse config file"),
             PError::ConfigMountDirsParseError => {
                 write!(f, "Could not parse mount directories in config file")
             }

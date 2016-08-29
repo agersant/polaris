@@ -110,7 +110,7 @@ fn serve(request: &mut Request, collection: &mut Collection) -> IronResult<Respo
         Err(e) => return Err(IronError::new(e, status::NotFound)),
         Ok(p) => p,
     };
-    
+
     let metadata = match fs::metadata(real_path.as_path()) {
         Ok(meta) => meta,
         Err(e) => {
@@ -120,7 +120,7 @@ fn serve(request: &mut Request, collection: &mut Collection) -> IronResult<Respo
                 _ => status::InternalServerError,
             };
             return Err(IronError::new(e, status));
-        },
+        }
     };
 
     if !metadata.is_file() {
