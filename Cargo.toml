@@ -15,6 +15,7 @@ rustc-serialize = "0.3"
 [dependencies]
 router = "*"
 mount  = "*"
+staticfile = "*"
 
 [dependencies]
 toml = "0.2"
