@@ -15,13 +15,8 @@ pub struct Song {
 }
 
 impl Song {
-    pub fn read(collection: &Collection, file: &fs::DirEntry) -> Result<Song, PError> {
-        let file_meta = try!(file.metadata());
-        assert!(file_meta.is_file());
-
-        let file_path = file.path();
-        let file_path = file_path.as_path();
-        let virtual_path = try!(collection.vfs.real_to_virtual(file_path));
+    pub fn read(collection: &Collection, path: &Path) -> Result<Song, PError> {
+        let virtual_path = try!(collection.vfs.real_to_virtual(path));
         let path_string = try!(virtual_path.to_str().ok_or(PError::PathDecoding));
 
         let display_name = virtual_path.file_stem().unwrap();
@@ -43,14 +38,9 @@ pub struct Directory {
 
 impl Directory {
     pub fn read(collection: &Collection,
-                file: &fs::DirEntry)
+                path: &Path)
                 -> Result<Directory, PError> {
-        let file_meta = try!(file.metadata());
-        assert!(file_meta.is_dir());
-
-        let file_path = file.path();
-        let file_path = file_path.as_path();
-        let virtual_path = try!(collection.vfs.real_to_virtual(file_path));
+        let virtual_path = try!(collection.vfs.real_to_virtual(path));
         let path_string = try!(virtual_path.to_str().ok_or(PError::PathDecoding));
 
         let display_name = virtual_path.iter().last().unwrap();
@@ -148,26 +138,35 @@ impl Collection {
         Ok(())
     }
 
-    pub fn mount(&mut self, name: &str, real_path: &Path) -> Result<(), PError> {
+    fn mount(&mut self, name: &str, real_path: &Path) -> Result<(), PError> {
         self.vfs.mount(name, real_path)
     }
 
     pub fn browse(&self, path: &Path) -> Result<Vec<CollectionFile>, PError> {
 
-        let full_path = try!(self.vfs.virtual_to_real(path));
-
         let mut out = vec![];
-        for file in try!(fs::read_dir(full_path)) {
-            let file = try!(file);
-            let file_meta = try!(file.metadata());
-            if file_meta.is_file() {
-                let song = try!(Song::read(self, &file));
-                out.push(CollectionFile::Song(song));
-            } else if file_meta.is_dir() {
-                let directory = try!(Directory::read(self, &file));
+
+        if path.components().count() == 0 {
+            let mount_points = self.vfs.get_mount_points();
+            for (_, target) in mount_points {
+                let directory = try!(Directory::read(self, target.as_path()));
                 out.push(CollectionFile::Directory(directory));
             }
+        } else {
+            let full_path = try!(self.vfs.virtual_to_real(path));
+            for file in try!(fs::read_dir(full_path)) {
+                let file = try!(file);
+                let file_meta = try!(file.metadata());
+                if file_meta.is_file() {
+                    let song = try!(Song::read(self, file.path().as_path()));
+                    out.push(CollectionFile::Song(song));
+                } else if file_meta.is_dir() {
+                    let directory = try!(Directory::read(self, file.path().as_path()));
+                    out.push(CollectionFile::Directory(directory));
+                }
+            }
         }
+
 
         Ok(out)
     }
@@ -179,7 +178,7 @@ impl Collection {
             let file: fs::DirEntry = try!(file);
             let file_meta = try!(file.metadata());
             if file_meta.is_file() {
-                let song = try!(Song::read(self, &file));
+                let song = try!(Song::read(self, file.path().as_path()));
                 acc.push(song);
             } else {
                 let explore_path = file.path();

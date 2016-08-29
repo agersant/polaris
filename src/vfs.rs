@@ -46,6 +46,10 @@ impl Vfs {
         }
         Err(PError::PathNotInVfs)
     }
+
+    pub fn get_mount_points(&self) -> &HashMap<String, PathBuf> {
+        return &self.mount_points;
+    }
 }
 
 #[test]
