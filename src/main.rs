@@ -32,7 +32,7 @@ fn main() {
     let mut mount = Mount::new();
     let api_handler = get_api_handler(collection);
     mount.mount("/api/", api_handler);
-    mount.mount("/", Static::new(Path::new("web")));
+    mount.mount("/", Static::new(Path::new("../polaris-web")));
 
     Iron::new(mount).http("localhost:3000").unwrap();
 }
