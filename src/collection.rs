@@ -15,7 +15,7 @@ pub struct Song {
 }
 
 impl Song {
-    pub fn read(collection: &Collection, path: &Path) -> Result<Song, PError> {
+    fn read(collection: &Collection, path: &Path) -> Result<Song, PError> {
         let virtual_path = try!(collection.vfs.real_to_virtual(path));
         let path_string = try!(virtual_path.to_str().ok_or(PError::PathDecoding));
 
@@ -28,6 +28,24 @@ impl Song {
             display_name: display_name,
         })
     }
+
+    fn is_song(path: &Path) -> bool {
+        let extension = match path.extension() {
+            Some(e) => e,
+            _ => return false,
+        };
+        let extension = match extension.to_str() {
+            Some(e) => e,
+            _ => return false,
+        };
+        match extension {
+            "mp3" => return true,
+            "ogg" => return true,
+            "m4a" => return true,
+            "flac" => return true,
+            _ => return false,
+        }
+    }
 }
 
 #[derive(Debug, RustcEncodable)]
@@ -37,7 +55,7 @@ pub struct Directory {
 }
 
 impl Directory {
-    pub fn read(collection: &Collection, path: &Path) -> Result<Directory, PError> {
+    fn read(collection: &Collection, path: &Path) -> Result<Directory, PError> {
         let virtual_path = try!(collection.vfs.real_to_virtual(path));
         let path_string = try!(virtual_path.to_str().ok_or(PError::PathDecoding));
 
@@ -154,16 +172,19 @@ impl Collection {
             for file in try!(fs::read_dir(full_path)) {
                 let file = try!(file);
                 let file_meta = try!(file.metadata());
+                let file_path = file.path();
+                let file_path = file_path.as_path();
                 if file_meta.is_file() {
-                    let song = try!(Song::read(self, file.path().as_path()));
-                    out.push(CollectionFile::Song(song));
+                    if Song::is_song( file_path ) {
+                        let song = try!(Song::read(self, file_path));
+                        out.push(CollectionFile::Song(song));
+                    }
                 } else if file_meta.is_dir() {
-                    let directory = try!(Directory::read(self, file.path().as_path()));
+                    let directory = try!(Directory::read(self, file_path));
                     out.push(CollectionFile::Directory(directory));
                 }
             }
         }
-
 
         Ok(out)
     }
@@ -174,13 +195,15 @@ impl Collection {
             let mut acc = try!(acc);
             let file: fs::DirEntry = try!(file);
             let file_meta = try!(file.metadata());
+            let file_path = file.path();
+            let file_path = file_path.as_path();
             if file_meta.is_file() {
-                let song = try!(Song::read(self, file.path().as_path()));
-                acc.push(song);
+                if Song::is_song(file_path) {
+                    let song = try!(Song::read(self, file_path));
+                    acc.push(song);
+                }
             } else {
-                let explore_path = file.path();
-                let explore_path = explore_path.as_path();
-                let mut explore_content = try!(self.flatten_internal(explore_path));
+                let mut explore_content = try!(self.flatten_internal(file_path));
                 acc.append(&mut explore_content);
             }
             Ok(acc)
