@@ -13,6 +13,8 @@ pub enum PError {
     ConfigFileReadError,
     ConfigFileParseError,
     ConfigMountDirsParseError,
+    ConfigAlbumArtPatternParseError,
+    AlbumArtSearchError,
 }
 
 impl From<io::Error> for PError {
@@ -35,20 +37,15 @@ impl error::Error for PError {
             PError::ConfigFileReadError => "Could not read config file",
             PError::ConfigFileParseError => "Could not parse config file",
             PError::ConfigMountDirsParseError => "Could not parse mount directories in config file",
+            PError::ConfigAlbumArtPatternParseError => "Could not parse album art pattern in config file",
+            PError::AlbumArtSearchError => "Error while looking for album art",
         }
     }
 
     fn cause(&self) -> Option<&error::Error> {
         match *self {
             PError::Io(ref err) => Some(err),
-            PError::PathDecoding => None,
-            PError::ConflictingMount => None,
-            PError::PathNotInVfs => None,
-            PError::CannotServeDirectory => None,
-            PError::ConfigFileOpenError => None,
-            PError::ConfigFileReadError => None,
-            PError::ConfigFileParseError => None,
-            PError::ConfigMountDirsParseError => None,
+           _ => None,
         }
     }
 }
@@ -67,6 +64,8 @@ impl fmt::Display for PError {
             PError::ConfigMountDirsParseError => {
                 write!(f, "Could not parse mount directories in config file")
             }
+            PError::ConfigAlbumArtPatternParseError => write!(f, "Could not album art pattern in config file"),
+            PError::AlbumArtSearchError => write!(f, "Error while looking for album art"),
         }
     }
 }

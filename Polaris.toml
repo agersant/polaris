@@ -1,3 +1,6 @@
+album_art_pattern = '^Folder\.(png|jpg|jpeg)$'
+
 [[mount_dirs]]
-name = "root"
-source = "M:/Music/Genres/Electronic/Glitch"
+name = 'root'
+source = 'M:/Music/Genres/'
+

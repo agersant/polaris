@@ -3,6 +3,7 @@ use std::fs;
 use std::fs::File;
 use std::path::Path;
 use std::path::PathBuf;
+use regex::Regex;
 use toml;
 
 use vfs::*;
@@ -12,6 +13,7 @@ use error::*;
 pub struct Song {
     path: String,
     display_name: String,
+    album_art: String,
 }
 
 impl Song {
@@ -23,9 +25,16 @@ impl Song {
         let display_name = display_name.to_str().unwrap();
         let display_name = display_name.to_string();
 
+        let album_art = match collection.get_album_art(path) {
+            Ok(Some(p)) => try!(collection.vfs.real_to_virtual(p.as_path())),
+            _ => PathBuf::new(),
+        };
+        let album_art = try!(album_art.to_str().ok_or(PError::PathDecoding));
+
         Ok(Song {
             path: path_string.to_string(),
             display_name: display_name,
+            album_art: album_art.to_string(),
         })
     }
 
@@ -52,6 +61,7 @@ impl Song {
 pub struct Directory {
     path: String,
     display_name: String,
+    album_art: String,
 }
 
 impl Directory {
@@ -63,9 +73,16 @@ impl Directory {
         let display_name = display_name.to_str().unwrap();
         let display_name = display_name.to_string();
 
+        let album_art = match collection.get_album_art(path) {
+            Ok(Some(p)) => try!(collection.vfs.real_to_virtual(p.as_path())),
+            _ => PathBuf::new(),
+        };
+        let album_art = try!(album_art.to_str().ok_or(PError::PathDecoding));
+
         Ok(Directory {
             path: path_string.to_string(),
             display_name: display_name,
+            album_art: album_art.to_string(),
         })
     }
 }
@@ -78,15 +95,20 @@ pub enum CollectionFile {
 
 pub struct Collection {
     vfs: Vfs,
+    album_art_pattern: Regex,
 }
 
 const CONFIG_MOUNT_DIRS: &'static str = "mount_dirs";
 const CONFIG_MOUNT_DIR_NAME: &'static str = "name";
 const CONFIG_MOUNT_DIR_SOURCE: &'static str = "source";
+const CONFIG_ALBUM_ART_PATTERN: &'static str = "album_art_pattern";
 
 impl Collection {
     pub fn new() -> Collection {
-        Collection { vfs: Vfs::new() }
+        Collection {
+            vfs: Vfs::new(),
+            album_art_pattern: Regex::new("^Folder\\.png$").unwrap(),
+        }
     }
 
     pub fn load_config(&mut self, config_path: &Path) -> Result<(), PError> {
@@ -112,6 +134,24 @@ impl Collection {
 
         // Apply
         try!(self.load_config_mount_points(&parsed_config));
+        try!(self.load_config_album_art_pattern(&parsed_config));
+
+        Ok(())
+    }
+
+    fn load_config_album_art_pattern(&mut self, config: &toml::Table) -> Result<(), PError> {
+        let pattern = match config.get(CONFIG_ALBUM_ART_PATTERN) {
+            Some(s) => s,
+            None => return Ok(()),
+        };
+        let pattern = match pattern {
+            &toml::Value::String(ref s) => s,
+            _ => return Err(PError::ConfigAlbumArtPatternParseError),
+        };
+        self.album_art_pattern = match Regex::new(pattern) {
+            Ok(r) => r,
+            Err(_) => return Err(PError::ConfigAlbumArtPatternParseError),
+        };
 
         Ok(())
     }
@@ -217,5 +257,33 @@ impl Collection {
 
     pub fn locate(&self, virtual_path: &Path) -> Result<PathBuf, PError> {
         self.vfs.virtual_to_real(virtual_path)
+    }
+
+    fn get_album_art(&self, real_path: &Path) -> Result<Option<PathBuf>, PError> {
+        let mut real_dir = real_path;
+        if real_dir.is_file() {
+            real_dir = try!(real_dir.parent().ok_or(PError::AlbumArtSearchError));
+        }
+        assert!(real_dir.is_dir());
+
+        let mut files = try!(fs::read_dir(real_dir));
+        let album_art = files.find(|dir_entry| {
+            let file = match *dir_entry {
+                Err(_) => return false,
+                Ok(ref r) => r,
+            };
+            let file_name = file.file_name();
+            let file_name = match file_name.to_str() {
+                None => return false,
+                Some(r) => r,
+            };
+            self.album_art_pattern.is_match(file_name)
+        });
+
+        match album_art {
+            Some(Err(_)) => Err(PError::AlbumArtSearchError),
+            Some(Ok(a)) => Ok(Some(a.path())),
+            None => Ok(None),
+        }
     }
 }

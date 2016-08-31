@@ -11,11 +11,8 @@ git = "https://github.com/servo/rust-url"
 
 [dependencies]
 rustc-serialize = "0.3"
-
-[dependencies]
 router = "*"
 mount  = "*"
 staticfile = "*"
-
-[dependencies]
+regex = "0.1"
 toml = "0.2"
