@@ -10,10 +10,44 @@ use vfs::*;
 use error::*;
 
 #[derive(Debug, RustcEncodable)]
+pub struct Album {
+    name: Option<String>,
+    year: Option<String>,
+    album_art: Option<String>,
+    artist: Option<String>,
+}
+
+impl Album {
+    fn read(collection: &Collection, path: &Path) -> Result<Option<Album>, PError> {
+        let name = None;
+        let year = None;
+        let artist = None;
+
+        let album_art = collection.get_album_art(path).unwrap_or(None);
+        let album_art = match album_art {
+            Some(p) => Some(try!(collection.vfs.real_to_virtual(p.as_path()))),
+            None => None,
+        };
+        let album_art = match album_art {
+            None => None,
+            Some(a) => a.to_str().map(|p| p.to_string()),
+        };
+
+        Ok(Some(Album {
+            name: name,
+            year: year,
+            album_art: album_art,
+            artist: artist,
+        }))
+    }
+}
+
+#[derive(Debug, RustcEncodable)]
 pub struct Song {
     path: String,
-    display_name: String,
-    album_art: String,
+    album: Album,
+    title: Option<String>,
+    artist: Option<String>,
 }
 
 impl Song {
@@ -21,20 +55,18 @@ impl Song {
         let virtual_path = try!(collection.vfs.real_to_virtual(path));
         let path_string = try!(virtual_path.to_str().ok_or(PError::PathDecoding));
 
-        let display_name = virtual_path.file_stem().unwrap();
-        let display_name = display_name.to_str().unwrap();
-        let display_name = display_name.to_string();
+        let name = virtual_path.file_stem().unwrap();
+        let name = name.to_str().unwrap();
+        let name = name.to_string();
 
-        let album_art = match collection.get_album_art(path) {
-            Ok(Some(p)) => try!(collection.vfs.real_to_virtual(p.as_path())),
-            _ => PathBuf::new(),
-        };
-        let album_art = try!(album_art.to_str().ok_or(PError::PathDecoding));
+        let album = try!(Album::read(collection, path));
+        let album = album.unwrap();
 
         Ok(Song {
             path: path_string.to_string(),
-            display_name: display_name,
-            album_art: album_art.to_string(),
+            album: album,
+            artist: None,
+            title: Some(name),
         })
     }
 
@@ -60,8 +92,8 @@ impl Song {
 #[derive(Debug, RustcEncodable)]
 pub struct Directory {
     path: String,
-    display_name: String,
-    album_art: String,
+    name: String,
+    album: Option<Album>,
 }
 
 impl Directory {
@@ -69,20 +101,16 @@ impl Directory {
         let virtual_path = try!(collection.vfs.real_to_virtual(path));
         let path_string = try!(virtual_path.to_str().ok_or(PError::PathDecoding));
 
-        let display_name = virtual_path.iter().last().unwrap();
-        let display_name = display_name.to_str().unwrap();
-        let display_name = display_name.to_string();
+        let name = virtual_path.iter().last().unwrap();
+        let name = name.to_str().unwrap();
+        let name = name.to_string();
 
-        let album_art = match collection.get_album_art(path) {
-            Ok(Some(p)) => try!(collection.vfs.real_to_virtual(p.as_path())),
-            _ => PathBuf::new(),
-        };
-        let album_art = try!(album_art.to_str().ok_or(PError::PathDecoding));
+        let album = try!(Album::read(collection, path));
 
         Ok(Directory {
             path: path_string.to_string(),
-            display_name: display_name,
-            album_art: album_art.to_string(),
+            name: name,
+            album: album,
         })
     }
 }
