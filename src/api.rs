@@ -28,8 +28,11 @@ impl From<PError> for IronError {
             PError::ConfigFileReadError => IronError::new(err, status::InternalServerError),
             PError::ConfigFileParseError => IronError::new(err, status::InternalServerError),
             PError::ConfigMountDirsParseError => IronError::new(err, status::InternalServerError),
-            PError::ConfigAlbumArtPatternParseError => IronError::new(err, status::InternalServerError),
+            PError::ConfigAlbumArtPatternParseError => {
+                IronError::new(err, status::InternalServerError)
+            }
             PError::AlbumArtSearchError => IronError::new(err, status::InternalServerError),
+            PError::ID3ParseError => IronError::new(err, status::InternalServerError),
         }
     }
 }

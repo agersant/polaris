@@ -2,6 +2,7 @@ extern crate core;
 extern crate iron;
 extern crate mount;
 extern crate regex;
+extern crate id3;
 extern crate rustc_serialize;
 extern crate staticfile;
 extern crate toml;

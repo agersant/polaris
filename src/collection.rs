@@ -3,6 +3,7 @@ use std::fs;
 use std::fs::File;
 use std::path::Path;
 use std::path::PathBuf;
+use id3::Tag;
 use regex::Regex;
 use toml;
 
@@ -11,19 +12,35 @@ use error::*;
 
 #[derive(Debug, RustcEncodable)]
 pub struct Album {
-    name: Option<String>,
-    year: Option<String>,
+    title: Option<String>,
+    year: Option<i32>,
     album_art: Option<String>,
     artist: Option<String>,
 }
 
-impl Album {
-    fn read(collection: &Collection, path: &Path) -> Result<Option<Album>, PError> {
-        let name = None;
-        let year = None;
-        let artist = None;
+#[derive(Debug, RustcEncodable)]
+pub struct Song {
+    path: String,
+    album: Album,
+    track_number: Option<u32>,
+    title: Option<String>,
+    artist: Option<String>,
+}
 
-        let album_art = collection.get_album_art(path).unwrap_or(None);
+#[derive(Debug)]
+pub struct SongTags {
+    track_number: Option<u32>,
+    title: Option<String>,
+    artist: Option<String>,
+    album_artist: Option<String>,
+    album: Option<String>,
+    year: Option<i32>,
+}
+
+impl Album {
+    fn read(collection: &Collection, real_path: &Path) -> Result<Album, PError> {
+
+        let album_art = collection.get_album_art(real_path).unwrap_or(None);
         let album_art = match album_art {
             Some(p) => Some(try!(collection.vfs.real_to_virtual(p.as_path()))),
             None => None,
@@ -33,21 +50,62 @@ impl Album {
             Some(a) => a.to_str().map(|p| p.to_string()),
         };
 
-        Ok(Some(Album {
-            name: name,
-            year: year,
-            album_art: album_art,
-            artist: artist,
-        }))
+        let mut song_path = None;
+        if real_path.is_file() {
+            song_path = Some(real_path.to_path_buf());
+        } else {
+            let find_song = try!(fs::read_dir(real_path)).find(|f| {
+                match *f {
+                    Ok(ref dir_entry) => Song::is_song(dir_entry.path().as_path()),
+                    _ => false,
+                }
+            });
+            if let Some(dir_entry) = find_song {
+                song_path = Some(try!(dir_entry).path());
+            }
+        };
+
+        let song_tags = song_path.map(|p| SongTags::read(p.as_path()));
+        if let Some(Ok(t)) = song_tags {
+            Ok(Album {
+                album_art: album_art,
+                title: t.album,
+                year: t.year,
+                artist: t.album_artist,
+            })
+        } else {
+            Ok(Album {
+                album_art: album_art,
+                title: None,
+                year: None,
+                artist: None,
+            })
+        }
     }
 }
 
-#[derive(Debug, RustcEncodable)]
-pub struct Song {
-    path: String,
-    album: Album,
-    title: Option<String>,
-    artist: Option<String>,
+impl SongTags {
+    fn read(path: &Path) -> Result<SongTags, PError> {
+        let tag = try!(Tag::read_from_path(path));
+
+        let artist = tag.artist().map(|s| s.to_string());
+        let album_artist = tag.album_artist().map(|s| s.to_string());
+        let album = tag.album().map(|s| s.to_string());
+        let title = tag.title().map(|s| s.to_string());
+        let track_number = tag.track();
+        let year = tag.year()
+            .map(|y| y as i32)
+            .or(tag.date_released().and_then(|d| d.year))
+            .or(tag.date_recorded().and_then(|d| d.year));
+        Ok(SongTags {
+            artist: artist,
+            album_artist: album_artist,
+            album: album,
+            title: title,
+            track_number: track_number,
+            year: year,
+        })
+    }
 }
 
 impl Song {
@@ -55,19 +113,26 @@ impl Song {
         let virtual_path = try!(collection.vfs.real_to_virtual(path));
         let path_string = try!(virtual_path.to_str().ok_or(PError::PathDecoding));
 
-        let name = virtual_path.file_stem().unwrap();
-        let name = name.to_str().unwrap();
-        let name = name.to_string();
-
+        let tags = SongTags::read(path).ok();
         let album = try!(Album::read(collection, path));
-        let album = album.unwrap();
 
-        Ok(Song {
-            path: path_string.to_string(),
-            album: album,
-            artist: None,
-            title: Some(name),
-        })
+        if let Some(t) = tags {
+            Ok(Song {
+                path: path_string.to_string(),
+                album: album,
+                artist: t.artist,
+                title: t.title,
+                track_number: t.track_number,
+            })
+        } else {
+            Ok(Song {
+                path: path_string.to_string(),
+                album: album,
+                artist: None,
+                title: None,
+                track_number: None,
+            })
+        }
     }
 
     fn is_song(path: &Path) -> bool {
@@ -93,7 +158,7 @@ impl Song {
 pub struct Directory {
     path: String,
     name: String,
-    album: Option<Album>,
+    album: Album,
 }
 
 impl Directory {
@@ -243,7 +308,7 @@ impl Collection {
                 let file_path = file.path();
                 let file_path = file_path.as_path();
                 if file_meta.is_file() {
-                    if Song::is_song( file_path ) {
+                    if Song::is_song(file_path) {
                         let song = try!(Song::read(self, file_path));
                         out.push(CollectionFile::Song(song));
                     }

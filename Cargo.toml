@@ -10,6 +10,7 @@ version = "0.4.0"
 git = "https://github.com/servo/rust-url"
 
 [dependencies]
+id3 = { git = "https://github.com/jameshurst/rust-id3" }
 mount  = "*"
 regex = "0.1"
 router = "*"
