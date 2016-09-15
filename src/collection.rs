@@ -37,6 +37,12 @@ pub struct SongTags {
     year: Option<i32>,
 }
 
+#[derive(Debug)]
+pub struct User {
+    name: String,
+    password: String,
+}
+
 impl Album {
     fn read(collection: &Collection, real_path: &Path) -> Result<Album, PError> {
 
@@ -188,18 +194,23 @@ pub enum CollectionFile {
 
 pub struct Collection {
     vfs: Vfs,
+    users: Vec<User>,
     album_art_pattern: Regex,
 }
 
 const CONFIG_MOUNT_DIRS: &'static str = "mount_dirs";
 const CONFIG_MOUNT_DIR_NAME: &'static str = "name";
 const CONFIG_MOUNT_DIR_SOURCE: &'static str = "source";
+const CONFIG_USERS: &'static str = "users";
+const CONFIG_USER_NAME: &'static str = "name";
+const CONFIG_USER_PASSWORD: &'static str = "password";
 const CONFIG_ALBUM_ART_PATTERN: &'static str = "album_art_pattern";
 
 impl Collection {
     pub fn new() -> Collection {
         Collection {
             vfs: Vfs::new(),
+            users: Vec::new(),
             album_art_pattern: Regex::new("^Folder\\.png$").unwrap(),
         }
     }
@@ -227,6 +238,7 @@ impl Collection {
 
         // Apply
         try!(self.load_config_mount_points(&parsed_config));
+        try!(self.load_config_users(&parsed_config));
         try!(self.load_config_album_art_pattern(&parsed_config));
 
         Ok(())
@@ -245,6 +257,46 @@ impl Collection {
             Ok(r) => r,
             Err(_) => return Err(PError::ConfigAlbumArtPatternParseError),
         };
+
+        Ok(())
+    }
+
+    fn load_config_users(&mut self, config: &toml::Table) -> Result<(), PError> {
+        let users = match config.get(CONFIG_USERS) {
+            Some(s) => s,
+            None => return Ok(()),
+        };
+
+        let users = match users {
+            &toml::Value::Array(ref a) => a,
+            _ => return Err(PError::ConfigUsersParseError),
+        };
+
+        for user in users {
+            let name = match user.lookup(CONFIG_USER_NAME) {
+                None => return Err(PError::ConfigUsersParseError),
+                Some(n) => n,
+            };
+            let name = match name.as_str() {
+                None => return Err(PError::ConfigUsersParseError),
+                Some(n) => n,
+            };
+
+            let password = match user.lookup(CONFIG_USER_PASSWORD) {
+                None => return Err(PError::ConfigUsersParseError),
+                Some(n) => n,
+            };
+            let password = match password.as_str() {
+                None => return Err(PError::ConfigUsersParseError),
+                Some(n) => n,
+            };
+
+            let user = User{
+                name: name.to_owned(),
+                password: password.to_owned(),
+            };
+            self.users.push(user);
+        }
 
         Ok(())
     }
@@ -288,6 +340,10 @@ impl Collection {
 
     fn mount(&mut self, name: &str, real_path: &Path) -> Result<(), PError> {
         self.vfs.mount(name, real_path)
+    }
+
+    pub fn auth(&self, username: &str, password: &str) -> bool {
+        self.users.iter().any(|u| u.name == username && u.password == password )
     }
 
     pub fn browse(&self, path: &Path) -> Result<Vec<CollectionFile>, PError> {

@@ -1,6 +1,8 @@
 extern crate core;
 extern crate iron;
 extern crate mount;
+extern crate oven;
+extern crate params;
 extern crate regex;
 extern crate id3;
 extern crate rustc_serialize;
@@ -26,14 +28,25 @@ use collection::*;
 
 fn main() {
 
-    let mut collection = Collection::new();
-    collection.load_config(Path::new("Polaris.toml")).unwrap();
 
-    let collection = Arc::new(Mutex::new(collection));
+    let mut api_chain;
+    {
+        let api_handler;
+        {
+            let mut collection = Collection::new();
+            collection.load_config(Path::new("Polaris.toml")).unwrap();
+            let collection = Arc::new(Mutex::new(collection));
+            api_handler = get_api_handler(collection);
+        }
+        api_chain = Chain::new(api_handler);
+        
+        let auth_secret = std::env::var("POLARIS_SECRET").expect("Environment variable POLARIS_SECRET must be set");
+        let cookie_middleware = oven::new(auth_secret.into_bytes());
+        api_chain.link(cookie_middleware);
+    }
 
     let mut mount = Mount::new();
-    let api_handler = get_api_handler(collection);
-    mount.mount("/api/", api_handler);
+    mount.mount("/api/", api_chain);
     mount.mount("/", Static::new(Path::new("web")));
 
     Iron::new(mount).http("localhost:3000").unwrap();

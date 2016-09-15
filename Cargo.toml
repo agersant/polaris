@@ -3,17 +3,15 @@ name = "polaris"
 version = "0.1.0"
 authors = ["Antoine Gersant <antoine.gersant@lesforges.org>"]
 
-[dependencies.iron]
-version = "0.4.0"
-
-[dependencies.url]
-git = "https://github.com/servo/rust-url"
-
 [dependencies]
 id3 = { git = "https://github.com/jameshurst/rust-id3" }
-mount  = "*"
+iron = "0.4.0"
+mount = "0.2.1"
+oven = { git = "https://github.com/agersant/oven", branch = "remove_cookie_dep" } 
+params = "0.3.1"
 regex = "0.1"
-router = "*"
+router = "0.4.0"
 rustc-serialize = "0.3"
-staticfile = "*"
+staticfile = "0.3.0"
 toml = "0.2"
+url = "1.2.0"

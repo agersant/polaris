@@ -4,3 +4,6 @@ album_art_pattern = '^Folder\.(png|jpg|jpeg)$'
 name = 'root'
 source = 'M:/Music/Genres/'
 
+[[users]]
+name = 'agersant'
+password = 'test'

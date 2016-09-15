@@ -14,9 +14,12 @@ pub enum PError {
     ConfigFileReadError,
     ConfigFileParseError,
     ConfigMountDirsParseError,
+    ConfigUsersParseError,
     ConfigAlbumArtPatternParseError,
     AlbumArtSearchError,
     ID3ParseError,
+    Unauthorized,
+    IncorrectCredentials,
 }
 
 impl From<io::Error> for PError {
@@ -45,11 +48,14 @@ impl error::Error for PError {
             PError::ConfigFileReadError => "Could not read config file",
             PError::ConfigFileParseError => "Could not parse config file",
             PError::ConfigMountDirsParseError => "Could not parse mount directories in config file",
+            PError::ConfigUsersParseError => "Could not parse users in config file",
             PError::ConfigAlbumArtPatternParseError => {
                 "Could not parse album art pattern in config file"
             }
             PError::AlbumArtSearchError => "Error while looking for album art",
             PError::ID3ParseError => "Error while reading ID3 tag",
+            PError::Unauthorized => "Authentication required",
+            PError::IncorrectCredentials => "Incorrect username/password combination",
         }
     }
 
@@ -72,6 +78,9 @@ impl fmt::Display for PError {
             PError::ConfigFileOpenError => write!(f, "Could not open config file"),
             PError::ConfigFileReadError => write!(f, "Could not read config file"),
             PError::ConfigFileParseError => write!(f, "Could not parse config file"),
+            PError::ConfigUsersParseError => {
+                write!(f, "Could not parse users in config file")
+            }
             PError::ConfigMountDirsParseError => {
                 write!(f, "Could not parse mount directories in config file")
             }
@@ -80,6 +89,8 @@ impl fmt::Display for PError {
             }
             PError::AlbumArtSearchError => write!(f, "Error while looking for album art"),
             PError::ID3ParseError => write!(f, "Error while reading ID3 tag"),
+            PError::Unauthorized => write!(f, "Authentication required"),
+            PError::IncorrectCredentials => write!(f, "Incorrect username/password combination"),
         }
     }
 }
