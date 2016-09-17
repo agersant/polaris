@@ -78,9 +78,7 @@ impl fmt::Display for PError {
             PError::ConfigFileOpenError => write!(f, "Could not open config file"),
             PError::ConfigFileReadError => write!(f, "Could not read config file"),
             PError::ConfigFileParseError => write!(f, "Could not parse config file"),
-            PError::ConfigUsersParseError => {
-                write!(f, "Could not parse users in config file")
-            }
+            PError::ConfigUsersParseError => write!(f, "Could not parse users in config file"),
             PError::ConfigMountDirsParseError => {
                 write!(f, "Could not parse mount directories in config file")
             }

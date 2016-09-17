@@ -291,7 +291,7 @@ impl Collection {
                 Some(n) => n,
             };
 
-            let user = User{
+            let user = User {
                 name: name.to_owned(),
                 password: password.to_owned(),
             };
@@ -343,7 +343,7 @@ impl Collection {
     }
 
     pub fn auth(&self, username: &str, password: &str) -> bool {
-        self.users.iter().any(|u| u.name == username && u.password == password )
+        self.users.iter().any(|u| u.name == username && u.password == password)
     }
 
     pub fn browse(&self, path: &Path) -> Result<Vec<CollectionFile>, PError> {

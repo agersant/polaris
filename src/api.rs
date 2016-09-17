@@ -45,7 +45,7 @@ impl From<PError> for IronError {
 
 pub fn get_api_handler(collection: Arc<Mutex<Collection>>) -> Mount {
     let mut api_handler = Mount::new();
-    
+
     {
         let collection = collection.clone();
         api_handler.mount("/auth/", move |request: &mut Request| {
