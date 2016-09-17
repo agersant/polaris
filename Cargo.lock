@@ -4,15 +4,20 @@ version = "0.1.0"
 dependencies = [
  "id3 0.1.10 (git+https://github.com/jameshurst/rust-id3)",
  "iron 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "kernel32-sys 0.2.2 (git+https://github.com/retep998/winapi-rs)",
  "mount 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "oven 1.0.0 (git+https://github.com/agersant/oven?branch=remove_cookie_dep)",
  "params 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 0.1.77 (registry+https://github.com/rust-lang/crates.io-index)",
  "router 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.19 (registry+https://github.com/rust-lang/crates.io-index)",
+ "shell32-sys 0.1.1 (git+https://github.com/retep998/winapi-rs)",
  "staticfile 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "toml 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "url 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "user32-sys 0.2.0 (git+https://github.com/retep998/winapi-rs)",
+ "uuid 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "winapi 0.2.8 (git+https://github.com/retep998/winapi-rs)",
 ]
 
 [[package]]
@@ -273,6 +278,15 @@ dependencies = [
 name = "itoa"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "kernel32-sys"
+version = "0.2.2"
+source = "git+https://github.com/retep998/winapi-rs#77588710a683e1a4ec085b0f3d6c8939ecc7f030"
+dependencies = [
+ "winapi 0.2.8 (git+https://github.com/retep998/winapi-rs)",
+ "winapi-build 0.1.1 (git+https://github.com/retep998/winapi-rs)",
+]
 
 [[package]]
 name = "kernel32-sys"
@@ -672,6 +686,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "sha1"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "shell32-sys"
+version = "0.1.1"
+source = "git+https://github.com/retep998/winapi-rs#77588710a683e1a4ec085b0f3d6c8939ecc7f030"
+dependencies = [
+ "winapi 0.2.8 (git+https://github.com/retep998/winapi-rs)",
+ "winapi-build 0.1.1 (git+https://github.com/retep998/winapi-rs)",
+]
+
+[[package]]
 name = "solicit"
 version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -822,6 +850,15 @@ dependencies = [
 [[package]]
 name = "user32-sys"
 version = "0.2.0"
+source = "git+https://github.com/retep998/winapi-rs#77588710a683e1a4ec085b0f3d6c8939ecc7f030"
+dependencies = [
+ "winapi 0.2.8 (git+https://github.com/retep998/winapi-rs)",
+ "winapi-build 0.1.1 (git+https://github.com/retep998/winapi-rs)",
+]
+
+[[package]]
+name = "user32-sys"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "winapi 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -842,9 +879,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "uuid"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "sha1 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "winapi"
+version = "0.2.8"
+source = "git+https://github.com/retep998/winapi-rs#77588710a683e1a4ec085b0f3d6c8939ecc7f030"
+
+[[package]]
 name = "winapi"
 version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "winapi-build"
+version = "0.1.1"
+source = "git+https://github.com/retep998/winapi-rs#77588710a683e1a4ec085b0f3d6c8939ecc7f030"
 
 [[package]]
 name = "winapi-build"

@@ -3,6 +3,9 @@ name = "polaris"
 version = "0.1.0"
 authors = ["Antoine Gersant <antoine.gersant@lesforges.org>"]
 
+[features]
+ui = []
+
 [dependencies]
 id3 = { git = "https://github.com/jameshurst/rust-id3" }
 iron = "0.4.0"
@@ -15,3 +18,9 @@ rustc-serialize = "0.3"
 staticfile = "0.3.0"
 toml = "0.2"
 url = "1.2.0"
+
+winapi = { git = "https://github.com/retep998/winapi-rs" }
+kernel32-sys = { git = "https://github.com/retep998/winapi-rs" }
+shell32-sys = { git = "https://github.com/retep998/winapi-rs" }
+user32-sys = { git = "https://github.com/retep998/winapi-rs" }
+uuid = { version = "0.3.0", features = ["v5"] }
