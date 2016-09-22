@@ -12,6 +12,7 @@ Remove-Item -Recurse .\release\windows\*
 Copy-Item .\target\release\polaris.exe .\release\windows\
 Copy-Item .\res\libeay32.dll .\release\windows\
 Copy-Item .\res\libeay32md.dll .\release\windows\
+Copy-Item .\Polaris.toml .\release\windows\
 Copy-Item .\web\ .\release\windows\ -recurse
 
 Read-Host -Prompt "All clear! Press Enter to exit"
