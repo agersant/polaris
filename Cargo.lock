@@ -2,6 +2,7 @@
 name = "polaris"
 version = "0.1.0"
 dependencies = [
+ "hyper 0.9.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "id3 0.1.10 (git+https://github.com/jameshurst/rust-id3)",
  "iron 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "kernel32-sys 0.2.2 (git+https://github.com/retep998/winapi-rs)",

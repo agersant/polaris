@@ -202,7 +202,7 @@ pub enum CollectionFile {
 pub struct Collection {
     vfs: Vfs,
     users: Vec<User>,
-    album_art_pattern: Regex,
+    album_art_pattern: Option<Regex>,
 }
 
 impl Collection {
@@ -210,7 +210,7 @@ impl Collection {
         Collection {
             vfs: Vfs::new(),
             users: Vec::new(),
-            album_art_pattern: Regex::new("^Folder\\.png$").unwrap(),
+            album_art_pattern: None,
         }
     }
 
@@ -294,6 +294,11 @@ impl Collection {
     }
 
     fn get_album_art(&self, real_path: &Path) -> Result<Option<PathBuf>, PError> {
+        let pattern = match self.album_art_pattern {
+            Some(ref p) => p,
+            None => return Ok(None),
+        };
+
         let mut real_dir = real_path;
         if real_dir.is_file() {
             real_dir = try!(real_dir.parent().ok_or(PError::AlbumArtSearchError));
@@ -311,7 +316,7 @@ impl Collection {
                 None => return false,
                 Some(r) => r,
             };
-            self.album_art_pattern.is_match(file_name)
+            pattern.is_match(file_name)
         });
 
         match album_art {

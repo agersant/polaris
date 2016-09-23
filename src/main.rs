@@ -1,4 +1,5 @@
 extern crate core;
+extern crate hyper;
 extern crate id3;
 extern crate iron;
 extern crate mount;
@@ -32,15 +33,18 @@ use staticfile::Static;
 mod api;
 mod collection;
 mod config;
+mod ddns;
 mod error;
 mod ui;
 mod vfs;
 
 fn main() {
 
+    // Parse config
     let config_file = Path::new("Polaris.toml");
     let config = config::Config::parse(&config_file).unwrap();
 
+    // Start server
     println!("Starting up server");
     let mut api_chain;
     {
@@ -64,6 +68,18 @@ fn main() {
     mount.mount("/", Static::new(Path::new("web")));
     let mut server = Iron::new(mount).http(("0.0.0.0", 5050)).unwrap();
 
+    // Start DDNS updates
+    match config.ddns {
+        Some(ref ddns_config) => {
+            let ddns_config = ddns_config.clone();
+            std::thread::spawn(|| {
+                ddns::run(ddns_config);
+            });
+        },
+        None => (),    
+    };
+
+    // Run UI
     ui::run();
 
     println!("Shutting down server");

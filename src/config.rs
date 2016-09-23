@@ -6,6 +6,7 @@ use std::path;
 use toml;
 
 use collection::User;
+use ddns::DDNSConfig;
 use vfs::MountDir;
 
 const CONFIG_MOUNT_DIRS: &'static str = "mount_dirs";
@@ -15,6 +16,10 @@ const CONFIG_USERS: &'static str = "users";
 const CONFIG_USER_NAME: &'static str = "name";
 const CONFIG_USER_PASSWORD: &'static str = "password";
 const CONFIG_ALBUM_ART_PATTERN: &'static str = "album_art_pattern";
+const CONFIG_DDNS: &'static str = "ydns";
+const CONFIG_DDNS_HOST: &'static str = "host";
+const CONFIG_DDNS_USERNAME: &'static str = "username";
+const CONFIG_DDNS_PASSWORD: &'static str = "password";
 
 #[derive(Debug)]
 pub enum ConfigError {
@@ -24,6 +29,7 @@ pub enum ConfigError {
 	AlbumArtPatternParseError,
 	UsersParseError,
 	MountDirsParseError,
+	DDNSParseError,
 }
 
 impl From<io::Error> for ConfigError {
@@ -41,7 +47,8 @@ impl From<regex::Error> for ConfigError {
 pub struct Config {
 	pub mount_dirs: Vec<MountDir>,
     pub users: Vec<User>,
-    pub album_art_pattern: regex::Regex,
+    pub album_art_pattern: Option<regex::Regex>,
+	pub ddns: Option<DDNSConfig>,
 }
 
 impl Config {
@@ -55,12 +62,14 @@ impl Config {
 		let mut config = Config {
 			mount_dirs: Vec::new(),
 			users: Vec::new(),
-			album_art_pattern: regex::Regex::new("^Folder\\.png$").unwrap(),
+			album_art_pattern: None,
+			ddns: None,
 		};
 
 		try!(config.parse_mount_points(&parsed_config));
         try!(config.parse_users(&parsed_config));
         try!(config.parse_album_art_pattern(&parsed_config));
+        try!(config.parse_ddns(&parsed_config));
 
 		Ok(config)
 	}
@@ -74,7 +83,7 @@ impl Config {
             &toml::Value::String(ref s) => s,
             _ => return Err(ConfigError::AlbumArtPatternParseError),
         };
-        self.album_art_pattern = try!(regex::Regex::new(pattern));
+        self.album_art_pattern = Some(try!(regex::Regex::new(pattern)));
         Ok(())
     }
 
@@ -151,5 +160,31 @@ impl Config {
         }
 
         Ok(())
+    }
+
+	fn parse_ddns(&mut self, source: &toml::Table) -> Result<(), ConfigError> {
+        let ddns = match source.get(CONFIG_DDNS) {
+            Some(s) => s,
+            None => return Ok(()),
+        };
+		let ddns = match ddns {
+            &toml::Value::Table(ref a) => a,
+            _ => return Err(ConfigError::DDNSParseError),
+        };
+
+		let host = try!(ddns.get(CONFIG_DDNS_HOST).ok_or(ConfigError::DDNSParseError)).as_str();
+		let username = try!(ddns.get(CONFIG_DDNS_USERNAME).ok_or(ConfigError::DDNSParseError)).as_str();
+		let password = try!(ddns.get(CONFIG_DDNS_PASSWORD).ok_or(ConfigError::DDNSParseError)).as_str();
+
+		let host = try!(host.ok_or(ConfigError::DDNSParseError)); 
+		let username = try!(username.ok_or(ConfigError::DDNSParseError)); 
+		let password = try!(password.ok_or(ConfigError::DDNSParseError)); 
+
+		self.ddns = Some(DDNSConfig {
+			host: host.to_owned(),
+			username: username.to_owned(),
+			password: password.to_owned(),
+		});
+		Ok(())
     }
 }

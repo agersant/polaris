@@ -7,3 +7,8 @@ source = 'M:/Music/Genres/'
 [[users]]
 name = 'agersant'
 password = 'test'
+
+[ydns]
+host = 'your_hostname.ydns.eu'
+username = 'your_username'
+password = 'your_ydns_password'
