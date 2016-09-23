@@ -57,8 +57,7 @@ fn main() {
         }
         api_chain = Chain::new(api_handler);
 
-        let auth_secret = std::env::var("POLARIS_SECRET")
-            .expect("Environment variable POLARIS_SECRET must be set");
+        let auth_secret = config.secret.to_owned();
         let cookie_middleware = oven::new(auth_secret.into_bytes());
         api_chain.link(cookie_middleware);
     }

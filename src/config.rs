@@ -9,6 +9,7 @@ use collection::User;
 use ddns::DDNSConfig;
 use vfs::MountDir;
 
+const CONFIG_SECRET: &'static str = "auth_secret";
 const CONFIG_MOUNT_DIRS: &'static str = "mount_dirs";
 const CONFIG_MOUNT_DIR_NAME: &'static str = "name";
 const CONFIG_MOUNT_DIR_SOURCE: &'static str = "source";
@@ -26,6 +27,7 @@ pub enum ConfigError {
 	IoError(io::Error),
 	TOMLParseError,
 	RegexError(regex::Error),
+	SecretParseError,
 	AlbumArtPatternParseError,
 	UsersParseError,
 	MountDirsParseError,
@@ -45,6 +47,7 @@ impl From<regex::Error> for ConfigError {
 }
 
 pub struct Config {
+	pub secret: String,
 	pub mount_dirs: Vec<MountDir>,
     pub users: Vec<User>,
     pub album_art_pattern: Option<regex::Regex>,
@@ -60,18 +63,27 @@ impl Config {
         let parsed_config = try!(parsed_config.ok_or(ConfigError::TOMLParseError));
 
 		let mut config = Config {
+			secret: String::new(),
 			mount_dirs: Vec::new(),
 			users: Vec::new(),
 			album_art_pattern: None,
 			ddns: None,
 		};
 
+		try!(config.parse_secret(&parsed_config));
 		try!(config.parse_mount_points(&parsed_config));
         try!(config.parse_users(&parsed_config));
         try!(config.parse_album_art_pattern(&parsed_config));
         try!(config.parse_ddns(&parsed_config));
 
 		Ok(config)
+	}
+
+	fn parse_secret(&mut self, source: &toml::Table) -> Result<(), ConfigError> {
+		let secret = try!(source.get(CONFIG_SECRET).ok_or(ConfigError::SecretParseError));
+		let secret = try!(secret.as_str().ok_or(ConfigError::SecretParseError));
+		self.secret = secret.to_owned();
+		Ok(())
 	}
 
 	fn parse_album_art_pattern(&mut self, source: &toml::Table) -> Result<(), ConfigError> {

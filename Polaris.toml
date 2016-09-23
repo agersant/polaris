@@ -1,3 +1,5 @@
+auth_secret = 'Something very secret'
+
 album_art_pattern = '^Folder\.(png|jpg|jpeg)$'
 
 [[mount_dirs]]
