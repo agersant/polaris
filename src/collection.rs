@@ -1,12 +1,10 @@
-use std::io::prelude::*;
 use std::fs;
-use std::fs::File;
 use std::path::Path;
 use std::path::PathBuf;
 use id3::Tag;
 use regex::Regex;
-use toml;
 
+use config::Config;
 use vfs::*;
 use error::*;
 
@@ -37,10 +35,19 @@ pub struct SongTags {
     year: Option<i32>,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct User {
     name: String,
     password: String,
+}
+
+impl User {
+    pub fn new(name: String, password: String) -> User {
+        User {
+            name: name,
+            password: password,
+        }
+    }
 }
 
 impl Album {
@@ -198,14 +205,6 @@ pub struct Collection {
     album_art_pattern: Regex,
 }
 
-const CONFIG_MOUNT_DIRS: &'static str = "mount_dirs";
-const CONFIG_MOUNT_DIR_NAME: &'static str = "name";
-const CONFIG_MOUNT_DIR_SOURCE: &'static str = "source";
-const CONFIG_USERS: &'static str = "users";
-const CONFIG_USER_NAME: &'static str = "name";
-const CONFIG_USER_PASSWORD: &'static str = "password";
-const CONFIG_ALBUM_ART_PATTERN: &'static str = "album_art_pattern";
-
 impl Collection {
     pub fn new() -> Collection {
         Collection {
@@ -215,126 +214,12 @@ impl Collection {
         }
     }
 
-    pub fn load_config(&mut self, config_path: &Path) -> Result<(), PError> {
-        // Open
-        let mut config_file = match File::open(config_path) {
-            Ok(c) => c,
-            Err(_) => return Err(PError::ConfigFileOpenError),
-        };
-
-        // Read
-        let mut config_file_content = String::new();
-        match config_file.read_to_string(&mut config_file_content) {
-            Ok(_) => (),
-            Err(_) => return Err(PError::ConfigFileReadError),
-        };
-
-        // Parse
-        let parsed_config = toml::Parser::new(config_file_content.as_str()).parse();
-        let parsed_config = match parsed_config {
-            Some(c) => c,
-            None => return Err(PError::ConfigFileParseError),
-        };
-
-        // Apply
-        try!(self.load_config_mount_points(&parsed_config));
-        try!(self.load_config_users(&parsed_config));
-        try!(self.load_config_album_art_pattern(&parsed_config));
-
-        Ok(())
-    }
-
-    fn load_config_album_art_pattern(&mut self, config: &toml::Table) -> Result<(), PError> {
-        let pattern = match config.get(CONFIG_ALBUM_ART_PATTERN) {
-            Some(s) => s,
-            None => return Ok(()),
-        };
-        let pattern = match pattern {
-            &toml::Value::String(ref s) => s,
-            _ => return Err(PError::ConfigAlbumArtPatternParseError),
-        };
-        self.album_art_pattern = match Regex::new(pattern) {
-            Ok(r) => r,
-            Err(_) => return Err(PError::ConfigAlbumArtPatternParseError),
-        };
-
-        Ok(())
-    }
-
-    fn load_config_users(&mut self, config: &toml::Table) -> Result<(), PError> {
-        let users = match config.get(CONFIG_USERS) {
-            Some(s) => s,
-            None => return Ok(()),
-        };
-
-        let users = match users {
-            &toml::Value::Array(ref a) => a,
-            _ => return Err(PError::ConfigUsersParseError),
-        };
-
-        for user in users {
-            let name = match user.lookup(CONFIG_USER_NAME) {
-                None => return Err(PError::ConfigUsersParseError),
-                Some(n) => n,
-            };
-            let name = match name.as_str() {
-                None => return Err(PError::ConfigUsersParseError),
-                Some(n) => n,
-            };
-
-            let password = match user.lookup(CONFIG_USER_PASSWORD) {
-                None => return Err(PError::ConfigUsersParseError),
-                Some(n) => n,
-            };
-            let password = match password.as_str() {
-                None => return Err(PError::ConfigUsersParseError),
-                Some(n) => n,
-            };
-
-            let user = User {
-                name: name.to_owned(),
-                password: password.to_owned(),
-            };
-            self.users.push(user);
+    pub fn load_config(&mut self, config: &Config) -> Result<(), PError> {
+        self.album_art_pattern = config.album_art_pattern.clone();
+        self.users = config.users.to_vec();
+        for mount_dir in &config.mount_dirs {
+            try!(self.mount(mount_dir.name.as_str(), mount_dir.path.as_path()));
         }
-
-        Ok(())
-    }
-
-    fn load_config_mount_points(&mut self, config: &toml::Table) -> Result<(), PError> {
-        let mount_dirs = match config.get(CONFIG_MOUNT_DIRS) {
-            Some(s) => s,
-            None => return Ok(()),
-        };
-
-        let mount_dirs = match mount_dirs {
-            &toml::Value::Array(ref a) => a,
-            _ => return Err(PError::ConfigMountDirsParseError),
-        };
-
-        for dir in mount_dirs {
-            let name = match dir.lookup(CONFIG_MOUNT_DIR_NAME) {
-                None => return Err(PError::ConfigMountDirsParseError),
-                Some(n) => n,
-            };
-            let name = match name.as_str() {
-                None => return Err(PError::ConfigMountDirsParseError),
-                Some(n) => n,
-            };
-
-            let source = match dir.lookup(CONFIG_MOUNT_DIR_SOURCE) {
-                None => return Err(PError::ConfigMountDirsParseError),
-                Some(n) => n,
-            };
-            let source = match source.as_str() {
-                None => return Err(PError::ConfigMountDirsParseError),
-                Some(n) => n,
-            };
-            let source = PathBuf::from(source);
-
-            try!(self.mount(name, source.as_path()));
-        }
-
         Ok(())
     }
 

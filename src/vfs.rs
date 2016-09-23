@@ -4,6 +4,20 @@ use std::path::Path;
 
 use error::*;
 
+pub struct MountDir {
+	pub name: String,
+	pub path: PathBuf,
+}
+
+impl MountDir {
+    pub fn new(name: String, path: PathBuf) -> MountDir {
+        MountDir {
+            name: name,
+            path: path,
+        }
+    }
+}
+
 pub struct Vfs {
     mount_points: HashMap<String, PathBuf>,
 }

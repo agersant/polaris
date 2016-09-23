@@ -1,10 +1,10 @@
 extern crate core;
+extern crate id3;
 extern crate iron;
 extern crate mount;
 extern crate oven;
 extern crate params;
 extern crate regex;
-extern crate id3;
 extern crate rustc_serialize;
 extern crate staticfile;
 extern crate toml;
@@ -31,11 +31,15 @@ use staticfile::Static;
 
 mod api;
 mod collection;
+mod config;
 mod error;
 mod ui;
 mod vfs;
 
 fn main() {
+
+    let config_file = Path::new("Polaris.toml");
+    let config = config::Config::parse(&config_file).unwrap();
 
     println!("Starting up server");
     let mut api_chain;
@@ -43,7 +47,7 @@ fn main() {
         let api_handler;
         {
             let mut collection = collection::Collection::new();
-            collection.load_config(Path::new("Polaris.toml")).unwrap();
+            collection.load_config(&config).unwrap();
             let collection = Arc::new(Mutex::new(collection));
             api_handler = api::get_api_handler(collection);
         }
@@ -58,7 +62,7 @@ fn main() {
     let mut mount = Mount::new();
     mount.mount("/api/", api_chain);
     mount.mount("/", Static::new(Path::new("web")));
-    let mut server = Iron::new(mount).http("localhost:3000").unwrap();
+    let mut server = Iron::new(mount).http(("0.0.0.0", 5050)).unwrap();
 
     ui::run();
 
