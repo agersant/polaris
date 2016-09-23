@@ -2,6 +2,7 @@
 name = "polaris"
 version = "0.1.0"
 dependencies = [
+ "getopts 0.2.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.9.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "id3 0.1.10 (git+https://github.com/jameshurst/rust-id3)",
  "iron 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -177,6 +178,11 @@ dependencies = [
  "winapi 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "winapi-build 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "getopts"
+version = "0.2.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "hpack"

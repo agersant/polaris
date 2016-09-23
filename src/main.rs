@@ -1,4 +1,5 @@
 extern crate core;
+extern crate getopts;
 extern crate hyper;
 extern crate id3;
 extern crate iron;
@@ -22,13 +23,13 @@ extern crate shell32;
 #[cfg(windows)]
 extern crate user32;
 
-use std::path::Path;
-use std::sync::Arc;
-use std::sync::Mutex;
-
+use getopts::Options;
 use iron::prelude::*;
 use mount::Mount;
 use staticfile::Static;
+use std::path;
+use std::sync::Arc;
+use std::sync::Mutex;
 
 mod api;
 mod collection;
@@ -38,10 +39,23 @@ mod error;
 mod ui;
 mod vfs;
 
+const DEFAULT_CONFIG_FILE_NAME: &'static str = "Polaris.toml";
+
 fn main() {
 
+    // Parse CLI options
+    let args: Vec<String> = std::env::args().collect();
+    let mut options = Options::new();
+    options.optopt("c", "config", "set the configuration file", "FILE");
+    let matches = match options.parse(&args[1..]) {
+        Ok(m) => m,
+        Err(f) => panic!(f.to_string()),
+    };
+    let config_file_name = matches.opt_str("c").unwrap_or(DEFAULT_CONFIG_FILE_NAME.to_owned());
+
     // Parse config
-    let config_file = Path::new("Polaris.toml");
+    println!("Reading configuration from {}", config_file_name);
+    let config_file = path::Path::new(config_file_name.as_str());
     let config = config::Config::parse(&config_file).unwrap();
 
     // Start server
@@ -64,7 +78,7 @@ fn main() {
 
     let mut mount = Mount::new();
     mount.mount("/api/", api_chain);
-    mount.mount("/", Static::new(Path::new("web")));
+    mount.mount("/", Static::new(path::Path::new("web")));
     let mut server = Iron::new(mount).http(("0.0.0.0", 5050)).unwrap();
 
     // Start DDNS updates
