@@ -5,7 +5,7 @@
 
 		<Package Id='*' Keywords='Installer' Platform='x64' Description='Polaris 0.1.0 Installer' Manufacturer='Antoine Gersant' Languages='1033' Compressed='yes' SummaryCodepage='1252' />
 
-		<Media Id='1' Cabinet='Sample.cab' EmbedCab='yes' DiskPrompt='CD-ROM #1' />
+		<Media Id='1' Cabinet='Sample.cab' EmbedCab='yes' DiskPrompt='Install Media #1' />
 		<Property Id='DiskPrompt' Value='Polaris 0.1.0 Installation [1]' />
 
 		<Directory Id='TARGETDIR' Name='SourceDir'>
@@ -22,7 +22,7 @@
 						</Component>
 
 						<Component Id='ConfigFile' Guid='02CE53F6-F14F-4459-90AA-9CB06CD39D43'>
-							<File Source='polaris.toml'/>
+							<File KeyPath='yes' Source='polaris.toml'/>
 						</Component>
 
 						<Component Id='OpenSSL' Guid='8F4A07F6-CADB-4001-92F6-C7184A053B3B'>
@@ -33,7 +33,7 @@
 						<Directory Id='web' Name='web'>
 
 							<Component Id='WebUIIndex' Guid='B666CED5-951E-40F4-8A33-E9C4FEEFF578'>
-								<File Name='index.html' KeyPath='yes' />
+								<File Name='index.html' />
 							</Component>
 
 							<Directory Id='lib' Name='lib'>
@@ -84,6 +84,7 @@
 		</Feature>
 
 		<Icon Id='polaris.exe' SourceFile='polaris.exe' />
+		<Property Id='ARPPRODUCTICON' Value='polaris.exe' />
 
 	</Product>
 </Wix>
