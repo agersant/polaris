@@ -39,7 +39,7 @@ mod error;
 mod ui;
 mod vfs;
 
-const DEFAULT_CONFIG_FILE_NAME: &'static str = "Polaris.toml";
+const DEFAULT_CONFIG_FILE_NAME: &'static str = "polaris.toml";
 
 fn main() {
 
