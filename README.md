@@ -92,7 +92,7 @@ The steps below will walk you through setting up YDNS and Polaris to give your i
 	![YDNS Records](res/readme/ydns_records.png?raw=true "YDNS Records")
 	- Click on the green "+" icon on the right 
 	- Fill out the new form as described:
-		- Make sure the `Type` field is set to `A`.
+		- Make sure the `Type` field is set to `A`
 		- Set content to 0.0.0.0
 	- You should now be back on the "records" page which was pictured above
 	- Click on the ID number on the left (#28717 in the example above) of the column that has AAAA listed as its "Type".
