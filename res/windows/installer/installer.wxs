@@ -1,23 +1,23 @@
 <?xml version='1.0' encoding='windows-1252'?>
 <Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
-	<Product Name='Polaris 0.1.0' Id='CC2BCB3C-6FD2-4B81-B89F-3F4A9DA75BF7' UpgradeCode='9D86F109-E1EC-4C67-826C-8FB813838C49'
+	<Product Name='Polaris' Id='CC2BCB3C-6FD2-4B81-B89F-3F4A9DA75BF7' UpgradeCode='9D86F109-E1EC-4C67-826C-8FB813838C49'
 	Language='1033' Codepage='1252' Version='0.1.0' Manufacturer='Antoine Gersant'>
 
-		<Package Id='*' Keywords='Installer' Platform='x64' Description='Polaris 0.1.0 Installer' Manufacturer='Antoine Gersant' Languages='1033' Compressed='yes' SummaryCodepage='1252' />
+		<Package Id='*' Keywords='Installer' Platform='x64' Description='Polaris Installer' Manufacturer='Antoine Gersant' Languages='1033' Compressed='yes' SummaryCodepage='1252' />
 
-		<Media Id='1' Cabinet='Sample.cab' EmbedCab='yes' DiskPrompt='Install Media #1' />
-		<Property Id='DiskPrompt' Value='Polaris 0.1.0 Installation [1]' />
+		<Media Id='1' Cabinet='Sample.cab' EmbedCab='yes' DiskPrompt='Installation Media #1' />
+		<Property Id='DiskPrompt' Value='Polaris Installation [1]' />
 
 		<Directory Id='TARGETDIR' Name='SourceDir'>
 
 			<Directory Id='ProgramFiles64Folder' Name='PFiles'>
 				<Directory Id='Polaris' Name='Polaris'>
-					<Directory Id='INSTALL_DIR' Name='Polaris 0.1.0' FileSource='.'>
+					<Directory Id='INSTALL_DIR' Name='Polaris' FileSource='.'>
 
 						<Component Id='MainExecutable' Guid='4E27209A-48B6-4A2A-8778-6383C83F0B24'>
 							<File Source='polaris.exe' KeyPath='yes' Checksum='yes'>
-								<Shortcut Id='StartMenuPolaris_0.1.0' Directory='ProgramMenuDir' Name='Polaris 0.1.0' WorkingDirectory='INSTALL_DIR' Icon='polaris.exe' IconIndex='0' Advertise='yes' />
-								<Shortcut Id='DesktopPolaris_0.1.0' Directory='DesktopFolder' Name='Polaris 0.1.0' WorkingDirectory='INSTALL_DIR' Icon='polaris.exe' IconIndex='0' Advertise='yes' />
+								<Shortcut Id='StartMenuPolaris' Directory='ProgramMenuDir' Name='Polaris' WorkingDirectory='INSTALL_DIR' Icon='polaris.exe' IconIndex='0' Advertise='yes' />
+								<Shortcut Id='DesktopPolaris' Directory='DesktopFolder' Name='Polaris' WorkingDirectory='INSTALL_DIR' Icon='polaris.exe' IconIndex='0' Advertise='yes' />
 							</File>
 						</Component>
 
@@ -61,7 +61,7 @@
 			<Directory Id='DesktopFolder' Name='Desktop' />
 
 			<Directory Id='ProgramMenuFolder' Name='Programs'>
-				<Directory Id='ProgramMenuDir' Name='Polaris 0.1.0' />
+				<Directory Id='ProgramMenuDir' Name='Polaris' />
 			</Directory>
 
 		</Directory>
@@ -69,7 +69,7 @@
 		<DirectoryRef Id='ProgramMenuDir'>
 			<Component Id='ProgramMenuDir' Guid='9E677DF0-414B-481F-ACCC-73B2A38EC93A'>
 				<RemoveFolder Id='ProgramMenuDir' On='uninstall' />
-				<RegistryValue Root='HKCU' Key='Software\Polaris\Polaris 0.1.0' Type='string' Value='' KeyPath='yes' />
+				<RegistryValue Root='HKCU' Key='Software\Polaris\Polaris' Type='string' Value='' KeyPath='yes' />
 			</Component>
 		</DirectoryRef>
 
