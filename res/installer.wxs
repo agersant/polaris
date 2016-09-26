@@ -86,5 +86,11 @@
 		<Icon Id='polaris.exe' SourceFile='polaris.exe' />
 		<Property Id='ARPPRODUCTICON' Value='polaris.exe' />
 
+		<Property Id="WIXUI_INSTALLDIR" Value="INSTALL_DIR" />
+		<UIRef Id="WixUI_Minimal" />
+		<WixVariable Id="WixUILicenseRtf" Value="license.rtf" />
+		<WixVariable Id="WixUIDialogBmp" Value="dialog.bmp" />
+		<WixVariable Id="WixUIBannerBmp" Value="banner.bmp" />
+
 	</Product>
 </Wix>
