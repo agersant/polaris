@@ -106,6 +106,7 @@ The steps below will walk you through setting up YDNS and Polaris to give your i
 # username = 'your_username'
 # password = 'your_ydns_password'
 ```
+- Uncomment this block by removing the # signs and leading space from all the lines
 - Update the hostname to match what you set in step 5. (eg. yourdomain.ydns.eu)
 - Update the username to the email address you use when creating your YDNS account
 - You can find your YDNS API password on https://ydns.io. Click on the "User" icon in the top right and then `Preferences > API`.
