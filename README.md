@@ -10,6 +10,8 @@ Polaris is a music streaming application, designed to let you enjoy your music c
 
 - Windows 7 or newer
 
+Linux support is on the radar but there is no ETA for this feature. 
+
 ## Installation
 
 - Download the latest installer
@@ -26,25 +28,25 @@ All configuration is done by editing the file located at `C:\Program Files\Polar
 
 Locate the following block in the configuration file:
 
-`
+```
 [[mount_dirs]]
 source = 'C:/Users/your_name/Music'		# Location of the directory on your computer
 name = 'root'							# Public-facing name for this directory
-`
+```
 
-Edit the source field so it points to your music. You can set the name of the folder to anything you like, or keep the default 'root'.
+Edit the source field so it points to your music. You can set the name field to anything you like, or keep the default value.
 
-If you would like to stream music from other folders, you can add similar `[[mount_dirs]]` blocks after this one. The default configuration file comes with another such block, prefixed with `#` signs which indicate comments. Feel free to uncomment and use this block.
+If you would like to stream music from other directories, you can add similar `[[mount_dirs]]` blocks after this one. The default configuration file comes with another such block, prefixed with `#` signs which indicate comments. Feel free to uncomment and use this block.
 
 ### Setting Up Users
 
 Locate the following block in the configuration file:
 
-`
+```
 [[users]]
 name = 'your_first_user'
 password = 'your_first_password'		# Passwords are stored unencrypted. Do not re-use a sensitive password!
-`
+```
 
 Update the username and password to your liking. Heed the warning about password safety, do not re-use your email or banking password here! 
 
@@ -97,16 +99,16 @@ The steps below will walk you through setting up YDNS and Polaris to give your i
 	- Click on the red trash can icon in the corner to delete this record
 	- Done!
 6. Back to your Polaris configuration file, locate the following block:
-`
+```
 # Use this section if you want Polaris to broadcast your IP to https://ydns.io 
 # [ydns]
 # host = 'your_hostname.ydns.eu'
 # username = 'your_username'
 # password = 'your_ydns_password'
-`
+```
 - Update the hostname to match what you set in step 5. (eg. yourdomain.ydns.eu)
 - Update the username to the email address you use when creating your YDNS account
-- You can find your YDNS API password on https://ydns.io. Click on the "User" icon in the top right and then Preferences > API.
+- You can find your YDNS API password on https://ydns.io. Click on the "User" icon in the top right and then `Preferences > API`.
 
 #### Port Forwarding
 Configure port forwarding on your router to redirect port 80 towards port 5050 on the computer where you run Polaris. The exact way to do this depends on your router manufacturer and model.
