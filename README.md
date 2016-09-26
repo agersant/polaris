@@ -14,7 +14,7 @@ Linux support is on the radar but there is no ETA for this feature.
 
 ## Installation
 
-- Download the [latest installer](releases/latest)
+- Download the [latest installer](https://github.com/agersant/polaris/releases/latest)
 - Run the installer
 - That's it, you're done!
 
