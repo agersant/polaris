@@ -15,6 +15,7 @@
 
 						<Component Id='MainExecutable' Guid='4E27209A-48B6-4A2A-8778-6383C83F0B24'>
 							<File Source='polaris.exe' KeyPath='yes' Checksum='yes'>
+								<Shortcut Id='StartupMenuPolaris' Directory='StartupFolder' Name='Polaris' WorkingDirectory='INSTALL_DIR' Icon='polaris.exe' IconIndex='0' Advertise='yes' />
 								<Shortcut Id='StartMenuPolaris' Directory='ProgramMenuDir' Name='Polaris' WorkingDirectory='INSTALL_DIR' Icon='polaris.exe' IconIndex='0' Advertise='yes' />
 								<Shortcut Id='DesktopPolaris' Directory='DesktopFolder' Name='Polaris' WorkingDirectory='INSTALL_DIR' Icon='polaris.exe' IconIndex='0' Advertise='yes' />
 							</File>
@@ -59,6 +60,7 @@
 			</Directory>
 
 			<Directory Id='DesktopFolder' Name='Desktop' />
+			<Directory Id='StartupFolder' Name='Startup' />
 
 			<Directory Id='ProgramMenuFolder' Name='Programs'>
 				<Directory Id='ProgramMenuDir' Name='Polaris' />
