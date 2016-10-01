@@ -80,11 +80,12 @@ impl Album {
 
         let song_tags = song_path.map(|p| SongTags::read(p.as_path()));
         if let Some(Ok(t)) = song_tags {
+            let artist = t.album_artist.or(t.artist);
             Ok(Album {
                 album_art: album_art,
                 title: t.album,
                 year: t.year,
-                artist: t.album_artist,
+                artist: artist,
             })
         } else {
             Ok(Album {
