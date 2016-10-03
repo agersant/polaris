@@ -54,6 +54,12 @@
 								</Component>
 							</Directory>
 
+							<Directory Id='style' Name='style'>
+								<Component Id='WebUIStyle' Guid='9D8F839D-7E94-4DE4-9B22-30360C1A433D'>
+									<File Name='default.css' />
+								</Component>
+							</Directory>
+
 						</Directory>
 					</Directory>
 				</Directory>
@@ -81,6 +87,7 @@
 			<ComponentRef Id='ConfigFile' />
 			<ComponentRef Id='WebUIIndex' />
 			<ComponentRef Id='WebUILib' />
+			<ComponentRef Id='WebUIStyle' />
 			<ComponentRef Id='WebUITags' />
 			<ComponentRef Id='ProgramMenuDir' />
 		</Feature>
