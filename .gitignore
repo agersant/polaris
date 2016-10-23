@@ -2,4 +2,5 @@ target
 release
 *.dll
 *.res
+tmp
 TestConfig.toml

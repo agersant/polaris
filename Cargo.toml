@@ -10,6 +10,7 @@ ui = []
 getopts = "0.2.14"
 hyper = "0.9.10"
 id3 = { git = "https://github.com/jameshurst/rust-id3" }
+image = "0.10.3"
 iron = "0.4.0"
 mount = "0.2.1"
 oven = { git = "https://github.com/agersant/oven", branch = "remove_cookie_dep" } 

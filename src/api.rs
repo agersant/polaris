@@ -1,7 +1,7 @@
 use core::str::Utf8Error;
 use std::fs;
 use std::io;
-use std::path::PathBuf;
+use std::path::*;
 use std::ops::Deref;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -17,6 +17,7 @@ use url::percent_encoding::percent_decode;
 
 use collection::*;
 use error::*;
+use thumbnails::*;
 use utils::*;
 
 impl From<PError> for IronError {
@@ -37,6 +38,7 @@ impl From<PError> for IronError {
                 IronError::new(err, status::InternalServerError)
             }
             PError::AlbumArtSearchError => IronError::new(err, status::InternalServerError),
+            PError::ImageProcessingError => IronError::new(err, status::InternalServerError),
             PError::ID3ParseError => IronError::new(err, status::InternalServerError),
             PError::Unauthorized => IronError::new(err, status::Unauthorized),
             PError::IncorrectCredentials => IronError::new(err, status::BadRequest),
@@ -194,12 +196,16 @@ fn serve(request: &mut Request, collection: &Collection) -> IronResult<Response>
     }
 
     if is_image(real_path.as_path()) {
-        return art(request);
+        return art(request, real_path.as_path());
     }
 
     Err(IronError::from(PError::UnsupportedFileType))
 }
 
-fn art(_: &mut Request) -> IronResult<Response> {
-    Err(IronError::from(PError::UnsupportedFileType))
+fn art(_: &mut Request, real_path: &Path) -> IronResult<Response> {
+    let thumb = get_thumbnail(real_path, 400);
+    match thumb {
+        Ok(path) => Ok(Response::with((status::Ok, path))),
+        Err(e) => Err(IronError::from(e))
+    }
 }

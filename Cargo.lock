@@ -5,6 +5,7 @@ dependencies = [
  "getopts 0.2.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.9.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "id3 0.1.10 (git+https://github.com/jameshurst/rust-id3)",
+ "image 0.10.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "iron 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "kernel32-sys 0.2.2 (git+https://github.com/retep998/winapi-rs)",
  "mount 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -58,6 +59,11 @@ version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "color_quant"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "conduit-mime-types"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -74,6 +80,14 @@ dependencies = [
  "rustc-serialize 0.3.19 (registry+https://github.com/rust-lang/crates.io-index)",
  "time 0.1.35 (registry+https://github.com/rust-lang/crates.io-index)",
  "url 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "deque"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "rand 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -139,6 +153,14 @@ version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "enum_primitive"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "num 0.1.35 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "env_logger"
 version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -182,6 +204,20 @@ dependencies = [
 [[package]]
 name = "getopts"
 version = "0.2.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "gif"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "color_quant 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lzw 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "glob"
+version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -265,6 +301,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "image"
+version = "0.10.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "byteorder 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "enum_primitive 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gif 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "glob 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
+ "jpeg-decoder 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num-iter 0.1.32 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num-rational 0.1.35 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num-traits 0.1.35 (registry+https://github.com/rust-lang/crates.io-index)",
+ "png 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "scoped_threadpool 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "inflate"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "iron"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -285,6 +343,15 @@ dependencies = [
 name = "itoa"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "jpeg-decoder"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "byteorder 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rayon 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "kernel32-sys"
@@ -335,6 +402,11 @@ dependencies = [
 [[package]]
 name = "log"
 version = "0.3.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "lzw"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -614,11 +686,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "png"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "bitflags 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "flate2 0.2.14 (registry+https://github.com/rust-lang/crates.io-index)",
+ "inflate 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num-iter 0.1.32 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "rand"
 version = "0.3.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "libc 0.2.16 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "rayon"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "deque 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num_cpus 0.2.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -665,6 +758,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "semver 0.1.20 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "scoped_threadpool"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "semver"

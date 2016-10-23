@@ -2,6 +2,7 @@ extern crate core;
 extern crate getopts;
 extern crate hyper;
 extern crate id3;
+extern crate image;
 extern crate iron;
 extern crate mount;
 extern crate oven;
@@ -38,6 +39,7 @@ mod ddns;
 mod error;
 mod ui;
 mod utils;
+mod thumbnails;
 mod vfs;
 
 const DEFAULT_CONFIG_FILE_NAME: &'static str = "polaris.toml";

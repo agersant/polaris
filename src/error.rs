@@ -2,6 +2,7 @@ use std::error;
 use std::fmt;
 use std::io;
 use id3;
+use image;
 
 #[derive(Debug)]
 pub enum PError {
@@ -18,6 +19,7 @@ pub enum PError {
     ConfigUsersParseError,
     ConfigAlbumArtPatternParseError,
     AlbumArtSearchError,
+    ImageProcessingError,
     ID3ParseError,
     Unauthorized,
     IncorrectCredentials,
@@ -32,6 +34,12 @@ impl From<io::Error> for PError {
 impl From<id3::Error> for PError {
     fn from(_: id3::Error) -> PError {
         PError::ID3ParseError
+    }
+}
+
+impl From<image::ImageError> for PError {
+    fn from(_: image::ImageError) -> PError {
+        PError::ImageProcessingError
     }
 }
 
@@ -55,6 +63,7 @@ impl error::Error for PError {
                 "Could not parse album art pattern in config file"
             }
             PError::AlbumArtSearchError => "Error while looking for album art",
+            PError::ImageProcessingError => "Error while processing image",
             PError::ID3ParseError => "Error while reading ID3 tag",
             PError::Unauthorized => "Authentication required",
             PError::IncorrectCredentials => "Incorrect username/password combination",
@@ -89,6 +98,7 @@ impl fmt::Display for PError {
                 write!(f, "Could not album art pattern in config file")
             }
             PError::AlbumArtSearchError => write!(f, "Error while looking for album art"),
+            PError::ImageProcessingError => write!(f, "Error while processing image"),
             PError::ID3ParseError => write!(f, "Error while reading ID3 tag"),
             PError::Unauthorized => write!(f, "Authentication required"),
             PError::IncorrectCredentials => write!(f, "Incorrect username/password combination"),
