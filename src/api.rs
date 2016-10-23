@@ -4,7 +4,6 @@ use std::io;
 use std::path::*;
 use std::ops::Deref;
 use std::sync::Arc;
-use std::sync::Mutex;
 
 use iron::prelude::*;
 use iron::headers::CookiePair;
@@ -46,14 +45,13 @@ impl From<PError> for IronError {
     }
 }
 
-pub fn get_api_handler(collection: Arc<Mutex<Collection>>) -> Mount {
+pub fn get_api_handler(collection: Arc<Collection>) -> Mount {
     let mut api_handler = Mount::new();
 
     {
         let collection = collection.clone();
         api_handler.mount("/auth/", move |request: &mut Request| {
-            let acquired_collection = collection.deref().lock().unwrap();
-            self::auth(request, acquired_collection.deref())
+            self::auth(request, collection.deref())
         });
     }
 
@@ -62,22 +60,19 @@ pub fn get_api_handler(collection: Arc<Mutex<Collection>>) -> Mount {
         {
             let collection = collection.clone();
             auth_api_mount.mount("/browse/", move |request: &mut Request| {
-                let acquired_collection = collection.deref().lock().unwrap();
-                self::browse(request, acquired_collection.deref())
+                self::browse(request, collection.deref())
             });
         }
         {
             let collection = collection.clone();
             auth_api_mount.mount("/flatten/", move |request: &mut Request| {
-                let acquired_collection = collection.deref().lock().unwrap();
-                self::flatten(request, acquired_collection.deref())
+                self::flatten(request, collection.deref())
             });
         }
         {
             let collection = collection.clone();
             auth_api_mount.mount("/serve/", move |request: &mut Request| {
-                let acquired_collection = collection.deref().lock().unwrap();
-                self::serve(request, acquired_collection.deref())
+                self::serve(request, collection.deref())
             });
         }
 

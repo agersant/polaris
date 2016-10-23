@@ -30,7 +30,6 @@ use mount::Mount;
 use staticfile::Static;
 use std::path;
 use std::sync::Arc;
-use std::sync::Mutex;
 
 mod api;
 mod collection;
@@ -69,7 +68,7 @@ fn main() {
         {
             let mut collection = collection::Collection::new();
             collection.load_config(&config).unwrap();
-            let collection = Arc::new(Mutex::new(collection));
+            let collection = Arc::new(collection);
             api_handler = api::get_api_handler(collection);
         }
         api_chain = Chain::new(api_handler);
