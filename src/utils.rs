@@ -10,11 +10,11 @@ pub fn is_song(path: &Path) -> bool {
 		_ => return false,
 	};
 	match extension {
-		"mp3" => return true,
-		"ogg" => return true,
-		"m4a" => return true,
-		"flac" => return true,
-		_ => return false,
+		"mp3" => true,
+		"ogg" => true,
+		"m4a" => true,
+		"flac" => true,
+		_ => false,
 	}
 }
 
@@ -28,10 +28,10 @@ pub fn is_image(path: &Path) -> bool {
 		_ => return false,
 	};
 	match extension {
-		"png" => return true,
-		"gif" => return true,
-		"jpg" => return true,
-		"bmp" => return true,
-		_ => return false,
+		"png" => true,
+		"gif" => true,
+		"jpg" => true,
+		"bmp" => true,
+		_ => false,
 	}
 }
