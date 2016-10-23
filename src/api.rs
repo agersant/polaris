@@ -1,5 +1,4 @@
 use core::str::Utf8Error;
-use core::ops::DerefMut;
 use std::fs;
 use std::io;
 use std::path::PathBuf;
@@ -59,22 +58,22 @@ pub fn get_api_handler(collection: Arc<Mutex<Collection>>) -> Mount {
         {
             let collection = collection.clone();
             auth_api_mount.mount("/browse/", move |request: &mut Request| {
-                let mut acquired_collection = collection.deref().lock().unwrap();
-                self::browse(request, acquired_collection.deref_mut())
+                let acquired_collection = collection.deref().lock().unwrap();
+                self::browse(request, acquired_collection.deref())
             });
         }
         {
             let collection = collection.clone();
             auth_api_mount.mount("/flatten/", move |request: &mut Request| {
-                let mut acquired_collection = collection.deref().lock().unwrap();
-                self::flatten(request, acquired_collection.deref_mut())
+                let acquired_collection = collection.deref().lock().unwrap();
+                self::flatten(request, acquired_collection.deref())
             });
         }
         {
             let collection = collection.clone();
             auth_api_mount.mount("/serve/", move |request: &mut Request| {
-                let mut acquired_collection = collection.deref().lock().unwrap();
-                self::serve(request, acquired_collection.deref_mut())
+                let acquired_collection = collection.deref().lock().unwrap();
+                self::serve(request, acquired_collection.deref())
             });
         }
 
@@ -125,7 +124,7 @@ fn auth(request: &mut Request, collection: &Collection) -> IronResult<Response> 
     }
 }
 
-fn browse(request: &mut Request, collection: &mut Collection) -> IronResult<Response> {
+fn browse(request: &mut Request, collection: &Collection) -> IronResult<Response> {
     let path = path_from_request(request);
     let path = match path {
         Err(e) => return Err(IronError::new(e, status::BadRequest)),
@@ -142,7 +141,7 @@ fn browse(request: &mut Request, collection: &mut Collection) -> IronResult<Resp
     Ok(Response::with((status::Ok, result_json)))
 }
 
-fn flatten(request: &mut Request, collection: &mut Collection) -> IronResult<Response> {
+fn flatten(request: &mut Request, collection: &Collection) -> IronResult<Response> {
     let path = path_from_request(request);
     let path = match path {
         Err(e) => return Err(IronError::new(e, status::BadRequest)),
@@ -159,7 +158,7 @@ fn flatten(request: &mut Request, collection: &mut Collection) -> IronResult<Res
     Ok(Response::with((status::Ok, result_json)))
 }
 
-fn serve(request: &mut Request, collection: &mut Collection) -> IronResult<Response> {
+fn serve(request: &mut Request, collection: &Collection) -> IronResult<Response> {
     let virtual_path = path_from_request(request);
     let virtual_path = match virtual_path {
         Err(e) => return Err(IronError::new(e, status::BadRequest)),
