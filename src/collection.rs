@@ -7,6 +7,7 @@ use regex::Regex;
 use config::Config;
 use vfs::*;
 use error::*;
+use utils::*;
 
 #[derive(Debug, RustcEncodable)]
 pub struct Album {
@@ -69,7 +70,7 @@ impl Album {
         } else {
             let find_song = try!(fs::read_dir(real_path)).find(|f| {
                 match *f {
-                    Ok(ref dir_entry) => Song::is_song(dir_entry.path().as_path()),
+                    Ok(ref dir_entry) => is_song(dir_entry.path().as_path()),
                     _ => false,
                 }
             });
@@ -149,23 +150,7 @@ impl Song {
         }
     }
 
-    fn is_song(path: &Path) -> bool {
-        let extension = match path.extension() {
-            Some(e) => e,
-            _ => return false,
-        };
-        let extension = match extension.to_str() {
-            Some(e) => e,
-            _ => return false,
-        };
-        match extension {
-            "mp3" => return true,
-            "ogg" => return true,
-            "m4a" => return true,
-            "flac" => return true,
-            _ => return false,
-        }
-    }
+    
 }
 
 #[derive(Debug, RustcEncodable)]
@@ -250,7 +235,7 @@ impl Collection {
                 let file_path = file.path();
                 let file_path = file_path.as_path();
                 if file_meta.is_file() {
-                    if Song::is_song(file_path) {
+                    if is_song(file_path) {
                         let song = try!(Song::read(self, file_path));
                         out.push(CollectionFile::Song(song));
                     }
@@ -273,7 +258,7 @@ impl Collection {
             let file_path = file.path();
             let file_path = file_path.as_path();
             if file_meta.is_file() {
-                if Song::is_song(file_path) {
+                if is_song(file_path) {
                     let song = try!(Song::read(self, file_path));
                     acc.push(song);
                 }

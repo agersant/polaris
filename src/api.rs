@@ -17,6 +17,7 @@ use url::percent_encoding::percent_decode;
 
 use collection::*;
 use error::*;
+use utils::*;
 
 impl From<PError> for IronError {
     fn from(err: PError) -> IronError {
@@ -26,6 +27,7 @@ impl From<PError> for IronError {
             PError::ConflictingMount => IronError::new(err, status::BadRequest),
             PError::PathNotInVfs => IronError::new(err, status::NotFound),
             PError::CannotServeDirectory => IronError::new(err, status::BadRequest),
+            PError::UnsupportedFileType => IronError::new(err, status::BadRequest),
             PError::ConfigFileOpenError => IronError::new(err, status::InternalServerError),
             PError::ConfigFileReadError => IronError::new(err, status::InternalServerError),
             PError::ConfigFileParseError => IronError::new(err, status::InternalServerError),
@@ -184,8 +186,20 @@ fn serve(request: &mut Request, collection: &Collection) -> IronResult<Response>
     };
 
     if !metadata.is_file() {
-        return Err(IronError::new(PError::CannotServeDirectory, status::BadRequest));
+        return Err(IronError::from(PError::CannotServeDirectory));
     }
 
-    Ok(Response::with((status::Ok, real_path)))
+    if is_song(real_path.as_path()) {
+        return Ok(Response::with((status::Ok, real_path)))
+    }
+
+    if is_image(real_path.as_path()) {
+        return art(request);
+    }
+
+    Err(IronError::from(PError::UnsupportedFileType))
+}
+
+fn art(_: &mut Request) -> IronResult<Response> {
+    Err(IronError::from(PError::UnsupportedFileType))
 }

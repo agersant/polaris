@@ -10,6 +10,7 @@ pub enum PError {
     ConflictingMount,
     PathNotInVfs,
     CannotServeDirectory,
+    UnsupportedFileType,
     ConfigFileOpenError,
     ConfigFileReadError,
     ConfigFileParseError,
@@ -44,6 +45,7 @@ impl error::Error for PError {
             }
             PError::PathNotInVfs => "Requested path does not index a mount point",
             PError::CannotServeDirectory => "Only individual files can be served",
+            PError::UnsupportedFileType => "Unrecognized extension",
             PError::ConfigFileOpenError => "Could not open config file",
             PError::ConfigFileReadError => "Could not read config file",
             PError::ConfigFileParseError => "Could not parse config file",
@@ -75,6 +77,7 @@ impl fmt::Display for PError {
             PError::ConflictingMount => write!(f, "Mount point already has a target directory"),
             PError::PathNotInVfs => write!(f, "Requested path does not index a mount point"),
             PError::CannotServeDirectory => write!(f, "Only individual files can be served"),
+            PError::UnsupportedFileType => write!(f, "Unrecognized extension"),
             PError::ConfigFileOpenError => write!(f, "Could not open config file"),
             PError::ConfigFileReadError => write!(f, "Could not read config file"),
             PError::ConfigFileParseError => write!(f, "Could not parse config file"),

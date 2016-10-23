@@ -37,6 +37,7 @@ mod config;
 mod ddns;
 mod error;
 mod ui;
+mod utils;
 mod vfs;
 
 const DEFAULT_CONFIG_FILE_NAME: &'static str = "polaris.toml";
