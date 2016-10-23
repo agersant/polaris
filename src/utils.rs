@@ -31,6 +31,7 @@ pub fn is_image(path: &Path) -> bool {
 		"png" => true,
 		"gif" => true,
 		"jpg" => true,
+		"jpeg" => true,
 		"bmp" => true,
 		_ => false,
 	}
