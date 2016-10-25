@@ -4,16 +4,15 @@ use std::path::Path;
 
 use error::*;
 
-pub struct MountDir {
-	pub name: String,
-	pub path: PathBuf,
+#[derive(Debug, Clone)]
+pub struct VfsConfig {
+	pub mount_points: HashMap<String, PathBuf>,
 }
 
-impl MountDir {
-    pub fn new(name: String, path: PathBuf) -> MountDir {
-        MountDir {
-            name: name,
-            path: path,
+impl VfsConfig {
+    pub fn new() -> VfsConfig {
+        VfsConfig {
+            mount_points: HashMap::new(),
         }
     }
 }
@@ -23,18 +22,8 @@ pub struct Vfs {
 }
 
 impl Vfs {
-    pub fn new() -> Vfs {
-        let instance = Vfs { mount_points: HashMap::new() };
-        instance
-    }
-
-    pub fn mount(&mut self, name: &str, real_path: &Path) -> Result<(), PError> {
-        let name = name.to_string();
-        if self.mount_points.contains_key(&name) {
-            return Err(PError::ConflictingMount);
-        }
-        self.mount_points.insert(name, real_path.to_path_buf());
-        Ok(())
+    pub fn new(config: VfsConfig) -> Vfs {
+        Vfs { mount_points: config.mount_points }
     }
 
     pub fn real_to_virtual(&self, real_path: &Path) -> Result<PathBuf, PError> {
@@ -67,16 +56,11 @@ impl Vfs {
 }
 
 #[test]
-fn test_mount() {
-    let mut vfs = Vfs::new();
-    assert!(vfs.mount("root", Path::new("test_dir")).is_ok());
-    assert!(vfs.mount("root", Path::new("another_dir")).is_err());
-}
-
-#[test]
 fn test_virtual_to_real() {
-    let mut vfs = Vfs::new();
-    assert!(vfs.mount("root", Path::new("test_dir")).is_ok());
+    let mut config = VFSConfig::new();
+    config.mount_points.insert("root".to_owned(), Path::new("test_dir").to_path_buf());
+    let vfs = Vfs::new(config);
+
     let correct_path = Path::new("test_dir/somewhere/something.png");
     let found_path = vfs.virtual_to_real(Path::new("root/somewhere/something.png")).unwrap();
     assert!(found_path == correct_path);
@@ -84,8 +68,10 @@ fn test_virtual_to_real() {
 
 #[test]
 fn test_real_to_virtual() {
-    let mut vfs = Vfs::new();
-    assert!(vfs.mount("root", Path::new("test_dir")).is_ok());
+    let mut config = VFSConfig::new();
+    config.mount_points.insert("root".to_owned(), Path::new("test_dir").to_path_buf());
+    let vfs = Vfs::new(config);
+
     let correct_path = Path::new("root/somewhere/something.png");
     let found_path = vfs.real_to_virtual(Path::new("test_dir/somewhere/something.png")).unwrap();
     assert!(found_path == correct_path);

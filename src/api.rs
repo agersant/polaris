@@ -23,8 +23,8 @@ impl From<PError> for IronError {
     fn from(err: PError) -> IronError {
         match err {
             PError::Io(e) => IronError::new(e, status::NotFound),
+            PError::CannotClearExistingIndex => IronError::new(err, status::InternalServerError),
             PError::PathDecoding => IronError::new(err, status::InternalServerError),
-            PError::ConflictingMount => IronError::new(err, status::BadRequest),
             PError::PathNotInVfs => IronError::new(err, status::NotFound),
             PError::CannotServeDirectory => IronError::new(err, status::BadRequest),
             PError::UnsupportedFileType => IronError::new(err, status::BadRequest),

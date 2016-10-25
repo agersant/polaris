@@ -3,8 +3,10 @@ use std::path::Path;
 use std::path::PathBuf;
 use id3::Tag;
 use regex::Regex;
+use std::sync::Arc;
 
 use config::Config;
+use index::Index;
 use vfs::*;
 use error::*;
 use utils::*;
@@ -186,31 +188,26 @@ pub enum CollectionFile {
 }
 
 pub struct Collection {
-    vfs: Vfs,
+    vfs: Arc<Vfs>,
     users: Vec<User>,
     album_art_pattern: Option<Regex>,
+    index: Arc<Index>,
 }
 
 impl Collection {
-    pub fn new() -> Collection {
+    pub fn new(vfs: Arc<Vfs>, index: Arc<Index>) -> Collection {
         Collection {
-            vfs: Vfs::new(),
+            vfs: vfs,
             users: Vec::new(),
             album_art_pattern: None,
+            index: index,
         }
     }
 
     pub fn load_config(&mut self, config: &Config) -> Result<(), PError> {
         self.album_art_pattern = config.album_art_pattern.clone();
         self.users = config.users.to_vec();
-        for mount_dir in &config.mount_dirs {
-            try!(self.mount(mount_dir.name.as_str(), mount_dir.path.as_path()));
-        }
         Ok(())
-    }
-
-    fn mount(&mut self, name: &str, real_path: &Path) -> Result<(), PError> {
-        self.vfs.mount(name, real_path)
     }
 
     pub fn auth(&self, username: &str, password: &str) -> bool {

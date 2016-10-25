@@ -10,6 +10,7 @@ extern crate params;
 extern crate regex;
 extern crate rustc_serialize;
 extern crate staticfile;
+extern crate sqlite;
 extern crate toml;
 extern crate url;
 
@@ -36,6 +37,7 @@ mod collection;
 mod config;
 mod ddns;
 mod error;
+mod index;
 mod ui;
 mod utils;
 mod thumbnails;
@@ -60,13 +62,26 @@ fn main() {
     let config_file = path::Path::new(config_file_name.as_str());
     let config = config::Config::parse(&config_file).unwrap();
 
+    // Init VFS
+    let vfs = Arc::new(vfs::Vfs::new(config.vfs.clone()));
+
+    // Init index
+    println!("Starting up index");
+    let index_path = path::Path::new("tmp/index.sqlite"); // TODO: base off constant and wipe on startup/exit
+    let index = Arc::new(index::Index::new(&index_path).unwrap());
+    let index_ref = index.clone();
+    let vfs_ref = vfs.clone();
+    std::thread::spawn(|| {
+        index::run(vfs_ref, index_ref);
+    });
+
     // Start server
     println!("Starting up server");
     let mut api_chain;
     {
         let api_handler;
         {
-            let mut collection = collection::Collection::new();
+            let mut collection = collection::Collection::new(vfs, index);
             collection.load_config(&config).unwrap();
             let collection = Arc::new(collection);
             api_handler = api::get_api_handler(collection);
