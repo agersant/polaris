@@ -57,7 +57,7 @@ impl Vfs {
 
 #[test]
 fn test_virtual_to_real() {
-    let mut config = VFSConfig::new();
+    let mut config = VfsConfig::new();
     config.mount_points.insert("root".to_owned(), Path::new("test_dir").to_path_buf());
     let vfs = Vfs::new(config);
 
@@ -68,7 +68,7 @@ fn test_virtual_to_real() {
 
 #[test]
 fn test_real_to_virtual() {
-    let mut config = VFSConfig::new();
+    let mut config = VfsConfig::new();
     config.mount_points.insert("root".to_owned(), Path::new("test_dir").to_path_buf());
     let vfs = Vfs::new(config);
 
