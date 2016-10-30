@@ -43,7 +43,11 @@ impl Vfs {
         for (name, target) in &self.mount_points {
             let mount_path = Path::new(&name);
             match virtual_path.strip_prefix(mount_path) {
-                Ok(p) => return Ok(target.join(p)),
+                Ok(p) => return if p.components().count() == 0 {
+                    Ok(target.clone())
+                } else {
+                    Ok(target.join(p))
+                },
                 Err(_) => (),
             }
         }
@@ -60,10 +64,19 @@ fn test_virtual_to_real() {
     let mut config = VfsConfig::new();
     config.mount_points.insert("root".to_owned(), Path::new("test_dir").to_path_buf());
     let vfs = Vfs::new(config);
+    let correct_path = Path::new(r"test_dir\somewhere\something.png");
+    let found_path = vfs.virtual_to_real(Path::new(r"root\somewhere\something.png")).unwrap();
+    assert!(found_path.to_str() == correct_path.to_str());
+}
 
-    let correct_path = Path::new("test_dir/somewhere/something.png");
-    let found_path = vfs.virtual_to_real(Path::new("root/somewhere/something.png")).unwrap();
-    assert!(found_path == correct_path);
+#[test]
+fn test_virtual_to_real_no_trail() {
+    let mut config = VfsConfig::new();
+    config.mount_points.insert("root".to_owned(), Path::new("test_dir").to_path_buf());
+    let vfs = Vfs::new(config);
+    let correct_path = Path::new("test_dir");
+    let found_path = vfs.virtual_to_real(Path::new("root")).unwrap();
+    assert!(found_path.to_str() == correct_path.to_str());
 }
 
 #[test]
