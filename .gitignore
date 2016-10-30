@@ -2,5 +2,8 @@ target
 release
 *.dll
 *.res
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
 tmp
 TestConfig.toml

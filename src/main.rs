@@ -44,6 +44,7 @@ mod thumbnails;
 mod vfs;
 
 const DEFAULT_CONFIG_FILE_NAME: &'static str = "polaris.toml";
+const INDEX_FILE_NAME: &'static str = "index.sqlite";
 
 fn main() {
 
@@ -67,13 +68,10 @@ fn main() {
 
     // Init index
     println!("Starting up index");
-    let index_path = path::Path::new("tmp/index.sqlite"); // TODO: base off constant and wipe on startup/exit
-    let index = Arc::new(index::Index::new(&index_path).unwrap());
+    let index_path = path::Path::new(INDEX_FILE_NAME);
+    let index = Arc::new(index::Index::new(&index_path, vfs.clone(), &config.album_art_pattern).unwrap());
     let index_ref = index.clone();
-    let vfs_ref = vfs.clone();
-    std::thread::spawn(|| {
-        index::run(vfs_ref, index_ref);
-    });
+    std::thread::spawn(move || index_ref.run());
 
     // Start server
     println!("Starting up server");
