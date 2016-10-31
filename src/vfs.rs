@@ -64,8 +64,18 @@ fn test_virtual_to_real() {
     let mut config = VfsConfig::new();
     config.mount_points.insert("root".to_owned(), Path::new("test_dir").to_path_buf());
     let vfs = Vfs::new(config);
-    let correct_path = Path::new(r"test_dir\somewhere\something.png");
-    let found_path = vfs.virtual_to_real(Path::new(r"root\somewhere\something.png")).unwrap();
+
+    let mut correct_path = PathBuf::new();
+    correct_path.push("test_dir");
+    correct_path.push("somewhere");
+    correct_path.push("something.png");
+
+    let mut virtual_path = PathBuf::new();
+    virtual_path.push("root");
+    virtual_path.push("somewhere");
+    virtual_path.push("something.png");
+
+    let found_path = vfs.virtual_to_real(virtual_path.as_path()).unwrap();
     assert!(found_path.to_str() == correct_path.to_str());
 }
 
@@ -85,7 +95,16 @@ fn test_real_to_virtual() {
     config.mount_points.insert("root".to_owned(), Path::new("test_dir").to_path_buf());
     let vfs = Vfs::new(config);
 
-    let correct_path = Path::new("root/somewhere/something.png");
-    let found_path = vfs.real_to_virtual(Path::new("test_dir/somewhere/something.png")).unwrap();
+    let mut correct_path = PathBuf::new();
+    correct_path.push("root");
+    correct_path.push("somewhere");
+    correct_path.push("something.png");
+
+    let mut real_path = PathBuf::new();
+    real_path.push("test_dir");
+    real_path.push("somewhere");
+    real_path.push("something.png");
+
+    let found_path = vfs.real_to_virtual(real_path.as_path()).unwrap();
     assert!(found_path == correct_path);
 }
