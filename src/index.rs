@@ -1,7 +1,8 @@
-use sqlite;
 use core::ops::Deref;
 use id3::Tag;
 use regex::Regex;
+use sqlite;
+use sqlite::{Connection, State, Statement, Value};
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
@@ -83,13 +84,13 @@ pub enum CollectionFile {
 
 struct IndexBuilder<'db> {
 	queue: Vec<CollectionFile>,
-	db: &'db sqlite::Connection,
-	insert_directory: sqlite::Statement<'db>,
-	insert_song: sqlite::Statement<'db>,
+	db: &'db Connection,
+	insert_directory: Statement<'db>,
+	insert_song: Statement<'db>,
 }
 
 impl<'db> IndexBuilder<'db> {
-	fn new(db: &sqlite::Connection) -> IndexBuilder {
+	fn new(db: &Connection) -> IndexBuilder {
 		let mut queue = Vec::new();
 		queue.reserve_exact(INDEX_BUILDING_INSERT_BUFFER_SIZE);
 		IndexBuilder {
@@ -119,12 +120,12 @@ impl<'db> IndexBuilder<'db> {
 				CollectionFile::Directory(directory) => {
 					let parent = IndexBuilder::get_parent(directory.path.as_str());
 					self.insert_directory.reset().ok();
-					self.insert_directory.bind(1, &sqlite::Value::String(directory.path)).unwrap();
-					self.insert_directory.bind(2, &parent.map_or(sqlite::Value::Null, |t| sqlite::Value::String(t.to_owned()))).unwrap();
-					self.insert_directory.bind(3, &directory.artwork.map_or(sqlite::Value::Null, |t| sqlite::Value::String(t.to_owned()))).unwrap();
-					self.insert_directory.bind(4, &directory.year.map_or(sqlite::Value::Null, |t| sqlite::Value::Integer(t as i64))).unwrap();
-					self.insert_directory.bind(5, &directory.artist.map_or(sqlite::Value::Null, |t| sqlite::Value::String(t))).unwrap();
-					self.insert_directory.bind(6, &directory.album.map_or(sqlite::Value::Null, |t| sqlite::Value::String(t))).unwrap();
+					self.insert_directory.bind(1, &Value::String(directory.path)).unwrap();
+					self.insert_directory.bind(2, &parent.map_or(Value::Null, |t| Value::String(t.to_owned()))).unwrap();
+					self.insert_directory.bind(3, &directory.artwork.map_or(Value::Null, |t| Value::String(t.to_owned()))).unwrap();
+					self.insert_directory.bind(4, &directory.year.map_or(Value::Null, |t| Value::Integer(t as i64))).unwrap();
+					self.insert_directory.bind(5, &directory.artist.map_or(Value::Null, |t| Value::String(t))).unwrap();
+					self.insert_directory.bind(6, &directory.album.map_or(Value::Null, |t| Value::String(t))).unwrap();
 					self.insert_directory.next().ok();
 				},
 
@@ -132,15 +133,15 @@ impl<'db> IndexBuilder<'db> {
 				CollectionFile::Song(song) => {
 					let parent = IndexBuilder::get_parent(song.path.as_str());
 					self.insert_song.reset().ok();
-					self.insert_song.bind(1, &sqlite::Value::String(song.path)).unwrap();
-					self.insert_song.bind(2, &parent.map_or(sqlite::Value::Null, |t| sqlite::Value::String(t.to_owned()))).unwrap();
-					self.insert_song.bind(3, &song.track_number.map_or(sqlite::Value::Null, |t| sqlite::Value::Integer(t as i64))).unwrap();
-					self.insert_song.bind(4, &song.title.map_or(sqlite::Value::Null, |t| sqlite::Value::String(t))).unwrap();
-					self.insert_song.bind(5, &song.year.map_or(sqlite::Value::Null, |t| sqlite::Value::Integer(t as i64))).unwrap();
-					self.insert_song.bind(6, &song.album_artist.map_or(sqlite::Value::Null, |t| sqlite::Value::String(t))).unwrap();
-					self.insert_song.bind(7, &song.artist.map_or(sqlite::Value::Null, |t| sqlite::Value::String(t))).unwrap();
-					self.insert_song.bind(8, &song.album.map_or(sqlite::Value::Null, |t| sqlite::Value::String(t))).unwrap();
-					self.insert_song.bind(9, &song.artwork.map_or(sqlite::Value::Null, |t| sqlite::Value::String(t.to_owned()))).unwrap();
+					self.insert_song.bind(1, &Value::String(song.path)).unwrap();
+					self.insert_song.bind(2, &parent.map_or(Value::Null, |t| Value::String(t.to_owned()))).unwrap();
+					self.insert_song.bind(3, &song.track_number.map_or(Value::Null, |t| Value::Integer(t as i64))).unwrap();
+					self.insert_song.bind(4, &song.title.map_or(Value::Null, |t| Value::String(t))).unwrap();
+					self.insert_song.bind(5, &song.year.map_or(Value::Null, |t| Value::Integer(t as i64))).unwrap();
+					self.insert_song.bind(6, &song.album_artist.map_or(Value::Null, |t| Value::String(t))).unwrap();
+					self.insert_song.bind(7, &song.artist.map_or(Value::Null, |t| Value::String(t))).unwrap();
+					self.insert_song.bind(8, &song.album.map_or(Value::Null, |t| Value::String(t))).unwrap();
+					self.insert_song.bind(9, &song.artwork.map_or(Value::Null, |t| Value::String(t.to_owned()))).unwrap();
 					self.insert_song.next().ok();
 				}
 
@@ -224,13 +225,13 @@ impl Index {
 		").unwrap();
 	}
 
-	fn connect(&self) -> sqlite::Connection {
+	fn connect(&self) -> Connection {
 		let mut db = sqlite::open(self.path.clone()).unwrap();
 		db.set_busy_timeout(INDEX_LOCK_TIMEOUT).ok();
 		db
 	}
 
-	fn update_index(&self, db: &sqlite::Connection) {
+	fn update_index(&self, db: &Connection) {
 		let start = time::Instant::now();
 		println!("Indexing library");
 		self.clean(db);
@@ -238,16 +239,16 @@ impl Index {
 		println!("Indexing library took {} seconds", start.elapsed().as_secs());	
 	}
 
-	fn clean(&self, db: &sqlite::Connection) {
+	fn clean(&self, db: &Connection) {
 		{
 			let mut select = db.prepare("SELECT path FROM songs").unwrap();
 			let mut delete = db.prepare("DELETE FROM songs WHERE path = ?").unwrap();
-			while let sqlite::State::Row = select.next().unwrap() {
+			while let State::Row = select.next().unwrap() {
 				let path_string : String = select.read(0).unwrap();
 				let path = Path::new(path_string.as_str());
 				if !path.exists() || self.vfs.real_to_virtual(path).is_err() {
 					delete.reset().ok();
-					delete.bind(1, &sqlite::Value::String(path_string.to_owned())).ok();
+					delete.bind(1, &Value::String(path_string.to_owned())).ok();
 					delete.next().ok();
 				}
 			}
@@ -256,19 +257,19 @@ impl Index {
 		{
 			let mut select = db.prepare("SELECT path FROM directories").unwrap();
 			let mut delete = db.prepare("DELETE FROM directories WHERE path = ?").unwrap();
-			while let sqlite::State::Row = select.next().unwrap() {
+			while let State::Row = select.next().unwrap() {
 				let path_string : String = select.read(0).unwrap();
 				let path = Path::new(path_string.as_str());
 				if !path.exists() || self.vfs.real_to_virtual(path).is_err() {
 					delete.reset().ok();
-					delete.bind(1, &sqlite::Value::String(path_string.to_owned())).ok();
+					delete.bind(1, &Value::String(path_string.to_owned())).ok();
 					delete.next().ok();
 				}
 			}
 		}
 	}
 
-	fn populate(&self, db: &sqlite::Connection) {
+	fn populate(&self, db: &Connection) {
 		let vfs = self.vfs.deref();
 		let mount_points = vfs.get_mount_points();
 		let mut builder = IndexBuilder::new(db);
@@ -396,20 +397,20 @@ impl Index {
 		}
 	}
 
-	fn select_songs(&self, select: &mut sqlite::Statement) -> Vec<Song> {
+	fn select_songs(&self, select: &mut Statement) -> Vec<Song> {
 
 		let mut output = Vec::new();
 
-		while let sqlite::State::Row = select.next().unwrap() {
+		while let State::Row = select.next().unwrap() {
 
 			let song_path : String = select.read(0).unwrap();
-			let track_number : sqlite::Value = select.read(1).unwrap();
-			let title : sqlite::Value = select.read(2).unwrap();
-			let year : sqlite::Value = select.read(3).unwrap();
-			let album_artist : sqlite::Value = select.read(4).unwrap();
-			let artist : sqlite::Value = select.read(5).unwrap();
-			let album : sqlite::Value = select.read(6).unwrap();
-			let artwork : sqlite::Value = select.read(7).unwrap();
+			let track_number : Value = select.read(1).unwrap();
+			let title : Value = select.read(2).unwrap();
+			let year : Value = select.read(3).unwrap();
+			let album_artist : Value = select.read(4).unwrap();
+			let artist : Value = select.read(5).unwrap();
+			let album : Value = select.read(6).unwrap();
+			let artwork : Value = select.read(7).unwrap();
 
 			let song_path = Path::new(song_path.as_str());
 			let song_path = match self.vfs.real_to_virtual(song_path) {
@@ -442,15 +443,15 @@ impl Index {
 
 		let path_string = real_path.to_string_lossy();
 		let mut select = db.prepare("SELECT path, artwork, year, artist, album FROM directories WHERE parent = ?").unwrap();
-		select.bind(1, &sqlite::Value::String(path_string.deref().to_owned())).unwrap();
+		select.bind(1, &Value::String(path_string.deref().to_owned())).unwrap();
 
-		while let sqlite::State::Row = select.next().unwrap() {
+		while let State::Row = select.next().unwrap() {
 
 			let directory_value : String = select.read(0).unwrap();
-			let artwork_path : sqlite::Value = select.read(1).unwrap();
-			let year : sqlite::Value = select.read(2).unwrap();
-			let artist : sqlite::Value = select.read(3).unwrap();
-			let album : sqlite::Value = select.read(4).unwrap();
+			let artwork_path : Value = select.read(1).unwrap();
+			let year : Value = select.read(2).unwrap();
+			let artist : Value = select.read(3).unwrap();
+			let album : Value = select.read(4).unwrap();
 
 			let directory_path = Path::new(directory_value.as_str());
 			let directory_path = match self.vfs.real_to_virtual(directory_path) {
@@ -480,7 +481,7 @@ impl Index {
 		let db = self.connect();
 		let path_string = real_path.to_string_lossy();
 		let mut select = db.prepare("SELECT path, track_number, title, year, album_artist, artist, album, artwork FROM songs WHERE parent = ?").unwrap();
-		select.bind(1, &sqlite::Value::String(path_string.deref().to_owned())).unwrap();
+		select.bind(1, &Value::String(path_string.deref().to_owned())).unwrap();
 		self.select_songs(&mut select).into_iter().map(|s| CollectionFile::Song(s)).collect()
 	}
 
@@ -518,7 +519,7 @@ impl Index {
 		let real_path = try!(self.vfs.virtual_to_real(virtual_path));
 		let path_string = real_path.to_string_lossy().into_owned() + "%";
 		let mut select = db.prepare("SELECT path, track_number, title, year, album_artist, artist, album, artwork FROM songs WHERE path LIKE ?").unwrap();
-		select.bind(1, &sqlite::Value::String(path_string.deref().to_owned())).unwrap();
+		select.bind(1, &Value::String(path_string.deref().to_owned())).unwrap();
 		Ok(self.select_songs(&mut select))
 	}
 }
