@@ -3,6 +3,7 @@ release
 *.dll
 *.res
 *.sqlite
+*.sqlite-journal
 *.sqlite-wal
 *.sqlite-shm
 tmp
