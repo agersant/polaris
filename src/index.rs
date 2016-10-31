@@ -11,6 +11,9 @@ use std::time;
 use error::*;
 use vfs::Vfs;
 
+const INDEX_BUILDING_INSERT_BUFFER_SIZE: usize = 500; // Put 500 insertions in each transaction
+const INDEX_LOCK_TIMEOUT: usize = 100; // In milliseconds
+
 pub struct Index {
 	path: String,
 	vfs: Arc<Vfs>,
@@ -78,6 +81,88 @@ pub enum CollectionFile {
     Song(Song),
 }
 
+struct IndexBuilder<'db> {
+	queue: Vec<CollectionFile>,
+	db: &'db sqlite::Connection,
+	insert_directory: sqlite::Statement<'db>,
+	insert_song: sqlite::Statement<'db>,
+}
+
+impl<'db> IndexBuilder<'db> {
+	fn new(db: &sqlite::Connection) -> IndexBuilder {
+		let mut queue = Vec::new();
+		queue.reserve_exact(INDEX_BUILDING_INSERT_BUFFER_SIZE);
+		IndexBuilder {
+			queue: queue,
+			db: db,
+			insert_directory: db.prepare("INSERT OR REPLACE INTO directories (path, parent, artwork, year, artist, album) VALUES (?, ?, ?, ?, ?, ?)").unwrap(),
+			insert_song: db.prepare("INSERT OR REPLACE INTO songs (path, parent, track_number, title, year, album_artist, artist, album, artwork) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)").unwrap(),
+		}
+	}
+
+	fn get_parent(path: &str) -> Option<String> {
+		let parent_path = Path::new(path);
+		if let Some(parent_dir) = parent_path.parent() {
+			if let Some(parent_path) = parent_dir.to_str() {
+				return Some(parent_path.to_owned());
+			}
+		}
+		None
+	}
+
+	fn flush(&mut self) {
+		self.db.execute("BEGIN TRANSACTION").ok();
+		while let Some(file) = self.queue.pop() {
+			match file {
+
+				// Insert directory
+				CollectionFile::Directory(directory) => {
+					let parent = IndexBuilder::get_parent(directory.path.as_str());
+					self.insert_directory.reset().ok();
+					self.insert_directory.bind(1, &sqlite::Value::String(directory.path)).unwrap();
+					self.insert_directory.bind(2, &parent.map_or(sqlite::Value::Null, |t| sqlite::Value::String(t.to_owned()))).unwrap();
+					self.insert_directory.bind(3, &directory.artwork.map_or(sqlite::Value::Null, |t| sqlite::Value::String(t.to_owned()))).unwrap();
+					self.insert_directory.bind(4, &directory.year.map_or(sqlite::Value::Null, |t| sqlite::Value::Integer(t as i64))).unwrap();
+					self.insert_directory.bind(5, &directory.artist.map_or(sqlite::Value::Null, |t| sqlite::Value::String(t))).unwrap();
+					self.insert_directory.bind(6, &directory.album.map_or(sqlite::Value::Null, |t| sqlite::Value::String(t))).unwrap();
+					self.insert_directory.next().ok();
+				},
+
+				// Insert song
+				CollectionFile::Song(song) => {
+					let parent = IndexBuilder::get_parent(song.path.as_str());
+					self.insert_song.reset().ok();
+					self.insert_song.bind(1, &sqlite::Value::String(song.path)).unwrap();
+					self.insert_song.bind(2, &parent.map_or(sqlite::Value::Null, |t| sqlite::Value::String(t.to_owned()))).unwrap();
+					self.insert_song.bind(3, &song.track_number.map_or(sqlite::Value::Null, |t| sqlite::Value::Integer(t as i64))).unwrap();
+					self.insert_song.bind(4, &song.title.map_or(sqlite::Value::Null, |t| sqlite::Value::String(t))).unwrap();
+					self.insert_song.bind(5, &song.year.map_or(sqlite::Value::Null, |t| sqlite::Value::Integer(t as i64))).unwrap();
+					self.insert_song.bind(6, &song.album_artist.map_or(sqlite::Value::Null, |t| sqlite::Value::String(t))).unwrap();
+					self.insert_song.bind(7, &song.artist.map_or(sqlite::Value::Null, |t| sqlite::Value::String(t))).unwrap();
+					self.insert_song.bind(8, &song.album.map_or(sqlite::Value::Null, |t| sqlite::Value::String(t))).unwrap();
+					self.insert_song.bind(9, &song.artwork.map_or(sqlite::Value::Null, |t| sqlite::Value::String(t.to_owned()))).unwrap();
+					self.insert_song.next().ok();
+				}
+
+			}
+		}
+		self.db.execute("END TRANSACTION").ok();
+	}
+
+	fn push(&mut self, file: CollectionFile) {
+		if self.queue.len() == self.queue.capacity() {
+			self.flush();
+		}
+		self.queue.push(file);
+	}
+}
+
+impl<'db> Drop for IndexBuilder<'db> {
+	fn drop(&mut self) {
+        self.flush();
+    }
+}
+
 impl Index {
 
 	pub fn new(path: &Path, vfs: Arc<Vfs>, album_art_pattern: &Option<Regex>) -> Result<Index, PError> {
@@ -140,7 +225,9 @@ impl Index {
 	}
 
 	fn connect(&self) -> sqlite::Connection {
-		sqlite::open(self.path.clone()).unwrap()
+		let mut db = sqlite::open(self.path.clone()).unwrap();
+		db.set_busy_timeout(INDEX_LOCK_TIMEOUT).ok();
+		db
 	}
 
 	fn update_index(&self, db: &sqlite::Connection) {
@@ -184,8 +271,9 @@ impl Index {
 	fn populate(&self, db: &sqlite::Connection) {
 		let vfs = self.vfs.deref();
 		let mount_points = vfs.get_mount_points();
+		let mut builder = IndexBuilder::new(db);
 		for (_, target) in mount_points {
-			self.populate_directory(&db, target.as_path());
+			self.populate_directory(&mut builder, target.as_path());
 		}
 	}
 
@@ -210,10 +298,10 @@ impl Index {
 		None
 	}
 
-	fn populate_directory(&self, db: &sqlite::Connection, path: &Path) {
+	fn populate_directory(&self, builder: &mut IndexBuilder, path: &Path) {
 		
 		// Find artwork
-		let artwork = self.get_artwork(path).map_or(sqlite::Value::Null, |t| sqlite::Value::String(t));
+		let artwork = self.get_artwork(path);
 
 		let path_string = match path.to_str() {
 			Some(p) => p,
@@ -227,17 +315,6 @@ impl Index {
 		let mut inconsistent_directory_year = false;
 		let mut inconsistent_directory_artist = false;
 
-		// Prepare statements
-		let mut insert_directory = db.prepare("
-			INSERT OR REPLACE INTO directories (path, parent, artwork, year, artist, album)
-			VALUES (?, ?, ?, ?, ?, ?)
-		").unwrap();
-
-		let mut insert_song = db.prepare("
-			INSERT OR REPLACE INTO songs (path, parent, track_number, title, year, album_artist, artist, album, artwork)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-		").unwrap();
-
 		// Insert content
 		if let Ok(dir_content) = fs::read_dir(path) {
 			for file in dir_content {
@@ -247,7 +324,7 @@ impl Index {
 				};
 
 				if file_path.is_dir() {
-					self.populate_directory(db, file_path.as_path());
+					self.populate_directory(builder, file_path.as_path());
 				} else {
 					if let Some(file_path_string) = file_path.to_str() {
 						if let Ok(tags) = SongTags::read(file_path.as_path()) {
@@ -269,17 +346,18 @@ impl Index {
 								directory_artist = Some(tags.artist.as_ref().unwrap().clone());
 							}
 
-							insert_song.reset().ok();
-							insert_song.bind(1, &sqlite::Value::String(file_path_string.to_owned())).unwrap();
-							insert_song.bind(2, &sqlite::Value::String(path_string.to_owned())).unwrap();
-							insert_song.bind(3, &tags.track_number.map_or(sqlite::Value::Null, |t| sqlite::Value::Integer(t as i64))).unwrap();
-							insert_song.bind(4, &tags.title.map_or(sqlite::Value::Null, |t| sqlite::Value::String(t))).unwrap();
-							insert_song.bind(5, &tags.year.map_or(sqlite::Value::Null, |t| sqlite::Value::Integer(t as i64))).unwrap();
-							insert_song.bind(6, &tags.album_artist.map_or(sqlite::Value::Null, |t| sqlite::Value::String(t))).unwrap();
-							insert_song.bind(7, &tags.artist.map_or(sqlite::Value::Null, |t| sqlite::Value::String(t))).unwrap();
-							insert_song.bind(8, &tags.album.map_or(sqlite::Value::Null, |t| sqlite::Value::String(t))).unwrap();
-							insert_song.bind(9, &artwork).unwrap();
-							insert_song.next().ok();
+							let song = Song {
+								path: file_path_string.to_owned(),
+								track_number: tags.track_number,
+								title: tags.title,
+								artist: tags.artist,
+								album_artist: tags.album_artist,
+								album: tags.album,
+								year: tags.year,
+								artwork: artwork.as_ref().map(|s| s.to_owned()),
+							};
+
+							builder.push(CollectionFile::Song(song));
 						}
 					}
 				}
@@ -297,35 +375,22 @@ impl Index {
 			directory_artist = None; 
 		}
 
-		let mut parent : Option<String> = None;
-		if let Some(parent_dir) = path.parent() {
-			if let Some(parent_path) = parent_dir.to_str() {
-				parent = Some(parent_path.to_owned());
-			}
-		}
-
-		insert_directory.reset().ok();
-		insert_directory.bind(1, &sqlite::Value::String(path_string.to_owned())).unwrap();
-		insert_directory.bind(2, &parent.map_or(sqlite::Value::Null, |t| sqlite::Value::String(t.to_owned()))).unwrap();
-		insert_directory.bind(3, &artwork).unwrap();
-		insert_directory.bind(4, &directory_year.map_or(sqlite::Value::Null, |t| sqlite::Value::Integer(t as i64))).unwrap();
-		insert_directory.bind(5, &directory_artist.map_or(sqlite::Value::Null, |t| sqlite::Value::String(t))).unwrap();
-		insert_directory.bind(6, &directory_album.map_or(sqlite::Value::Null, |t| sqlite::Value::String(t))).unwrap();
-		insert_directory.next().ok();
+		let directory = Directory {
+			path: path_string.to_owned(),
+			artwork: artwork,
+			album: directory_album,
+			artist: directory_artist,
+			year: directory_year,
+		};
+		builder.push(CollectionFile::Directory(directory));
 	}
 
 	pub fn run(&self)
 	{
 		loop {
-			// TODO fix uber-lock
-			let db = self.connect();
-			if let Err(e) = db.execute("BEGIN TRANSACTION") {
-				print!("Error while beginning transaction for index update: {}", e);
-			} else {
+			{
+				let db = self.connect();
 				self.update_index(&db);
-				if let Err(e) = db.execute("END TRANSACTION") {
-					print!("Error while ending transaction for index update: {}", e);
-				}
 			}
 			thread::sleep(time::Duration::from_secs(60 * 20)); // TODO expose in configuration
 		}
