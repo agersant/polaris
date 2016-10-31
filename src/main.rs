@@ -10,6 +10,7 @@ extern crate params;
 extern crate regex;
 extern crate rustc_serialize;
 extern crate staticfile;
+extern crate sqlite;
 extern crate toml;
 extern crate url;
 
@@ -36,12 +37,14 @@ mod collection;
 mod config;
 mod ddns;
 mod error;
+mod index;
 mod ui;
 mod utils;
 mod thumbnails;
 mod vfs;
 
 const DEFAULT_CONFIG_FILE_NAME: &'static str = "polaris.toml";
+const INDEX_FILE_NAME: &'static str = "index.sqlite";
 
 fn main() {
 
@@ -60,13 +63,23 @@ fn main() {
     let config_file = path::Path::new(config_file_name.as_str());
     let config = config::Config::parse(&config_file).unwrap();
 
+    // Init VFS
+    let vfs = Arc::new(vfs::Vfs::new(config.vfs.clone()));
+
+    // Init index
+    println!("Starting up index");
+    let index_path = path::Path::new(INDEX_FILE_NAME);
+    let index = Arc::new(index::Index::new(&index_path, vfs.clone(), &config.album_art_pattern).unwrap());
+    let index_ref = index.clone();
+    std::thread::spawn(move || index_ref.run());
+
     // Start server
     println!("Starting up server");
     let mut api_chain;
     {
         let api_handler;
         {
-            let mut collection = collection::Collection::new();
+            let mut collection = collection::Collection::new(vfs, index);
             collection.load_config(&config).unwrap();
             let collection = Arc::new(collection);
             api_handler = api::get_api_handler(collection);

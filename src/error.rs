@@ -6,9 +6,9 @@ use image;
 
 #[derive(Debug)]
 pub enum PError {
+    CannotClearExistingIndex,
     PathDecoding,
     Io(io::Error),
-    ConflictingMount,
     PathNotInVfs,
     CannotServeDirectory,
     UnsupportedFileType,
@@ -47,10 +47,8 @@ impl error::Error for PError {
     fn description(&self) -> &str {
         match *self {
             PError::Io(ref err) => err.description(),
+            PError::CannotClearExistingIndex => "Error while removing existing index",
             PError::PathDecoding => "Error while decoding a Path as a UTF-8 string",
-            PError::ConflictingMount => {
-                "Attempting to mount multiple directories under the same name"
-            }
             PError::PathNotInVfs => "Requested path does not index a mount point",
             PError::CannotServeDirectory => "Only individual files can be served",
             PError::UnsupportedFileType => "Unrecognized extension",
@@ -82,8 +80,8 @@ impl fmt::Display for PError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             PError::Io(ref err) => write!(f, "IO error: {}", err),
+            PError::CannotClearExistingIndex => write!(f, "Error while removing existing index"),
             PError::PathDecoding => write!(f, "Path decoding error"),
-            PError::ConflictingMount => write!(f, "Mount point already has a target directory"),
             PError::PathNotInVfs => write!(f, "Requested path does not index a mount point"),
             PError::CannotServeDirectory => write!(f, "Only individual files can be served"),
             PError::UnsupportedFileType => write!(f, "Unrecognized extension"),

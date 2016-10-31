@@ -7,7 +7,7 @@ use toml;
 
 use collection::User;
 use ddns::DDNSConfig;
-use vfs::MountDir;
+use vfs::VfsConfig;
 
 const CONFIG_SECRET: &'static str = "auth_secret";
 const CONFIG_MOUNT_DIRS: &'static str = "mount_dirs";
@@ -32,6 +32,7 @@ pub enum ConfigError {
 	UsersParseError,
 	MountDirsParseError,
 	DDNSParseError,
+    ConflictingMounts,
 }
 
 impl From<io::Error> for ConfigError {
@@ -48,7 +49,7 @@ impl From<regex::Error> for ConfigError {
 
 pub struct Config {
 	pub secret: String,
-	pub mount_dirs: Vec<MountDir>,
+	pub vfs: VfsConfig,
     pub users: Vec<User>,
     pub album_art_pattern: Option<regex::Regex>,
 	pub ddns: Option<DDNSConfig>,
@@ -64,7 +65,7 @@ impl Config {
 
 		let mut config = Config {
 			secret: String::new(),
-			mount_dirs: Vec::new(),
+			vfs: VfsConfig::new(),
 			users: Vec::new(),
 			album_art_pattern: None,
 			ddns: None,
@@ -167,8 +168,10 @@ impl Config {
             };
             let source = path::PathBuf::from(source);
 
-			let mount_dir = MountDir::new(name.to_owned(), source);
-			self.mount_dirs.push(mount_dir);
+            if self.vfs.mount_points.contains_key(name) {
+                return Err(ConfigError::ConflictingMounts);
+            }
+            self.vfs.mount_points.insert(name.to_owned(), source);
         }
 
         Ok(())
