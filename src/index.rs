@@ -158,7 +158,7 @@ impl Index {
 			while let sqlite::State::Row = select.next().unwrap() {
 				let path_string : String = select.read(0).unwrap();
 				let path = Path::new(path_string.as_str());
-				if !path.exists() {
+				if !path.exists() || self.vfs.real_to_virtual(path).is_err() {
 					delete.reset().ok();
 					delete.bind(1, &sqlite::Value::String(path_string.to_owned())).ok();
 					delete.next().ok();
@@ -167,12 +167,12 @@ impl Index {
 		}
 
 		{
-			let mut select = db.prepare("SELECT path FROM songs").unwrap();
+			let mut select = db.prepare("SELECT path FROM directories").unwrap();
 			let mut delete = db.prepare("DELETE FROM directories WHERE path = ?").unwrap();
 			while let sqlite::State::Row = select.next().unwrap() {
 				let path_string : String = select.read(0).unwrap();
 				let path = Path::new(path_string.as_str());
-				if !path.exists() {
+				if !path.exists() || self.vfs.real_to_virtual(path).is_err() {
 					delete.reset().ok();
 					delete.bind(1, &sqlite::Value::String(path_string.to_owned())).ok();
 					delete.next().ok();
