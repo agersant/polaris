@@ -93,7 +93,7 @@ fn main() {
 
     let mut mount = Mount::new();
     mount.mount("/api/", api_chain);
-    mount.mount("/", Static::new(path::Path::new("../polaris-web")));
+    mount.mount("/", Static::new(path::Path::new("web")));
     let mut server = Iron::new(mount).http(("0.0.0.0", 5050)).unwrap();
 
     // Start DDNS updates
