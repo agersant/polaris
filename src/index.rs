@@ -184,7 +184,6 @@ impl Index {
 	fn populate(&self, db: &sqlite::Connection) {
 		let vfs = self.vfs.deref();
 		let mount_points = vfs.get_mount_points();
-
 		for (_, target) in mount_points {
 			self.populate_directory(&db, target.as_path());
 		}
@@ -332,6 +331,45 @@ impl Index {
 		}
 	}
 
+	fn select_songs(&self, select: &mut sqlite::Statement) -> Vec<Song> {
+
+		let mut output = Vec::new();
+
+		while let sqlite::State::Row = select.next().unwrap() {
+
+			let song_path : String = select.read(0).unwrap();
+			let track_number : sqlite::Value = select.read(1).unwrap();
+			let title : sqlite::Value = select.read(2).unwrap();
+			let year : sqlite::Value = select.read(3).unwrap();
+			let album_artist : sqlite::Value = select.read(4).unwrap();
+			let artist : sqlite::Value = select.read(5).unwrap();
+			let album : sqlite::Value = select.read(6).unwrap();
+			let artwork : sqlite::Value = select.read(7).unwrap();
+
+			let song_path = Path::new(song_path.as_str());
+			let song_path = match self.vfs.real_to_virtual(song_path) {
+				Ok(p) => p,
+				_ => continue,
+			};
+
+			let artwork = artwork.as_string().map(|p| Path::new(p)).and_then(|p| self.vfs.real_to_virtual(p).ok());
+
+			let song = Song {
+				path: song_path.to_str().unwrap().to_owned(),
+				track_number: track_number.as_integer().map(|n| n as u32),
+				title: title.as_string().map(|s| s.to_owned()),
+				year: year.as_integer().map(|n| n as i32),
+				album_artist: album_artist.as_string().map(|s| s.to_owned()),
+				artist: artist.as_string().map(|s| s.to_owned()),
+				album: album.as_string().map(|s| s.to_owned()),
+				artwork: artwork.map(|p| p.to_str().unwrap().to_owned() ),
+			};
+			output.push(song);
+		}
+
+		output
+	}
+
 	// List sub-directories within a directory
 	fn browse_directories(&self, real_path: &Path) -> Vec<CollectionFile> {
 		let db = self.connect();
@@ -375,45 +413,10 @@ impl Index {
 	// List songs within a directory
 	fn browse_songs(&self, real_path: &Path) -> Vec<CollectionFile> {
 		let db = self.connect();
-		let mut output = Vec::new();
-
 		let path_string = real_path.to_string_lossy();
 		let mut select = db.prepare("SELECT path, track_number, title, year, album_artist, artist, album, artwork FROM songs WHERE parent = ?").unwrap();
 		select.bind(1, &sqlite::Value::String(path_string.deref().to_owned())).unwrap();
-
-		while let sqlite::State::Row = select.next().unwrap() {
-
-			let song_path : String = select.read(0).unwrap();
-			let track_number : sqlite::Value = select.read(1).unwrap();
-			let title : sqlite::Value = select.read(2).unwrap();
-			let year : sqlite::Value = select.read(3).unwrap();
-			let album_artist : sqlite::Value = select.read(4).unwrap();
-			let artist : sqlite::Value = select.read(5).unwrap();
-			let album : sqlite::Value = select.read(6).unwrap();
-			let artwork : sqlite::Value = select.read(7).unwrap();
-
-			let song_path = Path::new(song_path.as_str());
-			let song_path = match self.vfs.real_to_virtual(song_path) {
-				Ok(p) => p,
-				_ => continue,
-			};
-
-			let artwork = artwork.as_string().map(|p| Path::new(p)).and_then(|p| self.vfs.real_to_virtual(p).ok());
-
-			let song = Song {
-				path: song_path.to_str().unwrap().to_owned(),
-				track_number: track_number.as_integer().map(|n| n as u32),
-				title: title.as_string().map(|s| s.to_owned()),
-				year: year.as_integer().map(|n| n as i32),
-				album_artist: album_artist.as_string().map(|s| s.to_owned()),
-				artist: artist.as_string().map(|s| s.to_owned()),
-				album: album.as_string().map(|s| s.to_owned()),
-				artwork: artwork.map(|p| p.to_str().unwrap().to_owned() ),
-			};
-			output.push(CollectionFile::Song(song));
-		}
-
-		output
+		self.select_songs(&mut select).into_iter().map(|s| CollectionFile::Song(s)).collect()
 	}
 
 	pub fn browse(&self, virtual_path: &Path) -> Result<Vec<CollectionFile>, PError> {
@@ -446,47 +449,11 @@ impl Index {
 	}
 
 	pub fn flatten(&self, virtual_path: &Path) -> Result<Vec<Song>, PError> {
-
 		let db = self.connect();
-		let mut output = Vec::new();
-
 		let real_path = try!(self.vfs.virtual_to_real(virtual_path));
 		let path_string = real_path.to_string_lossy().into_owned() + "%";
 		let mut select = db.prepare("SELECT path, track_number, title, year, album_artist, artist, album, artwork FROM songs WHERE path LIKE ?").unwrap();
 		select.bind(1, &sqlite::Value::String(path_string.deref().to_owned())).unwrap();
-
-		while let sqlite::State::Row = select.next().unwrap() {
-
-			let song_path : String = select.read(0).unwrap();
-			let track_number : sqlite::Value = select.read(1).unwrap();
-			let title : sqlite::Value = select.read(2).unwrap();
-			let year : sqlite::Value = select.read(3).unwrap();
-			let album_artist : sqlite::Value = select.read(4).unwrap();
-			let artist : sqlite::Value = select.read(5).unwrap();
-			let album : sqlite::Value = select.read(6).unwrap();
-			let artwork : sqlite::Value = select.read(7).unwrap();
-
-			let song_path = Path::new(song_path.as_str());
-			let song_path = match self.vfs.real_to_virtual(song_path) {
-				Ok(p) => p,
-				_ => continue,
-			};
-
-			let artwork = artwork.as_string().map(|p| Path::new(p)).and_then(|p| self.vfs.real_to_virtual(p).ok());
-
-			let song = Song {
-				path: song_path.to_str().unwrap().to_owned(),
-				track_number: track_number.as_integer().map(|n| n as u32),
-				title: title.as_string().map(|s| s.to_owned()),
-				year: year.as_integer().map(|n| n as i32),
-				album_artist: album_artist.as_string().map(|s| s.to_owned()),
-				artist: artist.as_string().map(|s| s.to_owned()),
-				album: album.as_string().map(|s| s.to_owned()),
-				artwork: artwork.map(|p| p.to_str().unwrap().to_owned() ),
-			};
-			output.push(song);
-		}
-
-		Ok(output)
+		Ok(self.select_songs(&mut select))
 	}
 }
