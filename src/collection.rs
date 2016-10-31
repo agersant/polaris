@@ -52,8 +52,8 @@ impl Collection {
         self.index.deref().browse(virtual_path)
     }
 
-    pub fn flatten(&self, path: &Path) -> Result<Vec<Song>, PError> {
-        Err(PError::Unauthorized)
+    pub fn flatten(&self, virtual_path: &Path) -> Result<Vec<Song>, PError> {
+        self.index.deref().flatten(virtual_path)
     }
 
     pub fn locate(&self, virtual_path: &Path) -> Result<PathBuf, PError> {

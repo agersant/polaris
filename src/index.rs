@@ -372,7 +372,7 @@ impl Index {
 		let mut cursor = db.prepare("SELECT path, track_number, title, year, album_artist, artist, album, artwork FROM songs WHERE parent = ?").unwrap().cursor();
 		cursor.bind(&[sqlite::Value::String(path_string.deref().to_owned())]).unwrap();
 
-		while let Some(row) = cursor.next().unwrap() {
+		while let Ok(Some(row)) = cursor.next() {
 
 			let song_path = Path::new(row[0].as_string().unwrap());
 			let song_path = match self.vfs.real_to_virtual(song_path) {
@@ -422,6 +422,42 @@ impl Index {
 			let songs = self.browse_songs(real_path.as_path());
 			output.extend(directories);
 			output.extend(songs);
+		}
+
+		Ok(output)
+	}
+
+	pub fn flatten(&self, virtual_path: &Path) -> Result<Vec<Song>, PError> {
+
+		let db = self.connect();
+		let mut output = Vec::new();
+
+		let real_path = try!(self.vfs.virtual_to_real(virtual_path));
+		let path_string = real_path.to_string_lossy().into_owned() + "%";
+		let mut cursor = db.prepare("SELECT path, track_number, title, year, album_artist, artist, album, artwork FROM songs WHERE path LIKE ?").unwrap().cursor();
+		cursor.bind(&[sqlite::Value::String(path_string.deref().to_owned())]).unwrap();
+
+		while let Ok(Some(row)) = cursor.next() {
+
+			let song_path = Path::new(row[0].as_string().unwrap());
+			let song_path = match self.vfs.real_to_virtual(song_path) {
+				Ok(p) => p,
+				_ => continue,
+			};
+
+			let artwork_path = row[7].as_string().map(|p| Path::new(p)).and_then(|p| self.vfs.real_to_virtual(p).ok());
+
+			let song = Song {
+				path: song_path.to_str().unwrap().to_owned(),
+				track_number: row[1].as_integer().map(|n| n as u32),
+				title: row[2].as_string().map(|s| s.to_owned()),
+				year: row[3].as_integer().map(|n| n as i32),
+				album_artist: row[4].as_string().map(|s| s.to_owned()),
+				artist: row[5].as_string().map(|s| s.to_owned()),
+				album: row[6].as_string().map(|s| s.to_owned()),
+				artwork: artwork_path.map(|p| p.to_str().unwrap().to_owned() ),
+			};
+			output.push(song);
 		}
 
 		Ok(output)
