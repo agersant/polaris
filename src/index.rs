@@ -82,6 +82,27 @@ pub enum CollectionFile {
     Song(Song),
 }
 
+fn string_option_to_value(input: Option<String>) -> Value {
+	match input {
+		Some(s) => Value::String(s),
+		None => Value::Null,
+	}
+}
+
+fn i32_option_to_value(input: Option<i32>) -> Value {
+	match input {
+		Some(s) => Value::Integer(s as i64),
+		None => Value::Null,
+	}
+}
+
+fn u32_option_to_value(input: Option<u32>) -> Value {
+	match input {
+		Some(s) => Value::Integer(s as i64),
+		None => Value::Null,
+	}
+}
+
 struct IndexBuilder<'db> {
 	queue: Vec<CollectionFile>,
 	db: &'db Connection,
@@ -121,11 +142,11 @@ impl<'db> IndexBuilder<'db> {
 					let parent = IndexBuilder::get_parent(directory.path.as_str());
 					self.insert_directory.reset().ok();
 					self.insert_directory.bind(1, &Value::String(directory.path)).unwrap();
-					self.insert_directory.bind(2, &parent.map_or(Value::Null, |t| Value::String(t.to_owned()))).unwrap();
-					self.insert_directory.bind(3, &directory.artwork.map_or(Value::Null, |t| Value::String(t.to_owned()))).unwrap();
-					self.insert_directory.bind(4, &directory.year.map_or(Value::Null, |t| Value::Integer(t as i64))).unwrap();
-					self.insert_directory.bind(5, &directory.artist.map_or(Value::Null, |t| Value::String(t))).unwrap();
-					self.insert_directory.bind(6, &directory.album.map_or(Value::Null, |t| Value::String(t))).unwrap();
+					self.insert_directory.bind(2, &string_option_to_value(parent)).unwrap();
+					self.insert_directory.bind(3, &string_option_to_value(directory.artwork)).unwrap();
+					self.insert_directory.bind(4, &i32_option_to_value(directory.year)).unwrap();
+					self.insert_directory.bind(5, &string_option_to_value(directory.artist)).unwrap();
+					self.insert_directory.bind(6, &string_option_to_value(directory.album)).unwrap();
 					self.insert_directory.next().ok();
 				},
 
@@ -134,14 +155,14 @@ impl<'db> IndexBuilder<'db> {
 					let parent = IndexBuilder::get_parent(song.path.as_str());
 					self.insert_song.reset().ok();
 					self.insert_song.bind(1, &Value::String(song.path)).unwrap();
-					self.insert_song.bind(2, &parent.map_or(Value::Null, |t| Value::String(t.to_owned()))).unwrap();
-					self.insert_song.bind(3, &song.track_number.map_or(Value::Null, |t| Value::Integer(t as i64))).unwrap();
-					self.insert_song.bind(4, &song.title.map_or(Value::Null, |t| Value::String(t))).unwrap();
-					self.insert_song.bind(5, &song.year.map_or(Value::Null, |t| Value::Integer(t as i64))).unwrap();
-					self.insert_song.bind(6, &song.album_artist.map_or(Value::Null, |t| Value::String(t))).unwrap();
-					self.insert_song.bind(7, &song.artist.map_or(Value::Null, |t| Value::String(t))).unwrap();
-					self.insert_song.bind(8, &song.album.map_or(Value::Null, |t| Value::String(t))).unwrap();
-					self.insert_song.bind(9, &song.artwork.map_or(Value::Null, |t| Value::String(t.to_owned()))).unwrap();
+					self.insert_song.bind(2, &string_option_to_value(parent)).unwrap();
+					self.insert_song.bind(3, &u32_option_to_value(song.track_number)).unwrap();
+					self.insert_song.bind(4, &string_option_to_value(song.title)).unwrap();
+					self.insert_song.bind(5, &i32_option_to_value(song.year)).unwrap();
+					self.insert_song.bind(6, &string_option_to_value(song.album_artist)).unwrap();
+					self.insert_song.bind(7, &string_option_to_value(song.artist)).unwrap();
+					self.insert_song.bind(8, &string_option_to_value(song.album)).unwrap();
+					self.insert_song.bind(9, &string_option_to_value(song.artwork)).unwrap();
 					self.insert_song.next().ok();
 				}
 
