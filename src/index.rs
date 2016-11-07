@@ -254,10 +254,10 @@ impl Index {
 
 	fn update_index(&self, db: &Connection) {
 		let start = time::Instant::now();
-		println!("Indexing library");
+		println!("Beginning library index update");
 		self.clean(db);
 		self.populate(db);
-		println!("Indexing library took {} seconds", start.elapsed().as_secs());	
+		println!("Library index update took {} seconds", start.elapsed().as_secs());	
 	}
 
 	fn clean(&self, db: &Connection) {
