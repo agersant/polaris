@@ -166,7 +166,7 @@ impl Config {
                 None => return Err(ConfigError::MountDirsParseError),
                 Some(n) => n,
             };
-            let source = path::PathBuf::from(source);
+            let source = clean_path_string(source);
 
             if self.vfs.mount_points.contains_key(name) {
                 return Err(ConfigError::ConflictingMounts);
@@ -202,4 +202,25 @@ impl Config {
 		});
 		Ok(())
     }
+}
+
+fn clean_path_string(path_string: &str) -> path::PathBuf {
+    let separator = regex::Regex::new(r"\\|/").unwrap();
+    let components = separator.split(path_string).collect::<Vec<_>>();
+    let mut path = path::PathBuf::new();
+    for component in components {
+        path.push(component);
+    }
+    path
+}
+
+#[test]
+fn test_clean_path_string() {
+    let mut correct_path = path::PathBuf::new();
+    correct_path.push("C:"); 
+    correct_path.push("some"); 
+    correct_path.push("path");
+    assert_eq!(correct_path, clean_path_string(r#"C:/some/path"#)); 
+    assert_eq!(correct_path, clean_path_string(r#"C:\some\path"#)); 
+    assert_eq!(correct_path, clean_path_string(r#"C:\some\path\"#)); 
 }
