@@ -463,7 +463,7 @@ impl Index {
 		let mut output = Vec::new();
 
 		let path_string = real_path.to_string_lossy();
-		let mut select = db.prepare("SELECT path, artwork, year, artist, album FROM directories WHERE parent = ? ORDER BY path ASC").unwrap();
+		let mut select = db.prepare("SELECT path, artwork, year, artist, album FROM directories WHERE parent = ? ORDER BY path COLLATE NOCASE ASC").unwrap();
 		select.bind(1, &Value::String(path_string.deref().to_owned())).unwrap();
 
 		while let State::Row = select.next().unwrap() {
@@ -501,7 +501,7 @@ impl Index {
 	fn browse_songs(&self, real_path: &Path) -> Vec<CollectionFile> {
 		let db = self.connect();
 		let path_string = real_path.to_string_lossy();
-		let mut select = db.prepare("SELECT path, track_number, title, year, album_artist, artist, album, artwork FROM songs WHERE parent = ? ORDER BY path ASC").unwrap();
+		let mut select = db.prepare("SELECT path, track_number, title, year, album_artist, artist, album, artwork FROM songs WHERE parent = ? ORDER BY path COLLATE NOCASE ASC").unwrap();
 		select.bind(1, &Value::String(path_string.deref().to_owned())).unwrap();
 		self.select_songs(&mut select).into_iter().map(|s| CollectionFile::Song(s)).collect()
 	}
@@ -539,7 +539,7 @@ impl Index {
 		let db = self.connect();
 		let real_path = try!(self.vfs.virtual_to_real(virtual_path));
 		let path_string = real_path.to_string_lossy().into_owned() + "%";
-		let mut select = db.prepare("SELECT path, track_number, title, year, album_artist, artist, album, artwork FROM songs WHERE path LIKE ? ORDER BY path").unwrap();
+		let mut select = db.prepare("SELECT path, track_number, title, year, album_artist, artist, album, artwork FROM songs WHERE path LIKE ? ORDER BY path COLLATE NOCASE ASC").unwrap();
 		select.bind(1, &Value::String(path_string.deref().to_owned())).unwrap();
 		Ok(self.select_songs(&mut select))
 	}
