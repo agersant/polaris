@@ -9,7 +9,7 @@ pub fn is_song(path: &Path) -> bool {
 		Some(e) => e,
 		_ => return false,
 	};
-	match extension {
+	match extension.to_lowercase().as_str() {
 		"mp3" => true,
 		"ogg" => true,
 		"m4a" => true,
@@ -27,7 +27,7 @@ pub fn is_image(path: &Path) -> bool {
 		Some(e) => e,
 		_ => return false,
 	};
-	match extension {
+	match extension.to_lowercase().as_str() {
 		"png" => true,
 		"gif" => true,
 		"jpg" => true,
