@@ -1,12 +1,13 @@
-use std::cmp;
-use std::fs::DirBuilder;
-use std::path::*;
-use std::hash::{Hash, Hasher, SipHasher};
 use image;
 use image::GenericImage;
 use image::ImageBuffer;
 use image::FilterType;
 use image::imageops::resize;
+use std::cmp;
+use std::collections::hash_map::DefaultHasher;
+use std::fs::DirBuilder;
+use std::hash::{Hash, Hasher};
+use std::path::*;
 
 use error::*;
 
@@ -15,7 +16,7 @@ const THUMBNAILS_PATH: &'static str = "tmp/thumbnails";
 fn hash(path: &Path, dimension: u32) -> u64 {
 	let path_string = path.to_string_lossy();
 	let hash_input = format!("{}:{}", path_string, dimension.to_string());
-	let mut hasher = SipHasher::new();
+	let mut hasher = DefaultHasher::new();
     hash_input.hash(&mut hasher);
     hasher.finish()
 }
