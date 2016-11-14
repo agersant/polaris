@@ -70,7 +70,7 @@ fn main() {
     // Init index
     println!("Starting up index");
     let index_path = path::Path::new(INDEX_FILE_NAME);
-    let index = Arc::new(index::Index::new(&index_path, vfs.clone(), &config.album_art_pattern)
+    let index = Arc::new(index::Index::new(&index_path, vfs.clone(), &config.index)
         .unwrap());
     let index_ref = index.clone();
     std::thread::spawn(move || index_ref.run());

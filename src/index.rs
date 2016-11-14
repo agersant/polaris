@@ -18,10 +18,25 @@ use vfs::Vfs;
 const INDEX_BUILDING_INSERT_BUFFER_SIZE: usize = 250; // Insertions in each transaction
 const INDEX_LOCK_TIMEOUT: usize = 1000; // In milliseconds
 
+pub struct IndexConfig {
+    pub album_art_pattern: Option<Regex>,
+    pub sleep_duration: u64, // in seconds
+}
+
+impl IndexConfig {
+    pub fn new() -> IndexConfig {
+        IndexConfig {
+            sleep_duration: 60 * 30, // 30 minutes
+            album_art_pattern: None,
+        }
+    }
+}
+
 pub struct Index {
     path: String,
     vfs: Arc<Vfs>,
     album_art_pattern: Option<Regex>,
+    sleep_duration: u64,
 }
 
 struct SongTags {
@@ -257,13 +272,14 @@ impl<'db> Drop for IndexBuilder<'db> {
 impl Index {
     pub fn new(path: &Path,
                vfs: Arc<Vfs>,
-               album_art_pattern: &Option<Regex>)
+               config: &IndexConfig)
                -> Result<Index, PError> {
 
         let index = Index {
             path: path.to_string_lossy().deref().to_string(),
             vfs: vfs,
-            album_art_pattern: album_art_pattern.clone(),
+            album_art_pattern: config.album_art_pattern.clone(),
+            sleep_duration: config.sleep_duration,
         };
 
         if path.exists() {
@@ -500,7 +516,7 @@ impl Index {
                 let db = self.connect();
                 self.update_index(&db);
             }
-            thread::sleep(time::Duration::from_secs(60 * 20)); // TODO expose in configuration
+            thread::sleep(time::Duration::from_secs(self.sleep_duration));
         }
     }
 

@@ -4,6 +4,9 @@ auth_secret = 'Something very secret'
 # Pattern used to match album art matching a file
 album_art_pattern = '^Folder\.(png|jpg|jpeg)$'
 
+# How often the library should be re-indexed (in seconds)
+reindex_every_n_seconds = 43200
+
 # Directories where your music is stored
 [[mount_dirs]]
 source = 'C:/Users/your_name/Music'		# Location of the directory on your computer

@@ -7,6 +7,7 @@ use toml;
 
 use collection::User;
 use ddns::DDNSConfig;
+use index::IndexConfig;
 use vfs::VfsConfig;
 
 const CONFIG_SECRET: &'static str = "auth_secret";
@@ -17,6 +18,7 @@ const CONFIG_USERS: &'static str = "users";
 const CONFIG_USER_NAME: &'static str = "name";
 const CONFIG_USER_PASSWORD: &'static str = "password";
 const CONFIG_ALBUM_ART_PATTERN: &'static str = "album_art_pattern";
+const CONFIG_INDEX_SLEEP_DURATION: &'static str = "reindex_every_n_seconds";
 const CONFIG_DDNS: &'static str = "ydns";
 const CONFIG_DDNS_HOST: &'static str = "host";
 const CONFIG_DDNS_USERNAME: &'static str = "username";
@@ -28,6 +30,7 @@ pub enum ConfigError {
     TOMLParseError,
     RegexError(regex::Error),
     SecretParseError,
+    SleepDurationParseError,
     AlbumArtPatternParseError,
     UsersParseError,
     MountDirsParseError,
@@ -51,7 +54,7 @@ pub struct Config {
     pub secret: String,
     pub vfs: VfsConfig,
     pub users: Vec<User>,
-    pub album_art_pattern: Option<regex::Regex>,
+    pub index: IndexConfig,
     pub ddns: Option<DDNSConfig>,
 }
 
@@ -67,11 +70,12 @@ impl Config {
             secret: String::new(),
             vfs: VfsConfig::new(),
             users: Vec::new(),
-            album_art_pattern: None,
+            index: IndexConfig::new(),
             ddns: None,
         };
 
         try!(config.parse_secret(&parsed_config));
+        try!(config.parse_index_sleep_duration(&parsed_config));
         try!(config.parse_mount_points(&parsed_config));
         try!(config.parse_users(&parsed_config));
         try!(config.parse_album_art_pattern(&parsed_config));
@@ -87,6 +91,19 @@ impl Config {
         Ok(())
     }
 
+    fn parse_index_sleep_duration(&mut self, source: &toml::Table) -> Result<(), ConfigError> {
+        let sleep_duration = match source.get(CONFIG_INDEX_SLEEP_DURATION) {
+            Some(s) => s,
+            None => return Ok(()),
+        };
+        let sleep_duration = match sleep_duration {
+            &toml::Value::Integer(s) => s as u64,
+            _ => return Err(ConfigError::SleepDurationParseError),
+        };
+        self.index.sleep_duration = sleep_duration;
+        Ok(())
+    }
+
     fn parse_album_art_pattern(&mut self, source: &toml::Table) -> Result<(), ConfigError> {
         let pattern = match source.get(CONFIG_ALBUM_ART_PATTERN) {
             Some(s) => s,
@@ -96,7 +113,7 @@ impl Config {
             &toml::Value::String(ref s) => s,
             _ => return Err(ConfigError::AlbumArtPatternParseError),
         };
-        self.album_art_pattern = Some(try!(regex::Regex::new(pattern)));
+        self.index.album_art_pattern = Some(try!(regex::Regex::new(pattern)));
         Ok(())
     }
 
