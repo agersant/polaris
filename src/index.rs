@@ -40,6 +40,7 @@ pub struct Index {
 }
 
 struct SongTags {
+    disc_number: Option<u32>,
     track_number: Option<u32>,
     title: Option<String>,
     artist: Option<String>,
@@ -64,6 +65,7 @@ impl SongTags {
         let album_artist = tag.album_artist().map(|s| s.to_string());
         let album = tag.album().map(|s| s.to_string());
         let title = tag.title().map(|s| s.to_string());
+        let disc_number = tag.disc();
         let track_number = tag.track();
         let year = tag.year()
             .map(|y| y as i32)
@@ -75,6 +77,7 @@ impl SongTags {
             album_artist: album_artist,
             album: album,
             title: title,
+            disc_number: disc_number,
             track_number: track_number,
             year: year,
         })
@@ -94,7 +97,7 @@ impl SongTags {
         }
     }
 
-    fn read_ape_track_number(item: &ape::Item) -> Option<u32> {
+    fn read_ape_x_of_y(item: &ape::Item) -> Option<u32> {
         match item.value {
             ape::ItemValue::Text(ref s) => {
                 let format = Regex::new(r#"^\d+"#).unwrap();
@@ -115,12 +118,14 @@ impl SongTags {
         let album_artist = tag.item("Album artist").and_then(SongTags::read_ape_string);
         let title = tag.item("Title").and_then(SongTags::read_ape_string);
         let year = tag.item("Year").and_then(SongTags::read_ape_i32);
-        let track_number = tag.item("Track").and_then(SongTags::read_ape_track_number);
+        let disc_number = tag.item("Disc").and_then(SongTags::read_ape_x_of_y);
+        let track_number = tag.item("Track").and_then(SongTags::read_ape_x_of_y);
         Ok(SongTags {
             artist: artist,
             album_artist: album_artist,
             album: album,
             title: title,
+            disc_number: disc_number,
             track_number: track_number,
             year: year,
         })
@@ -131,6 +136,7 @@ impl SongTags {
 pub struct Song {
     path: String,
     track_number: Option<u32>,
+    disc_number: Option<u32>,
     title: Option<String>,
     artist: Option<String>,
     album_artist: Option<String>,
@@ -194,8 +200,8 @@ impl<'db> IndexBuilder<'db> {
                           artist, album) VALUES (?, ?, ?, ?, ?, ?)")
                 .unwrap(),
             insert_song:
-                db.prepare("INSERT OR REPLACE INTO songs (path, parent, track_number, title, year, \
-                          album_artist, artist, album, artwork) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+                db.prepare("INSERT OR REPLACE INTO songs (path, parent, disc_number, track_number, title, year, \
+                          album_artist, artist, album, artwork) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
                 .unwrap(),
         }
     }
@@ -240,13 +246,14 @@ impl<'db> IndexBuilder<'db> {
                     self.insert_song.reset().ok();
                     self.insert_song.bind(1, &Value::String(song.path)).unwrap();
                     self.insert_song.bind(2, &string_option_to_value(parent)).unwrap();
-                    self.insert_song.bind(3, &u32_option_to_value(song.track_number)).unwrap();
-                    self.insert_song.bind(4, &string_option_to_value(song.title)).unwrap();
-                    self.insert_song.bind(5, &i32_option_to_value(song.year)).unwrap();
-                    self.insert_song.bind(6, &string_option_to_value(song.album_artist)).unwrap();
-                    self.insert_song.bind(7, &string_option_to_value(song.artist)).unwrap();
-                    self.insert_song.bind(8, &string_option_to_value(song.album)).unwrap();
-                    self.insert_song.bind(9, &string_option_to_value(song.artwork)).unwrap();
+                    self.insert_song.bind(3, &u32_option_to_value(song.disc_number)).unwrap();
+                    self.insert_song.bind(4, &u32_option_to_value(song.track_number)).unwrap();
+                    self.insert_song.bind(5, &string_option_to_value(song.title)).unwrap();
+                    self.insert_song.bind(6, &i32_option_to_value(song.year)).unwrap();
+                    self.insert_song.bind(7, &string_option_to_value(song.album_artist)).unwrap();
+                    self.insert_song.bind(8, &string_option_to_value(song.artist)).unwrap();
+                    self.insert_song.bind(9, &string_option_to_value(song.album)).unwrap();
+                    self.insert_song.bind(10, &string_option_to_value(song.artwork)).unwrap();
                     self.insert_song.next().ok();
                 }
 
@@ -326,6 +333,7 @@ impl Index {
 			,	path TEXT NOT NULL
 			, 	parent TEXT NOT \
                       NULL
+			,	disc_number INTEGER
 			,	track_number INTEGER
 			,	title TEXT
 			,	artist TEXT
@@ -473,6 +481,7 @@ impl Index {
 
                             let song = Song {
                                 path: file_path_string.to_owned(),
+                                disc_number: tags.disc_number,
                                 track_number: tags.track_number,
                                 title: tags.title,
                                 artist: tags.artist,
@@ -527,13 +536,14 @@ impl Index {
         while let State::Row = select.next().unwrap() {
 
             let song_path: String = select.read(0).unwrap();
-            let track_number: Value = select.read(1).unwrap();
-            let title: Value = select.read(2).unwrap();
-            let year: Value = select.read(3).unwrap();
-            let album_artist: Value = select.read(4).unwrap();
-            let artist: Value = select.read(5).unwrap();
-            let album: Value = select.read(6).unwrap();
-            let artwork: Value = select.read(7).unwrap();
+            let disc_number: Value = select.read(1).unwrap();
+            let track_number: Value = select.read(2).unwrap();
+            let title: Value = select.read(3).unwrap();
+            let year: Value = select.read(4).unwrap();
+            let album_artist: Value = select.read(5).unwrap();
+            let artist: Value = select.read(6).unwrap();
+            let album: Value = select.read(7).unwrap();
+            let artwork: Value = select.read(8).unwrap();
 
             let song_path = Path::new(song_path.as_str());
             let song_path = match self.vfs.real_to_virtual(song_path) {
@@ -547,6 +557,7 @@ impl Index {
 
             let song = Song {
                 path: song_path.to_str().unwrap().to_owned(),
+                disc_number: disc_number.as_integer().map(|n| n as u32),
                 track_number: track_number.as_integer().map(|n| n as u32),
                 title: title.as_string().map(|s| s.to_owned()),
                 year: year.as_integer().map(|n| n as i32),
@@ -609,7 +620,7 @@ impl Index {
         let db = self.connect();
         let path_string = real_path.to_string_lossy();
         let mut select =
-            db.prepare("SELECT path, track_number, title, year, album_artist, artist, album, \
+            db.prepare("SELECT path, disc_number, track_number, title, year, album_artist, artist, album, \
                           artwork FROM songs WHERE parent = ? ORDER BY path COLLATE NOCASE ASC")
                 .unwrap();
         select.bind(1, &Value::String(path_string.deref().to_owned())).unwrap();
@@ -650,7 +661,7 @@ impl Index {
         let real_path = try!(self.vfs.virtual_to_real(virtual_path));
         let path_string = real_path.to_string_lossy().into_owned() + "%";
         let mut select =
-            db.prepare("SELECT path, track_number, title, year, album_artist, artist, album, \
+            db.prepare("SELECT path, disc_number, track_number, title, year, album_artist, artist, album, \
                           artwork FROM songs WHERE path LIKE ? ORDER BY path COLLATE NOCASE ASC")
                 .unwrap();
         select.bind(1, &Value::String(path_string.deref().to_owned())).unwrap();
