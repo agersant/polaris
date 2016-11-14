@@ -6,14 +6,12 @@ use error::*;
 
 #[derive(Debug, Clone)]
 pub struct VfsConfig {
-	pub mount_points: HashMap<String, PathBuf>,
+    pub mount_points: HashMap<String, PathBuf>,
 }
 
 impl VfsConfig {
     pub fn new() -> VfsConfig {
-        VfsConfig {
-            mount_points: HashMap::new(),
-        }
+        VfsConfig { mount_points: HashMap::new() }
     }
 }
 
@@ -43,11 +41,13 @@ impl Vfs {
         for (name, target) in &self.mount_points {
             let mount_path = Path::new(&name);
             match virtual_path.strip_prefix(mount_path) {
-                Ok(p) => return if p.components().count() == 0 {
-                    Ok(target.clone())
-                } else {
-                    Ok(target.join(p))
-                },
+                Ok(p) => {
+                    return if p.components().count() == 0 {
+                        Ok(target.clone())
+                    } else {
+                        Ok(target.join(p))
+                    }
+                }
                 Err(_) => (),
             }
         }

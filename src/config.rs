@@ -24,14 +24,14 @@ const CONFIG_DDNS_PASSWORD: &'static str = "password";
 
 #[derive(Debug)]
 pub enum ConfigError {
-	IoError(io::Error),
-	TOMLParseError,
-	RegexError(regex::Error),
-	SecretParseError,
-	AlbumArtPatternParseError,
-	UsersParseError,
-	MountDirsParseError,
-	DDNSParseError,
+    IoError(io::Error),
+    TOMLParseError,
+    RegexError(regex::Error),
+    SecretParseError,
+    AlbumArtPatternParseError,
+    UsersParseError,
+    MountDirsParseError,
+    DDNSParseError,
     ConflictingMounts,
 }
 
@@ -48,46 +48,46 @@ impl From<regex::Error> for ConfigError {
 }
 
 pub struct Config {
-	pub secret: String,
-	pub vfs: VfsConfig,
+    pub secret: String,
+    pub vfs: VfsConfig,
     pub users: Vec<User>,
     pub album_art_pattern: Option<regex::Regex>,
-	pub ddns: Option<DDNSConfig>,
+    pub ddns: Option<DDNSConfig>,
 }
 
 impl Config {
-	pub fn parse(config_path: &path::Path) -> Result<Config, ConfigError> {
-		let mut config_file = try!(fs::File::open(config_path));
+    pub fn parse(config_path: &path::Path) -> Result<Config, ConfigError> {
+        let mut config_file = try!(fs::File::open(config_path));
         let mut config_file_content = String::new();
-		try!(config_file.read_to_string(&mut config_file_content));
-		let parsed_config = toml::Parser::new(config_file_content.as_str()).parse();
+        try!(config_file.read_to_string(&mut config_file_content));
+        let parsed_config = toml::Parser::new(config_file_content.as_str()).parse();
         let parsed_config = try!(parsed_config.ok_or(ConfigError::TOMLParseError));
 
-		let mut config = Config {
-			secret: String::new(),
-			vfs: VfsConfig::new(),
-			users: Vec::new(),
-			album_art_pattern: None,
-			ddns: None,
-		};
+        let mut config = Config {
+            secret: String::new(),
+            vfs: VfsConfig::new(),
+            users: Vec::new(),
+            album_art_pattern: None,
+            ddns: None,
+        };
 
-		try!(config.parse_secret(&parsed_config));
-		try!(config.parse_mount_points(&parsed_config));
+        try!(config.parse_secret(&parsed_config));
+        try!(config.parse_mount_points(&parsed_config));
         try!(config.parse_users(&parsed_config));
         try!(config.parse_album_art_pattern(&parsed_config));
         try!(config.parse_ddns(&parsed_config));
 
-		Ok(config)
-	}
+        Ok(config)
+    }
 
-	fn parse_secret(&mut self, source: &toml::Table) -> Result<(), ConfigError> {
-		let secret = try!(source.get(CONFIG_SECRET).ok_or(ConfigError::SecretParseError));
-		let secret = try!(secret.as_str().ok_or(ConfigError::SecretParseError));
-		self.secret = secret.to_owned();
-		Ok(())
-	}
+    fn parse_secret(&mut self, source: &toml::Table) -> Result<(), ConfigError> {
+        let secret = try!(source.get(CONFIG_SECRET).ok_or(ConfigError::SecretParseError));
+        let secret = try!(secret.as_str().ok_or(ConfigError::SecretParseError));
+        self.secret = secret.to_owned();
+        Ok(())
+    }
 
-	fn parse_album_art_pattern(&mut self, source: &toml::Table) -> Result<(), ConfigError> {
+    fn parse_album_art_pattern(&mut self, source: &toml::Table) -> Result<(), ConfigError> {
         let pattern = match source.get(CONFIG_ALBUM_ART_PATTERN) {
             Some(s) => s,
             None => return Ok(()),
@@ -100,7 +100,7 @@ impl Config {
         Ok(())
     }
 
-	fn parse_users(&mut self, source: &toml::Table) -> Result<(), ConfigError> {
+    fn parse_users(&mut self, source: &toml::Table) -> Result<(), ConfigError> {
         let users = match source.get(CONFIG_USERS) {
             Some(s) => s,
             None => return Ok(()),
@@ -137,7 +137,7 @@ impl Config {
         Ok(())
     }
 
-	fn parse_mount_points(&mut self, source: &toml::Table) -> Result<(), ConfigError> {
+    fn parse_mount_points(&mut self, source: &toml::Table) -> Result<(), ConfigError> {
         let mount_dirs = match source.get(CONFIG_MOUNT_DIRS) {
             Some(s) => s,
             None => return Ok(()),
@@ -177,30 +177,32 @@ impl Config {
         Ok(())
     }
 
-	fn parse_ddns(&mut self, source: &toml::Table) -> Result<(), ConfigError> {
+    fn parse_ddns(&mut self, source: &toml::Table) -> Result<(), ConfigError> {
         let ddns = match source.get(CONFIG_DDNS) {
             Some(s) => s,
             None => return Ok(()),
         };
-		let ddns = match ddns {
+        let ddns = match ddns {
             &toml::Value::Table(ref a) => a,
             _ => return Err(ConfigError::DDNSParseError),
         };
 
-		let host = try!(ddns.get(CONFIG_DDNS_HOST).ok_or(ConfigError::DDNSParseError)).as_str();
-		let username = try!(ddns.get(CONFIG_DDNS_USERNAME).ok_or(ConfigError::DDNSParseError)).as_str();
-		let password = try!(ddns.get(CONFIG_DDNS_PASSWORD).ok_or(ConfigError::DDNSParseError)).as_str();
+        let host = try!(ddns.get(CONFIG_DDNS_HOST).ok_or(ConfigError::DDNSParseError)).as_str();
+        let username = try!(ddns.get(CONFIG_DDNS_USERNAME).ok_or(ConfigError::DDNSParseError))
+            .as_str();
+        let password = try!(ddns.get(CONFIG_DDNS_PASSWORD).ok_or(ConfigError::DDNSParseError))
+            .as_str();
 
-		let host = try!(host.ok_or(ConfigError::DDNSParseError)); 
-		let username = try!(username.ok_or(ConfigError::DDNSParseError)); 
-		let password = try!(password.ok_or(ConfigError::DDNSParseError)); 
+        let host = try!(host.ok_or(ConfigError::DDNSParseError));
+        let username = try!(username.ok_or(ConfigError::DDNSParseError));
+        let password = try!(password.ok_or(ConfigError::DDNSParseError));
 
-		self.ddns = Some(DDNSConfig {
-			host: host.to_owned(),
-			username: username.to_owned(),
-			password: password.to_owned(),
-		});
-		Ok(())
+        self.ddns = Some(DDNSConfig {
+            host: host.to_owned(),
+            username: username.to_owned(),
+            password: password.to_owned(),
+        });
+        Ok(())
     }
 }
 
@@ -217,10 +219,10 @@ fn clean_path_string(path_string: &str) -> path::PathBuf {
 #[test]
 fn test_clean_path_string() {
     let mut correct_path = path::PathBuf::new();
-    correct_path.push("C:"); 
-    correct_path.push("some"); 
+    correct_path.push("C:");
+    correct_path.push("some");
     correct_path.push("path");
-    assert_eq!(correct_path, clean_path_string(r#"C:/some/path"#)); 
-    assert_eq!(correct_path, clean_path_string(r#"C:\some\path"#)); 
-    assert_eq!(correct_path, clean_path_string(r#"C:\some\path\"#)); 
+    assert_eq!(correct_path, clean_path_string(r#"C:/some/path"#));
+    assert_eq!(correct_path, clean_path_string(r#"C:\some\path"#));
+    assert_eq!(correct_path, clean_path_string(r#"C:\some\path\"#));
 }

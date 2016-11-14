@@ -70,7 +70,8 @@ fn main() {
     // Init index
     println!("Starting up index");
     let index_path = path::Path::new(INDEX_FILE_NAME);
-    let index = Arc::new(index::Index::new(&index_path, vfs.clone(), &config.album_art_pattern).unwrap());
+    let index = Arc::new(index::Index::new(&index_path, vfs.clone(), &config.album_art_pattern)
+        .unwrap());
     let index_ref = index.clone();
     std::thread::spawn(move || index_ref.run());
 
@@ -104,8 +105,8 @@ fn main() {
             std::thread::spawn(|| {
                 ddns::run(ddns_config);
             });
-        },
-        None => (),    
+        }
+        None => (),
     };
 
     // Run UI

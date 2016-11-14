@@ -52,9 +52,8 @@ pub fn get_api_handler(collection: Arc<Collection>) -> Mount {
 
     {
         let collection = collection.clone();
-        api_handler.mount("/auth/", move |request: &mut Request| {
-            self::auth(request, collection.deref())
-        });
+        api_handler.mount("/auth/",
+                          move |request: &mut Request| self::auth(request, collection.deref()));
     }
 
     {
@@ -189,7 +188,7 @@ fn serve(request: &mut Request, collection: &Collection) -> IronResult<Response>
     }
 
     if is_song(real_path.as_path()) {
-        return Ok(Response::with((status::Ok, real_path)))
+        return Ok(Response::with((status::Ok, real_path)));
     }
 
     if is_image(real_path.as_path()) {
@@ -203,6 +202,6 @@ fn art(_: &mut Request, real_path: &Path) -> IronResult<Response> {
     let thumb = get_thumbnail(real_path, 400);
     match thumb {
         Ok(path) => Ok(Response::with((status::Ok, path))),
-        Err(e) => Err(IronError::from(e))
+        Err(e) => Err(IronError::from(e)),
     }
 }
