@@ -15,8 +15,8 @@ use utils;
 use utils::AudioFormat;
 use vfs::Vfs;
 
-const INDEX_BUILDING_INSERT_BUFFER_SIZE: usize = 500; // Put 500 insertions in each transaction
-const INDEX_LOCK_TIMEOUT: usize = 100; // In milliseconds
+const INDEX_BUILDING_INSERT_BUFFER_SIZE: usize = 250; // Insertions in each transaction
+const INDEX_LOCK_TIMEOUT: usize = 1000; // In milliseconds
 
 pub struct Index {
     path: String,
