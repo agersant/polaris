@@ -1,3 +1,4 @@
+use ape;
 use std::error;
 use std::fmt;
 use std::io;
@@ -20,9 +21,17 @@ pub enum PError {
     ConfigAlbumArtPatternParseError,
     AlbumArtSearchError,
     ImageProcessingError,
+    UnsupportedMetadataFormat,
+    APEParseError,
     ID3ParseError,
     Unauthorized,
     IncorrectCredentials,
+}
+
+impl From<ape::Error> for PError {
+    fn from(_: ape::Error) -> PError {
+        PError::APEParseError
+    }
 }
 
 impl From<io::Error> for PError {
@@ -62,6 +71,8 @@ impl error::Error for PError {
             }
             PError::AlbumArtSearchError => "Error while looking for album art",
             PError::ImageProcessingError => "Error while processing image",
+            PError::UnsupportedMetadataFormat => "Unsupported metadata format",
+            PError::APEParseError => "Error while reading APE tag",
             PError::ID3ParseError => "Error while reading ID3 tag",
             PError::Unauthorized => "Authentication required",
             PError::IncorrectCredentials => "Incorrect username/password combination",
@@ -97,6 +108,8 @@ impl fmt::Display for PError {
             }
             PError::AlbumArtSearchError => write!(f, "Error while looking for album art"),
             PError::ImageProcessingError => write!(f, "Error while processing image"),
+            PError::UnsupportedMetadataFormat => write!(f, "Unsupported metadata format"),
+            PError::APEParseError => write!(f, "Error while reading APE tag"),
             PError::ID3ParseError => write!(f, "Error while reading ID3 tag"),
             PError::Unauthorized => write!(f, "Authentication required"),
             PError::IncorrectCredentials => write!(f, "Incorrect username/password combination"),

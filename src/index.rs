@@ -1,4 +1,5 @@
 use core::ops::Deref;
+use ape;
 use id3::Tag;
 use regex::Regex;
 use sqlite;
@@ -10,6 +11,8 @@ use std::thread;
 use std::time;
 
 use error::*;
+use utils;
+use utils::AudioFormat;
 use vfs::Vfs;
 
 const INDEX_BUILDING_INSERT_BUFFER_SIZE: usize = 500; // Put 500 insertions in each transaction
@@ -32,7 +35,15 @@ struct SongTags {
 
 impl SongTags {
     fn read(path: &Path) -> Result<SongTags, PError> {
-        let tag = try!(Tag::read_from_path(path));
+		match utils::get_audio_format(path) {
+			Some(AudioFormat::MP3) => SongTags::read_id3(path),
+			Some(AudioFormat::MPC) => SongTags::read_ape(path),
+			_ => Err(PError::UnsupportedMetadataFormat),
+		}
+    }
+
+	fn read_id3(path: &Path) -> Result<SongTags, PError> {
+		let tag = try!(Tag::read_from_path(path));
 
         let artist = tag.artist().map(|s| s.to_string());
         let album_artist = tag.album_artist().map(|s| s.to_string());
@@ -52,7 +63,53 @@ impl SongTags {
             track_number: track_number,
             year: year,
         })
-    }
+	}
+
+	fn read_ape_string(item: &ape::Item) -> Option<String> {
+		match item.value {
+			ape::ItemValue::Text(ref s) => Some(s.clone()),
+			_ => None,
+		}
+	}
+
+	fn read_ape_i32(item: &ape::Item) -> Option<i32> {
+		match item.value {
+			ape::ItemValue::Text(ref s) => s.parse::<i32>().ok(),
+			_ => None,
+		}
+	}
+
+	fn read_ape_track_number(item: &ape::Item) -> Option<u32> {
+		match item.value {
+			ape::ItemValue::Text(ref s) => {
+				let format = Regex::new(r#"^\d+"#).unwrap();
+				if let Some((start, end)) = format.find(s) {
+					s[start..end].parse().ok()
+				} else {
+					None
+				}
+			},
+			_ => None,
+		}
+	}
+
+	fn read_ape(path: &Path) -> Result<SongTags, PError> {
+		let tag = try!(ape::read(path));
+		let artist = tag.item("Artist").and_then(SongTags::read_ape_string);
+		let album = tag.item("Album").and_then(SongTags::read_ape_string);
+		let album_artist = tag.item("Album artist").and_then(SongTags::read_ape_string);
+		let title = tag.item("Title").and_then(SongTags::read_ape_string);
+		let year = tag.item("Year").and_then(SongTags::read_ape_i32);
+		let track_number = tag.item("Track").and_then(SongTags::read_ape_track_number);
+		Ok(SongTags {
+            artist: artist,
+            album_artist: album_artist,
+            album: album,
+            title: title,
+            track_number: track_number,
+            year: year,
+        })
+	}
 }
 
 #[derive(Debug, RustcEncodable)]

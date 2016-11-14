@@ -1,3 +1,4 @@
+extern crate ape;
 extern crate core;
 extern crate getopts;
 extern crate hyper;
