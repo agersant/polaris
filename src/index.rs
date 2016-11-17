@@ -1,6 +1,8 @@
 use core::ops::Deref;
 use ape;
 use id3::Tag;
+use lewton::inside_ogg::OggStreamReader;
+use ogg::PacketReader;
 use regex::Regex;
 use sqlite;
 use sqlite::{Connection, State, Statement, Value};
@@ -54,6 +56,7 @@ impl SongTags {
         match utils::get_audio_format(path) {
             Some(AudioFormat::MP3) => SongTags::read_id3(path),
             Some(AudioFormat::MPC) => SongTags::read_ape(path),
+            Some(AudioFormat::OGG) => SongTags::read_vorbis(path),
             _ => Err(PError::UnsupportedMetadataFormat),
         }
     }
@@ -129,6 +132,37 @@ impl SongTags {
             track_number: track_number,
             year: year,
         })
+    }
+
+    fn read_vorbis(path: &Path) -> Result<SongTags, PError> {
+
+        let file = try!(fs::File::open(path));
+        let source = try!(OggStreamReader::new(PacketReader::new(file)));
+
+        let mut tags = SongTags {
+            artist: None,
+            album_artist: None,
+            album: None,
+            title: None,
+            disc_number: None,
+            track_number: None,
+            year: None,
+        };
+
+        for (key, value) in source.comment_hdr.comment_list {
+            match key.as_str() {
+                "TITLE" => tags.title = Some(value),
+                "ALBUM" => tags.album = Some(value),
+                "ARTIST" => tags.artist = Some(value),
+                "ALBUMARTIST" => tags.album_artist = Some(value),
+                "TRACKNUMBER" => tags.track_number = value.parse::<u32>().ok(),
+                "DISCNUMBER" => tags.disc_number = value.parse::<u32>().ok(),
+                "DATE" => tags.year = value.parse::<i32>().ok(),
+                _ => (),
+            }
+        }
+
+        Ok(tags)
     }
 }
 

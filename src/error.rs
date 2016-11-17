@@ -4,6 +4,7 @@ use std::fmt;
 use std::io;
 use id3;
 use image;
+use lewton;
 
 #[derive(Debug)]
 pub enum PError {
@@ -24,6 +25,7 @@ pub enum PError {
     UnsupportedMetadataFormat,
     APEParseError,
     ID3ParseError,
+    VorbisParseError,
     Unauthorized,
     IncorrectCredentials,
 }
@@ -52,6 +54,12 @@ impl From<image::ImageError> for PError {
     }
 }
 
+impl From<lewton::VorbisError> for PError {
+    fn from(_: lewton::VorbisError) -> PError {
+        PError::VorbisParseError
+    }
+}
+
 impl error::Error for PError {
     fn description(&self) -> &str {
         match *self {
@@ -74,6 +82,7 @@ impl error::Error for PError {
             PError::UnsupportedMetadataFormat => "Unsupported metadata format",
             PError::APEParseError => "Error while reading APE tag",
             PError::ID3ParseError => "Error while reading ID3 tag",
+            PError::VorbisParseError => "Error while reading Vorbis tag",
             PError::Unauthorized => "Authentication required",
             PError::IncorrectCredentials => "Incorrect username/password combination",
         }
@@ -111,6 +120,7 @@ impl fmt::Display for PError {
             PError::UnsupportedMetadataFormat => write!(f, "Unsupported metadata format"),
             PError::APEParseError => write!(f, "Error while reading APE tag"),
             PError::ID3ParseError => write!(f, "Error while reading ID3 tag"),
+            PError::VorbisParseError => write!(f, "Error while reading Vorbis tag"),
             PError::Unauthorized => write!(f, "Authentication required"),
             PError::IncorrectCredentials => write!(f, "Incorrect username/password combination"),
         }

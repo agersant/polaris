@@ -41,6 +41,7 @@ impl From<PError> for IronError {
             PError::UnsupportedMetadataFormat => IronError::new(err, status::InternalServerError),
             PError::APEParseError => IronError::new(err, status::InternalServerError),
             PError::ID3ParseError => IronError::new(err, status::InternalServerError),
+            PError::VorbisParseError => IronError::new(err, status::InternalServerError),
             PError::Unauthorized => IronError::new(err, status::Unauthorized),
             PError::IncorrectCredentials => IronError::new(err, status::BadRequest),
         }
