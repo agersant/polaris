@@ -5,6 +5,7 @@ use std::io;
 use id3;
 use image;
 use lewton;
+use metaflac;
 
 #[derive(Debug)]
 pub enum PError {
@@ -54,6 +55,12 @@ impl From<image::ImageError> for PError {
 
 impl From<lewton::VorbisError> for PError {
     fn from(_: lewton::VorbisError) -> PError {
+        PError::MetadataDecodingError
+    }
+}
+
+impl From<metaflac::Error> for PError {
+    fn from(_: metaflac::Error) -> PError {
         PError::MetadataDecodingError
     }
 }

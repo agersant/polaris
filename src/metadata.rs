@@ -1,6 +1,7 @@
 use ape;
-use id3::Tag;
+use id3;
 use lewton::inside_ogg::OggStreamReader;
+use metaflac;
 use ogg::PacketReader;
 use regex::Regex;
 use std::fs;
@@ -23,6 +24,7 @@ pub struct SongTags {
 impl SongTags {
     pub fn read(path: &Path) -> Result<SongTags, PError> {
         match utils::get_audio_format(path) {
+            Some(AudioFormat::FLAC) => SongTags::read_flac(path),
             Some(AudioFormat::MP3) => SongTags::read_id3(path),
             Some(AudioFormat::MPC) => SongTags::read_ape(path),
             Some(AudioFormat::OGG) => SongTags::read_vorbis(path),
@@ -31,7 +33,7 @@ impl SongTags {
     }
 
     fn read_id3(path: &Path) -> Result<SongTags, PError> {
-        let tag = try!(Tag::read_from_path(path));
+        let tag = try!(id3::Tag::read_from_path(path));
 
         let artist = tag.artist().map(|s| s.to_string());
         let album_artist = tag.album_artist().map(|s| s.to_string());
@@ -133,4 +135,20 @@ impl SongTags {
 
         Ok(tags)
     }
+
+	fn read_flac(path: &Path) -> Result<SongTags, PError> {
+		let tag = try!(metaflac::Tag::read_from_path(path));
+		let vorbis = try!(tag.vorbis_comments().ok_or(PError::MetadataDecodingError));
+		let disc_number = vorbis.get("DISCNUMBER").and_then(|d| d[0].parse::<u32>().ok());
+		let year = vorbis.get("DATE").and_then(|d| d[0].parse::<i32>().ok());
+		Ok(SongTags {
+            artist: vorbis.artist().map(|v| v[0].clone()),
+            album_artist: vorbis.album_artist().map(|v| v[0].clone()),
+            album: vorbis.album().map(|v| v[0].clone()),
+            title: vorbis.title().map(|v| v[0].clone()),
+            disc_number: disc_number,
+            track_number: vorbis.track(),
+            year: year,
+        })
+	}
 }

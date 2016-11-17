@@ -6,6 +6,7 @@ extern crate id3;
 extern crate image;
 extern crate iron;
 extern crate lewton;
+extern crate metaflac;
 extern crate mount;
 extern crate ogg;
 extern crate oven;
