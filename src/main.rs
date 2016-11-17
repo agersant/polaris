@@ -41,6 +41,7 @@ mod config;
 mod ddns;
 mod error;
 mod index;
+mod metadata;
 mod ui;
 mod utils;
 mod thumbnails;

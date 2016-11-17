@@ -39,9 +39,7 @@ impl From<PError> for IronError {
             PError::AlbumArtSearchError => IronError::new(err, status::InternalServerError),
             PError::ImageProcessingError => IronError::new(err, status::InternalServerError),
             PError::UnsupportedMetadataFormat => IronError::new(err, status::InternalServerError),
-            PError::APEParseError => IronError::new(err, status::InternalServerError),
-            PError::ID3ParseError => IronError::new(err, status::InternalServerError),
-            PError::VorbisParseError => IronError::new(err, status::InternalServerError),
+            PError::MetadataDecodingError => IronError::new(err, status::InternalServerError),
             PError::Unauthorized => IronError::new(err, status::Unauthorized),
             PError::IncorrectCredentials => IronError::new(err, status::BadRequest),
         }

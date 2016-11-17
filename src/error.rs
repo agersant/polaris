@@ -23,16 +23,14 @@ pub enum PError {
     AlbumArtSearchError,
     ImageProcessingError,
     UnsupportedMetadataFormat,
-    APEParseError,
-    ID3ParseError,
-    VorbisParseError,
+    MetadataDecodingError,
     Unauthorized,
     IncorrectCredentials,
 }
 
 impl From<ape::Error> for PError {
     fn from(_: ape::Error) -> PError {
-        PError::APEParseError
+        PError::MetadataDecodingError
     }
 }
 
@@ -44,7 +42,7 @@ impl From<io::Error> for PError {
 
 impl From<id3::Error> for PError {
     fn from(_: id3::Error) -> PError {
-        PError::ID3ParseError
+        PError::MetadataDecodingError
     }
 }
 
@@ -56,7 +54,7 @@ impl From<image::ImageError> for PError {
 
 impl From<lewton::VorbisError> for PError {
     fn from(_: lewton::VorbisError) -> PError {
-        PError::VorbisParseError
+        PError::MetadataDecodingError
     }
 }
 
@@ -80,9 +78,7 @@ impl error::Error for PError {
             PError::AlbumArtSearchError => "Error while looking for album art",
             PError::ImageProcessingError => "Error while processing image",
             PError::UnsupportedMetadataFormat => "Unsupported metadata format",
-            PError::APEParseError => "Error while reading APE tag",
-            PError::ID3ParseError => "Error while reading ID3 tag",
-            PError::VorbisParseError => "Error while reading Vorbis tag",
+            PError::MetadataDecodingError => "Error while reading song metadata",
             PError::Unauthorized => "Authentication required",
             PError::IncorrectCredentials => "Incorrect username/password combination",
         }
@@ -118,9 +114,7 @@ impl fmt::Display for PError {
             PError::AlbumArtSearchError => write!(f, "Error while looking for album art"),
             PError::ImageProcessingError => write!(f, "Error while processing image"),
             PError::UnsupportedMetadataFormat => write!(f, "Unsupported metadata format"),
-            PError::APEParseError => write!(f, "Error while reading APE tag"),
-            PError::ID3ParseError => write!(f, "Error while reading ID3 tag"),
-            PError::VorbisParseError => write!(f, "Error while reading Vorbis tag"),
+            PError::MetadataDecodingError => write!(f, "Error while reading song metadata"),
             PError::Unauthorized => write!(f, "Authentication required"),
             PError::IncorrectCredentials => write!(f, "Incorrect username/password combination"),
         }
