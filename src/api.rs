@@ -19,6 +19,24 @@ use error::*;
 use thumbnails::*;
 use utils::*;
 
+const CURRENT_MAJOR_VERSION: i32 = 1;
+const CURRENT_MINOR_VERSION: i32 = 0;
+
+#[derive(RustcEncodable)]
+struct Version {
+    major: i32,
+    minor: i32,
+}
+
+impl Version {
+    fn new(major: i32, minor: i32) -> Version {
+        Version {
+            major: major,
+            minor: minor,
+        }
+    }
+}
+
 impl From<PError> for IronError {
     fn from(err: PError) -> IronError {
         match err {
@@ -51,6 +69,7 @@ pub fn get_api_handler(collection: Arc<Collection>) -> Mount {
 
     {
         let collection = collection.clone();
+        api_handler.mount("/version/", self::version);
         api_handler.mount("/auth/",
                           move |request: &mut Request| self::auth(request, collection.deref()));
     }
@@ -99,6 +118,14 @@ impl BeforeMiddleware for AuthRequirement {
         } else {
             Err(IronError::new(PError::Unauthorized, status::Unauthorized))
         }
+    }
+}
+
+fn version(_: &mut Request) -> IronResult<Response> {
+    let current_version = Version::new(CURRENT_MAJOR_VERSION, CURRENT_MINOR_VERSION);
+    match json::encode(&current_version) {
+        Ok(result_json) => Ok(Response::with((status::Ok, result_json))),
+        Err(e) => Err(IronError::new(e, status::InternalServerError)),
     }
 }
 
