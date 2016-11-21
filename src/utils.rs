@@ -5,7 +5,7 @@ use std::fs;
 use error::PError;
 
 pub fn get_config_root() -> Result<PathBuf, PError> {
-    if let Ok(mut root) = data_root(AppDataType::UserConfig){
+    if let Ok(mut root) = data_root(AppDataType::SharedConfig){
         root.push("Polaris");
         return match fs::create_dir_all(&root) {
             Ok(()) => Ok(root),
@@ -16,7 +16,7 @@ pub fn get_config_root() -> Result<PathBuf, PError> {
 }
 
 pub fn get_cache_root() -> Result<PathBuf, PError> {
-    if let Ok(mut root) = data_root(AppDataType::UserCache){
+    if let Ok(mut root) = data_root(AppDataType::SharedData){
         root.push("Polaris");
         return match fs::create_dir_all(&root) {
             Ok(()) => Ok(root),

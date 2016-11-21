@@ -8,7 +8,7 @@ ui = []
 
 [dependencies]
 ape = "0.1.2"
-app_dirs = "1.1.1"
+app_dirs = { git = "https://github.com/agersant/app-dirs-rs" }
 getopts = "0.2.14"
 hyper = "0.9.10"
 id3 = { git = "https://github.com/jameshurst/rust-id3" }

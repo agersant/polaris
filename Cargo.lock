@@ -3,7 +3,7 @@ name = "polaris"
 version = "0.2.0"
 dependencies = [
  "ape 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "app_dirs 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "app_dirs 1.1.1 (git+https://github.com/agersant/app-dirs-rs)",
  "getopts 0.2.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.9.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "id3 0.1.10 (git+https://github.com/jameshurst/rust-id3)",
@@ -48,7 +48,7 @@ dependencies = [
 [[package]]
 name = "app_dirs"
 version = "1.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+source = "git+https://github.com/agersant/app-dirs-rs#8a0d107dee31183a78ae382c904e0fe70d7432b8"
 dependencies = [
  "ole32-sys 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "shell32-sys 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1128,7 +1128,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [metadata]
 "checksum aho-corasick 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)" = "ca972c2ea5f742bfce5687b9aef75506a764f61d37f8f649047846a9686ddb66"
 "checksum ape 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "b419c2e36e91776200588f91e24c970d16d34236369136ca819f12dd903c5691"
-"checksum app_dirs 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "b7d1c0d48a81bbb13043847f957971f4d87c81542d80ece5e84ba3cba4058fd4"
+"checksum app_dirs 1.1.1 (git+https://github.com/agersant/app-dirs-rs)" = "<none>"
 "checksum bitflags 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "aad18937a628ec6abcd26d1489012cc0e18c21798210f491af69ded9b881106d"
 "checksum bodyparser 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "07b171b407e583dc8f01011a713f20575a81ac60acecf3b8153012709aeb1fd6"
 "checksum buf_redux 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "b115bd9935c68b58f80ff867e1c46942c4aed79e78bcc8c2bc22d50f52bb9099"

@@ -2,7 +2,7 @@
 <Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
 	<Product Name='Polaris' Id='33986EB1-E35C-4E01-817C-FA23F0C0FB88' UpgradeCode='9D86F109-E1EC-4C67-826C-8FB813838C49' Language='1033' Codepage='1252' Version='0.2.0' Manufacturer='Antoine Gersant'>
 
-		<Package Id='*' Keywords='Installer' Platform='x64' Description='Polaris Installer' Manufacturer='Antoine Gersant' Languages='1033' Compressed='yes' SummaryCodepage='1252' />
+		<Package Id='*' Keywords='Installer' Platform='x64' InstallPrivileges='elevated' InstallScope='perMachine' Description='Polaris Installer' Manufacturer='Antoine Gersant' Languages='1033' Compressed='yes' SummaryCodepage='1252' />
 
 		<Upgrade Id='9D86F109-E1EC-4C67-826C-8FB813838C49'>
     		<UpgradeVersion OnlyDetect='no' Property='OTHERFOUND' Minimum='0.1.0' IncludeMinimum='yes' Maximum='0.2.0' IncludeMaximum='no' />
@@ -73,11 +73,12 @@
 				</Directory>
 			</Directory>
 
-			<Directory Id='AppDataFolder'>
+			<Directory Id='CommonAppDataFolder'>
   				<Directory Id='AppDataPolaris' Name='Polaris'>
 					<Component Id='ConfigFile' Guid='FAF6D040-CFA2-4C56-B5EB-C8A3054294E0'>
-						<RegistryValue Root='HKCU' Key='Software\Polaris' Name='ConfigFile' Type='string' Value='' KeyPath='yes' />
-						<File Source='polaris.toml'/>
+						<File Source='polaris.toml'>
+							<Permission GenericAll='yes' User='Everyone' />
+						</File>
 						<RemoveFolder Id='RemoveAppDataPolaris' Directory='AppDataPolaris' On='uninstall' />
 					</Component>
   				</Directory>
