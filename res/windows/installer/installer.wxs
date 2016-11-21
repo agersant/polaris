@@ -5,98 +5,97 @@
 		<Package Id='*' Keywords='Installer' Platform='x64' Description='Polaris Installer' Manufacturer='Antoine Gersant' Languages='1033' Compressed='yes' SummaryCodepage='1252' />
 
 		<Upgrade Id='9D86F109-E1EC-4C67-826C-8FB813838C49'>
-    		<UpgradeVersion OnlyDetect='no' Property='OTHERFOUND'
-        		Minimum='0.1.0' IncludeMinimum='yes'
-				Maximum='0.2.0' IncludeMaximum='no'
-			/>
+    		<UpgradeVersion OnlyDetect='no' Property='OTHERFOUND' Minimum='0.1.0' IncludeMinimum='yes' Maximum='0.2.0' IncludeMaximum='no' />
 		</Upgrade>
+
 		<InstallExecuteSequence>
-			<RemoveExistingProducts Before="InstallInitialize" />
+			<RemoveExistingProducts After='InstallFinalize' />
 		</InstallExecuteSequence>
 
 		<Media Id='1' Cabinet='Sample.cab' EmbedCab='yes' DiskPrompt='Installation Media #1' />
 		<Property Id='DiskPrompt' Value='Polaris Installation [1]' />
 
 		<Directory Id='TARGETDIR' Name='SourceDir'>
-
 			<Directory Id='ProgramFiles64Folder' Name='PFiles'>
-				<Directory Id='Polaris' Name='Polaris'>
-					<Directory Id='INSTALL_DIR' Name='Polaris' FileSource='.'>
+				<Directory Id='INSTALL_DIR' Name='Polaris' FileSource='.'>
 
-						<Component Id='MainExecutable' Guid='4E27209A-48B6-4A2A-8778-6383C83F0B24'>
-							<File Source='polaris.exe' KeyPath='yes' Checksum='yes'>
-								<Shortcut Id='StartupMenuPolaris' Directory='StartupFolder' Name='Polaris' WorkingDirectory='INSTALL_DIR' Icon='polaris.exe' IconIndex='0' Advertise='yes' />
-								<Shortcut Id='StartMenuPolaris' Directory='ProgramMenuDir' Name='Polaris' WorkingDirectory='INSTALL_DIR' Icon='polaris.exe' IconIndex='0' Advertise='yes' />
-								<Shortcut Id='DesktopPolaris' Directory='DesktopFolder' Name='Polaris' WorkingDirectory='INSTALL_DIR' Icon='polaris.exe' IconIndex='0' Advertise='yes' />
-							</File>
+					<Component Id='MainExecutable' Guid='4E27209A-48B6-4A2A-8778-6383C83F0B24'>
+						<File Source='polaris.exe' KeyPath='yes' Checksum='yes'>
+							<Shortcut Id='StartupMenuPolaris' Directory='StartupFolder' Name='Polaris' WorkingDirectory='INSTALL_DIR' Icon='polaris.exe' IconIndex='0' Advertise='yes' />
+							<Shortcut Id='StartMenuPolaris' Directory='ProgramMenuDir' Name='Polaris' WorkingDirectory='INSTALL_DIR' Icon='polaris.exe' IconIndex='0' Advertise='yes' />
+							<Shortcut Id='DesktopPolaris' Directory='DesktopFolder' Name='Polaris' WorkingDirectory='INSTALL_DIR' Icon='polaris.exe' IconIndex='0' Advertise='yes' />
+						</File>
+					</Component>						
+
+					<Component Id='OpenSSL' Guid='8F4A07F6-CADB-4001-92F6-C7184A053B3B'>
+						<File Id='LibEAY' Name='libeay32.dll' Source='libeay32.dll' />
+						<File Id='LibEAYmd' Name='libeay32md.dll' Source='libeay32md.dll' />
+					</Component>
+
+					<Directory Id='web' Name='web'>
+
+						<Component Id='WebUIIndex' Guid='B666CED5-951E-40F4-8A33-E9C4FEEFF578'>
+							<File Name='index.html' />
 						</Component>
 
-						<Component Id='ConfigFile' Guid='02CE53F6-F14F-4459-90AA-9CB06CD39D43'>
-							<File KeyPath='yes' Source='polaris.toml'/>
-						</Component>
-
-						<Component Id='OpenSSL' Guid='8F4A07F6-CADB-4001-92F6-C7184A053B3B'>
-							<File Id='LibEAY' Name='libeay32.dll' Source='libeay32.dll' />
-							<File Id='LibEAYmd' Name='libeay32md.dll' Source='libeay32md.dll' />
-						</Component>
-
-						<Directory Id='web' Name='web'>
-
-							<Component Id='WebUIIndex' Guid='B666CED5-951E-40F4-8A33-E9C4FEEFF578'>
-								<File Name='index.html' />
+						<Directory Id='js' Name='js'>
+							<Component Id='WebUIJS' Guid='D5C12922-182A-4AE9-B863-D7ACA7FC2357'>
+								<File Name='utils.js' />
+								<File Name='notify.js' />
 							</Component>
-
-							<Directory Id='js' Name='js'>
-								<Component Id='WebUIJS' Guid='D5C12922-182A-4AE9-B863-D7ACA7FC2357'>
-									<File Name='utils.js' />
-									<File Name='notify.js' />
-								</Component>
-							</Directory>
-
-							<Directory Id='lib' Name='lib'>
-								<Component Id='WebUILib' Guid='294ECB0A-2CE7-4F1F-852C-FA81E6082B4C'>
-									<File Name='js.cookie.js' />
-									<File Name='riot+compiler.min.js' />
-								</Component>
-							</Directory>
-
-							<Directory Id='tags' Name='tags'>
-								<Component Id='WebUITags' Guid='E1058E84-EC96-4CD8-8E51-DBB1F2DAA593'>
-									<File Name='auth.tag' />
-									<File Name='breadcrumbs.tag' />
-									<File Name='browser.tag' />
-									<File Name='main.tag' />
-									<File Name='player.tag' />
-									<File Name='playlist.tag' />
-								</Component>
-							</Directory>
-
-							<Directory Id='style' Name='style'>
-								<Component Id='WebUIStyle' Guid='9D8F839D-7E94-4DE4-9B22-30360C1A433D'>
-									<File Name='default.css' />
-								</Component>
-							</Directory>
-
 						</Directory>
+
+						<Directory Id='lib' Name='lib'>
+							<Component Id='WebUILib' Guid='294ECB0A-2CE7-4F1F-852C-FA81E6082B4C'>
+								<File Name='js.cookie.js' />
+								<File Name='riot+compiler.min.js' />
+							</Component>
+						</Directory>
+
+						<Directory Id='tags' Name='tags'>
+							<Component Id='WebUITags' Guid='E1058E84-EC96-4CD8-8E51-DBB1F2DAA593'>
+								<File Name='auth.tag' />
+								<File Name='breadcrumbs.tag' />
+								<File Name='browser.tag' />
+								<File Name='main.tag' />
+								<File Name='player.tag' />
+								<File Name='playlist.tag' />
+							</Component>
+						</Directory>
+
+						<Directory Id='style' Name='style'>
+							<Component Id='WebUIStyle' Guid='9D8F839D-7E94-4DE4-9B22-30360C1A433D'>
+								<File Name='default.css' />
+							</Component>
+						</Directory>
+
 					</Directory>
 				</Directory>
+			</Directory>
+
+			<Directory Id='AppDataFolder'>
+  				<Directory Id='AppDataPolaris' Name='Polaris'>
+					<Component Id='ConfigFile' Guid='FAF6D040-CFA2-4C56-B5EB-C8A3054294E0'>
+						<RegistryValue Root='HKCU' Key='Software\Polaris' Name='ConfigFile' Type='string' Value='' KeyPath='yes' />
+						<File Source='polaris.toml'/>
+						<RemoveFolder Id='RemoveAppDataPolaris' Directory='AppDataPolaris' On='uninstall' />
+					</Component>
+  				</Directory>
 			</Directory>
 
 			<Directory Id='DesktopFolder' Name='Desktop' />
 			<Directory Id='StartupFolder' Name='Startup' />
 
 			<Directory Id='ProgramMenuFolder' Name='Programs'>
-				<Directory Id='ProgramMenuDir' Name='Polaris' />
+				<Directory Id='ProgramMenuDir' Name='Polaris'>
+					<Component Id='ProgramMenuDir' Guid='9E677DF0-414B-481F-ACCC-73B2A38EC93A'>
+						<RemoveFolder Id='ProgramMenuDir' On='uninstall' />
+						<RegistryValue Root='HKCU' Key='Software\Polaris' Name='ProgramMenuEntry' Type='string' Value='' KeyPath='yes' />
+					</Component>
+				</Directory>
 			</Directory>
 
 		</Directory>
-
-		<DirectoryRef Id='ProgramMenuDir'>
-			<Component Id='ProgramMenuDir' Guid='9E677DF0-414B-481F-ACCC-73B2A38EC93A'>
-				<RemoveFolder Id='ProgramMenuDir' On='uninstall' />
-				<RegistryValue Root='HKCU' Key='Software\Polaris\Polaris' Type='string' Value='' KeyPath='yes' />
-			</Component>
-		</DirectoryRef>
 
 		<Feature Id='Complete' Level='1'>
 			<ComponentRef Id='MainExecutable' />
@@ -113,11 +112,11 @@
 		<Icon Id='polaris.exe' SourceFile='polaris.exe' />
 		<Property Id='ARPPRODUCTICON' Value='polaris.exe' />
 
-		<Property Id="WIXUI_INSTALLDIR" Value="INSTALL_DIR" />
-		<UIRef Id="WixUI_Minimal" />
-		<WixVariable Id="WixUILicenseRtf" Value="license.rtf" />
-		<WixVariable Id="WixUIDialogBmp" Value="dialog.bmp" />
-		<WixVariable Id="WixUIBannerBmp" Value="banner.bmp" />
+		<Property Id='WIXUI_INSTALLDIR' Value='INSTALL_DIR' />
+		<UIRef Id='WixUI_Minimal' />
+		<WixVariable Id='WixUILicenseRtf' Value='license.rtf' />
+		<WixVariable Id='WixUIDialogBmp' Value='dialog.bmp' />
+		<WixVariable Id='WixUIBannerBmp' Value='banner.bmp' />
 
 	</Product>
 </Wix>
