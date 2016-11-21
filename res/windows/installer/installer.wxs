@@ -36,6 +36,13 @@
 								<File Name='index.html' />
 							</Component>
 
+							<Directory Id='js' Name='js'>
+								<Component Id='WebUIJS' Guid='D5C12922-182A-4AE9-B863-D7ACA7FC2357'>
+									<File Name='utils.js' />
+									<File Name='notify.js' />
+								</Component>
+							</Directory>
+
 							<Directory Id='lib' Name='lib'>
 								<Component Id='WebUILib' Guid='294ECB0A-2CE7-4F1F-852C-FA81E6082B4C'>
 									<File Name='js.cookie.js' />
