@@ -1,8 +1,20 @@
 <?xml version='1.0' encoding='windows-1252'?>
 <Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
-	<Product Name='Polaris' Id='CC2BCB3C-6FD2-4B81-B89F-3F4A9DA75BF7' UpgradeCode='9D86F109-E1EC-4C67-826C-8FB813838C49' Language='1033' Codepage='1252' Version='0.1.0' Manufacturer='Antoine Gersant'>
+	<Product Name='Polaris' Id='33986EB1-E35C-4E01-817C-FA23F0C0FB88' UpgradeCode='9D86F109-E1EC-4C67-826C-8FB813838C49' Language='1033' Codepage='1252' Version='0.2.0' Manufacturer='Antoine Gersant'>
 
 		<Package Id='*' Keywords='Installer' Platform='x64' Description='Polaris Installer' Manufacturer='Antoine Gersant' Languages='1033' Compressed='yes' SummaryCodepage='1252' />
+
+		<Upgrade Id='9D86F109-E1EC-4C67-826C-8FB813838C49'>
+    		<UpgradeVersion OnlyDetect='yes' Property='SELFFOUND' Minimum='0.2.0' IncludeMinimum='yes' Maximum='0.2.0' IncludeMaximum='yes' />
+    		<UpgradeVersion OnlyDetect='yes' Property='NEWERFOUND' Minimum='0.2.0' IncludeMinimum='no' />
+		</Upgrade>
+
+		<CustomAction Id='AlreadyUpdated' Error='Your Polaris installation has already been updated.' />
+		<CustomAction Id='NoDowngrade' Error='A later version of Polaris is already installed.' />
+		<InstallExecuteSequence>
+    		<Custom Action='AlreadyUpdated' After='FindRelatedProducts'>SELFFOUND</Custom>
+    		<Custom Action='NoDowngrade' After='FindRelatedProducts'>NEWERFOUND</Custom>
+		</InstallExecuteSequence>
 
 		<Media Id='1' Cabinet='Sample.cab' EmbedCab='yes' DiskPrompt='Installation Media #1' />
 		<Property Id='DiskPrompt' Value='Polaris Installation [1]' />
@@ -93,6 +105,7 @@
 			<ComponentRef Id='OpenSSL' />
 			<ComponentRef Id='ConfigFile' />
 			<ComponentRef Id='WebUIIndex' />
+			<ComponentRef Id='WebUIJS' />
 			<ComponentRef Id='WebUILib' />
 			<ComponentRef Id='WebUIStyle' />
 			<ComponentRef Id='WebUITags' />
