@@ -48,14 +48,6 @@ impl From<PError> for IronError {
             PError::PathNotInVfs => IronError::new(err, status::NotFound),
             PError::CannotServeDirectory => IronError::new(err, status::BadRequest),
             PError::UnsupportedFileType => IronError::new(err, status::BadRequest),
-            PError::ConfigFileOpenError => IronError::new(err, status::InternalServerError),
-            PError::ConfigFileReadError => IronError::new(err, status::InternalServerError),
-            PError::ConfigFileParseError => IronError::new(err, status::InternalServerError),
-            PError::ConfigMountDirsParseError => IronError::new(err, status::InternalServerError),
-            PError::ConfigUsersParseError => IronError::new(err, status::InternalServerError),
-            PError::ConfigAlbumArtPatternParseError => {
-                IronError::new(err, status::InternalServerError)
-            }
             PError::AlbumArtSearchError => IronError::new(err, status::InternalServerError),
             PError::ImageProcessingError => IronError::new(err, status::InternalServerError),
             PError::UnsupportedMetadataFormat => IronError::new(err, status::InternalServerError),
