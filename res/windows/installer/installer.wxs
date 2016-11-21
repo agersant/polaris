@@ -4,13 +4,7 @@
 
 		<Package Id='*' Keywords='Installer' Platform='x64' InstallPrivileges='elevated' InstallScope='perMachine' Description='Polaris Installer' Manufacturer='Antoine Gersant' Languages='1033' Compressed='yes' SummaryCodepage='1252' />
 
-		<Upgrade Id='9D86F109-E1EC-4C67-826C-8FB813838C49'>
-    		<UpgradeVersion OnlyDetect='no' Property='OTHERFOUND' Minimum='0.1.0' IncludeMinimum='yes' Maximum='0.2.0' IncludeMaximum='no' />
-		</Upgrade>
-
-		<InstallExecuteSequence>
-			<RemoveExistingProducts After='InstallFinalize' />
-		</InstallExecuteSequence>
+		<MajorUpgrade DowngradeErrorMessage='A newer version of Polaris is already installed.' Schedule='afterInstallExecute' />
 
 		<Media Id='1' Cabinet='Sample.cab' EmbedCab='yes' DiskPrompt='Installation Media #1' />
 		<Property Id='DiskPrompt' Value='Polaris Installation [1]' />
