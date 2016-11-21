@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='windows-1252'?>
-<Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
-	<Product Name='Polaris' Id='33986EB1-E35C-4E01-817C-FA23F0C0FB88' UpgradeCode='9D86F109-E1EC-4C67-826C-8FB813838C49' Language='1033' Codepage='1252' Version='0.2.0' Manufacturer='Antoine Gersant'>
+<Wix xmlns='http://schemas.microsoft.com/wix/2006/wi' xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
+    <Product Name='Polaris' Id='33986EB1-E35C-4E01-817C-FA23F0C0FB88' UpgradeCode='9D86F109-E1EC-4C67-826C-8FB813838C49' Language='1033' Codepage='1252' Version='0.2.0' Manufacturer='Antoine Gersant'>
 
 		<Package Id='*' Keywords='Installer' Platform='x64' InstallPrivileges='elevated' InstallScope='perMachine' Description='Polaris Installer' Manufacturer='Antoine Gersant' Languages='1033' Compressed='yes' SummaryCodepage='1252' />
 
@@ -98,6 +98,17 @@
 
 		</Directory>
 
+		<!--Remove extra files after uninstall (db, thumbnails, etc.)-->
+		<Property Id="EXTRADATAPATH">
+  			<RegistrySearch Root="HKLM" Key="SOFTWARE\Polaris" Name="ExtraDataPath" Type="raw" Id="ExtraDataPathSearch" />
+		</Property>
+		<DirectoryRef Id="AppDataPolaris">
+			<Component Id="CleanupExtraData" Guid="A74F0BA0-797F-4088-AF43-E7874AE679C7">
+				<RegistryValue Root="HKLM" Key="SOFTWARE\Polaris" Name="ExtraDataPath" Type="string" Value="[AppDataPolaris]" KeyPath="yes" />
+    			<util:RemoveFolderEx On="uninstall" Property="EXTRADATAPATH" />
+  			</Component>
+		</DirectoryRef>
+
 		<Feature Id='Complete' Level='1'>
 			<ComponentRef Id='MainExecutable' />
 			<ComponentRef Id='OpenSSL' />
@@ -108,6 +119,7 @@
 			<ComponentRef Id='WebUIStyle' />
 			<ComponentRef Id='WebUITags' />
 			<ComponentRef Id='ProgramMenuDir' />
+			<ComponentRef Id='CleanupExtraData' />
 		</Feature>
 
 		<Icon Id='polaris.exe' SourceFile='polaris.exe' />
