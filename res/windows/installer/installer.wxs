@@ -5,15 +5,13 @@
 		<Package Id='*' Keywords='Installer' Platform='x64' Description='Polaris Installer' Manufacturer='Antoine Gersant' Languages='1033' Compressed='yes' SummaryCodepage='1252' />
 
 		<Upgrade Id='9D86F109-E1EC-4C67-826C-8FB813838C49'>
-    		<UpgradeVersion OnlyDetect='yes' Property='SELFFOUND' Minimum='0.2.0' IncludeMinimum='yes' Maximum='0.2.0' IncludeMaximum='yes' />
-    		<UpgradeVersion OnlyDetect='yes' Property='NEWERFOUND' Minimum='0.2.0' IncludeMinimum='no' />
+    		<UpgradeVersion OnlyDetect='no' Property='OTHERFOUND'
+        		Minimum='0.1.0' IncludeMinimum='yes'
+				Maximum='0.2.0' IncludeMaximum='no'
+			/>
 		</Upgrade>
-
-		<CustomAction Id='AlreadyUpdated' Error='Your Polaris installation has already been updated.' />
-		<CustomAction Id='NoDowngrade' Error='A later version of Polaris is already installed.' />
 		<InstallExecuteSequence>
-    		<Custom Action='AlreadyUpdated' After='FindRelatedProducts'>SELFFOUND</Custom>
-    		<Custom Action='NoDowngrade' After='FindRelatedProducts'>NEWERFOUND</Custom>
+			<RemoveExistingProducts Before="InstallInitialize" />
 		</InstallExecuteSequence>
 
 		<Media Id='1' Cabinet='Sample.cab' EmbedCab='yes' DiskPrompt='Installation Media #1' />
