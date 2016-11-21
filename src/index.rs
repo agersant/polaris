@@ -10,8 +10,10 @@ use std::time;
 
 use error::*;
 use metadata::SongTags;
+use utils;
 use vfs::Vfs;
 
+const INDEX_FILE_NAME: &'static str = "index.sqlite";
 const INDEX_BUILDING_INSERT_BUFFER_SIZE: usize = 250; // Insertions in each transaction
 const INDEX_LOCK_TIMEOUT: usize = 1000; // In milliseconds
 
@@ -181,10 +183,14 @@ impl<'db> Drop for IndexBuilder<'db> {
 }
 
 impl Index {
-    pub fn new(path: &Path,
-               vfs: Arc<Vfs>,
+    pub fn new(vfs: Arc<Vfs>,
                config: &IndexConfig)
                -> Result<Index, PError> {
+
+        let mut path = try!(utils::get_cache_root());
+        path.push(INDEX_FILE_NAME);
+
+        println!("Reading or creating index from {}", path.to_string_lossy());
 
         let index = Index {
             path: path.to_string_lossy().deref().to_string(),

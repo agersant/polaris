@@ -3,6 +3,7 @@ name = "polaris"
 version = "0.2.0"
 dependencies = [
  "ape 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "app_dirs 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "getopts 0.2.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.9.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "id3 0.1.10 (git+https://github.com/jameshurst/rust-id3)",
@@ -42,6 +43,17 @@ version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "byteorder 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "app_dirs"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "ole32-sys 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "shell32-sys 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "winapi 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "xdg 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -607,6 +619,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ole32-sys"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "winapi 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "winapi-build 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "openssl"
 version = "0.7.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -857,6 +878,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "shell32-sys"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "winapi 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "winapi-build 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "solicit"
 version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1090,9 +1120,15 @@ name = "winapi-build"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
+[[package]]
+name = "xdg"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
 [metadata]
 "checksum aho-corasick 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)" = "ca972c2ea5f742bfce5687b9aef75506a764f61d37f8f649047846a9686ddb66"
 "checksum ape 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "b419c2e36e91776200588f91e24c970d16d34236369136ca819f12dd903c5691"
+"checksum app_dirs 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "b7d1c0d48a81bbb13043847f957971f4d87c81542d80ece5e84ba3cba4058fd4"
 "checksum bitflags 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "aad18937a628ec6abcd26d1489012cc0e18c21798210f491af69ded9b881106d"
 "checksum bodyparser 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "07b171b407e583dc8f01011a713f20575a81ac60acecf3b8153012709aeb1fd6"
 "checksum buf_redux 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "b115bd9935c68b58f80ff867e1c46942c4aed79e78bcc8c2bc22d50f52bb9099"
@@ -1159,6 +1195,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum num-traits 0.1.35 (registry+https://github.com/rust-lang/crates.io-index)" = "8359ea48994f253fa958b5b90b013728b06f54872e5a58bce39540fcdd0f2527"
 "checksum num_cpus 0.2.13 (registry+https://github.com/rust-lang/crates.io-index)" = "cee7e88156f3f9e19bdd598f8d6c9db7bf4078f99f8381f43a55b09648d1a6e3"
 "checksum ogg 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "780fc298e7c28a3d5b49638da41b99136d535564ca7060574dab61a845e4947d"
+"checksum ole32-sys 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5d2c49021782e5233cd243168edfa8037574afed4eba4bbaf538b3d8d1789d8c"
 "checksum openssl 0.7.14 (registry+https://github.com/rust-lang/crates.io-index)" = "c4117b6244aac42ed0150a6019b4d953d28247c5dd6ae6f46ae469b5f2318733"
 "checksum openssl-sys 0.7.17 (registry+https://github.com/rust-lang/crates.io-index)" = "89c47ee94c352eea9ddaf8e364be7f978a3bb6d66d73176572484238dd5a5c3f"
 "checksum openssl-sys-extras 0.7.14 (registry+https://github.com/rust-lang/crates.io-index)" = "11c5e1dba7d3d03d80f045bf0d60111dc69213b67651e7c889527a3badabb9fa"
@@ -1189,6 +1226,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum serde_json 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)" = "e5b3bb42fa42265df8a1822b3db2090bc8f9e17e8142599c76a5b854bc4e7b5b"
 "checksum sha1 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "cc30b1e1e8c40c121ca33b86c23308a090d19974ef001b4bf6e61fd1a0fb095c"
 "checksum shell32-sys 0.1.1 (git+https://github.com/retep998/winapi-rs)" = "<none>"
+"checksum shell32-sys 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "72f20b8f3c060374edb8046591ba28f62448c369ccbdc7b02075103fb3a9e38d"
 "checksum solicit 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)" = "172382bac9424588d7840732b250faeeef88942e37b6e35317dce98cafdd75b2"
 "checksum sqlite 0.23.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b9b0bae8699b7aa134328a75735f9fb18553ff8f7edb41b5160978c327a52831"
 "checksum sqlite3-src 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "f6d9d456ae741b07c60ede84b0fa85bafad8275b1bb95bb42a93805d7475313b"
@@ -1219,3 +1257,4 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum winapi 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)" = "167dc9d6949a9b857f3451275e911c3f44255842c1f7a76f33c55103a909087a"
 "checksum winapi-build 0.1.1 (git+https://github.com/retep998/winapi-rs)" = "<none>"
 "checksum winapi-build 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "2d315eee3b34aca4797b2da6b13ed88266e6d612562a0c46390af8299fc699bc"
+"checksum xdg 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "77b831a5ba77110f438f0ac5583aafeb087f70432998ba6b7dcb1d32185db453"

@@ -10,8 +10,9 @@ use std::hash::{Hash, Hasher};
 use std::path::*;
 
 use error::*;
+use utils;
 
-const THUMBNAILS_PATH: &'static str = "tmp/thumbnails";
+const THUMBNAILS_PATH: &'static str = "thumbnails";
 
 fn hash(path: &Path, dimension: u32) -> u64 {
     let path_string = path.to_string_lossy();
@@ -23,8 +24,9 @@ fn hash(path: &Path, dimension: u32) -> u64 {
 
 pub fn get_thumbnail(real_path: &Path, max_dimension: u32) -> Result<PathBuf, PError> {
 
-    let mut out_path = PathBuf::new();
+    let mut out_path = try!(utils::get_cache_root());    
     out_path.push(THUMBNAILS_PATH);
+
     let mut dir_builder = DirBuilder::new();
     dir_builder.recursive(true);
     try!(dir_builder.create(out_path.as_path()));

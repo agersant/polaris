@@ -8,8 +8,10 @@ use toml;
 use collection::User;
 use ddns::DDNSConfig;
 use index::IndexConfig;
+use utils;
 use vfs::VfsConfig;
 
+const DEFAULT_CONFIG_FILE_NAME: &'static str = "polaris.toml";
 const CONFIG_SECRET: &'static str = "auth_secret";
 const CONFIG_MOUNT_DIRS: &'static str = "mount_dirs";
 const CONFIG_MOUNT_DIR_NAME: &'static str = "name";
@@ -27,6 +29,7 @@ const CONFIG_DDNS_PASSWORD: &'static str = "password";
 #[derive(Debug)]
 pub enum ConfigError {
     IoError(io::Error),
+    ConfigDirectoryError,
     TOMLParseError,
     RegexError(regex::Error),
     SecretParseError,
@@ -59,7 +62,21 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn parse(config_path: &path::Path) -> Result<Config, ConfigError> {
+    pub fn parse(custom_path: Option<path::PathBuf>) -> Result<Config, ConfigError> {
+
+        let config_path = match custom_path {
+            Some(p) => p,
+            None => {
+                let mut root = match utils::get_config_root() {
+                    Ok(r) => r,
+                    Err(_) => return Err(ConfigError::ConfigDirectoryError),
+                };
+                root.push(DEFAULT_CONFIG_FILE_NAME);
+                root
+            },
+        };
+        println!("Loading config from: {}", config_path.to_string_lossy());
+
         let mut config_file = try!(fs::File::open(config_path));
         let mut config_file_content = String::new();
         try!(config_file.read_to_string(&mut config_file_content));

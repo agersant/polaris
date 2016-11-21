@@ -43,6 +43,8 @@ impl From<PError> for IronError {
             PError::Io(e) => IronError::new(e, status::NotFound),
             PError::CannotClearExistingIndex => IronError::new(err, status::InternalServerError),
             PError::PathDecoding => IronError::new(err, status::InternalServerError),
+            PError::ConfigDirectoryError => IronError::new(err, status::InternalServerError),
+            PError::CacheDirectoryError => IronError::new(err, status::InternalServerError),
             PError::PathNotInVfs => IronError::new(err, status::NotFound),
             PError::CannotServeDirectory => IronError::new(err, status::BadRequest),
             PError::UnsupportedFileType => IronError::new(err, status::BadRequest),

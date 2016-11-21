@@ -1,4 +1,5 @@
 extern crate ape;
+extern crate app_dirs;
 extern crate core;
 extern crate getopts;
 extern crate hyper;
@@ -33,7 +34,7 @@ use getopts::Options;
 use iron::prelude::*;
 use mount::Mount;
 use staticfile::Static;
-use std::path;
+use std::path::Path;
 use std::sync::Arc;
 
 mod api;
@@ -48,9 +49,6 @@ mod utils;
 mod thumbnails;
 mod vfs;
 
-const DEFAULT_CONFIG_FILE_NAME: &'static str = "polaris.toml";
-const INDEX_FILE_NAME: &'static str = "index.sqlite";
-
 fn main() {
 
     // Parse CLI options
@@ -61,20 +59,18 @@ fn main() {
         Ok(m) => m,
         Err(f) => panic!(f.to_string()),
     };
-    let config_file_name = matches.opt_str("c").unwrap_or(DEFAULT_CONFIG_FILE_NAME.to_owned());
+    let config_file_name = matches.opt_str("c");
+    let config_file_path = config_file_name.map(|n| Path::new(n.as_str()).to_path_buf());
 
     // Parse config
-    println!("Reading configuration from {}", config_file_name);
-    let config_file = path::Path::new(config_file_name.as_str());
-    let config = config::Config::parse(&config_file).unwrap();
+    let config = config::Config::parse(config_file_path).unwrap();
 
     // Init VFS
     let vfs = Arc::new(vfs::Vfs::new(config.vfs.clone()));
 
     // Init index
     println!("Starting up index");
-    let index_path = path::Path::new(INDEX_FILE_NAME);
-    let index = Arc::new(index::Index::new(&index_path, vfs.clone(), &config.index)
+    let index = Arc::new(index::Index::new(vfs.clone(), &config.index)
         .unwrap());
     let index_ref = index.clone();
     std::thread::spawn(move || index_ref.run());
@@ -99,7 +95,7 @@ fn main() {
 
     let mut mount = Mount::new();
     mount.mount("/api/", api_chain);
-    mount.mount("/", Static::new(path::Path::new("web")));
+    mount.mount("/", Static::new(Path::new("web")));
     let mut server = Iron::new(mount).http(("0.0.0.0", 5050)).unwrap();
 
     // Start DDNS updates

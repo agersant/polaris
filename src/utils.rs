@@ -1,4 +1,30 @@
-use std::path::Path;
+use app_dirs::{AppDataType, data_root};
+use std::path::{Path, PathBuf};
+use std::fs;
+
+use error::PError;
+
+pub fn get_config_root() -> Result<PathBuf, PError> {
+    if let Ok(mut root) = data_root(AppDataType::UserConfig){
+        root.push("Polaris");
+        return match fs::create_dir_all(&root) {
+            Ok(()) => Ok(root),
+            Err(_) => Err(PError::CacheDirectoryError),
+        }
+    } 
+    Err(PError::ConfigDirectoryError)
+}
+
+pub fn get_cache_root() -> Result<PathBuf, PError> {
+    if let Ok(mut root) = data_root(AppDataType::UserCache){
+        root.push("Polaris");
+        return match fs::create_dir_all(&root) {
+            Ok(()) => Ok(root),
+            Err(_) => Err(PError::CacheDirectoryError),
+        }
+    } 
+    Err(PError::CacheDirectoryError)
+}
 
 pub enum AudioFormat {
     FLAC,
