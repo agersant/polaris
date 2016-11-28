@@ -7,7 +7,7 @@ use user32;
 use uuid;
 use winapi;
 
-const IDI_POLARIS: isize = 0x101;
+const IDI_POLARIS_TRAY: isize = 0x102;
 const UID_NOTIFICATION_ICON: u32 = 0;
 const MESSAGE_NOTIFICATION_ICON: u32 = winapi::WM_USER + 1;
 const MESSAGE_NOTIFICATION_ICON_QUIT: u32 = winapi::WM_USER + 2;
@@ -130,7 +130,7 @@ fn add_notification_icon(window: winapi::HWND) {
 
     unsafe {
         let module = kernel32::GetModuleHandleW(std::ptr::null());
-        let icon = user32::LoadIconW(module, std::mem::transmute(IDI_POLARIS));
+        let icon = user32::LoadIconW(module, std::mem::transmute(IDI_POLARIS_TRAY));
         let mut flags = winapi::NIF_MESSAGE | winapi::NIF_TIP;
         if !icon.is_null() {
             flags |= winapi::NIF_ICON;

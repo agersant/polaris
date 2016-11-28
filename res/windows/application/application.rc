@@ -1,5 +1,7 @@
 #define IDI_POLARIS 0x101
+#define IDI_POLARIS_TRAY 0x102
 
 CREATEPROCESS_MANIFEST_RESOURCE_ID RT_MANIFEST "application.manifest"
 
-IDI_POLARIS ICON "icon_polaris_32.ico"
+IDI_POLARIS ICON "icon_polaris_512.ico"
+IDI_POLARIS_TRAY ICON "icon_polaris_outline_64.ico"
