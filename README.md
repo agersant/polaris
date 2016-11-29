@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.org/agersant/polaris.svg?branch=master)](https://travis-ci.org/agersant/polaris)
 
-<p align="center"><img src="res/readme/logo.png?raw=true"/></p>
+<p align="center"><img height="160px" src="res/readme/logo.png?raw=true"/></p>
 Polaris is a music streaming application, designed to let you enjoy your music collection from any computer or mobile device.
 
 # Getting Started
