@@ -22,7 +22,7 @@ You can now start Polaris from the start menu or from your desktop, Polaris will
 
 ## Basic Configuration
 
-All configuration is done by editing the file located at `C:\Program Files\Polaris\Polaris\polaris.toml`. Note that Polaris needs to be restarted for configuration changes to be taken into account.
+All configuration is done by editing the file located at `C:\ProgramData\Polaris\polaris.toml`. Note that Polaris needs to be restarted for configuration changes to be taken into account.
 
 ### Locating Your Music
 
