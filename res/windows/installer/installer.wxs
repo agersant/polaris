@@ -28,6 +28,16 @@
 
 					<Directory Id='web' Name='web'>
 
+						<Component Id='WebUIFavicon' Guid='65D5A87D-5A5C-4655-9F74-F37F4F64BB6E'>
+							<File Name='favicon.png' />
+						</Component>
+
+						<Directory Id='img' Name='img'>
+							<Component Id='WebUIImg' Guid='343BDE12-EE3E-4659-A9F8-A217B933FBF2'>
+								<File Name='logo.png' />
+							</Component>
+						</Directory>
+
 						<Component Id='WebUIIndex' Guid='B666CED5-951E-40F4-8A33-E9C4FEEFF578'>
 							<File Name='index.html' />
 						</Component>
@@ -44,7 +54,7 @@
 								<File Name='js.cookie.js' />
 								<File Name='riot+compiler.min.js' />
 							</Component>
-						</Directory>
+						</Directory>						
 
 						<Directory Id='tags' Name='tags'>
 							<Component Id='WebUITags' Guid='E1058E84-EC96-4CD8-8E51-DBB1F2DAA593'>
@@ -107,6 +117,8 @@
 			<ComponentRef Id='MainExecutable' />
 			<ComponentRef Id='OpenSSL' />
 			<ComponentRef Id='ConfigFile' />
+			<ComponentRef Id='WebUIFavicon' />
+			<ComponentRef Id='WebUIImg' />
 			<ComponentRef Id='WebUIIndex' />
 			<ComponentRef Id='WebUIJS' />
 			<ComponentRef Id='WebUILib' />
