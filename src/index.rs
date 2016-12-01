@@ -9,7 +9,7 @@ use std::thread;
 use std::time;
 
 use error::*;
-use metadata::SongTags;
+use metadata;
 use utils;
 use vfs::Vfs;
 
@@ -364,7 +364,7 @@ impl Index {
                     self.populate_directory(builder, file_path.as_path());
                 } else {
                     if let Some(file_path_string) = file_path.to_str() {
-                        if let Ok(tags) = SongTags::read(file_path.as_path()) {
+                        if let Ok(tags) = metadata::read(file_path.as_path()) {
                             if tags.year.is_some() {
                                 inconsistent_directory_year |= directory_year.is_some() &&
                                                                directory_year != tags.year;
