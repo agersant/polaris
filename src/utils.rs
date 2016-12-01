@@ -26,6 +26,7 @@ pub fn get_cache_root() -> Result<PathBuf, PError> {
     Err(PError::CacheDirectoryError)
 }
 
+#[derive(Debug, PartialEq)]
 pub enum AudioFormat {
     FLAC,
     MP3,
@@ -53,8 +54,20 @@ pub fn get_audio_format(path: &Path) -> Option<AudioFormat> {
     }
 }
 
+#[test]
+fn test_get_audio_format() {
+    assert_eq!(get_audio_format(Path::new("animals/🐷/my🐖file.jpg")), None);
+    assert_eq!(get_audio_format(Path::new("animals/🐷/my🐖file.flac")), Some(AudioFormat::FLAC));
+}
+
 pub fn is_song(path: &Path) -> bool {
     get_audio_format(path).is_some()
+}
+
+#[test]
+fn test_is_song() {
+    assert!(is_song(Path::new("animals/🐷/my🐖file.mp3")));
+    assert!(!is_song(Path::new("animals/🐷/my🐖file.jpg")));
 }
 
 pub fn is_image(path: &Path) -> bool {
@@ -74,4 +87,10 @@ pub fn is_image(path: &Path) -> bool {
         "bmp" => true,
         _ => false,
     }
+}
+
+#[test]
+fn test_is_image() {
+    assert!(!is_image(Path::new("animals/🐷/my🐖file.mp3")));
+    assert!(is_image(Path::new("animals/🐷/my🐖file.jpg")));
 }
