@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.org/agersant/polaris.svg?branch=master)](https://travis-ci.org/agersant/polaris)
 
-<p align="center"><img height="160px" src="res/readme/logo.png?raw=true"/></p>
+<p align="center"><img height="120px" src="res/readme/logo.png?raw=true"/></p>
 Polaris is a music streaming application, designed to let you enjoy your music collection from any computer or mobile device. Polaris works by streaming your music directly from your own computer, without uploading it to a third-party. It is free and open-source software, without any kind of premium version. The only requirement is that your computer stays on while it streams music!
 
 # Getting Started
