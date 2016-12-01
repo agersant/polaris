@@ -106,8 +106,9 @@ impl<'db> IndexBuilder<'db> {
                           artist, album) VALUES (?, ?, ?, ?, ?, ?)")
                 .unwrap(),
             insert_song:
-                db.prepare("INSERT OR REPLACE INTO songs (path, parent, disc_number, track_number, title, year, \
-                          album_artist, artist, album, artwork) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+                db.prepare("INSERT OR REPLACE INTO songs (path, parent, disc_number, track_number, \
+                          title, year, album_artist, artist, album, artwork) VALUES (?, ?, ?, ?, \
+                          ?, ?, ?, ?, ?, ?)")
                 .unwrap(),
         }
     }
@@ -183,9 +184,7 @@ impl<'db> Drop for IndexBuilder<'db> {
 }
 
 impl Index {
-    pub fn new(vfs: Arc<Vfs>,
-               config: &IndexConfig)
-               -> Result<Index, PError> {
+    pub fn new(vfs: Arc<Vfs>, config: &IndexConfig) -> Result<Index, PError> {
 
         let mut path = try!(utils::get_cache_root());
         path.push(INDEX_FILE_NAME);
@@ -246,14 +245,14 @@ impl Index {
 			,	disc_number INTEGER
 			,	track_number INTEGER
 			,	title TEXT
-			,	artist TEXT
-			,	\
-                      album_artist TEXT
+			\
+                      ,	artist TEXT
+			,	album_artist TEXT
 			,	year INTEGER
 			,	album TEXT
-			,	artwork TEXT
-			,	\
-                      UNIQUE(path)
+			\
+                      ,	artwork TEXT
+			,	UNIQUE(path)
 			);
 
 		")
@@ -530,8 +529,9 @@ impl Index {
         let db = self.connect();
         let path_string = real_path.to_string_lossy();
         let mut select =
-            db.prepare("SELECT path, disc_number, track_number, title, year, album_artist, artist, album, \
-                          artwork FROM songs WHERE parent = ? ORDER BY path COLLATE NOCASE ASC")
+            db.prepare("SELECT path, disc_number, track_number, title, year, album_artist, \
+                          artist, album, artwork FROM songs WHERE parent = ? ORDER BY path \
+                          COLLATE NOCASE ASC")
                 .unwrap();
         select.bind(1, &Value::String(path_string.deref().to_owned())).unwrap();
         self.select_songs(&mut select).into_iter().map(|s| CollectionFile::Song(s)).collect()
@@ -571,8 +571,9 @@ impl Index {
         let real_path = try!(self.vfs.virtual_to_real(virtual_path));
         let path_string = real_path.to_string_lossy().into_owned() + "%";
         let mut select =
-            db.prepare("SELECT path, disc_number, track_number, title, year, album_artist, artist, album, \
-                          artwork FROM songs WHERE path LIKE ? ORDER BY path COLLATE NOCASE ASC")
+            db.prepare("SELECT path, disc_number, track_number, title, year, album_artist, \
+                          artist, album, artwork FROM songs WHERE path LIKE ? ORDER BY path \
+                          COLLATE NOCASE ASC")
                 .unwrap();
         select.bind(1, &Value::String(path_string.deref().to_owned())).unwrap();
         Ok(self.select_songs(&mut select))

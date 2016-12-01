@@ -73,7 +73,7 @@ impl Config {
                 };
                 root.push(DEFAULT_CONFIG_FILE_NAME);
                 root
-            },
+            }
         };
         println!("Loading config from: {}", config_path.to_string_lossy());
 

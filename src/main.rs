@@ -70,8 +70,7 @@ fn main() {
 
     // Init index
     println!("Starting up index");
-    let index = Arc::new(index::Index::new(vfs.clone(), &config.index)
-        .unwrap());
+    let index = Arc::new(index::Index::new(vfs.clone(), &config.index).unwrap());
     let index_ref = index.clone();
     std::thread::spawn(move || index_ref.run());
 

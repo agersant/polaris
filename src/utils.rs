@@ -5,24 +5,24 @@ use std::fs;
 use error::PError;
 
 pub fn get_config_root() -> Result<PathBuf, PError> {
-    if let Ok(mut root) = data_root(AppDataType::SharedConfig){
+    if let Ok(mut root) = data_root(AppDataType::SharedConfig) {
         root.push("Polaris");
         return match fs::create_dir_all(&root) {
             Ok(()) => Ok(root),
             Err(_) => Err(PError::CacheDirectoryError),
-        }
-    } 
+        };
+    }
     Err(PError::ConfigDirectoryError)
 }
 
 pub fn get_cache_root() -> Result<PathBuf, PError> {
-    if let Ok(mut root) = data_root(AppDataType::SharedData){
+    if let Ok(mut root) = data_root(AppDataType::SharedData) {
         root.push("Polaris");
         return match fs::create_dir_all(&root) {
             Ok(()) => Ok(root),
             Err(_) => Err(PError::CacheDirectoryError),
-        }
-    } 
+        };
+    }
     Err(PError::CacheDirectoryError)
 }
 
@@ -56,8 +56,10 @@ pub fn get_audio_format(path: &Path) -> Option<AudioFormat> {
 
 #[test]
 fn test_get_audio_format() {
-    assert_eq!(get_audio_format(Path::new("animals/🐷/my🐖file.jpg")), None);
-    assert_eq!(get_audio_format(Path::new("animals/🐷/my🐖file.flac")), Some(AudioFormat::FLAC));
+    assert_eq!(get_audio_format(Path::new("animals/🐷/my🐖file.jpg")),
+               None);
+    assert_eq!(get_audio_format(Path::new("animals/🐷/my🐖file.flac")),
+               Some(AudioFormat::FLAC));
 }
 
 pub fn is_song(path: &Path) -> bool {
