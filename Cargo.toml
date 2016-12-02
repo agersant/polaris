@@ -11,7 +11,7 @@ ape = "0.1.2"
 app_dirs = { git = "https://github.com/agersant/app-dirs-rs" }
 getopts = "0.2.14"
 hyper = "0.9.10"
-id3 = { git = "https://github.com/jameshurst/rust-id3" }
+id3 = "0.1.11"
 image = "0.10.3"
 iron = "0.4.0"
 lewton = "0.4.1"
@@ -19,7 +19,7 @@ metaflac = "0.1.4"
 mount = "0.2.1"
 ogg = "0.4.0"
 oven = { git = "https://github.com/agersant/oven", branch = "remove_cookie_dep" } 
-params = "0.3.1"
+params = "0.5.1"
 regex = "0.1"
 router = "0.4.0"
 rustc-serialize = "0.3"
@@ -28,8 +28,8 @@ staticfile = "0.3.0"
 toml = "0.2"
 url = "1.2.0"
 
-winapi = { git = "https://github.com/retep998/winapi-rs" }
-kernel32-sys = { git = "https://github.com/retep998/winapi-rs" }
-shell32-sys = { git = "https://github.com/retep998/winapi-rs" }
-user32-sys = { git = "https://github.com/retep998/winapi-rs" }
+winapi = "0.2.8"
+kernel32-sys = "0.2.2"
+shell32-sys = "0.1.1"
+user32-sys = "0.2.0"
 uuid = { version = "0.3.0", features = ["v5"] }
