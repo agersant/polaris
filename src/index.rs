@@ -38,7 +38,7 @@ pub struct Index {
     sleep_duration: u64,
 }
 
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug, RustcEncodable, PartialEq)]
 pub struct Song {
     path: String,
     track_number: Option<u32>,
@@ -51,7 +51,7 @@ pub struct Song {
     artwork: Option<String>,
 }
 
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug, RustcEncodable, PartialEq)]
 pub struct Directory {
     path: String,
     artist: Option<String>,
@@ -60,7 +60,7 @@ pub struct Directory {
     artwork: Option<String>,
 }
 
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug, RustcEncodable, PartialEq)]
 pub enum CollectionFile {
     Directory(Directory),
     Song(Song),
@@ -256,9 +256,10 @@ impl Index {
         Ok(db)
     }
 
-    fn update_index(&self, db: &Connection) -> Result<()> {
+    fn update_index(&self) -> Result<()> {
         let start = time::Instant::now();
         println!("Beginning library index update");
+        let db = &self.connect()?;
         self.clean(db)?;
         self.populate(db)?;
         println!("Library index update took {} seconds",
@@ -424,10 +425,8 @@ impl Index {
 
     pub fn run(&self) {
         loop {
-            if let Ok(db) = self.connect() {
-                if let Err(e) = self.update_index(&db) {
-                    println!("Error while updating index: {}", e);
-                }
+            if let Err(e) = self.update_index() {
+                println!("Error while updating index: {}", e);
             }
             thread::sleep(time::Duration::from_secs(self.sleep_duration));
         }
@@ -580,4 +579,108 @@ impl Index {
         select.bind(1, &Value::String(path_string.deref().to_owned()))?;
         self.select_songs(&mut select)
     }
+}
+
+fn _get_test_index(name: &str) -> Index {
+    use vfs::VfsConfig;
+    use std::collections::HashMap;
+
+    let mut collection_path = PathBuf::new();
+    collection_path.push("test");
+    collection_path.push("collection");
+    let mut mount_points = HashMap::new();
+    mount_points.insert("root".to_owned(), collection_path);
+
+    let vfs = Arc::new(Vfs::new(VfsConfig {
+        mount_points: mount_points,
+    }));
+
+    let mut index_config = IndexConfig::new();
+    index_config.album_art_pattern = Some(Regex::new(r#"^Folder\.(png|jpg|jpeg)$"#).unwrap());
+    index_config.path = PathBuf::new();
+    index_config.path.push("test");
+    index_config.path.push(name);
+
+    if index_config.path.exists() {
+        fs::remove_file(&index_config.path).unwrap();
+    }
+
+    Index::new(vfs, &index_config).unwrap()
+}
+
+#[test]
+fn test_populate() {
+    let index = _get_test_index("populate.sqlite");
+    index.update_index().unwrap();
+}
+
+#[test]
+fn test_metadata() {
+    let mut target = PathBuf::new();
+    target.push("root");
+    target.push("Tobokegao");
+    target.push("Picnic");
+
+    let mut song_path = target.clone();
+    song_path.push("05 - シャーベット (Sherbet).mp3");
+
+    let mut artwork_path = target.clone();
+    artwork_path.push("Folder.png");
+
+    let index = _get_test_index("metadata.sqlite");
+    index.update_index().unwrap();
+    let results = index.browse(target.as_path()).unwrap();
+
+    assert_eq!(results.len(), 7);
+    assert_eq!(results[4], CollectionFile::Song(Song{
+        path: song_path.to_str().unwrap().to_string(),
+        track_number: Some(5),
+        disc_number: None,
+        title: Some("シャーベット (Sherbet)".to_owned()),
+        artist: Some("Tobokegao".to_owned()),
+        album_artist: None,
+        album: Some("Picnic".to_owned()),
+        year: Some(2016),
+        artwork: Some(artwork_path.to_str().unwrap().to_string()),
+    }));
+}
+
+#[test]
+fn test_browse() {
+    let mut khemmis_path = PathBuf::new();
+    khemmis_path.push("root");
+    khemmis_path.push("Khemmis");
+    
+    let khemmis = CollectionFile::Directory(Directory {
+        path: khemmis_path.to_string_lossy().deref().to_string(),
+        artist: None,
+        album: None,
+        year: None,
+        artwork: None,
+    });
+
+    let mut tobokegao_path = PathBuf::new();
+    tobokegao_path.push("root");
+    tobokegao_path.push("Tobokegao");
+
+    let tobokegao = CollectionFile::Directory(Directory {
+        path: tobokegao_path.to_string_lossy().deref().to_string(),
+        artist: None,
+        album: None,
+        year: None,
+        artwork: None,
+    });
+
+    let index = _get_test_index("browse.sqlite");
+    index.update_index().unwrap();
+    let results = index.browse(Path::new("root")).unwrap();
+    assert_eq!(results, vec![khemmis, tobokegao]);
+}
+
+#[test]
+fn test_flatten() {
+    let index = _get_test_index("flatten.sqlite");
+    index.update_index().unwrap();
+    let results = index.flatten(Path::new("root")).unwrap();
+    assert_eq!(results.len(), 12);
 }
