@@ -89,7 +89,7 @@ fn run() -> Result<()> {
 
     // Init index
     println!("Starting up index");
-    let index = Arc::new(index::Index::new(vfs.clone(), &config.index).unwrap());
+    let index = Arc::new(index::Index::new(vfs.clone(), &config.index)?);
     let index_ref = index.clone();
     std::thread::spawn(move || index_ref.run());
 
@@ -100,7 +100,7 @@ fn run() -> Result<()> {
         let api_handler;
         {
             let mut collection = collection::Collection::new(vfs, index);
-            collection.load_config(&config).unwrap();
+            collection.load_config(&config)?;
             let collection = Arc::new(collection);
             api_handler = api::get_api_handler(collection);
         }
@@ -131,7 +131,7 @@ fn run() -> Result<()> {
     ui::run();
 
     println!("Shutting down server");
-    server.close().unwrap();
+    server.close()?;
 
     Ok(())
 }
