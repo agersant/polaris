@@ -46,7 +46,7 @@ impl Config {
                 root
             }
         };
-        println!("Loading config from: {}", config_path.to_string_lossy());
+        println!("Config file path: {}", config_path.to_string_lossy());
 
         let mut config_file = fs::File::open(config_path)?;
         let mut config_file_content = String::new();

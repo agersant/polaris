@@ -188,7 +188,7 @@ impl Index {
 
         let path = &config.path;
 
-        println!("Reading or creating index from {}", path.to_string_lossy());
+        println!("Index file path: {}", path.to_string_lossy());
 
         let index = Index {
             path: path.to_string_lossy().deref().to_string(),
