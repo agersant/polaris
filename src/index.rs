@@ -3,23 +3,22 @@ use regex::Regex;
 use sqlite;
 use sqlite::{Connection, State, Statement, Value};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::thread;
 use std::time;
 
 use error::*;
 use metadata;
-use utils;
 use vfs::Vfs;
 
-const INDEX_FILE_NAME: &'static str = "index.sqlite";
 const INDEX_BUILDING_INSERT_BUFFER_SIZE: usize = 250; // Insertions in each transaction
 const INDEX_LOCK_TIMEOUT: usize = 1000; // In milliseconds
 
 pub struct IndexConfig {
     pub album_art_pattern: Option<Regex>,
     pub sleep_duration: u64, // in seconds
+    pub path: PathBuf,
 }
 
 impl IndexConfig {
@@ -27,6 +26,7 @@ impl IndexConfig {
         IndexConfig {
             sleep_duration: 60 * 30, // 30 minutes
             album_art_pattern: None,
+            path: Path::new(":memory:").to_path_buf(),
         }
     }
 }
@@ -186,8 +186,7 @@ impl<'db> Drop for IndexBuilder<'db> {
 impl Index {
     pub fn new(vfs: Arc<Vfs>, config: &IndexConfig) -> Result<Index, PError> {
 
-        let mut path = try!(utils::get_cache_root());
-        path.push(INDEX_FILE_NAME);
+        let path = &config.path;
 
         println!("Reading or creating index from {}", path.to_string_lossy());
 

@@ -12,6 +12,7 @@ use utils;
 use vfs::VfsConfig;
 
 const DEFAULT_CONFIG_FILE_NAME: &'static str = "polaris.toml";
+const INDEX_FILE_NAME: &'static str = "index.sqlite";
 const CONFIG_SECRET: &'static str = "auth_secret";
 const CONFIG_MOUNT_DIRS: &'static str = "mount_dirs";
 const CONFIG_MOUNT_DIR_NAME: &'static str = "name";
@@ -29,6 +30,7 @@ const CONFIG_DDNS_PASSWORD: &'static str = "password";
 #[derive(Debug)]
 pub enum ConfigError {
     IoError(io::Error),
+    CacheDirectoryError,
     ConfigDirectoryError,
     TOMLParseError,
     RegexError(regex::Error),
@@ -97,6 +99,13 @@ impl Config {
         try!(config.parse_users(&parsed_config));
         try!(config.parse_album_art_pattern(&parsed_config));
         try!(config.parse_ddns(&parsed_config));
+
+        let mut index_path = match utils::get_cache_root() {
+            Err(_) => return Err(ConfigError::CacheDirectoryError),
+            Ok(p) => p,
+        };
+        index_path.push(INDEX_FILE_NAME);
+        config.index.path = index_path; 
 
         Ok(config)
     }
