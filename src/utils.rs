@@ -2,28 +2,24 @@ use app_dirs::{AppDataType, data_root};
 use std::path::{Path, PathBuf};
 use std::fs;
 
-use error::PError;
+use errors::*;
 
-pub fn get_config_root() -> Result<PathBuf, PError> {
+pub fn get_config_root() -> Result<PathBuf> {
     if let Ok(mut root) = data_root(AppDataType::SharedConfig) {
         root.push("Polaris");
-        return match fs::create_dir_all(&root) {
-            Ok(()) => Ok(root),
-            Err(_) => Err(PError::CacheDirectoryError),
-        };
+        fs::create_dir_all(&root)?;
+        return Ok(root);
     }
-    Err(PError::ConfigDirectoryError)
+    bail!("Could not retrieve config directory root");
 }
 
-pub fn get_cache_root() -> Result<PathBuf, PError> {
+pub fn get_cache_root() -> Result<PathBuf> {
     if let Ok(mut root) = data_root(AppDataType::SharedData) {
         root.push("Polaris");
-        return match fs::create_dir_all(&root) {
-            Ok(()) => Ok(root),
-            Err(_) => Err(PError::CacheDirectoryError),
-        };
+        fs::create_dir_all(&root)?;
+        return Ok(root);
     }
-    Err(PError::CacheDirectoryError)
+    bail!("Could not retrieve cache directory root");
 }
 
 #[derive(Debug, PartialEq)]

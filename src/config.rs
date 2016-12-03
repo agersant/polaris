@@ -1,12 +1,12 @@
 use regex;
 use std::fs;
-use std::io;
 use std::io::Read;
 use std::path;
 use toml;
 
 use collection::User;
 use ddns::DDNSConfig;
+use errors::*;
 use index::IndexConfig;
 use utils;
 use vfs::VfsConfig;
@@ -27,34 +27,6 @@ const CONFIG_DDNS_HOST: &'static str = "host";
 const CONFIG_DDNS_USERNAME: &'static str = "username";
 const CONFIG_DDNS_PASSWORD: &'static str = "password";
 
-#[derive(Debug)]
-pub enum ConfigError {
-    IoError(io::Error),
-    CacheDirectoryError,
-    ConfigDirectoryError,
-    TOMLParseError,
-    RegexError(regex::Error),
-    SecretParseError,
-    SleepDurationParseError,
-    AlbumArtPatternParseError,
-    UsersParseError,
-    MountDirsParseError,
-    DDNSParseError,
-    ConflictingMounts,
-}
-
-impl From<io::Error> for ConfigError {
-    fn from(err: io::Error) -> ConfigError {
-        ConfigError::IoError(err)
-    }
-}
-
-impl From<regex::Error> for ConfigError {
-    fn from(err: regex::Error) -> ConfigError {
-        ConfigError::RegexError(err)
-    }
-}
-
 pub struct Config {
     pub secret: String,
     pub vfs: VfsConfig,
@@ -64,26 +36,23 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn parse(custom_path: Option<path::PathBuf>) -> Result<Config, ConfigError> {
+    pub fn parse(custom_path: Option<path::PathBuf>) -> Result<Config> {
 
         let config_path = match custom_path {
             Some(p) => p,
             None => {
-                let mut root = match utils::get_config_root() {
-                    Ok(r) => r,
-                    Err(_) => return Err(ConfigError::ConfigDirectoryError),
-                };
+                let mut root = utils::get_config_root()?;
                 root.push(DEFAULT_CONFIG_FILE_NAME);
                 root
             }
         };
         println!("Loading config from: {}", config_path.to_string_lossy());
 
-        let mut config_file = try!(fs::File::open(config_path));
+        let mut config_file = fs::File::open(config_path)?;
         let mut config_file_content = String::new();
-        try!(config_file.read_to_string(&mut config_file_content));
+        config_file.read_to_string(&mut config_file_content)?;
         let parsed_config = toml::Parser::new(config_file_content.as_str()).parse();
-        let parsed_config = try!(parsed_config.ok_or(ConfigError::TOMLParseError));
+        let parsed_config = parsed_config.ok_or("Could not parse config as valid TOML")?;
 
         let mut config = Config {
             secret: String::new(),
@@ -93,57 +62,55 @@ impl Config {
             ddns: None,
         };
 
-        try!(config.parse_secret(&parsed_config));
-        try!(config.parse_index_sleep_duration(&parsed_config));
-        try!(config.parse_mount_points(&parsed_config));
-        try!(config.parse_users(&parsed_config));
-        try!(config.parse_album_art_pattern(&parsed_config));
-        try!(config.parse_ddns(&parsed_config));
+        config.parse_secret(&parsed_config)?;
+        config.parse_index_sleep_duration(&parsed_config)?;
+        config.parse_mount_points(&parsed_config)?;
+        config.parse_users(&parsed_config)?;
+        config.parse_album_art_pattern(&parsed_config)?;
+        config.parse_ddns(&parsed_config)?;
 
-        let mut index_path = match utils::get_cache_root() {
-            Err(_) => return Err(ConfigError::CacheDirectoryError),
-            Ok(p) => p,
-        };
+        let mut index_path = utils::get_cache_root()?;
         index_path.push(INDEX_FILE_NAME);
-        config.index.path = index_path; 
+        config.index.path = index_path;
 
         Ok(config)
     }
 
-    fn parse_secret(&mut self, source: &toml::Table) -> Result<(), ConfigError> {
-        let secret = try!(source.get(CONFIG_SECRET).ok_or(ConfigError::SecretParseError));
-        let secret = try!(secret.as_str().ok_or(ConfigError::SecretParseError));
-        self.secret = secret.to_owned();
+    fn parse_secret(&mut self, source: &toml::Table) -> Result<()> {
+        self.secret = source.get(CONFIG_SECRET)
+            .and_then(|s| s.as_str())
+            .map(|s| s.to_owned())
+            .ok_or("Could not parse config secret")?;
         Ok(())
     }
 
-    fn parse_index_sleep_duration(&mut self, source: &toml::Table) -> Result<(), ConfigError> {
+    fn parse_index_sleep_duration(&mut self, source: &toml::Table) -> Result<()> {
         let sleep_duration = match source.get(CONFIG_INDEX_SLEEP_DURATION) {
             Some(s) => s,
             None => return Ok(()),
         };
         let sleep_duration = match sleep_duration {
             &toml::Value::Integer(s) => s as u64,
-            _ => return Err(ConfigError::SleepDurationParseError),
+            _ => bail!("Could not parse index sleep duration"),
         };
         self.index.sleep_duration = sleep_duration;
         Ok(())
     }
 
-    fn parse_album_art_pattern(&mut self, source: &toml::Table) -> Result<(), ConfigError> {
+    fn parse_album_art_pattern(&mut self, source: &toml::Table) -> Result<()> {
         let pattern = match source.get(CONFIG_ALBUM_ART_PATTERN) {
             Some(s) => s,
             None => return Ok(()),
         };
         let pattern = match pattern {
             &toml::Value::String(ref s) => s,
-            _ => return Err(ConfigError::AlbumArtPatternParseError),
+            _ => bail!("Could not parse album art pattern"),
         };
-        self.index.album_art_pattern = Some(try!(regex::Regex::new(pattern)));
+        self.index.album_art_pattern = Some(regex::Regex::new(pattern)?);
         Ok(())
     }
 
-    fn parse_users(&mut self, source: &toml::Table) -> Result<(), ConfigError> {
+    fn parse_users(&mut self, source: &toml::Table) -> Result<()> {
         let users = match source.get(CONFIG_USERS) {
             Some(s) => s,
             None => return Ok(()),
@@ -151,28 +118,16 @@ impl Config {
 
         let users = match users {
             &toml::Value::Array(ref a) => a,
-            _ => return Err(ConfigError::UsersParseError),
+            _ => bail!("Could not parse users array"),
         };
 
         for user in users {
-            let name = match user.lookup(CONFIG_USER_NAME) {
-                None => return Err(ConfigError::UsersParseError),
-                Some(n) => n,
-            };
-            let name = match name.as_str() {
-                None => return Err(ConfigError::UsersParseError),
-                Some(n) => n,
-            };
-
-            let password = match user.lookup(CONFIG_USER_PASSWORD) {
-                None => return Err(ConfigError::UsersParseError),
-                Some(n) => n,
-            };
-            let password = match password.as_str() {
-                None => return Err(ConfigError::UsersParseError),
-                Some(n) => n,
-            };
-
+            let name = user.lookup(CONFIG_USER_NAME)
+                .and_then(|n| n.as_str())
+                .ok_or("Could not parse username")?;
+            let password = user.lookup(CONFIG_USER_PASSWORD)
+                .and_then(|n| n.as_str())
+                .ok_or("Could not parse user password")?;
             let user = User::new(name.to_owned(), password.to_owned());
             self.users.push(user);
         }
@@ -180,7 +135,7 @@ impl Config {
         Ok(())
     }
 
-    fn parse_mount_points(&mut self, source: &toml::Table) -> Result<(), ConfigError> {
+    fn parse_mount_points(&mut self, source: &toml::Table) -> Result<()> {
         let mount_dirs = match source.get(CONFIG_MOUNT_DIRS) {
             Some(s) => s,
             None => return Ok(()),
@@ -188,31 +143,19 @@ impl Config {
 
         let mount_dirs = match mount_dirs {
             &toml::Value::Array(ref a) => a,
-            _ => return Err(ConfigError::MountDirsParseError),
+            _ => bail!("Could not parse mount directories array"),
         };
 
         for dir in mount_dirs {
-            let name = match dir.lookup(CONFIG_MOUNT_DIR_NAME) {
-                None => return Err(ConfigError::MountDirsParseError),
-                Some(n) => n,
-            };
-            let name = match name.as_str() {
-                None => return Err(ConfigError::MountDirsParseError),
-                Some(n) => n,
-            };
-
-            let source = match dir.lookup(CONFIG_MOUNT_DIR_SOURCE) {
-                None => return Err(ConfigError::MountDirsParseError),
-                Some(n) => n,
-            };
-            let source = match source.as_str() {
-                None => return Err(ConfigError::MountDirsParseError),
-                Some(n) => n,
-            };
+            let name = dir.lookup(CONFIG_MOUNT_DIR_NAME)
+                .and_then(|n| n.as_str())
+                .ok_or("Could not parse mount directory name")?;
+            let source = dir.lookup(CONFIG_MOUNT_DIR_SOURCE)
+                .and_then(|n| n.as_str())
+                .ok_or("Could not parse mount directory source")?;
             let source = clean_path_string(source);
-
             if self.vfs.mount_points.contains_key(name) {
-                return Err(ConfigError::ConflictingMounts);
+                bail!("Conflicting mount directories");
             }
             self.vfs.mount_points.insert(name.to_owned(), source);
         }
@@ -220,25 +163,24 @@ impl Config {
         Ok(())
     }
 
-    fn parse_ddns(&mut self, source: &toml::Table) -> Result<(), ConfigError> {
+    fn parse_ddns(&mut self, source: &toml::Table) -> Result<()> {
         let ddns = match source.get(CONFIG_DDNS) {
             Some(s) => s,
             None => return Ok(()),
         };
         let ddns = match ddns {
             &toml::Value::Table(ref a) => a,
-            _ => return Err(ConfigError::DDNSParseError),
+            _ => bail!("Could not parse DDNS settings table"),
         };
 
-        let host = try!(ddns.get(CONFIG_DDNS_HOST).ok_or(ConfigError::DDNSParseError)).as_str();
-        let username = try!(ddns.get(CONFIG_DDNS_USERNAME).ok_or(ConfigError::DDNSParseError))
-            .as_str();
-        let password = try!(ddns.get(CONFIG_DDNS_PASSWORD).ok_or(ConfigError::DDNSParseError))
-            .as_str();
-
-        let host = try!(host.ok_or(ConfigError::DDNSParseError));
-        let username = try!(username.ok_or(ConfigError::DDNSParseError));
-        let password = try!(password.ok_or(ConfigError::DDNSParseError));
+        let host =
+            ddns.get(CONFIG_DDNS_HOST).and_then(|n| n.as_str()).ok_or("Could not parse DDNS host")?;
+        let username = ddns.get(CONFIG_DDNS_USERNAME)
+            .and_then(|n| n.as_str())
+            .ok_or("Could not parse DDNS username")?;
+        let password = ddns.get(CONFIG_DDNS_PASSWORD)
+            .and_then(|n| n.as_str())
+            .ok_or("Could not parse DDNS password")?;
 
         self.ddns = Some(DDNSConfig {
             host: host.to_owned(),

@@ -37,9 +37,9 @@ const DDNS_UPDATE_URL: &'static str = "http://ydns.io/api/v1/update/";
 
 fn get_my_ip() -> Result<String, DDNSError> {
     let client = Client::new();
-    let mut res = try!(client.get(MY_IP_API_URL).send());
+    let mut res = client.get(MY_IP_API_URL).send()?;
     let mut buf = String::new();
-    try!(res.read_to_string(&mut buf));
+    res.read_to_string(&mut buf)?;
     Ok(buf)
 }
 
@@ -53,7 +53,7 @@ fn update_my_ip(ip: &String, config: &DDNSConfig) -> Result<(), DDNSError> {
         password: Some(config.password.to_owned()),
     });
 
-    let res = try!(client.get(full_url.as_str()).header(auth_header).send());
+    let res = client.get(full_url.as_str()).header(auth_header).send()?;
     match res.status {
         hyper::status::StatusCode::Ok => Ok(()),
         s => Err(DDNSError::UpdateError(s)),

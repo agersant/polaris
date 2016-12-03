@@ -1,4 +1,3 @@
-use core::str::Utf8Error;
 use std::fs;
 use std::io;
 use std::path::*;
@@ -15,7 +14,7 @@ use rustc_serialize::json;
 use url::percent_encoding::percent_decode;
 
 use collection::*;
-use error::*;
+use errors::*;
 use thumbnails::*;
 use utils::*;
 
@@ -33,27 +32,6 @@ impl Version {
         Version {
             major: major,
             minor: minor,
-        }
-    }
-}
-
-impl From<PError> for IronError {
-    fn from(err: PError) -> IronError {
-        match err {
-            PError::Io(e) => IronError::new(e, status::NotFound),
-            PError::CannotClearExistingIndex => IronError::new(err, status::InternalServerError),
-            PError::PathDecoding => IronError::new(err, status::InternalServerError),
-            PError::ConfigDirectoryError => IronError::new(err, status::InternalServerError),
-            PError::CacheDirectoryError => IronError::new(err, status::InternalServerError),
-            PError::PathNotInVfs => IronError::new(err, status::NotFound),
-            PError::CannotServeDirectory => IronError::new(err, status::BadRequest),
-            PError::UnsupportedFileType => IronError::new(err, status::BadRequest),
-            PError::AlbumArtSearchError => IronError::new(err, status::InternalServerError),
-            PError::ImageProcessingError => IronError::new(err, status::InternalServerError),
-            PError::UnsupportedMetadataFormat => IronError::new(err, status::InternalServerError),
-            PError::MetadataDecodingError => IronError::new(err, status::InternalServerError),
-            PError::Unauthorized => IronError::new(err, status::Unauthorized),
-            PError::IncorrectCredentials => IronError::new(err, status::BadRequest),
         }
     }
 }
@@ -97,20 +75,18 @@ pub fn get_api_handler(collection: Arc<Collection>) -> Mount {
     api_handler
 }
 
-fn path_from_request(request: &Request) -> Result<PathBuf, Utf8Error> {
+fn path_from_request(request: &Request) -> Result<PathBuf> {
     let path_string = request.url.path().join("\\");
-    let decoded_path = try!(percent_decode(path_string.as_bytes()).decode_utf8());
+    let decoded_path = percent_decode(path_string.as_bytes()).decode_utf8()?;
     Ok(PathBuf::from(decoded_path.deref()))
 }
 
 struct AuthRequirement;
 impl BeforeMiddleware for AuthRequirement {
     fn before(&self, req: &mut Request) -> IronResult<()> {
-        let auth_cookie = req.get_cookie("username");
-        if auth_cookie.is_some() {
-            Ok(())
-        } else {
-            Err(IronError::new(PError::Unauthorized, status::Unauthorized))
+        match req.get_cookie("username") {
+            Some(_) => Ok(()),
+            None => Err(Error::from(ErrorKind::AuthenticationRequired).into()),
         }
     }
 }
@@ -125,13 +101,13 @@ fn version(_: &mut Request) -> IronResult<Response> {
 
 fn auth(request: &mut Request, collection: &Collection) -> IronResult<Response> {
     let input = request.get_ref::<params::Params>().unwrap();
-    let username = match input.find(&["username"]) {
-        Some(&params::Value::String(ref username)) => username,
-        _ => return Err(IronError::from(PError::IncorrectCredentials)),
+    let username = match input.find(&["username"]) { 
+        Some(&params::Value::String(ref username)) => username, 
+        _ => return Err(Error::from(ErrorKind::MissingUsername).into()), 
     };
-    let password = match input.find(&["password"]) {
-        Some(&params::Value::String(ref password)) => password,
-        _ => return Err(IronError::from(PError::IncorrectCredentials)),
+    let password = match input.find(&["password"]) { 
+        Some(&params::Value::String(ref password)) => password, 
+        _ => return Err(Error::from(ErrorKind::MissingPassword).into()), 
     };
     if collection.auth(username.as_str(), password.as_str()) {
         let mut response = Response::with((status::Ok, ""));
@@ -140,7 +116,7 @@ fn auth(request: &mut Request, collection: &Collection) -> IronResult<Response> 
         response.set_cookie(username_cookie);
         Ok(response)
     } else {
-        Err(IronError::from(PError::IncorrectCredentials))
+        Err(Error::from(ErrorKind::IncorrectCredentials).into())
     }
 }
 
@@ -150,7 +126,7 @@ fn browse(request: &mut Request, collection: &Collection) -> IronResult<Response
         Err(e) => return Err(IronError::new(e, status::BadRequest)),
         Ok(p) => p,
     };
-    let browse_result = try!(collection.browse(&path));
+    let browse_result = collection.browse(&path)?;
 
     let result_json = json::encode(&browse_result);
     let result_json = match result_json {
@@ -167,7 +143,7 @@ fn flatten(request: &mut Request, collection: &Collection) -> IronResult<Respons
         Err(e) => return Err(IronError::new(e, status::BadRequest)),
         Ok(p) => p,
     };
-    let flatten_result = try!(collection.flatten(&path));
+    let flatten_result = collection.flatten(&path)?;
 
     let result_json = json::encode(&flatten_result);
     let result_json = match result_json {
@@ -204,7 +180,7 @@ fn serve(request: &mut Request, collection: &Collection) -> IronResult<Response>
     };
 
     if !metadata.is_file() {
-        return Err(IronError::from(PError::CannotServeDirectory));
+        return Err(Error::from(ErrorKind::CannotServeDirectory).into());
     }
 
     if is_song(real_path.as_path()) {
@@ -215,7 +191,7 @@ fn serve(request: &mut Request, collection: &Collection) -> IronResult<Response>
         return art(request, real_path.as_path());
     }
 
-    Err(IronError::from(PError::UnsupportedFileType))
+    Err(Error::from(ErrorKind::UnsupportedFileType).into())
 }
 
 fn art(_: &mut Request, real_path: &Path) -> IronResult<Response> {

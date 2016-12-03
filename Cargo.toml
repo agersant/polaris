@@ -9,6 +9,7 @@ ui = []
 [dependencies]
 ape = "0.1.2"
 app_dirs = { git = "https://github.com/agersant/app-dirs-rs" }
+error-chain = "0.7.1"
 getopts = "0.2.14"
 hyper = "0.9.10"
 id3 = "0.1.11"

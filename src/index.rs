@@ -8,7 +8,7 @@ use std::sync::Arc;
 use std::thread;
 use std::time;
 
-use error::*;
+use errors::*;
 use metadata;
 use vfs::Vfs;
 
@@ -184,7 +184,7 @@ impl<'db> Drop for IndexBuilder<'db> {
 }
 
 impl Index {
-    pub fn new(vfs: Arc<Vfs>, config: &IndexConfig) -> Result<Index, PError> {
+    pub fn new(vfs: Arc<Vfs>, config: &IndexConfig) -> Result<Index> {
 
         let path = &config.path;
 
@@ -536,7 +536,7 @@ impl Index {
         self.select_songs(&mut select).into_iter().map(|s| CollectionFile::Song(s)).collect()
     }
 
-    pub fn browse(&self, virtual_path: &Path) -> Result<Vec<CollectionFile>, PError> {
+    pub fn browse(&self, virtual_path: &Path) -> Result<Vec<CollectionFile>> {
 
         let mut output = Vec::new();
 
@@ -553,9 +553,9 @@ impl Index {
                 output.push(CollectionFile::Directory(directory));
             }
 
-            // Browse sub-directory
+        // Browse sub-directory
         } else {
-            let real_path = try!(self.vfs.virtual_to_real(virtual_path));
+            let real_path = self.vfs.virtual_to_real(virtual_path)?;
             let directories = self.browse_directories(real_path.as_path());
             let songs = self.browse_songs(real_path.as_path());
             output.extend(directories);
@@ -565,9 +565,9 @@ impl Index {
         Ok(output)
     }
 
-    pub fn flatten(&self, virtual_path: &Path) -> Result<Vec<Song>, PError> {
+    pub fn flatten(&self, virtual_path: &Path) -> Result<Vec<Song>> {
         let db = self.connect();
-        let real_path = try!(self.vfs.virtual_to_real(virtual_path));
+        let real_path = self.vfs.virtual_to_real(virtual_path)?;
         let path_string = real_path.to_string_lossy().into_owned() + "%";
         let mut select =
             db.prepare("SELECT path, disc_number, track_number, title, year, album_artist, \

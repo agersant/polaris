@@ -7,7 +7,7 @@ use regex::Regex;
 use std::fs;
 use std::path::Path;
 
-use error::PError;
+use errors::*;
 use utils;
 use utils::AudioFormat;
 
@@ -22,18 +22,18 @@ pub struct SongTags {
     pub year: Option<i32>,
 }
 
-pub fn read(path: &Path) -> Result<SongTags, PError> {
+pub fn read(path: &Path) -> Result<SongTags> {
     match utils::get_audio_format(path) {
         Some(AudioFormat::FLAC) => read_flac(path),
         Some(AudioFormat::MP3) => read_id3(path),
         Some(AudioFormat::MPC) => read_ape(path),
         Some(AudioFormat::OGG) => read_vorbis(path),
-        _ => Err(PError::UnsupportedMetadataFormat),
+        _ => bail!("Unsupported file format for reading metadata"),
     }
 }
 
-fn read_id3(path: &Path) -> Result<SongTags, PError> {
-    let tag = try!(id3::Tag::read_from_path(path));
+fn read_id3(path: &Path) -> Result<SongTags> {
+    let tag = id3::Tag::read_from_path(path)?;
 
     let artist = tag.artist().map(|s| s.to_string());
     let album_artist = tag.album_artist().map(|s| s.to_string());
@@ -85,8 +85,8 @@ fn read_ape_x_of_y(item: &ape::Item) -> Option<u32> {
     }
 }
 
-fn read_ape(path: &Path) -> Result<SongTags, PError> {
-    let tag = try!(ape::read(path));
+fn read_ape(path: &Path) -> Result<SongTags> {
+    let tag = ape::read(path)?;
     let artist = tag.item("Artist").and_then(read_ape_string);
     let album = tag.item("Album").and_then(read_ape_string);
     let album_artist = tag.item("Album artist").and_then(read_ape_string);
@@ -105,10 +105,10 @@ fn read_ape(path: &Path) -> Result<SongTags, PError> {
     })
 }
 
-fn read_vorbis(path: &Path) -> Result<SongTags, PError> {
+fn read_vorbis(path: &Path) -> Result<SongTags> {
 
-    let file = try!(fs::File::open(path));
-    let source = try!(OggStreamReader::new(PacketReader::new(file)));
+    let file = fs::File::open(path)?;
+    let source = OggStreamReader::new(PacketReader::new(file))?;
 
     let mut tags = SongTags {
         artist: None,
@@ -136,9 +136,9 @@ fn read_vorbis(path: &Path) -> Result<SongTags, PError> {
     Ok(tags)
 }
 
-fn read_flac(path: &Path) -> Result<SongTags, PError> {
-    let tag = try!(metaflac::Tag::read_from_path(path));
-    let vorbis = try!(tag.vorbis_comments().ok_or(PError::MetadataDecodingError));
+fn read_flac(path: &Path) -> Result<SongTags> {
+    let tag = metaflac::Tag::read_from_path(path)?;
+    let vorbis = tag.vorbis_comments().ok_or("Missing Vorbis comments")?;
     let disc_number = vorbis.get("DISCNUMBER").and_then(|d| d[0].parse::<u32>().ok());
     let year = vorbis.get("DATE").and_then(|d| d[0].parse::<i32>().ok());
     Ok(SongTags {

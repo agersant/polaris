@@ -1,6 +1,10 @@
+#![recursion_limit = "128"]
+
 extern crate ape;
 extern crate app_dirs;
 extern crate core;
+#[macro_use]
+extern crate error_chain;
 extern crate getopts;
 extern crate hyper;
 extern crate id3;
@@ -30,6 +34,7 @@ extern crate shell32;
 #[cfg(windows)]
 extern crate user32;
 
+use errors::*;
 use getopts::Options;
 use iron::prelude::*;
 use mount::Mount;
@@ -41,7 +46,7 @@ mod api;
 mod collection;
 mod config;
 mod ddns;
-mod error;
+mod errors;
 mod index;
 mod metadata;
 mod ui;
@@ -50,6 +55,20 @@ mod thumbnails;
 mod vfs;
 
 fn main() {
+    if let Err(ref e) = run() {
+        println!("Error: {}", e);
+
+        for e in e.iter().skip(1) {
+            println!("caused by: {}", e);
+        }
+        if let Some(backtrace) = e.backtrace() {
+            println!("backtrace: {:?}", backtrace);
+        }
+        ::std::process::exit(1);
+    }
+}
+
+fn run() -> Result<()> {
 
     // Parse CLI options
     let args: Vec<String> = std::env::args().collect();
@@ -63,7 +82,7 @@ fn main() {
     let config_file_path = config_file_name.map(|n| Path::new(n.as_str()).to_path_buf());
 
     // Parse config
-    let config = config::Config::parse(config_file_path).unwrap();
+    let config = config::Config::parse(config_file_path)?;
 
     // Init VFS
     let vfs = Arc::new(vfs::Vfs::new(config.vfs.clone()));
@@ -95,7 +114,7 @@ fn main() {
     let mut mount = Mount::new();
     mount.mount("/api/", api_chain);
     mount.mount("/", Static::new(Path::new("web")));
-    let mut server = Iron::new(mount).http(("0.0.0.0", 5050)).unwrap();
+    let mut server = Iron::new(mount).http(("0.0.0.0", 5050))?;
 
     // Start DDNS updates
     match config.ddns {
@@ -113,4 +132,6 @@ fn main() {
 
     println!("Shutting down server");
     server.close().unwrap();
+
+    Ok(())
 }

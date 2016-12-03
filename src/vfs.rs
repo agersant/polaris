@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::path::Path;
 
-use error::*;
+use errors::*;
 
 #[derive(Debug, Clone)]
 pub struct VfsConfig {
@@ -24,7 +24,7 @@ impl Vfs {
         Vfs { mount_points: config.mount_points }
     }
 
-    pub fn real_to_virtual(&self, real_path: &Path) -> Result<PathBuf, PError> {
+    pub fn real_to_virtual(&self, real_path: &Path) -> Result<PathBuf> {
         for (name, target) in &self.mount_points {
             match real_path.strip_prefix(target) {
                 Ok(p) => {
@@ -34,10 +34,10 @@ impl Vfs {
                 Err(_) => (),
             }
         }
-        Err(PError::PathNotInVfs)
+        bail!("Real path has no match in VFS")
     }
 
-    pub fn virtual_to_real(&self, virtual_path: &Path) -> Result<PathBuf, PError> {
+    pub fn virtual_to_real(&self, virtual_path: &Path) -> Result<PathBuf> {
         for (name, target) in &self.mount_points {
             let mount_path = Path::new(&name);
             match virtual_path.strip_prefix(mount_path) {
@@ -51,7 +51,7 @@ impl Vfs {
                 Err(_) => (),
             }
         }
-        Err(PError::PathNotInVfs)
+        bail!("Virtual path has no match in VFS")
     }
 
     pub fn get_mount_points(&self) -> &HashMap<String, PathBuf> {

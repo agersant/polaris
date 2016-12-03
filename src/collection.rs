@@ -4,9 +4,9 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use config::Config;
+use errors::*;
 use index::*;
 use vfs::*;
-use error::*;
 
 
 #[derive(Clone, Debug)]
@@ -39,7 +39,7 @@ impl Collection {
         }
     }
 
-    pub fn load_config(&mut self, config: &Config) -> Result<(), PError> {
+    pub fn load_config(&mut self, config: &Config) -> Result<()> {
         self.users = config.users.to_vec();
         Ok(())
     }
@@ -48,15 +48,15 @@ impl Collection {
         self.users.iter().any(|u| u.name == username && u.password == password)
     }
 
-    pub fn browse(&self, virtual_path: &Path) -> Result<Vec<CollectionFile>, PError> {
+    pub fn browse(&self, virtual_path: &Path) -> Result<Vec<CollectionFile>> {
         self.index.deref().browse(virtual_path)
     }
 
-    pub fn flatten(&self, virtual_path: &Path) -> Result<Vec<Song>, PError> {
+    pub fn flatten(&self, virtual_path: &Path) -> Result<Vec<Song>> {
         self.index.deref().flatten(virtual_path)
     }
 
-    pub fn locate(&self, virtual_path: &Path) -> Result<PathBuf, PError> {
+    pub fn locate(&self, virtual_path: &Path) -> Result<PathBuf> {
         self.vfs.virtual_to_real(virtual_path)
     }
 }

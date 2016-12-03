@@ -9,7 +9,7 @@ use std::fs::DirBuilder;
 use std::hash::{Hash, Hasher};
 use std::path::*;
 
-use error::*;
+use errors::*;
 use utils;
 
 const THUMBNAILS_PATH: &'static str = "thumbnails";
@@ -22,16 +22,16 @@ fn hash(path: &Path, dimension: u32) -> u64 {
     hasher.finish()
 }
 
-pub fn get_thumbnail(real_path: &Path, max_dimension: u32) -> Result<PathBuf, PError> {
+pub fn get_thumbnail(real_path: &Path, max_dimension: u32) -> Result<PathBuf> {
 
-    let mut out_path = try!(utils::get_cache_root());
+    let mut out_path = utils::get_cache_root()?;
     out_path.push(THUMBNAILS_PATH);
 
     let mut dir_builder = DirBuilder::new();
     dir_builder.recursive(true);
-    try!(dir_builder.create(out_path.as_path()));
+    dir_builder.create(out_path.as_path())?;
 
-    let source_image = try!(image::open(real_path));
+    let source_image = image::open(real_path)?;
     let (source_width, source_height) = source_image.dimensions();
     let cropped_dimension = cmp::max(source_width, source_height);
     let out_dimension = cmp::min(max_dimension, cropped_dimension);
@@ -50,13 +50,13 @@ pub fn get_thumbnail(real_path: &Path, max_dimension: u32) -> Result<PathBuf, PE
                                    out_dimension,
                                    out_dimension,
                                    FilterType::Lanczos3);
-            try!(out_image.save(out_path.as_path()));
+            out_image.save(out_path.as_path())?;
         } else {
             let out_image = resize(&source_image,
                                    out_dimension,
                                    out_dimension,
                                    FilterType::Lanczos3);
-            try!(out_image.save(out_path.as_path()));
+            out_image.save(out_path.as_path())?;
         }
     }
 
