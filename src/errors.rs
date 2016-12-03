@@ -8,6 +8,7 @@ use iron::status::Status;
 use lewton;
 use metaflac;
 use regex;
+use sqlite;
 use std;
 
 error_chain! {
@@ -20,6 +21,7 @@ error_chain! {
         Image(image::ImageError);
         Io(std::io::Error);
         Regex(regex::Error);
+        SQLite(sqlite::Error);
         Vorbis(lewton::VorbisError);
     }
 
