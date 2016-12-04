@@ -556,7 +556,7 @@ impl Index {
                 output.push(CollectionFile::Directory(directory));
             }
 
-        // Browse sub-directory
+            // Browse sub-directory
         } else {
             let real_path = self.vfs.virtual_to_real(virtual_path)?;
             let directories = self.browse_directories(real_path.as_path())?;
@@ -591,9 +591,7 @@ fn _get_test_index(name: &str) -> Index {
     let mut mount_points = HashMap::new();
     mount_points.insert("root".to_owned(), collection_path);
 
-    let vfs = Arc::new(Vfs::new(VfsConfig {
-        mount_points: mount_points,
-    }));
+    let vfs = Arc::new(Vfs::new(VfsConfig { mount_points: mount_points }));
 
     let mut index_config = IndexConfig::new();
     index_config.album_art_pattern = Some(Regex::new(r#"^Folder\.(png|jpg|jpeg)$"#).unwrap());
@@ -632,17 +630,18 @@ fn test_metadata() {
     let results = index.browse(target.as_path()).unwrap();
 
     assert_eq!(results.len(), 7);
-    assert_eq!(results[4], CollectionFile::Song(Song{
-        path: song_path.to_str().unwrap().to_string(),
-        track_number: Some(5),
-        disc_number: None,
-        title: Some("シャーベット (Sherbet)".to_owned()),
-        artist: Some("Tobokegao".to_owned()),
-        album_artist: None,
-        album: Some("Picnic".to_owned()),
-        year: Some(2016),
-        artwork: Some(artwork_path.to_str().unwrap().to_string()),
-    }));
+    assert_eq!(results[4],
+               CollectionFile::Song(Song {
+                   path: song_path.to_str().unwrap().to_string(),
+                   track_number: Some(5),
+                   disc_number: None,
+                   title: Some("シャーベット (Sherbet)".to_owned()),
+                   artist: Some("Tobokegao".to_owned()),
+                   album_artist: None,
+                   album: Some("Picnic".to_owned()),
+                   year: Some(2016),
+                   artwork: Some(artwork_path.to_str().unwrap().to_string()),
+               }));
 }
 
 #[test]
@@ -650,7 +649,7 @@ fn test_browse() {
     let mut khemmis_path = PathBuf::new();
     khemmis_path.push("root");
     khemmis_path.push("Khemmis");
-    
+
     let khemmis = CollectionFile::Directory(Directory {
         path: khemmis_path.to_string_lossy().deref().to_string(),
         artist: None,
