@@ -202,7 +202,11 @@ fn clean_path_string(path_string: &str) -> path::PathBuf {
 #[test]
 fn test_clean_path_string() {
     let mut correct_path = path::PathBuf::new();
-    correct_path.push("C:\\");
+    if cfg!(target_os = "windows") {
+        correct_path.push("C:\\");
+    } else {
+        correct_path.push("/usr");
+    }
     correct_path.push("some");
     correct_path.push("path");
     assert_eq!(correct_path, clean_path_string(r#"C:/some/path"#));
