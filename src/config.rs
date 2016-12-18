@@ -209,7 +209,14 @@ fn test_clean_path_string() {
     }
     correct_path.push("some");
     correct_path.push("path");
-    assert_eq!(correct_path, clean_path_string(r#"C:/some/path"#));
-    assert_eq!(correct_path, clean_path_string(r#"C:\some\path"#));
-    assert_eq!(correct_path, clean_path_string(r#"C:\some\path\"#));
+    if cfg!(target_os = "windows") {
+        assert_eq!(correct_path, clean_path_string(r#"C:/some/path"#));
+        assert_eq!(correct_path, clean_path_string(r#"C:\some\path"#));
+        assert_eq!(correct_path, clean_path_string(r#"C:\some\path\"#));
+    } else {
+        assert_eq!(correct_path, clean_path_string(r#"/usr/some/path"#));
+        assert_eq!(correct_path, clean_path_string(r#"/usr\some\path"#));
+        assert_eq!(correct_path, clean_path_string(r#"/usr\some\path\"#));
+    }
+    
 }
