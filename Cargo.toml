@@ -29,8 +29,8 @@ staticfile = "0.3.0"
 toml = "0.2"
 url = "1.2.0"
 
-winapi = "0.2.8"
-kernel32-sys = "0.2.2"
-shell32-sys = "0.1.1"
-user32-sys = "0.2.0"
+winapi = { git = "https://github.com/retep998/winapi-rs", branch="0.2" }
+kernel32-sys = { git = "https://github.com/retep998/winapi-rs", branch="0.2" }
+shell32-sys = { git = "https://github.com/retep998/winapi-rs", branch="0.2" }
+user32-sys = { git = "https://github.com/retep998/winapi-rs", branch="0.2" }
 uuid = { version = "0.3.0", features = ["v5"] }
