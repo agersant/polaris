@@ -19,7 +19,7 @@ use thumbnails::*;
 use utils::*;
 
 const CURRENT_MAJOR_VERSION: i32 = 1;
-const CURRENT_MINOR_VERSION: i32 = 0;
+const CURRENT_MINOR_VERSION: i32 = 1;
 
 #[derive(RustcEncodable)]
 struct Version {
@@ -58,6 +58,12 @@ pub fn get_api_handler(collection: Arc<Collection>) -> Mount {
             let collection = collection.clone();
             auth_api_mount.mount("/flatten/", move |request: &mut Request| {
                 self::flatten(request, collection.deref())
+            });
+        }
+        {
+            let collection = collection.clone();
+            auth_api_mount.mount("/random/", move |request: &mut Request| {
+                self::random(request, collection.deref())
             });
         }
         {
@@ -151,6 +157,16 @@ fn flatten(request: &mut Request, collection: &Collection) -> IronResult<Respons
         Err(e) => return Err(IronError::new(e, status::InternalServerError)),
     };
 
+    Ok(Response::with((status::Ok, result_json)))
+}
+
+fn random(_: &mut Request, collection: &Collection) -> IronResult<Response> {
+    let random_result = collection.get_random_albums(20)?;
+    let result_json = json::encode(&random_result);
+    let result_json = match result_json {
+        Ok(j) => j,
+        Err(e) => return Err(IronError::new(e, status::InternalServerError)),
+    };
     Ok(Response::with((status::Ok, result_json)))
 }
 

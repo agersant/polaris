@@ -480,18 +480,9 @@ impl Index {
         Ok(output)
     }
 
-    // List sub-directories within a directory
-    fn browse_directories(&self, real_path: &Path) -> Result<Vec<CollectionFile>> {
-        let db = self.connect()?;
-        let mut output = Vec::new();
-
-        let path_string = real_path.to_string_lossy();
-        let mut select =
-            db.prepare("SELECT path, artwork, year, artist, album FROM directories WHERE \
-                          parent = ? ORDER BY path COLLATE NOCASE ASC")?;
-        select.bind(1, &Value::String(path_string.deref().to_owned()))?;
-
-        while let State::Row = select.next()? {
+    fn select_directories(&self, select: &mut Statement) -> Result<Vec<Directory>> {
+		let mut output = Vec::new();
+		while let State::Row = select.next()? {
 
             let directory_value: String = select.read(0)?;
             let artwork_path: Value = select.read(1)?;
@@ -521,9 +512,24 @@ impl Index {
                 artist: artist.as_string().map(|s| s.to_owned()),
                 album: album.as_string().map(|s| s.to_owned()),
             };
-            output.push(CollectionFile::Directory(directory));
+            output.push(directory);
         }
 
+		Ok(output)
+    }
+
+    // List sub-directories within a directory
+    fn browse_directories(&self, real_path: &Path) -> Result<Vec<CollectionFile>> {
+        let db = self.connect()?;
+
+        let path_string = real_path.to_string_lossy();
+        let mut select =
+            db.prepare("SELECT path, artwork, year, artist, album FROM directories WHERE \
+                          parent = ? ORDER BY path COLLATE NOCASE ASC")?;
+        select.bind(1, &Value::String(path_string.deref().to_owned()))?;
+
+        let output = self.select_directories(&mut select)?;
+		let output = output.into_iter().map(|d| CollectionFile::Directory(d)).collect();
         Ok(output)
     }
 
@@ -578,6 +584,14 @@ impl Index {
                           COLLATE NOCASE ASC")?;
         select.bind(1, &Value::String(path_string.deref().to_owned()))?;
         self.select_songs(&mut select)
+    }
+
+    pub fn get_random_albums(&self, count: u32) -> Result<Vec<Directory>> {
+        let db = self.connect()?;
+        let mut select =
+            db.prepare("SELECT path, artwork, year, artist, album FROM directories WHERE album IS NOT NULL ORDER BY RANDOM() LIMIT ?")?;
+		select.bind(1, &Value::Integer(count as i64))?;
+		self.select_directories(&mut select)
     }
 }
 
@@ -682,4 +696,12 @@ fn test_flatten() {
     index.update_index().unwrap();
     let results = index.flatten(Path::new("root")).unwrap();
     assert_eq!(results.len(), 12);
+}
+
+#[test]
+fn test_random() {
+    let index = _get_test_index("random.sqlite");
+    index.update_index().unwrap();
+    let results = index.get_random_albums(1).unwrap();
+    assert_eq!(results.len(), 1);
 }
