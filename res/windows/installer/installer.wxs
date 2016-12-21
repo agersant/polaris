@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='windows-1252'?>
 <Wix xmlns='http://schemas.microsoft.com/wix/2006/wi' xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
-    <Product Name='Polaris' Id='33986EB1-E35C-4E01-817C-FA23F0C0FB88' UpgradeCode='9D86F109-E1EC-4C67-826C-8FB813838C49' Language='1033' Codepage='1252' Version='0.2.0' Manufacturer='Antoine Gersant'>
+    <Product Name='Polaris' Id='587DEECF-9B89-425E-A333-79FF9A71196C' UpgradeCode='9D86F109-E1EC-4C67-826C-8FB813838C49' Language='1033' Codepage='1252' Version='0.3.0' Manufacturer='Antoine Gersant'>
 
 		<Package Id='*' Keywords='Installer' Platform='x64' InstallPrivileges='elevated' InstallScope='perMachine' Description='Polaris Installer' Manufacturer='Antoine Gersant' Languages='1033' Compressed='yes' SummaryCodepage='1252' />
 
@@ -24,6 +24,7 @@
 					<Component Id='OpenSSL' Guid='8F4A07F6-CADB-4001-92F6-C7184A053B3B'>
 						<File Id='LibEAY' Name='libeay32.dll' Source='libeay32.dll' />
 						<File Id='LibEAYmd' Name='libeay32md.dll' Source='libeay32md.dll' />
+						<File Id='SSLEAY32md' Name='ssleay32md.dll' Source='ssleay32md.dll' />
 					</Component>
 
 					<Directory Id='web' Name='web'>
