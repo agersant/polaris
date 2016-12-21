@@ -36,17 +36,17 @@ error_chain! {
 }
 
 impl From<Error> for IronError {
-    fn from(err: Error) -> IronError {
-        match err {
-            e @ Error(ErrorKind::AuthenticationRequired, _) => {
-                IronError::new(e, Status::Unauthorized)
-            }
-            e @ Error(ErrorKind::MissingUsername, _) => IronError::new(e, Status::BadRequest),
-            e @ Error(ErrorKind::MissingPassword, _) => IronError::new(e, Status::BadRequest),
-            e @ Error(ErrorKind::IncorrectCredentials, _) => IronError::new(e, Status::BadRequest),
-            e @ Error(ErrorKind::CannotServeDirectory, _) => IronError::new(e, Status::BadRequest),
-            e @ Error(ErrorKind::UnsupportedFileType, _) => IronError::new(e, Status::BadRequest),
-            e => IronError::new(e, Status::InternalServerError),
-        }
-    }
+	fn from(err: Error) -> IronError {
+		match err {
+			e @ Error(ErrorKind::AuthenticationRequired, _) => {
+				IronError::new(e, Status::Unauthorized)
+			}
+			e @ Error(ErrorKind::MissingUsername, _) => IronError::new(e, Status::BadRequest),
+			e @ Error(ErrorKind::MissingPassword, _) => IronError::new(e, Status::BadRequest),
+			e @ Error(ErrorKind::IncorrectCredentials, _) => IronError::new(e, Status::BadRequest),
+			e @ Error(ErrorKind::CannotServeDirectory, _) => IronError::new(e, Status::BadRequest),
+			e @ Error(ErrorKind::UnsupportedFileType, _) => IronError::new(e, Status::BadRequest),
+			e => IronError::new(e, Status::InternalServerError),
+		}
+	}
 }
