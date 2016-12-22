@@ -539,7 +539,7 @@ impl Index {
 		let path_string = real_path.to_string_lossy();
 		let mut select =
 			db.prepare("SELECT path, disc_number, track_number, title, year, album_artist, \
-				          artist, album, artwork FROM songs WHERE parent = ? ORDER BY path \
+				          artist, album, artwork FROM songs WHERE parent = ? ORDER BY track_number, path \
 				          COLLATE NOCASE ASC")?;
 		select.bind(1, &Value::String(path_string.deref().to_owned()))?;
 		Ok(self.select_songs(&mut select)?.into_iter().map(|s| CollectionFile::Song(s)).collect())
