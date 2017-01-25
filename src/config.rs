@@ -193,9 +193,11 @@ impl Config {
 
 fn clean_path_string(path_string: &str) -> path::PathBuf {
 	let separator_regex = regex::Regex::new(r"\\|/").unwrap();
+	let trailing_regex = regex::Regex::new(r"(/)+$").unwrap();
 	let mut correct_separator = String::new();
 	correct_separator.push(path::MAIN_SEPARATOR);
 	let path_string = separator_regex.replace_all(path_string, correct_separator.as_str());
+	let path_string = trailing_regex.replace_all(&path_string, "");
 	path::PathBuf::from(path_string)
 }
 
@@ -213,10 +215,14 @@ fn test_clean_path_string() {
 		assert_eq!(correct_path, clean_path_string(r#"C:/some/path"#));
 		assert_eq!(correct_path, clean_path_string(r#"C:\some\path"#));
 		assert_eq!(correct_path, clean_path_string(r#"C:\some\path\"#));
+		assert_eq!(correct_path, clean_path_string(r#"C:\some\path\\\\"#));
+		assert_eq!(correct_path, clean_path_string(r#"C:\some/path//"#));
 	} else {
 		assert_eq!(correct_path, clean_path_string(r#"/usr/some/path"#));
 		assert_eq!(correct_path, clean_path_string(r#"/usr\some\path"#));
 		assert_eq!(correct_path, clean_path_string(r#"/usr\some\path\"#));
+		assert_eq!(correct_path, clean_path_string(r#"/usr\some\path\\\\"#));
+		assert_eq!(correct_path, clean_path_string(r#"/usr\some/path//"#));
 	}
 
 }

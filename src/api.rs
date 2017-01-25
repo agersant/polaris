@@ -82,7 +82,7 @@ pub fn get_api_handler(collection: Arc<Collection>) -> Mount {
 }
 
 fn path_from_request(request: &Request) -> Result<PathBuf> {
-	let path_string = request.url.path().join("\\");
+	let path_string = request.url.path().join("/");
 	let decoded_path = percent_decode(path_string.as_bytes()).decode_utf8()?;
 	Ok(PathBuf::from(decoded_path.deref()))
 }
