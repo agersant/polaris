@@ -7,7 +7,8 @@ use errors::*;
 pub fn get_config_root() -> Result<PathBuf> {
 	if let Ok(mut root) = data_root(AppDataType::SharedConfig) {
 		root.push("Polaris");
-		fs::create_dir_all(&root)?;
+		fs::create_dir_all(&root)
+			.chain_err(|| format!("opening shared config: {}", root.display()))?;
 		return Ok(root);
 	}
 	bail!("Could not retrieve config directory root");
@@ -16,7 +17,8 @@ pub fn get_config_root() -> Result<PathBuf> {
 pub fn get_cache_root() -> Result<PathBuf> {
 	if let Ok(mut root) = data_root(AppDataType::SharedData) {
 		root.push("Polaris");
-		fs::create_dir_all(&root)?;
+		fs::create_dir_all(&root)
+			.chain_err(|| format!("opening shared data: {}", root.display()))?;
 		return Ok(root);
 	}
 	bail!("Could not retrieve cache directory root");
