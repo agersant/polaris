@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='windows-1252'?>
 <Wix xmlns='http://schemas.microsoft.com/wix/2006/wi' xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
-    <Product Name='Polaris' Id='587DEECF-9B89-425E-A333-79FF9A71196C' UpgradeCode='9D86F109-E1EC-4C67-826C-8FB813838C49' Language='1033' Codepage='1252' Version='0.3.0' Manufacturer='Antoine Gersant'>
+    <Product Name='Polaris' Id='377AFBE0-CB1A-48FF-94B5-344FE08B4F5E' UpgradeCode='959B405D-1553-411D-A4A2-CCD3E17BE0EC' Language='1033' Codepage='1252' Version='0.3.0' Manufacturer='Antoine Gersant'>
 
 		<Package Id='*' Keywords='Installer' Platform='x64' InstallPrivileges='elevated' InstallScope='perMachine' Description='Polaris Installer' Manufacturer='Antoine Gersant' Languages='1033' Compressed='yes' SummaryCodepage='1252' />
 
@@ -21,9 +21,15 @@
 						</File>
 					</Component>						
 
-					<Component Id='OpenSSL' Guid='8F4A07F6-CADB-4001-92F6-C7184A053B3B'>
+					<Component Id='OpenSSLLibEAY' Guid='8F4A07F6-CADB-4001-92F6-C7184A053B3B'>
 						<File Id='LibEAY' Name='libeay32.dll' Source='libeay32.dll' />
+					</Component>
+
+					<Component Id='OpenSSLLibEAYmd' Guid='55E2AD65-293D-44BE-96C5-F61EE169478B'>
 						<File Id='LibEAYmd' Name='libeay32md.dll' Source='libeay32md.dll' />
+					</Component>
+
+					<Component Id='OpenSSLSSLEAY32md' Guid='9E115DA4-26F3-4993-BC6D-3140CBA3EF5E'>
 						<File Id='SSLEAY32md' Name='ssleay32md.dll' Source='ssleay32md.dll' />
 					</Component>
 
@@ -44,26 +50,40 @@
 						</Component>
 
 						<Directory Id='js' Name='js'>
-							<Component Id='WebUIJS' Guid='D5C12922-182A-4AE9-B863-D7ACA7FC2357'>
+							<Component Id='WebUIJSUtils' Guid='D5C12922-182A-4AE9-B863-D7ACA7FC2357'>
 								<File Name='utils.js' />
+							</Component>
+							<Component Id='WebUIJSNotify' Guid='0D6CDA89-2F75-487D-B14D-FCE27DE31215'>
 								<File Name='notify.js' />
 							</Component>
 						</Directory>
 
 						<Directory Id='lib' Name='lib'>
-							<Component Id='WebUILib' Guid='294ECB0A-2CE7-4F1F-852C-FA81E6082B4C'>
+							<Component Id='WebUILibCookie' Guid='294ECB0A-2CE7-4F1F-852C-FA81E6082B4C'>
 								<File Name='js.cookie.js' />
+							</Component>
+							<Component Id='WebUILibRiot' Guid='460200A1-6926-4FA9-98D5-A9F72555FBFC'>
 								<File Name='riot+compiler.min.js' />
 							</Component>
 						</Directory>						
 
 						<Directory Id='tags' Name='tags'>
-							<Component Id='WebUITags' Guid='E1058E84-EC96-4CD8-8E51-DBB1F2DAA593'>
+							<Component Id='WebUITagsAuth' Guid='E1058E84-EC96-4CD8-8E51-DBB1F2DAA593'>
 								<File Name='auth.tag' />
+							</Component>
+							<Component Id='WebUITagsBreadcrumbs' Guid='EA2F36E1-6182-4249-A612-06D74B491AD7'>
 								<File Name='breadcrumbs.tag' />
+							</Component>
+							<Component Id='WebUITagsBrowser' Guid='576EB281-3BB8-48BC-8221-F63D674C99F3'>
 								<File Name='browser.tag' />
+							</Component>
+							<Component Id='WebUITagsMain' Guid='B85532D1-B288-48C5-872D-31078949DFB7'>
 								<File Name='main.tag' />
+							</Component>
+							<Component Id='WebUITagsPlayer' Guid='AE56FB97-E933-4369-9680-E05F89CAA01A'>
 								<File Name='player.tag' />
+							</Component>
+							<Component Id='WebUITagsPlaylist' Guid='4E1E08A5-494F-4230-879C-2187706E8CEA'>
 								<File Name='playlist.tag' />
 							</Component>
 						</Directory>
@@ -116,15 +136,24 @@
 
 		<Feature Id='Complete' Level='1'>
 			<ComponentRef Id='MainExecutable' />
-			<ComponentRef Id='OpenSSL' />
+			<ComponentRef Id='OpenSSLLibEAY' />
+			<ComponentRef Id='OpenSSLLibEAYmd' />
+			<ComponentRef Id='OpenSSLSSLEAY32md' />
 			<ComponentRef Id='ConfigFile' />
 			<ComponentRef Id='WebUIFavicon' />
 			<ComponentRef Id='WebUIImg' />
 			<ComponentRef Id='WebUIIndex' />
-			<ComponentRef Id='WebUIJS' />
-			<ComponentRef Id='WebUILib' />
+			<ComponentRef Id='WebUIJSUtils' />
+			<ComponentRef Id='WebUIJSNotify' />
+			<ComponentRef Id='WebUILibCookie' />
+			<ComponentRef Id='WebUILibRiot' />
 			<ComponentRef Id='WebUIStyle' />
-			<ComponentRef Id='WebUITags' />
+			<ComponentRef Id='WebUITagsAuth' />
+			<ComponentRef Id='WebUITagsBreadcrumbs' />
+			<ComponentRef Id='WebUITagsBrowser' />
+			<ComponentRef Id='WebUITagsMain' />
+			<ComponentRef Id='WebUITagsPlayer' />
+			<ComponentRef Id='WebUITagsPlaylist' />
 			<ComponentRef Id='ProgramMenuDir' />
 			<ComponentRef Id='CleanupExtraData' />
 		</Feature>
