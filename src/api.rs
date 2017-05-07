@@ -5,8 +5,8 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use iron::prelude::*;
-use iron::headers::CookiePair;
-use iron::{BeforeMiddleware, status};
+use iron::headers::{Authorization, Basic, CookiePair};
+use iron::{AroundMiddleware, Handler, status};
 use mount::Mount;
 use oven::prelude::*;
 use params;
@@ -19,7 +19,7 @@ use thumbnails::*;
 use utils::*;
 
 const CURRENT_MAJOR_VERSION: i32 = 1;
-const CURRENT_MINOR_VERSION: i32 = 1;
+const CURRENT_MINOR_VERSION: i32 = 2;
 
 #[derive(RustcEncodable)]
 struct Version {
@@ -74,7 +74,8 @@ pub fn get_api_handler(collection: Arc<Collection>) -> Mount {
 		}
 
 		let mut auth_api_chain = Chain::new(auth_api_mount);
-		auth_api_chain.link_before(AuthRequirement);
+		let auth = AuthRequirement { collection:collection.clone() };
+		auth_api_chain.link_around(auth);
 
 		api_handler.mount("/", auth_api_chain);
 	}
@@ -87,13 +88,65 @@ fn path_from_request(request: &Request) -> Result<PathBuf> {
 	Ok(PathBuf::from(decoded_path.deref()))
 }
 
-struct AuthRequirement;
-impl BeforeMiddleware for AuthRequirement {
-	fn before(&self, req: &mut Request) -> IronResult<()> {
-		match req.get_cookie("username") {
-			Some(_) => Ok(()),
-			None => Err(Error::from(ErrorKind::AuthenticationRequired).into()),
+struct AuthRequirement {
+	collection: Arc<Collection>,
+}
+
+impl AroundMiddleware for AuthRequirement {
+	fn around(self, handler: Box<Handler>) -> Box<Handler> {
+		Box::new(AuthHandler {
+			collection: self.collection,
+			handler: handler
+		}) as Box<Handler>
+	}
+}
+
+struct AuthHandler {
+	handler: Box<Handler>,
+	collection: Arc<Collection>,
+}
+
+fn set_cookie(username: &str, response: &mut Response) {
+	let mut username_cookie = CookiePair::new("username".to_string(), username.to_string());
+	username_cookie.path = Some("/".to_owned());
+	response.set_cookie(username_cookie);
+}
+
+impl Handler for AuthHandler {
+	fn handle(&self, req: &mut Request) -> IronResult<Response> {
+		let mut username = None;
+		{
+			let mut auth_success = false;
+
+			// Auth via Authorization header
+			if let Some(auth) = req.headers.get::<Authorization<Basic>>() {
+				if let Some(ref password) = auth.password {
+					auth_success = self.collection.auth(auth.username.as_str(), password.as_str());
+					username = Some(auth.username.clone());
+				}
+			}
+
+			// Auth via Cookie
+			if !auth_success {
+				auth_success = req.get_cookie("username").is_some();
+			}
+
+			// Reject
+			if !auth_success {
+				return Err(Error::from(ErrorKind::AuthenticationRequired).into());
+			}
 		}
+
+		let mut response = self.handler.handle(req);
+
+		// Add cookie to response
+		if let Some(username) = username {
+			if let Ok(ref mut response) = response {
+				set_cookie(username.as_str(), response);
+			}
+		}
+
+		response
 	}
 }
 
@@ -117,9 +170,7 @@ fn auth(request: &mut Request, collection: &Collection) -> IronResult<Response> 
 	};
 	if collection.auth(username.as_str(), password.as_str()) {
 		let mut response = Response::with((status::Ok, ""));
-		let mut username_cookie = CookiePair::new("username".to_string(), username.clone());
-		username_cookie.path = Some("/".to_owned());
-		response.set_cookie(username_cookie);
+		set_cookie(username.as_str(), &mut response);
 		Ok(response)
 	} else {
 		Err(Error::from(ErrorKind::IncorrectCredentials).into())
