@@ -129,7 +129,8 @@ impl<'db> IndexBuilder<'db> {
 
 					let metadata = fs::metadata(directory.path.as_str())?;
 					let created = metadata
-						.created()?
+						.created()
+						.or(metadata.modified())?
 						.duration_since(time::UNIX_EPOCH)?
 						.as_secs();
 
