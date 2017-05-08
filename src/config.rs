@@ -52,7 +52,8 @@ impl Config {
 		let mut config_file_content = String::new();
 		config_file.read_to_string(&mut config_file_content)?;
 		let parsed_config = toml::Parser::new(config_file_content.as_str()).parse();
-		let parsed_config = parsed_config.ok_or("Could not parse config as valid TOML")?;
+		let parsed_config = parsed_config
+			.ok_or("Could not parse config as valid TOML")?;
 
 		let mut config = Config {
 			secret: String::new(),
@@ -77,7 +78,8 @@ impl Config {
 	}
 
 	fn parse_secret(&mut self, source: &toml::Table) -> Result<()> {
-		self.secret = source.get(CONFIG_SECRET)
+		self.secret = source
+			.get(CONFIG_SECRET)
 			.and_then(|s| s.as_str())
 			.map(|s| s.to_owned())
 			.ok_or("Could not parse config secret")?;
@@ -173,8 +175,9 @@ impl Config {
 			_ => bail!("Could not parse DDNS settings table"),
 		};
 
-		let host =
-			ddns.get(CONFIG_DDNS_HOST).and_then(|n| n.as_str()).ok_or("Could not parse DDNS host")?;
+		let host = ddns.get(CONFIG_DDNS_HOST)
+			.and_then(|n| n.as_str())
+			.ok_or("Could not parse DDNS host")?;
 		let username = ddns.get(CONFIG_DDNS_USERNAME)
 			.and_then(|n| n.as_str())
 			.ok_or("Could not parse DDNS username")?;
@@ -183,10 +186,10 @@ impl Config {
 			.ok_or("Could not parse DDNS password")?;
 
 		self.ddns = Some(DDNSConfig {
-			host: host.to_owned(),
-			username: username.to_owned(),
-			password: password.to_owned(),
-		});
+		                     host: host.to_owned(),
+		                     username: username.to_owned(),
+		                     password: password.to_owned(),
+		                 });
 		Ok(())
 	}
 }

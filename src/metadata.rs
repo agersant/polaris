@@ -47,14 +47,14 @@ fn read_id3(path: &Path) -> Result<SongTags> {
 		.or(tag.date_recorded().and_then(|d| d.year));
 
 	Ok(SongTags {
-		artist: artist,
-		album_artist: album_artist,
-		album: album,
-		title: title,
-		disc_number: disc_number,
-		track_number: track_number,
-		year: year,
-	})
+	       artist: artist,
+	       album_artist: album_artist,
+	       album: album,
+	       title: title,
+	       disc_number: disc_number,
+	       track_number: track_number,
+	       year: year,
+	   })
 }
 
 fn read_ape_string(item: &ape::Item) -> Option<String> {
@@ -95,14 +95,14 @@ fn read_ape(path: &Path) -> Result<SongTags> {
 	let disc_number = tag.item("Disc").and_then(read_ape_x_of_y);
 	let track_number = tag.item("Track").and_then(read_ape_x_of_y);
 	Ok(SongTags {
-		artist: artist,
-		album_artist: album_artist,
-		album: album,
-		title: title,
-		disc_number: disc_number,
-		track_number: track_number,
-		year: year,
-	})
+	       artist: artist,
+	       album_artist: album_artist,
+	       album: album,
+	       title: title,
+	       disc_number: disc_number,
+	       track_number: track_number,
+	       year: year,
+	   })
 }
 
 fn read_vorbis(path: &Path) -> Result<SongTags> {
@@ -139,17 +139,19 @@ fn read_vorbis(path: &Path) -> Result<SongTags> {
 fn read_flac(path: &Path) -> Result<SongTags> {
 	let tag = metaflac::Tag::read_from_path(path)?;
 	let vorbis = tag.vorbis_comments().ok_or("Missing Vorbis comments")?;
-	let disc_number = vorbis.get("DISCNUMBER").and_then(|d| d[0].parse::<u32>().ok());
+	let disc_number = vorbis
+		.get("DISCNUMBER")
+		.and_then(|d| d[0].parse::<u32>().ok());
 	let year = vorbis.get("DATE").and_then(|d| d[0].parse::<i32>().ok());
 	Ok(SongTags {
-		artist: vorbis.artist().map(|v| v[0].clone()),
-		album_artist: vorbis.album_artist().map(|v| v[0].clone()),
-		album: vorbis.album().map(|v| v[0].clone()),
-		title: vorbis.title().map(|v| v[0].clone()),
-		disc_number: disc_number,
-		track_number: vorbis.track(),
-		year: year,
-	})
+	       artist: vorbis.artist().map(|v| v[0].clone()),
+	       album_artist: vorbis.album_artist().map(|v| v[0].clone()),
+	       album: vorbis.album().map(|v| v[0].clone()),
+	       title: vorbis.title().map(|v| v[0].clone()),
+	       disc_number: disc_number,
+	       track_number: vorbis.track(),
+	       year: year,
+	   })
 }
 
 #[test]

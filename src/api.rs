@@ -74,7 +74,7 @@ pub fn get_api_handler(collection: Arc<Collection>) -> Mount {
 		}
 
 		let mut auth_api_chain = Chain::new(auth_api_mount);
-		let auth = AuthRequirement { collection:collection.clone() };
+		let auth = AuthRequirement { collection: collection.clone() };
 		auth_api_chain.link_around(auth);
 
 		api_handler.mount("/", auth_api_chain);
@@ -83,7 +83,10 @@ pub fn get_api_handler(collection: Arc<Collection>) -> Mount {
 }
 
 fn path_from_request(request: &Request) -> Result<PathBuf> {
-	let path_string = request.url.path().join(&::std::path::MAIN_SEPARATOR.to_string());
+	let path_string = request
+		.url
+		.path()
+		.join(&::std::path::MAIN_SEPARATOR.to_string());
 	let decoded_path = percent_decode(path_string.as_bytes()).decode_utf8()?;
 	Ok(PathBuf::from(decoded_path.deref()))
 }
@@ -95,9 +98,9 @@ struct AuthRequirement {
 impl AroundMiddleware for AuthRequirement {
 	fn around(self, handler: Box<Handler>) -> Box<Handler> {
 		Box::new(AuthHandler {
-			collection: self.collection,
-			handler: handler
-		}) as Box<Handler>
+		             collection: self.collection,
+		             handler: handler,
+		         }) as Box<Handler>
 	}
 }
 
@@ -121,7 +124,8 @@ impl Handler for AuthHandler {
 			// Auth via Authorization header
 			if let Some(auth) = req.headers.get::<Authorization<Basic>>() {
 				if let Some(ref password) = auth.password {
-					auth_success = self.collection.auth(auth.username.as_str(), password.as_str());
+					auth_success = self.collection
+						.auth(auth.username.as_str(), password.as_str());
 					username = Some(auth.username.clone());
 				}
 			}

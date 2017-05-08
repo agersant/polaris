@@ -120,9 +120,7 @@ fn run() -> Result<()> {
 	match config.ddns {
 		Some(ref ddns_config) => {
 			let ddns_config = ddns_config.clone();
-			std::thread::spawn(|| {
-				ddns::run(ddns_config);
-			});
+			std::thread::spawn(|| { ddns::run(ddns_config); });
 		}
 		None => (),
 	};

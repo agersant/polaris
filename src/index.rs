@@ -99,16 +99,14 @@ impl<'db> IndexBuilder<'db> {
 		let mut queue = Vec::new();
 		queue.reserve_exact(INDEX_BUILDING_INSERT_BUFFER_SIZE);
 		Ok(IndexBuilder {
-			queue: queue,
-			db: db,
-			insert_directory:
-				db.prepare("INSERT OR REPLACE INTO directories (path, parent, artwork, year, \
+		       queue: queue,
+		       db: db,
+		       insert_directory: db.prepare("INSERT OR REPLACE INTO directories (path, parent, artwork, year, \
 				          artist, album) VALUES (?, ?, ?, ?, ?, ?)")?,
-			insert_song:
-				db.prepare("INSERT OR REPLACE INTO songs (path, parent, disc_number, track_number, \
+		       insert_song: db.prepare("INSERT OR REPLACE INTO songs (path, parent, disc_number, track_number, \
 				          title, year, album_artist, artist, album, artwork) VALUES (?, ?, ?, ?, \
 				          ?, ?, ?, ?, ?, ?)")?,
-		})
+		   })
 	}
 
 	fn get_parent(path: &str) -> Option<String> {
@@ -130,11 +128,14 @@ impl<'db> IndexBuilder<'db> {
 				CollectionFile::Directory(directory) => {
 					let parent = IndexBuilder::get_parent(directory.path.as_str());
 					self.insert_directory.reset()?;
-					self.insert_directory.bind(1, &Value::String(directory.path))?;
-					self.insert_directory.bind(2, &string_option_to_value(parent))?;
+					self.insert_directory
+						.bind(1, &Value::String(directory.path))?;
+					self.insert_directory
+						.bind(2, &string_option_to_value(parent))?;
 					self.insert_directory
 						.bind(3, &string_option_to_value(directory.artwork))?;
-					self.insert_directory.bind(4, &i32_option_to_value(directory.year))?;
+					self.insert_directory
+						.bind(4, &i32_option_to_value(directory.year))?;
 					self.insert_directory
 						.bind(5, &string_option_to_value(directory.artist))?;
 					self.insert_directory
@@ -147,15 +148,24 @@ impl<'db> IndexBuilder<'db> {
 					let parent = IndexBuilder::get_parent(song.path.as_str());
 					self.insert_song.reset()?;
 					self.insert_song.bind(1, &Value::String(song.path))?;
-					self.insert_song.bind(2, &string_option_to_value(parent))?;
-					self.insert_song.bind(3, &u32_option_to_value(song.disc_number))?;
-					self.insert_song.bind(4, &u32_option_to_value(song.track_number))?;
-					self.insert_song.bind(5, &string_option_to_value(song.title))?;
-					self.insert_song.bind(6, &i32_option_to_value(song.year))?;
-					self.insert_song.bind(7, &string_option_to_value(song.album_artist))?;
-					self.insert_song.bind(8, &string_option_to_value(song.artist))?;
-					self.insert_song.bind(9, &string_option_to_value(song.album))?;
-					self.insert_song.bind(10, &string_option_to_value(song.artwork))?;
+					self.insert_song
+						.bind(2, &string_option_to_value(parent))?;
+					self.insert_song
+						.bind(3, &u32_option_to_value(song.disc_number))?;
+					self.insert_song
+						.bind(4, &u32_option_to_value(song.track_number))?;
+					self.insert_song
+						.bind(5, &string_option_to_value(song.title))?;
+					self.insert_song
+						.bind(6, &i32_option_to_value(song.year))?;
+					self.insert_song
+						.bind(7, &string_option_to_value(song.album_artist))?;
+					self.insert_song
+						.bind(8, &string_option_to_value(song.artist))?;
+					self.insert_song
+						.bind(9, &string_option_to_value(song.album))?;
+					self.insert_song
+						.bind(10, &string_option_to_value(song.artwork))?;
 					self.insert_song.next()?;
 				}
 
@@ -458,7 +468,11 @@ impl Index {
 			let mut artwork = None;
 			if let Some(artwork_path) = artwork_path {
 				artwork = match self.vfs.real_to_virtual(artwork_path) {
-					Ok(p) => Some(p.to_str().ok_or("Invalid song artwork path")?.to_owned()),
+					Ok(p) => {
+						Some(p.to_str()
+						         .ok_or("Invalid song artwork path")?
+						         .to_owned())
+					}
 					_ => None,
 				};
 			}
@@ -500,7 +514,11 @@ impl Index {
 			let mut artwork = None;
 			if let Some(artwork_path) = artwork_path {
 				artwork = match self.vfs.real_to_virtual(artwork_path) {
-					Ok(p) => Some(p.to_str().ok_or("Invalid directory artwork path")?.to_owned()),
+					Ok(p) => {
+						Some(p.to_str()
+						         .ok_or("Invalid directory artwork path")?
+						         .to_owned())
+					}
 					_ => None,
 				};
 			}
@@ -523,13 +541,16 @@ impl Index {
 		let db = self.connect()?;
 
 		let path_string = real_path.to_string_lossy();
-		let mut select =
-			db.prepare("SELECT path, artwork, year, artist, album FROM directories WHERE \
+		let mut select = db.prepare("SELECT path, artwork, year, artist, album FROM directories WHERE \
 				          parent = ? ORDER BY path COLLATE NOCASE ASC")?;
-		select.bind(1, &Value::String(path_string.deref().to_owned()))?;
+		select
+			.bind(1, &Value::String(path_string.deref().to_owned()))?;
 
 		let output = self.select_directories(&mut select)?;
-		let output = output.into_iter().map(|d| CollectionFile::Directory(d)).collect();
+		let output = output
+			.into_iter()
+			.map(|d| CollectionFile::Directory(d))
+			.collect();
 		Ok(output)
 	}
 
@@ -537,12 +558,15 @@ impl Index {
 	fn browse_songs(&self, real_path: &Path) -> Result<Vec<CollectionFile>> {
 		let db = self.connect()?;
 		let path_string = real_path.to_string_lossy();
-		let mut select =
-			db.prepare("SELECT path, disc_number, track_number, title, year, album_artist, \
+		let mut select = db.prepare("SELECT path, disc_number, track_number, title, year, album_artist, \
 				          artist, album, artwork FROM songs WHERE parent = ? ORDER BY track_number, path \
 				          COLLATE NOCASE ASC")?;
-		select.bind(1, &Value::String(path_string.deref().to_owned()))?;
-		Ok(self.select_songs(&mut select)?.into_iter().map(|s| CollectionFile::Song(s)).collect())
+		select
+			.bind(1, &Value::String(path_string.deref().to_owned()))?;
+		Ok(self.select_songs(&mut select)?
+		       .into_iter()
+		       .map(|s| CollectionFile::Song(s))
+		       .collect())
 	}
 
 	pub fn browse(&self, virtual_path: &Path) -> Result<Vec<CollectionFile>> {
@@ -578,18 +602,17 @@ impl Index {
 		let db = self.connect()?;
 		let real_path = self.vfs.virtual_to_real(virtual_path)?;
 		let path_string = real_path.to_string_lossy().into_owned() + "%";
-		let mut select =
-			db.prepare("SELECT path, disc_number, track_number, title, year, album_artist, \
+		let mut select = db.prepare("SELECT path, disc_number, track_number, title, year, album_artist, \
 				          artist, album, artwork FROM songs WHERE path LIKE ? ORDER BY path \
 				          COLLATE NOCASE ASC")?;
-		select.bind(1, &Value::String(path_string.deref().to_owned()))?;
+		select
+			.bind(1, &Value::String(path_string.deref().to_owned()))?;
 		self.select_songs(&mut select)
 	}
 
 	pub fn get_random_albums(&self, count: u32) -> Result<Vec<Directory>> {
 		let db = self.connect()?;
-		let mut select =
-			db.prepare("SELECT path, artwork, year, artist, album FROM directories WHERE album \
+		let mut select = db.prepare("SELECT path, artwork, year, artist, album FROM directories WHERE album \
 				          IS NOT NULL ORDER BY RANDOM() LIMIT ?")?;
 		select.bind(1, &Value::Integer(count as i64))?;
 		self.select_directories(&mut select)
@@ -647,16 +670,16 @@ fn test_metadata() {
 	assert_eq!(results.len(), 7);
 	assert_eq!(results[4],
 	           CollectionFile::Song(Song {
-		           path: song_path.to_str().unwrap().to_string(),
-		           track_number: Some(5),
-		           disc_number: None,
-		           title: Some("シャーベット (Sherbet)".to_owned()),
-		           artist: Some("Tobokegao".to_owned()),
-		           album_artist: None,
-		           album: Some("Picnic".to_owned()),
-		           year: Some(2016),
-		           artwork: Some(artwork_path.to_str().unwrap().to_string()),
-	           }));
+	                                    path: song_path.to_str().unwrap().to_string(),
+	                                    track_number: Some(5),
+	                                    disc_number: None,
+	                                    title: Some("シャーベット (Sherbet)".to_owned()),
+	                                    artist: Some("Tobokegao".to_owned()),
+	                                    album_artist: None,
+	                                    album: Some("Picnic".to_owned()),
+	                                    year: Some(2016),
+	                                    artwork: Some(artwork_path.to_str().unwrap().to_string()),
+	                                }));
 }
 
 #[test]
@@ -665,25 +688,27 @@ fn test_browse() {
 	khemmis_path.push("root");
 	khemmis_path.push("Khemmis");
 
-	let khemmis = CollectionFile::Directory(Directory {
-		path: khemmis_path.to_string_lossy().deref().to_string(),
-		artist: None,
-		album: None,
-		year: None,
-		artwork: None,
-	});
+	let khemmis =
+		CollectionFile::Directory(Directory {
+		                              path: khemmis_path.to_string_lossy().deref().to_string(),
+		                              artist: None,
+		                              album: None,
+		                              year: None,
+		                              artwork: None,
+		                          });
 
 	let mut tobokegao_path = PathBuf::new();
 	tobokegao_path.push("root");
 	tobokegao_path.push("Tobokegao");
 
-	let tobokegao = CollectionFile::Directory(Directory {
-		path: tobokegao_path.to_string_lossy().deref().to_string(),
-		artist: None,
-		album: None,
-		year: None,
-		artwork: None,
-	});
+	let tobokegao =
+		CollectionFile::Directory(Directory {
+		                              path: tobokegao_path.to_string_lossy().deref().to_string(),
+		                              artist: None,
+		                              album: None,
+		                              year: None,
+		                              artwork: None,
+		                          });
 
 	let index = _get_test_index("browse.sqlite");
 	index.update_index().unwrap();

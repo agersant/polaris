@@ -45,7 +45,9 @@ impl Collection {
 	}
 
 	pub fn auth(&self, username: &str, password: &str) -> bool {
-		self.users.iter().any(|u| u.name == username && u.password == password)
+		self.users
+			.iter()
+			.any(|u| u.name == username && u.password == password)
 	}
 
 	pub fn browse(&self, virtual_path: &Path) -> Result<Vec<CollectionFile>> {

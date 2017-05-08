@@ -49,11 +49,14 @@ fn update_my_ip(ip: &String, config: &DDNSConfig) -> Result<(), DDNSError> {
 	let host = &config.host;
 	let full_url = format!("{}?host={}&ip={}", url, host, ip);
 	let auth_header = Authorization(Basic {
-		username: config.username.clone(),
-		password: Some(config.password.to_owned()),
-	});
+	                                    username: config.username.clone(),
+	                                    password: Some(config.password.to_owned()),
+	                                });
 
-	let res = client.get(full_url.as_str()).header(auth_header).send()?;
+	let res = client
+		.get(full_url.as_str())
+		.header(auth_header)
+		.send()?;
 	match res.status {
 		hyper::status::StatusCode::Ok => Ok(()),
 		s => Err(DDNSError::UpdateError(s)),
