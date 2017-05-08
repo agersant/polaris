@@ -62,6 +62,10 @@ impl Collection {
 		self.index.deref().get_random_albums(count)
 	}
 
+	pub fn get_recent_albums(&self, count: u32) -> Result<Vec<Directory>> {
+		self.index.deref().get_recent_albums(count)
+	}
+
 	pub fn locate(&self, virtual_path: &Path) -> Result<PathBuf> {
 		self.vfs.virtual_to_real(virtual_path)
 	}

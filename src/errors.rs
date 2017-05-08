@@ -20,6 +20,7 @@ error_chain! {
         Id3(id3::Error);
         Image(image::ImageError);
         Io(std::io::Error);
+        Time(std::time::SystemTimeError);
         Regex(regex::Error);
         SQLite(sqlite::Error);
         Vorbis(lewton::VorbisError);
@@ -32,6 +33,7 @@ error_chain! {
         IncorrectCredentials {}
         CannotServeDirectory {}
         UnsupportedFileType {}
+        MissingIndexVersion {}
     }
 }
 

@@ -102,7 +102,7 @@ impl<'db> IndexBuilder<'db> {
 		       queue: queue,
 		       db: db,
 		       insert_directory: db.prepare("INSERT OR REPLACE INTO directories (path, parent, artwork, year, \
-				          artist, album) VALUES (?, ?, ?, ?, ?, ?)")?,
+				          artist, album, date_added) VALUES (?, ?, ?, ?, ?, ?, ?)")?,
 		       insert_song: db.prepare("INSERT OR REPLACE INTO songs (path, parent, disc_number, track_number, \
 				          title, year, album_artist, artist, album, artwork) VALUES (?, ?, ?, ?, \
 				          ?, ?, ?, ?, ?, ?)")?,
@@ -126,6 +126,13 @@ impl<'db> IndexBuilder<'db> {
 
 				// Insert directory
 				CollectionFile::Directory(directory) => {
+
+					let metadata = fs::metadata(directory.path.as_str())?;
+					let created = metadata
+						.created()?
+						.duration_since(time::UNIX_EPOCH)?
+						.as_secs();
+
 					let parent = IndexBuilder::get_parent(directory.path.as_str());
 					self.insert_directory.reset()?;
 					self.insert_directory
@@ -140,6 +147,8 @@ impl<'db> IndexBuilder<'db> {
 						.bind(5, &string_option_to_value(directory.artist))?;
 					self.insert_directory
 						.bind(6, &string_option_to_value(directory.album))?;
+					self.insert_directory
+						.bind(7, &Value::Integer(created as i64))?;
 					self.insert_directory.next()?;
 				}
 
@@ -198,11 +207,10 @@ impl Index {
 			sleep_duration: config.sleep_duration,
 		};
 
-		if path.exists() {
-			// Migration
-		} else {
+		if !path.exists() {
 			index.init()?;
 		}
+		index.migrate()?;
 
 		Ok(index)
 	}
@@ -257,6 +265,34 @@ impl Index {
 
 		")?;
 
+		Ok(())
+	}
+
+	fn migrate(&self) -> Result<()> {
+		let version = self.read_version()?;
+		if version < 2 {
+			println!("Migrating Index from version: {}", version);
+			self.migrate_to_version2()?
+		}
+		Ok(())
+	}
+
+	fn read_version(&self) -> Result<i64> {
+		let db = self.connect()?;
+		let mut select = db.prepare("SELECT MAX(number) FROM version")?;
+		if let Ok(State::Row) = select.next() {
+			let version = select.read(0)?;
+			return Ok(version);
+		}
+		Err(Error::from(ErrorKind::MissingIndexVersion).into())
+	}
+
+	fn migrate_to_version2(&self) -> Result<()> {
+		let db = self.connect()?;
+		db.execute("BEGIN TRANSACTION")?;
+		db.execute("ALTER TABLE directories ADD COLUMN date_added INTEGER DEFAULT 0 NOT NULL")?;
+		db.execute("UPDATE version SET number = 2")?;
+		db.execute("END TRANSACTION")?;
 		Ok(())
 	}
 
@@ -614,6 +650,14 @@ impl Index {
 		let db = self.connect()?;
 		let mut select = db.prepare("SELECT path, artwork, year, artist, album FROM directories WHERE album \
 				          IS NOT NULL ORDER BY RANDOM() LIMIT ?")?;
+		select.bind(1, &Value::Integer(count as i64))?;
+		self.select_directories(&mut select)
+	}
+
+	pub fn get_recent_albums(&self, count: u32) -> Result<Vec<Directory>> {
+		let db = self.connect()?;
+		let mut select = db.prepare("SELECT path, artwork, year, artist, album FROM directories WHERE album \
+				          IS NOT NULL ORDER BY date_added DESC LIMIT ?")?;
 		select.bind(1, &Value::Integer(count as i64))?;
 		self.select_directories(&mut select)
 	}

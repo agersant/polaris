@@ -68,6 +68,12 @@ pub fn get_api_handler(collection: Arc<Collection>) -> Mount {
 		}
 		{
 			let collection = collection.clone();
+			auth_api_mount.mount("/recent/", move |request: &mut Request| {
+				self::recent(request, collection.deref())
+			});
+		}
+		{
+			let collection = collection.clone();
 			auth_api_mount.mount("/serve/", move |request: &mut Request| {
 				self::serve(request, collection.deref())
 			});
@@ -218,6 +224,16 @@ fn flatten(request: &mut Request, collection: &Collection) -> IronResult<Respons
 fn random(_: &mut Request, collection: &Collection) -> IronResult<Response> {
 	let random_result = collection.get_random_albums(20)?;
 	let result_json = json::encode(&random_result);
+	let result_json = match result_json {
+		Ok(j) => j,
+		Err(e) => return Err(IronError::new(e, status::InternalServerError)),
+	};
+	Ok(Response::with((status::Ok, result_json)))
+}
+
+fn recent(_: &mut Request, collection: &Collection) -> IronResult<Response> {
+	let recent_result = collection.get_recent_albums(20)?;
+	let result_json = json::encode(&recent_result);
 	let result_json = match result_json {
 		Ok(j) => j,
 		Err(e) => return Err(IronError::new(e, status::InternalServerError)),
