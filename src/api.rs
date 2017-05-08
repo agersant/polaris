@@ -19,7 +19,7 @@ use thumbnails::*;
 use utils::*;
 
 const CURRENT_MAJOR_VERSION: i32 = 1;
-const CURRENT_MINOR_VERSION: i32 = 2;
+const CURRENT_MINOR_VERSION: i32 = 3;
 
 #[derive(RustcEncodable)]
 struct Version {
