@@ -776,3 +776,12 @@ fn test_random() {
 	let results = index.get_random_albums(1).unwrap();
 	assert_eq!(results.len(), 1);
 }
+
+#[test]
+fn test_recent() {
+	let index = _get_test_index("recent.sqlite");
+	index.update_index().unwrap();
+	let results = index.get_recent_albums(2).unwrap();
+	assert_eq!(results.len(), 2);
+	assert_eq!(results[0].artist, Some("Khemmis".to_owned()));
+}
