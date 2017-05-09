@@ -10,6 +10,7 @@ use metaflac;
 use regex;
 use sqlite;
 use std;
+use toml;
 
 error_chain! {
     foreign_links {
@@ -21,6 +22,7 @@ error_chain! {
         Image(image::ImageError);
         Io(std::io::Error);
         Time(std::time::SystemTimeError);
+        Toml(toml::de::Error);
         Regex(regex::Error);
         SQLite(sqlite::Error);
         Vorbis(lewton::VorbisError);

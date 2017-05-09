@@ -28,7 +28,7 @@ serde_derive = "1.0.2"
 serde_json = "1.0.2"
 sqlite = "0.23.0"
 staticfile = "0.3.0"
-toml = "0.2"
+toml = "0.4"
 url = "1.2.0"
 
 winapi = { git = "https://github.com/retep998/winapi-rs", branch="0.2" }

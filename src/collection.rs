@@ -9,19 +9,10 @@ use index::*;
 use vfs::*;
 
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct User {
 	name: String,
 	password: String,
-}
-
-impl User {
-	pub fn new(name: String, password: String) -> User {
-		User {
-			name: name,
-			password: password,
-		}
-	}
 }
 
 pub struct Collection {

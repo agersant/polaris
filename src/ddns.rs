@@ -6,7 +6,7 @@ use std::io::Read;
 use std::thread;
 use std::time;
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct DDNSConfig {
 	pub host: String,
 	pub username: String,
