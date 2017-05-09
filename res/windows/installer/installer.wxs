@@ -65,6 +65,9 @@
 							<Component Id='WebUILibRiot' Guid='460200A1-6926-4FA9-98D5-A9F72555FBFC'>
 								<File Name='riot+compiler.min.js' />
 							</Component>
+							<Component Id='WebUILibRoute' Guid='A616EF84-553A-4979-8A59-A8CF16D764BB'>
+								<File Name='route.min.js' />
+							</Component>
 						</Directory>						
 
 						<Directory Id='tags' Name='tags'>
@@ -147,6 +150,7 @@
 			<ComponentRef Id='WebUIJSNotify' />
 			<ComponentRef Id='WebUILibCookie' />
 			<ComponentRef Id='WebUILibRiot' />
+			<ComponentRef Id='WebUILibRoute' />
 			<ComponentRef Id='WebUIStyle' />
 			<ComponentRef Id='WebUITagsAuth' />
 			<ComponentRef Id='WebUITagsBreadcrumbs' />
