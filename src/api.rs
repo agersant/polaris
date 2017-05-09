@@ -10,7 +10,7 @@ use iron::{AroundMiddleware, Handler, status};
 use mount::Mount;
 use oven::prelude::*;
 use params;
-use rustc_serialize::json;
+use serde_json;
 use url::percent_encoding::percent_decode;
 
 use collection::*;
@@ -18,10 +18,10 @@ use errors::*;
 use thumbnails::*;
 use utils::*;
 
-const CURRENT_MAJOR_VERSION: i32 = 1;
-const CURRENT_MINOR_VERSION: i32 = 3;
+const CURRENT_MAJOR_VERSION: i32 = 2;
+const CURRENT_MINOR_VERSION: i32 = 0;
 
-#[derive(RustcEncodable)]
+#[derive(Serialize)]
 struct Version {
 	major: i32,
 	minor: i32,
@@ -162,7 +162,7 @@ impl Handler for AuthHandler {
 
 fn version(_: &mut Request) -> IronResult<Response> {
 	let current_version = Version::new(CURRENT_MAJOR_VERSION, CURRENT_MINOR_VERSION);
-	match json::encode(&current_version) {
+	match serde_json::to_string(&current_version) {
 		Ok(result_json) => Ok(Response::with((status::Ok, result_json))),
 		Err(e) => Err(IronError::new(e, status::InternalServerError)),
 	}
@@ -195,7 +195,7 @@ fn browse(request: &mut Request, collection: &Collection) -> IronResult<Response
 	};
 	let browse_result = collection.browse(&path)?;
 
-	let result_json = json::encode(&browse_result);
+	let result_json = serde_json::to_string(&browse_result);
 	let result_json = match result_json {
 		Ok(j) => j,
 		Err(e) => return Err(IronError::new(e, status::InternalServerError)),
@@ -212,7 +212,7 @@ fn flatten(request: &mut Request, collection: &Collection) -> IronResult<Respons
 	};
 	let flatten_result = collection.flatten(&path)?;
 
-	let result_json = json::encode(&flatten_result);
+	let result_json = serde_json::to_string(&flatten_result);
 	let result_json = match result_json {
 		Ok(j) => j,
 		Err(e) => return Err(IronError::new(e, status::InternalServerError)),
@@ -223,7 +223,7 @@ fn flatten(request: &mut Request, collection: &Collection) -> IronResult<Respons
 
 fn random(_: &mut Request, collection: &Collection) -> IronResult<Response> {
 	let random_result = collection.get_random_albums(20)?;
-	let result_json = json::encode(&random_result);
+	let result_json = serde_json::to_string(&random_result);
 	let result_json = match result_json {
 		Ok(j) => j,
 		Err(e) => return Err(IronError::new(e, status::InternalServerError)),
@@ -233,7 +233,7 @@ fn random(_: &mut Request, collection: &Collection) -> IronResult<Response> {
 
 fn recent(_: &mut Request, collection: &Collection) -> IronResult<Response> {
 	let recent_result = collection.get_recent_albums(20)?;
-	let result_json = json::encode(&recent_result);
+	let result_json = serde_json::to_string(&recent_result);
 	let result_json = match result_json {
 		Ok(j) => j,
 		Err(e) => return Err(IronError::new(e, status::InternalServerError)),

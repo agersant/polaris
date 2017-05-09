@@ -17,22 +17,19 @@ extern crate ogg;
 extern crate oven;
 extern crate params;
 extern crate regex;
-extern crate rustc_serialize;
+extern crate serde;
+#[macro_use] extern crate serde_derive;
+extern crate serde_json;
 extern crate staticfile;
 extern crate sqlite;
 extern crate toml;
 extern crate url;
 
-#[cfg(windows)]
-extern crate uuid;
-#[cfg(windows)]
-extern crate winapi;
-#[cfg(windows)]
-extern crate kernel32;
-#[cfg(windows)]
-extern crate shell32;
-#[cfg(windows)]
-extern crate user32;
+#[cfg(windows)] extern crate uuid;
+#[cfg(windows)] extern crate winapi;
+#[cfg(windows)] extern crate kernel32;
+#[cfg(windows)] extern crate shell32;
+#[cfg(windows)] extern crate user32;
 
 use errors::*;
 use getopts::Options;

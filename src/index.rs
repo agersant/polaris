@@ -38,7 +38,7 @@ pub struct Index {
 	sleep_duration: u64,
 }
 
-#[derive(Debug, RustcEncodable, PartialEq)]
+#[derive(Debug, Serialize, PartialEq)]
 pub struct Song {
 	path: String,
 	track_number: Option<u32>,
@@ -51,7 +51,7 @@ pub struct Song {
 	artwork: Option<String>,
 }
 
-#[derive(Debug, RustcEncodable, PartialEq)]
+#[derive(Debug, Serialize, PartialEq)]
 pub struct Directory {
 	path: String,
 	artist: Option<String>,
@@ -60,7 +60,7 @@ pub struct Directory {
 	artwork: Option<String>,
 }
 
-#[derive(Debug, RustcEncodable, PartialEq)]
+#[derive(Debug, Serialize, PartialEq)]
 pub enum CollectionFile {
 	Directory(Directory),
 	Song(Song),
