@@ -783,5 +783,4 @@ fn test_recent() {
 	index.update_index().unwrap();
 	let results = index.get_recent_albums(2).unwrap();
 	assert_eq!(results.len(), 2);
-	assert_eq!(results[0].artist, Some("Khemmis".to_owned()));
 }
