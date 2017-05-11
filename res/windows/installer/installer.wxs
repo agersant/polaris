@@ -65,12 +65,15 @@
 							<Component Id='WebUILibRiot' Guid='460200A1-6926-4FA9-98D5-A9F72555FBFC'>
 								<File Name='riot+compiler.min.js' />
 							</Component>
-							<Component Id='WebUILibRoute' Guid='A616EF84-553A-4979-8A59-A8CF16D764BB'>
-								<File Name='route.min.js' />
+							<Component Id='WebUILibRouteTag' Guid='6728F797-21A9-4218-BD1B-074E5E005798'>
+								<File Name='route+tag.min.js' />
 							</Component>
 						</Directory>						
 
 						<Directory Id='tags' Name='tags'>
+							<Component Id='WebUITagsApp' Guid='5B8B3B24-24B1-4B7A-8682-8858B7A93326'>
+								<File Name='app.tag' />
+							</Component>
 							<Component Id='WebUITagsAuth' Guid='E1058E84-EC96-4CD8-8E51-DBB1F2DAA593'>
 								<File Name='auth.tag' />
 							</Component>
@@ -79,6 +82,9 @@
 							</Component>
 							<Component Id='WebUITagsBrowser' Guid='576EB281-3BB8-48BC-8221-F63D674C99F3'>
 								<File Name='browser.tag' />
+							</Component>
+							<Component Id='WebUITagsBrowserTabs' Guid='E02B5342-137C-4D74-93A5-AE16161E303D'>
+								<File Name='browser-tabs.tag' />
 							</Component>
 							<Component Id='WebUITagsMain' Guid='B85532D1-B288-48C5-872D-31078949DFB7'>
 								<File Name='main.tag' />
@@ -150,11 +156,13 @@
 			<ComponentRef Id='WebUIJSNotify' />
 			<ComponentRef Id='WebUILibCookie' />
 			<ComponentRef Id='WebUILibRiot' />
-			<ComponentRef Id='WebUILibRoute' />
+			<ComponentRef Id='WebUILibRouteTag' />
 			<ComponentRef Id='WebUIStyle' />
+			<ComponentRef Id='WebUITagsApp' />
 			<ComponentRef Id='WebUITagsAuth' />
 			<ComponentRef Id='WebUITagsBreadcrumbs' />
 			<ComponentRef Id='WebUITagsBrowser' />
+			<ComponentRef Id='WebUITagsBrowserTabs' />
 			<ComponentRef Id='WebUITagsMain' />
 			<ComponentRef Id='WebUITagsPlayer' />
 			<ComponentRef Id='WebUITagsPlaylist' />
