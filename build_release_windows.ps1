@@ -25,7 +25,7 @@ Copy-Item .\web\ 								.\release\tmp\ -recurse
 ""
 "Creating installer"
 candle -wx -ext WixUtilExtension -arch x64						-out .\release\tmp\installer.wixobj 	.\res\windows\installer\installer.wxs
-light  -wx -ext WixUtilExtension -ext WixUIExtension -spdb  	-out .\release\Polaris_0.4.0.msi 		.\release\tmp\installer.wixobj
+light  -wx -ext WixUtilExtension -ext WixUIExtension -spdb  	-out .\release\Polaris_0.5.0.msi 		.\release\tmp\installer.wixobj
 
 "Cleaning up"
 Remove-Item -Recurse .\release\tmp

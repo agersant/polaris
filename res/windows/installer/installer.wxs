@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='windows-1252'?>
 <Wix xmlns='http://schemas.microsoft.com/wix/2006/wi' xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
-    <Product Name='Polaris' Id='B5351926-C585-4764-AD91-3884F8E8BE05' UpgradeCode='959B405D-1553-411D-A4A2-CCD3E17BE0EC' Language='1033' Codepage='1252' Version='0.4.0' Manufacturer='Antoine Gersant'>
+    <Product Name='Polaris' Id='FE52CDDE-D982-42C9-B251-0621100244D5' UpgradeCode='959B405D-1553-411D-A4A2-CCD3E17BE0EC' Language='1033' Codepage='1252' Version='0.5.0' Manufacturer='Antoine Gersant'>
 
 		<Package Id='*' Keywords='Installer' Platform='x64' InstallPrivileges='elevated' InstallScope='perMachine' Description='Polaris Installer' Manufacturer='Antoine Gersant' Languages='1033' Compressed='yes' SummaryCodepage='1252' />
 
