@@ -63,12 +63,16 @@ impl Config {
 			if vfs_config.mount_points.contains_key(&dir.name) {
 				bail!("Conflicting mount directories");
 			}
-			vfs_config.mount_points.insert(dir.name.to_owned(), clean_path_string(dir.source.as_str()));
+			vfs_config
+				.mount_points
+				.insert(dir.name.to_owned(), clean_path_string(dir.source.as_str()));
 		}
 
 		// Init Index config
 		let mut index_config = IndexConfig::new();
-		index_config.album_art_pattern = user_config.album_art_pattern.and_then(|s| Regex::new(s.as_str()).ok());
+		index_config.album_art_pattern = user_config
+			.album_art_pattern
+			.and_then(|s| Regex::new(s.as_str()).ok());
 		if let Some(duration) = user_config.reindex_every_n_seconds {
 			index_config.sleep_duration = duration;
 		}

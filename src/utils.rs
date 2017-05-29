@@ -4,7 +4,10 @@ use std::fs;
 
 use errors::*;
 
-const APP_INFO: AppInfo = AppInfo{name: "Polaris", author: "Permafrost"};
+const APP_INFO: AppInfo = AppInfo {
+	name: "Polaris",
+	author: "Permafrost",
+};
 
 pub fn get_config_root() -> Result<PathBuf> {
 	if let Ok(root) = app_root(AppDataType::UserConfig, &APP_INFO) {
