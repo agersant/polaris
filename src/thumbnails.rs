@@ -24,7 +24,7 @@ fn hash(path: &Path, dimension: u32) -> u64 {
 
 pub fn get_thumbnail(real_path: &Path, max_dimension: u32) -> Result<PathBuf> {
 
-	let mut out_path = utils::get_cache_root()?;
+	let mut out_path = utils::get_data_root()?;
 	out_path.push(THUMBNAILS_PATH);
 
 	let mut dir_builder = DirBuilder::new();

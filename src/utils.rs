@@ -1,12 +1,13 @@
-use app_dirs::{AppDataType, data_root};
+use app_dirs::{AppDataType, AppInfo, app_root};
 use std::path::{Path, PathBuf};
 use std::fs;
 
 use errors::*;
 
+const APP_INFO: AppInfo = AppInfo{name: "Polaris", author: "Permafrost"};
+
 pub fn get_config_root() -> Result<PathBuf> {
-	if let Ok(mut root) = data_root(AppDataType::SharedConfig) {
-		root.push("Polaris");
+	if let Ok(root) = app_root(AppDataType::UserConfig, &APP_INFO) {
 		fs::create_dir_all(&root)
 			.chain_err(|| format!("opening shared config: {}", root.display()))?;
 		return Ok(root);
@@ -14,14 +15,13 @@ pub fn get_config_root() -> Result<PathBuf> {
 	bail!("Could not retrieve config directory root");
 }
 
-pub fn get_cache_root() -> Result<PathBuf> {
-	if let Ok(mut root) = data_root(AppDataType::SharedData) {
-		root.push("Polaris");
+pub fn get_data_root() -> Result<PathBuf> {
+	if let Ok(root) = app_root(AppDataType::UserData, &APP_INFO) {
 		fs::create_dir_all(&root)
 			.chain_err(|| format!("opening shared data: {}", root.display()))?;
 		return Ok(root);
 	}
-	bail!("Could not retrieve cache directory root");
+	bail!("Could not retrieve data directory root");
 }
 
 #[derive(Debug, PartialEq)]

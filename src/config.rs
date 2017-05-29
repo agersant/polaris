@@ -72,7 +72,7 @@ impl Config {
 		if let Some(duration) = user_config.reindex_every_n_seconds {
 			index_config.sleep_duration = duration;
 		}
-		let mut index_path = utils::get_cache_root()?;
+		let mut index_path = utils::get_data_root()?;
 		index_path.push(INDEX_FILE_NAME);
 		index_config.path = index_path;
 

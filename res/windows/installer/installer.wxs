@@ -1,8 +1,8 @@
 <?xml version='1.0' encoding='windows-1252'?>
 <Wix xmlns='http://schemas.microsoft.com/wix/2006/wi' xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
-    <Product Name='Polaris' Id='FE52CDDE-D982-42C9-B251-0621100244D5' UpgradeCode='959B405D-1553-411D-A4A2-CCD3E17BE0EC' Language='1033' Codepage='1252' Version='0.5.0' Manufacturer='Antoine Gersant'>
+    <Product Name='Polaris' Id='4CA4E1DB-041F-4075-AE3D-34D3D0DFCEF6' UpgradeCode='C106B17B-95C0-49BB-BF1A-BC5CAD245076' Language='1033' Codepage='1252' Version='0.5.0' Manufacturer='Permafrost'>
 
-		<Package Id='*' Keywords='Installer' Platform='x64' InstallPrivileges='elevated' InstallScope='perMachine' Description='Polaris Installer' Manufacturer='Antoine Gersant' Languages='1033' Compressed='yes' SummaryCodepage='1252' />
+		<Package Id='*' Keywords='Installer' Platform='x64' InstallScope='perMachine' Description='Polaris Installer' Manufacturer='Permafrost' Languages='1033' Compressed='yes' SummaryCodepage='1252' />
 
 		<MajorUpgrade DowngradeErrorMessage='A newer version of Polaris is already installed.' Schedule='afterInstallExecute' />
 
@@ -11,121 +11,127 @@
 
 		<Directory Id='TARGETDIR' Name='SourceDir'>
 			<Directory Id='ProgramFiles64Folder' Name='PFiles'>
-				<Directory Id='INSTALL_DIR' Name='Polaris' FileSource='.'>
+				<Directory Id='Permafrost' Name='Permafrost' FileSource='.'>
+					<Directory Id='INSTALL_DIR' Name='Polaris' FileSource='.'>
 
-					<Component Id='MainExecutable' Guid='4E27209A-48B6-4A2A-8778-6383C83F0B24'>
-						<File Source='polaris.exe' KeyPath='yes' Checksum='yes'>
-							<Shortcut Id='StartupMenuPolaris' Directory='StartupFolder' Name='Polaris' WorkingDirectory='INSTALL_DIR' Icon='polaris.exe' IconIndex='0' Advertise='yes' />
-							<Shortcut Id='StartMenuPolaris' Directory='ProgramMenuDir' Name='Polaris' WorkingDirectory='INSTALL_DIR' Icon='polaris.exe' IconIndex='0' Advertise='yes' />
-							<Shortcut Id='DesktopPolaris' Directory='DesktopFolder' Name='Polaris' WorkingDirectory='INSTALL_DIR' Icon='polaris.exe' IconIndex='0' Advertise='yes' />
-						</File>
-					</Component>						
+						<Component Id='MainExecutable' Guid='4E27209A-48B6-4A2A-8778-6383C83F0B24'>
+							<File Source='polaris.exe' KeyPath='yes' Checksum='yes'>
+								<Shortcut Id='StartupMenuPolaris' Directory='StartupFolder' Name='Polaris' WorkingDirectory='INSTALL_DIR' Icon='polaris.exe' IconIndex='0' Advertise='yes' />
+								<Shortcut Id='StartMenuPolaris' Directory='ProgramMenuDir' Name='Polaris' WorkingDirectory='INSTALL_DIR' Icon='polaris.exe' IconIndex='0' Advertise='yes' />
+								<Shortcut Id='DesktopPolaris' Directory='DesktopFolder' Name='Polaris' WorkingDirectory='INSTALL_DIR' Icon='polaris.exe' IconIndex='0' Advertise='yes' />
+							</File>
+						</Component>						
 
-					<Component Id='OpenSSLLibEAY' Guid='8F4A07F6-CADB-4001-92F6-C7184A053B3B'>
-						<File Id='LibEAY' Name='libeay32.dll' Source='libeay32.dll' />
-					</Component>
-
-					<Component Id='OpenSSLLibEAYmd' Guid='55E2AD65-293D-44BE-96C5-F61EE169478B'>
-						<File Id='LibEAYmd' Name='libeay32md.dll' Source='libeay32md.dll' />
-					</Component>
-
-					<Component Id='OpenSSLSSLEAY32md' Guid='9E115DA4-26F3-4993-BC6D-3140CBA3EF5E'>
-						<File Id='SSLEAY32md' Name='ssleay32md.dll' Source='ssleay32md.dll' />
-					</Component>
-
-					<Directory Id='web' Name='web'>
-
-						<Component Id='WebUIFavicon' Guid='65D5A87D-5A5C-4655-9F74-F37F4F64BB6E'>
-							<File Name='favicon.png' />
+						<Component Id='OpenSSLLibEAY' Guid='8F4A07F6-CADB-4001-92F6-C7184A053B3B'>
+							<File Id='LibEAY' Name='libeay32.dll' Source='libeay32.dll' />
 						</Component>
 
-						<Directory Id='img' Name='img'>
-							<Component Id='WebUIImg' Guid='343BDE12-EE3E-4659-A9F8-A217B933FBF2'>
-								<File Name='logo.png' />
-							</Component>
-						</Directory>
-
-						<Component Id='WebUIIndex' Guid='B666CED5-951E-40F4-8A33-E9C4FEEFF578'>
-							<File Name='index.html' />
+						<Component Id='OpenSSLLibEAYmd' Guid='55E2AD65-293D-44BE-96C5-F61EE169478B'>
+							<File Id='LibEAYmd' Name='libeay32md.dll' Source='libeay32md.dll' />
 						</Component>
 
-						<Directory Id='js' Name='js'>
-							<Component Id='WebUIJSUtils' Guid='D5C12922-182A-4AE9-B863-D7ACA7FC2357'>
-								<File Name='utils.js' />
+						<Component Id='OpenSSLSSLEAY32md' Guid='9E115DA4-26F3-4993-BC6D-3140CBA3EF5E'>
+							<File Id='SSLEAY32md' Name='ssleay32md.dll' Source='ssleay32md.dll' />
+						</Component>
+
+						<Directory Id='web' Name='web'>
+
+							<Component Id='WebUIFavicon' Guid='65D5A87D-5A5C-4655-9F74-F37F4F64BB6E'>
+								<File Name='favicon.png' />
 							</Component>
-							<Component Id='WebUIJSNotify' Guid='0D6CDA89-2F75-487D-B14D-FCE27DE31215'>
-								<File Name='notify.js' />
+
+							<Directory Id='img' Name='img'>
+								<Component Id='WebUIImg' Guid='343BDE12-EE3E-4659-A9F8-A217B933FBF2'>
+									<File Name='logo.png' />
+								</Component>
+							</Directory>
+
+							<Component Id='WebUIIndex' Guid='B666CED5-951E-40F4-8A33-E9C4FEEFF578'>
+								<File Name='index.html' />
 							</Component>
+
+							<Directory Id='js' Name='js'>
+								<Component Id='WebUIJSUtils' Guid='D5C12922-182A-4AE9-B863-D7ACA7FC2357'>
+									<File Name='utils.js' />
+								</Component>
+								<Component Id='WebUIJSNotify' Guid='0D6CDA89-2F75-487D-B14D-FCE27DE31215'>
+									<File Name='notify.js' />
+								</Component>
+							</Directory>
+
+							<Directory Id='lib' Name='lib'>
+								<Component Id='WebUILibCookie' Guid='294ECB0A-2CE7-4F1F-852C-FA81E6082B4C'>
+									<File Name='js.cookie.js' />
+								</Component>
+								<Component Id='WebUILibRiot' Guid='460200A1-6926-4FA9-98D5-A9F72555FBFC'>
+									<File Name='riot+compiler.min.js' />
+								</Component>
+								<Component Id='WebUILibRouteTag' Guid='6728F797-21A9-4218-BD1B-074E5E005798'>
+									<File Name='route+tag.min.js' />
+								</Component>
+							</Directory>						
+
+							<Directory Id='tags' Name='tags'>
+								<Component Id='WebUITagsApp' Guid='5B8B3B24-24B1-4B7A-8682-8858B7A93326'>
+									<File Name='app.tag' />
+								</Component>
+								<Component Id='WebUITagsAuth' Guid='E1058E84-EC96-4CD8-8E51-DBB1F2DAA593'>
+									<File Name='auth.tag' />
+								</Component>
+								<Component Id='WebUITagsBreadcrumbs' Guid='EA2F36E1-6182-4249-A612-06D74B491AD7'>
+									<File Name='breadcrumbs.tag' />
+								</Component>
+								<Component Id='WebUITagsBrowser' Guid='576EB281-3BB8-48BC-8221-F63D674C99F3'>
+									<File Name='browser.tag' />
+								</Component>
+								<Component Id='WebUITagsBrowserTabs' Guid='E02B5342-137C-4D74-93A5-AE16161E303D'>
+									<File Name='browser-tabs.tag' />
+								</Component>
+								<Component Id='WebUITagsMain' Guid='B85532D1-B288-48C5-872D-31078949DFB7'>
+									<File Name='main.tag' />
+								</Component>
+								<Component Id='WebUITagsPlayer' Guid='AE56FB97-E933-4369-9680-E05F89CAA01A'>
+									<File Name='player.tag' />
+								</Component>
+								<Component Id='WebUITagsPlaylist' Guid='4E1E08A5-494F-4230-879C-2187706E8CEA'>
+									<File Name='playlist.tag' />
+								</Component>
+							</Directory>
+
+							<Directory Id='style' Name='style'>
+								<Component Id='WebUIStyle' Guid='9D8F839D-7E94-4DE4-9B22-30360C1A433D'>
+									<File Name='default.css' />
+								</Component>
+							</Directory>
+
 						</Directory>
-
-						<Directory Id='lib' Name='lib'>
-							<Component Id='WebUILibCookie' Guid='294ECB0A-2CE7-4F1F-852C-FA81E6082B4C'>
-								<File Name='js.cookie.js' />
-							</Component>
-							<Component Id='WebUILibRiot' Guid='460200A1-6926-4FA9-98D5-A9F72555FBFC'>
-								<File Name='riot+compiler.min.js' />
-							</Component>
-							<Component Id='WebUILibRouteTag' Guid='6728F797-21A9-4218-BD1B-074E5E005798'>
-								<File Name='route+tag.min.js' />
-							</Component>
-						</Directory>						
-
-						<Directory Id='tags' Name='tags'>
-							<Component Id='WebUITagsApp' Guid='5B8B3B24-24B1-4B7A-8682-8858B7A93326'>
-								<File Name='app.tag' />
-							</Component>
-							<Component Id='WebUITagsAuth' Guid='E1058E84-EC96-4CD8-8E51-DBB1F2DAA593'>
-								<File Name='auth.tag' />
-							</Component>
-							<Component Id='WebUITagsBreadcrumbs' Guid='EA2F36E1-6182-4249-A612-06D74B491AD7'>
-								<File Name='breadcrumbs.tag' />
-							</Component>
-							<Component Id='WebUITagsBrowser' Guid='576EB281-3BB8-48BC-8221-F63D674C99F3'>
-								<File Name='browser.tag' />
-							</Component>
-							<Component Id='WebUITagsBrowserTabs' Guid='E02B5342-137C-4D74-93A5-AE16161E303D'>
-								<File Name='browser-tabs.tag' />
-							</Component>
-							<Component Id='WebUITagsMain' Guid='B85532D1-B288-48C5-872D-31078949DFB7'>
-								<File Name='main.tag' />
-							</Component>
-							<Component Id='WebUITagsPlayer' Guid='AE56FB97-E933-4369-9680-E05F89CAA01A'>
-								<File Name='player.tag' />
-							</Component>
-							<Component Id='WebUITagsPlaylist' Guid='4E1E08A5-494F-4230-879C-2187706E8CEA'>
-								<File Name='playlist.tag' />
-							</Component>
-						</Directory>
-
-						<Directory Id='style' Name='style'>
-							<Component Id='WebUIStyle' Guid='9D8F839D-7E94-4DE4-9B22-30360C1A433D'>
-								<File Name='default.css' />
-							</Component>
-						</Directory>
-
 					</Directory>
 				</Directory>
 			</Directory>
 
-			<Directory Id='CommonAppDataFolder'>
-  				<Directory Id='AppDataPolaris' Name='Polaris'>
-					<Component Id='ConfigFile' Guid='FAF6D040-CFA2-4C56-B5EB-C8A3054294E0'>
-						<File Source='polaris.toml'>
-							<Permission GenericAll='yes' User='Everyone' />
-						</File>
-						<RemoveFolder Id='RemoveAppDataPolaris' Directory='AppDataPolaris' On='uninstall' />
-					</Component>
-  				</Directory>
+			<Directory Id='AppDataFolder'>
+  				<Directory Id='AppDataPermafrost' Name='Permafrost'>
+					<Directory Id='AppDataPolaris' Name='Polaris'>
+						<Component Id='ConfigFile' Guid='3E84B72F-83FC-4B0B-B5FC-1347F1A03421'>
+							<RegistryValue Root='HKCU' Key='Software\Permafrost\Polaris' Name='ConfigDirectory' Type='string' Value='[CONFIGDIRECTORY]' KeyPath='yes' />
+							<File Source='polaris.toml'>
+								<Permission GenericAll='yes' User='Everyone' />
+							</File>
+							<RemoveFolder Id='RemoveAppDataPolaris' Directory='AppDataPolaris' On='uninstall' />
+							<RemoveFolder Id='RemoveAppDataPermafrost' Directory='AppDataPermafrost' On='uninstall' />
+						</Component>
+					</Directory>
+				</Directory>
 			</Directory>
 
 			<Directory Id='DesktopFolder' Name='Desktop' />
 			<Directory Id='StartupFolder' Name='Startup' />
 
 			<Directory Id='ProgramMenuFolder' Name='Programs'>
-				<Directory Id='ProgramMenuDir' Name='Polaris'>
-					<Component Id='ProgramMenuDir' Guid='9E677DF0-414B-481F-ACCC-73B2A38EC93A'>
+				<Directory Id='ProgramMenuDir' Name='Permafrost'>
+					<Component Id='ProgramMenuDir' Guid='228B33C8-2391-4693-A5AC-C1128F05C753'>
 						<RemoveFolder Id='ProgramMenuDir' On='uninstall' />
-						<RegistryValue Root='HKCU' Key='Software\Polaris' Name='ProgramMenuEntry' Type='string' Value='' KeyPath='yes' />
+						<RegistryValue Root='HKCU' Key='Software\Permafrost\Polaris' Name='ProgramMenuEntry' Type='string' Value='' KeyPath='yes' />
 					</Component>
 				</Directory>
 			</Directory>
@@ -134,11 +140,11 @@
 
 		<!--Remove extra files after uninstall (db, thumbnails, etc.)-->
 		<Property Id="EXTRADATAPATH">
-  			<RegistrySearch Root="HKLM" Key="SOFTWARE\Polaris" Name="ExtraDataPath" Type="raw" Id="ExtraDataPathSearch" />
+  			<RegistrySearch Root="HKCU" Key="Software\Permafrost\Polaris" Name="ExtraDataPath" Type="raw" Id="ExtraDataPathSearch" />
 		</Property>
 		<DirectoryRef Id="AppDataPolaris">
-			<Component Id="CleanupExtraData" Guid="A74F0BA0-797F-4088-AF43-E7874AE679C7">
-				<RegistryValue Root="HKLM" Key="SOFTWARE\Polaris" Name="ExtraDataPath" Type="string" Value="[AppDataPolaris]" KeyPath="yes" />
+			<Component Id="CleanupExtraData" Guid="DF415F12-A1B4-48EE-98BC-E0B75AF556AD">
+				<RegistryValue Root="HKCU" Key="Software\Permafrost\Polaris" Name="ExtraDataPath" Type="string" Value="[AppDataPolaris]" KeyPath="yes" />
     			<util:RemoveFolderEx On="uninstall" Property="EXTRADATAPATH" />
   			</Component>
 		</DirectoryRef>
