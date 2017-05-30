@@ -77,14 +77,15 @@ fn run() -> Result<()> {
 	let args: Vec<String> = std::env::args().collect();
 	let mut options = Options::new();
 	options.optopt("c", "config", "set the configuration file", "FILE");
+	options.optopt("w", "web", "set the path to web client files", "DIRECTORY");
 	let matches = match options.parse(&args[1..]) {
 		Ok(m) => m,
 		Err(f) => panic!(f.to_string()),
 	};
-	let config_file_name = matches.opt_str("c");
-	let config_file_path = config_file_name.map(|n| Path::new(n.as_str()).to_path_buf());
 
 	// Parse config
+	let config_file_name = matches.opt_str("c");
+	let config_file_path = config_file_name.map(|n| Path::new(n.as_str()).to_path_buf());
 	let config = config::Config::parse(config_file_path)?;
 
 	// Init VFS
@@ -96,8 +97,9 @@ fn run() -> Result<()> {
 	let index_ref = index.clone();
 	std::thread::spawn(move || index_ref.run());
 
-	// Start server
-	println!("Starting up server");
+	// Mount API
+	println!("Mounting API");
+	let mut mount = Mount::new();
 	let mut api_chain;
 	{
 		let api_handler;
@@ -113,10 +115,20 @@ fn run() -> Result<()> {
 		let cookie_middleware = oven::new(auth_secret.into_bytes());
 		api_chain.link(cookie_middleware);
 	}
-
-	let mut mount = Mount::new();
 	mount.mount("/api/", api_chain);
-	mount.mount("/", Static::new(Path::new("web")));
+
+	// Mount static files
+	println!("Mounting static files");
+	let web_dir_name = matches.opt_str("w");
+	let mut default_web_dir = utils::get_data_root()?;
+	default_web_dir.push("web");
+	let web_dir_path = web_dir_name
+		.map(|n| Path::new(n.as_str()).to_path_buf())
+		.unwrap_or(default_web_dir);
+
+	mount.mount("/", Static::new(web_dir_path));
+
+	println!("Starting up server");
 	let mut server = Iron::new(mount).http(("0.0.0.0", 5050))?;
 
 	// Start DDNS updates
