@@ -4,15 +4,22 @@ use std::fs;
 
 use errors::*;
 
+#[cfg(not(target_os = "linux"))]
 const APP_INFO: AppInfo = AppInfo {
 	name: "Polaris",
 	author: "Permafrost",
 };
 
+#[cfg(target_os = "linux")]
+const APP_INFO: AppInfo = AppInfo {
+	name: "polaris",
+	author: "permafrost",
+};
+
 pub fn get_config_root() -> Result<PathBuf> {
 	if let Ok(root) = app_root(AppDataType::UserConfig, &APP_INFO) {
 		fs::create_dir_all(&root)
-			.chain_err(|| format!("opening shared config: {}", root.display()))?;
+			.chain_err(|| format!("opening user config: {}", root.display()))?;
 		return Ok(root);
 	}
 	bail!("Could not retrieve config directory root");
@@ -21,7 +28,7 @@ pub fn get_config_root() -> Result<PathBuf> {
 pub fn get_data_root() -> Result<PathBuf> {
 	if let Ok(root) = app_root(AppDataType::UserData, &APP_INFO) {
 		fs::create_dir_all(&root)
-			.chain_err(|| format!("opening shared data: {}", root.display()))?;
+			.chain_err(|| format!("opening user data: {}", root.display()))?;
 		return Ok(root);
 	}
 	bail!("Could not retrieve data directory root");
