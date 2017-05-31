@@ -7,21 +7,40 @@ Polaris is a music streaming application, designed to let you enjoy your music c
 
 ## Requirements
 
+One of the following:
 - Windows 7 or newer
-
-Linux support is on the radar but there is no ETA for this feature. 
+- Linux (any reasonably modern distribution should do)
 
 ## Installation
 
-- Download the [latest installer](https://github.com/agersant/polaris/releases/latest)
-- Run the installer
-- That's it, you're done!
+### Windows
+1. Download the [latest installer](https://github.com/agersant/polaris/releases/latest) (you want the .msi file)
+2. Run the installer
+3. That's it, you're done!
 
 You can now start Polaris from the start menu or from your desktop, Polaris will also start automatically next time you restart your computer. You can tell when Polaris is running by its icon in the notification area (near the clock and volume controls).
 
+### Linux
+
+#### Dependencies
+
+1. Install OpenSSL and its headers. This is most likely available from your distribution's package manager. For instance on Ubuntu, execute `sudo apt-get install libssl-dev`
+2. Install the Rust compiler by executing `curl https://sh.rustup.rs -sSf | sh` or using an [alternative method](https://www.rust-lang.org/en-US/install.html)
+
+#### Polaris installation
+1. Download the [latest release]((https://github.com/agersant/polaris/releases/latest)) of Polaris (you want the .tar.gz file)
+2. Extract the polaris archive in a directory and open a terminal in that directory
+3. Execute `make install` (this may take several minutes)
+
+This installation process puts the polaris executable in `~/.local/bin/polaris`, a configuration file in `~/.config/polaris` and several data files under `~/.local/share/polaris`.
+
+From here, you might want to adjust your system to run Polaris on login using Cron, Systemd or whichever method your distribution endorses.
+
+If you want to uninstall Polaris, executing `make uninstall` from the extracted archive's directory.
+
 ## Basic Configuration
 
-All configuration is done by editing the file located at `%appdata%\Roaming\Permafrost\Polaris\polaris.toml`. Note that Polaris needs to be restarted for configuration changes to be taken into account.
+All configuration is done by editing your configuration file. On Windows, the file is located at `%appdata%\Roaming\Permafrost\Polaris\polaris.toml`. On Linux, the file is located at `~/.config/polaris/polaris.toml`. Note that Polaris needs to be restarted for configuration changes to be taken into account.
 
 ### Locating Your Music
 
@@ -69,11 +88,11 @@ If you're only interested in streaming on your local network, you can skip this 
 
 #### Dynamic DNS
 
-You can access your Polaris installationfrom anywhere via your computer's public IP address, but there are two problems with that:
+You can access your Polaris installation from anywhere via your computer's public IP address, but there are two problems with that:
 - IP addresses are difficult to remember
 - Most ISP don't give you a fixed IP address
 
-A solution to this problem is to set up Dynamic DNS, so that your installation can always be reached at a fixed URL.
+A solution to these problems is to set up Dynamic DNS, so that your installation can always be reached at a fixed URL.
 
 The steps below will walk you through setting up YDNS and Polaris to give your installation a fixed URL. If you have another solution in mind, or prefer using another Dynamic DNS service, skip to the next section. 
 
