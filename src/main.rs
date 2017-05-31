@@ -37,6 +37,12 @@ extern crate shell32;
 #[cfg(windows)]
 extern crate user32;
 
+#[cfg(unix)]
+extern crate unix_daemonize;
+
+#[cfg(unix)]
+use unix_daemonize::{daemonize_redirect, ChdirMode};
+
 use errors::*;
 use getopts::Options;
 use iron::prelude::*;
@@ -71,7 +77,20 @@ fn main() {
 	}
 }
 
+#[cfg(unix)]
+fn daemonize() -> Result<()> {
+	let mut log_file = utils::get_data_root()?;
+	log_file.push("polaris.log");
+	match daemonize_redirect(Some(&log_file), Some(&log_file), ChdirMode::NoChdir) {
+		Ok(_) => Ok(()),
+		Err(_) => bail!(ErrorKind::DaemonError)
+	}
+}
+
 fn run() -> Result<()> {
+	
+	#[cfg(unix)]
+	daemonize()?;
 
 	// Parse CLI options
 	let args: Vec<String> = std::env::args().collect();

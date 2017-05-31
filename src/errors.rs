@@ -29,6 +29,7 @@ error_chain! {
     }
 
     errors {
+        DaemonError {}
         AuthenticationRequired {}
         MissingUsername {}
         MissingPassword {}

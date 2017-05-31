@@ -31,8 +31,12 @@ staticfile = "0.3.0"
 toml = "0.4"
 url = "1.2.0"
 
+[target.'cfg(windows)'.dependencies]
 winapi = { git = "https://github.com/retep998/winapi-rs", branch="0.2" }
 kernel32-sys = { git = "https://github.com/retep998/winapi-rs", branch="0.2" }
 shell32-sys = { git = "https://github.com/retep998/winapi-rs", branch="0.2" }
 user32-sys = { git = "https://github.com/retep998/winapi-rs", branch="0.2" }
 uuid = { version = "0.3.0", features = ["v5"] }
+
+[target.'cfg(unix)'.dependencies]
+unix-daemonize = "0.1.2"
