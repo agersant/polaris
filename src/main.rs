@@ -97,10 +97,7 @@ fn run() -> Result<()> {
 	let mut options = Options::new();
 	options.optopt("c", "config", "set the configuration file", "FILE");
 	options.optopt("w", "web", "set the path to web client files", "DIRECTORY");
-	let matches = match options.parse(&args[1..]) {
-		Ok(m) => m,
-		Err(f) => panic!(f.to_string()),
-	};
+	let matches = options.parse(&args[1..])?;
 
 	// Parse config
 	let config_file_name = matches.opt_str("c");

@@ -1,6 +1,7 @@
 use ape;
 use core;
 use id3;
+use getopts;
 use image;
 use hyper;
 use iron::IronError;
@@ -17,6 +18,7 @@ error_chain! {
         Ape(ape::Error);
         Encoding(core::str::Utf8Error);
         Flac(metaflac::Error);
+        GetOpts(getopts::Fail);
         Hyper(hyper::Error);
         Id3(id3::Error);
         Image(image::ImageError);
