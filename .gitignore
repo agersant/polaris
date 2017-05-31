@@ -10,4 +10,5 @@ release
 *.sqlite-wal
 *.sqlite-shm
 tmp
-TestConfig.toml
+TestConfigLinux.toml
+TestConfigWindows.toml
