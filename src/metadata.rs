@@ -2,7 +2,6 @@ use ape;
 use id3;
 use lewton::inside_ogg::OggStreamReader;
 use metaflac;
-use ogg::PacketReader;
 use regex::Regex;
 use std::fs;
 use std::path::Path;
@@ -108,7 +107,7 @@ fn read_ape(path: &Path) -> Result<SongTags> {
 fn read_vorbis(path: &Path) -> Result<SongTags> {
 
 	let file = fs::File::open(path)?;
-	let source = OggStreamReader::new(PacketReader::new(file))?;
+	let source = OggStreamReader::new(file)?;
 
 	let mut tags = SongTags {
 		artist: None,
