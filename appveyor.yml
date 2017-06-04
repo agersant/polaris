@@ -85,6 +85,8 @@ install:
   #OpenSSL install
   - appveyor DownloadFile https://slproweb.com/download/Win64OpenSSL-1_1_0f.exe
   - ps: Start-Process Win64OpenSSL-1_1_0f.exe -ArgumentList "/silent /verysilent /sp- /suppressmsgboxes" -Wait
+  - cmd: SET OPENSSL_LIB_DIR=C:\OpenSSL-Win64
+  - cmd: SET OPENSSL_INCLUDE_DIR=C:\OpenSSL-Win64\include  
   #Rust install
   - appveyor DownloadFile https://win.rustup.rs/ -FileName rustup-init.exe
   - rustup-init -yv --default-toolchain %channel% --default-host %target%
