@@ -19,18 +19,6 @@
 								<Shortcut Id='StartMenuPolaris' Directory='ProgramMenuDir' Name='Polaris' WorkingDirectory='INSTALL_DIR' Icon='polaris.exe' IconIndex='0' Advertise='yes' />
 								<Shortcut Id='DesktopPolaris' Directory='DesktopFolder' Name='Polaris' WorkingDirectory='INSTALL_DIR' Icon='polaris.exe' IconIndex='0' Advertise='yes' />
 							</File>
-						</Component>						
-
-						<Component Id='OpenSSLLibEAY' Guid='8F4A07F6-CADB-4001-92F6-C7184A053B3B'>
-							<File Id='LibEAY' Name='libeay32.dll' Source='libeay32.dll' />
-						</Component>
-
-						<Component Id='OpenSSLLibEAYmd' Guid='55E2AD65-293D-44BE-96C5-F61EE169478B'>
-							<File Id='LibEAYmd' Name='libeay32md.dll' Source='libeay32md.dll' />
-						</Component>
-
-						<Component Id='OpenSSLSSLEAY32md' Guid='9E115DA4-26F3-4993-BC6D-3140CBA3EF5E'>
-							<File Id='SSLEAY32md' Name='ssleay32md.dll' Source='ssleay32md.dll' />
 						</Component>
 					</Directory>
 				</Directory>
@@ -193,9 +181,6 @@
 
 		<Feature Id='Complete' Level='1'>
 			<ComponentRef Id='MainExecutable' />
-			<ComponentRef Id='OpenSSLLibEAY' />
-			<ComponentRef Id='OpenSSLLibEAYmd' />
-			<ComponentRef Id='OpenSSLSSLEAY32md' />
 			<ComponentRef Id='ConfigFile' />
 			
 			<ComponentRef Id='WebUI' />

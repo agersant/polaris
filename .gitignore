@@ -1,9 +1,5 @@
 target
 release
-*.dll
-!res/windows/libeay32.dll
-!res/windows/libeay32md.dll
-!res/windows/ssleay32md.dll
 *.res
 *.sqlite
 *.sqlite-journal

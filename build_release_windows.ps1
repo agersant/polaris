@@ -12,9 +12,6 @@ Remove-Item -Recurse .\release\tmp\*
 
 ""
 "Copying to output directory"
-Copy-Item .\res\windows\libeay32.dll 			.\release\tmp\
-Copy-Item .\res\windows\libeay32md.dll 			.\release\tmp\
-Copy-Item .\res\windows\ssleay32md.dll 			.\release\tmp\
 Copy-Item .\res\windows\installer\license.rtf	.\release\tmp\
 Copy-Item .\res\windows\installer\banner.bmp	.\release\tmp\
 Copy-Item .\res\windows\installer\dialog.bmp	.\release\tmp\
