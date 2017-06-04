@@ -1,3 +1,9 @@
+Get-ChildItem "Cargo.toml" | % {
+  $conf = $_ | Get-Content -raw
+  $conf -match 'version\s+=\s+"(.*)"' | out-null
+  $POLARIS_VERSION = $matches[1]
+}
+
 "Compiling resource file"
 RC /fo res\windows\application\application.res res\windows\application\application.rc
 
@@ -21,8 +27,8 @@ Copy-Item .\web\ 								.\release\tmp\ -recurse
 
 ""
 "Creating installer"
-candle -wx -ext WixUtilExtension -arch x64							-out .\release\tmp\installer.wixobj 	.\res\windows\installer\installer.wxs
-light  -wx -ext WixUtilExtension -ext WixUIExtension -spdb -sw1076 	-out .\release\Polaris_0.6.0.msi 		.\release\tmp\installer.wixobj
+candle -wx -ext WixUtilExtension -arch x64							-out .\release\tmp\installer.wixobj 			.\res\windows\installer\installer.wxs
+light  -wx -ext WixUtilExtension -ext WixUIExtension -spdb -sw1076 	-out .\release\Polaris_$POLARIS_VERSION.msi 	.\release\tmp\installer.wixobj
 
 "Cleaning up"
 Remove-Item -Recurse .\release\tmp
