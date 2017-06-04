@@ -5,12 +5,14 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use iron::prelude::*;
-use iron::headers::{Authorization, Basic, CookiePair};
+use iron::headers::{Authorization, Basic, SetCookie};
 use iron::{AroundMiddleware, Handler, status};
 use mount::Mount;
-use oven::prelude::*;
 use params;
+use secure_session::middleware::{SessionMiddleware, SessionConfig};
+use secure_session::session::{SessionManager, ChaCha20Poly1305SessionManager};
 use serde_json;
+use typemap;
 use url::percent_encoding::percent_decode;
 
 use collection::*;
@@ -36,7 +38,31 @@ impl Version {
 	}
 }
 
-pub fn get_api_handler(collection: Arc<Collection>) -> Mount {
+#[derive(Deserialize, Serialize)]
+struct Session {
+    username: String,
+}
+
+struct SessionKey {}
+
+impl typemap::Key for SessionKey {
+    type Value = Session;
+}
+
+pub fn get_handler(collection: Collection, secret: &str) -> Chain {
+	let collection = Arc::new(collection);
+	let	api_handler = get_endpoints(collection);
+	let mut api_chain = Chain::new(api_handler);
+
+	let manager = ChaCha20Poly1305SessionManager::<Session>::from_password(secret.as_bytes());
+	let config = SessionConfig::default();
+	let session_middleware = SessionMiddleware::<Session, SessionKey, ChaCha20Poly1305SessionManager<Session>>::new(manager, config);
+	api_chain.link_around(session_middleware);
+	
+	api_chain
+}
+
+fn get_endpoints(collection: Arc<Collection>) -> Mount {
 	let mut api_handler = Mount::new();
 
 	{
@@ -116,9 +142,11 @@ struct AuthHandler {
 }
 
 fn set_cookie(username: &str, response: &mut Response) {
-	let mut username_cookie = CookiePair::new("username".to_string(), username.to_string());
-	username_cookie.path = Some("/".to_owned());
-	response.set_cookie(username_cookie);
+	response.headers.set( 
+		SetCookie(vec![ 
+			format!("username={}; Path=/", username) 
+		]) 
+	);
 }
 
 impl Handler for AuthHandler {
@@ -133,18 +161,20 @@ impl Handler for AuthHandler {
 					auth_success = self.collection
 						.auth(auth.username.as_str(), password.as_str());
 					username = Some(auth.username.clone());
+					req.extensions.insert::<SessionKey>(Session { username: auth.username.clone() });
 				}
 			}
 
-			// Auth via Cookie
+			// Auth via Session
 			if !auth_success {
-				auth_success = req.get_cookie("username").is_some();
+				auth_success = req.extensions.get::<SessionKey>().is_some();
 			}
 
 			// Reject
 			if !auth_success {
 				return Err(Error::from(ErrorKind::AuthenticationRequired).into());
 			}
+
 		}
 
 		let mut response = self.handler.handle(req);
@@ -169,18 +199,23 @@ fn version(_: &mut Request) -> IronResult<Response> {
 }
 
 fn auth(request: &mut Request, collection: &Collection) -> IronResult<Response> {
-	let input = request.get_ref::<params::Params>().unwrap();
-	let username = match input.find(&["username"]) { 
-		Some(&params::Value::String(ref username)) => username, 
-		_ => return Err(Error::from(ErrorKind::MissingUsername).into()), 
-	};
-	let password = match input.find(&["password"]) { 
-		Some(&params::Value::String(ref password)) => password, 
-		_ => return Err(Error::from(ErrorKind::MissingPassword).into()), 
-	};
+	let username;
+	let password;
+	{
+		let input = request.get_ref::<params::Params>().unwrap();
+		username = match input.find(&["username"]) { 
+			Some(&params::Value::String(ref username)) => username.clone(),
+			_ => return Err(Error::from(ErrorKind::MissingUsername).into()), 
+		};
+		password = match input.find(&["password"]) { 
+			Some(&params::Value::String(ref password)) => password.clone(),
+			_ => return Err(Error::from(ErrorKind::MissingPassword).into()), 
+		};
+	}
 	if collection.auth(username.as_str(), password.as_str()) {
 		let mut response = Response::with((status::Ok, ""));
-		set_cookie(username.as_str(), &mut response);
+		set_cookie(&username, &mut response);
+		request.extensions.insert::<SessionKey>(Session { username: username.clone() });
 		Ok(response)
 	} else {
 		Err(Error::from(ErrorKind::IncorrectCredentials).into())

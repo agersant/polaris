@@ -14,9 +14,10 @@ extern crate lewton;
 extern crate metaflac;
 extern crate mount;
 extern crate ogg;
-extern crate oven;
 extern crate params;
+extern crate reqwest;
 extern crate regex;
+extern crate secure_session;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
@@ -24,6 +25,7 @@ extern crate serde_json;
 extern crate staticfile;
 extern crate sqlite;
 extern crate toml;
+extern crate typemap;
 extern crate url;
 
 #[cfg(windows)]
@@ -116,22 +118,10 @@ fn run() -> Result<()> {
 	// Mount API
 	println!("Mounting API");
 	let mut mount = Mount::new();
-	let mut api_chain;
-	{
-		let api_handler;
-		{
-			let mut collection = collection::Collection::new(vfs, index);
-			collection.load_config(&config)?;
-			let collection = Arc::new(collection);
-			api_handler = api::get_api_handler(collection);
-		}
-		api_chain = Chain::new(api_handler);
-
-		let auth_secret = config.secret.to_owned();
-		let cookie_middleware = oven::new(auth_secret.into_bytes());
-		api_chain.link(cookie_middleware);
-	}
-	mount.mount("/api/", api_chain);
+	let mut collection = collection::Collection::new(vfs, index);
+	collection.load_config(&config)?;
+	let handler = api::get_handler(collection, &config.secret);
+	mount.mount("/api/", handler);
 
 	// Mount static files
 	println!("Mounting static files");
