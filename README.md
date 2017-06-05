@@ -37,7 +37,7 @@ This installation process puts the polaris executable in `~/.local/bin/polaris`,
 
 From here, you might want to adjust your system to run Polaris on login using Cron, Systemd or whichever method your distribution endorses.
 
-If you want to uninstall Polaris, executing `make uninstall` from the extracted archive's directory.
+If you want to uninstall Polaris, execute `make uninstall` from the extracted archive's directory. This will simply delete the directories created by the install process.
 
 ## Basic Configuration
 
