@@ -40,25 +40,28 @@ impl Version {
 
 #[derive(Deserialize, Serialize)]
 struct Session {
-    username: String,
+	username: String,
 }
 
 struct SessionKey {}
 
 impl typemap::Key for SessionKey {
-    type Value = Session;
+	type Value = Session;
 }
 
 pub fn get_handler(collection: Collection, secret: &str) -> Chain {
 	let collection = Arc::new(collection);
-	let	api_handler = get_endpoints(collection);
+	let api_handler = get_endpoints(collection);
 	let mut api_chain = Chain::new(api_handler);
 
 	let manager = ChaCha20Poly1305SessionManager::<Session>::from_password(secret.as_bytes());
 	let config = SessionConfig::default();
-	let session_middleware = SessionMiddleware::<Session, SessionKey, ChaCha20Poly1305SessionManager<Session>>::new(manager, config);
+	let session_middleware =
+		SessionMiddleware::<Session,
+		                    SessionKey,
+		                    ChaCha20Poly1305SessionManager<Session>>::new(manager, config);
 	api_chain.link_around(session_middleware);
-	
+
 	api_chain
 }
 
@@ -142,11 +145,9 @@ struct AuthHandler {
 }
 
 fn set_cookie(username: &str, response: &mut Response) {
-	response.headers.set( 
-		SetCookie(vec![ 
-			format!("username={}; Path=/", username) 
-		]) 
-	);
+	response
+		.headers
+		.set(SetCookie(vec![format!("username={}; Path=/", username)]));
 }
 
 impl Handler for AuthHandler {
@@ -161,7 +162,8 @@ impl Handler for AuthHandler {
 					auth_success = self.collection
 						.auth(auth.username.as_str(), password.as_str());
 					username = Some(auth.username.clone());
-					req.extensions.insert::<SessionKey>(Session { username: auth.username.clone() });
+					req.extensions
+						.insert::<SessionKey>(Session { username: auth.username.clone() });
 				}
 			}
 
@@ -215,7 +217,9 @@ fn auth(request: &mut Request, collection: &Collection) -> IronResult<Response> 
 	if collection.auth(username.as_str(), password.as_str()) {
 		let mut response = Response::with((status::Ok, ""));
 		set_cookie(&username, &mut response);
-		request.extensions.insert::<SessionKey>(Session { username: username.clone() });
+		request
+			.extensions
+			.insert::<SessionKey>(Session { username: username.clone() });
 		Ok(response)
 	} else {
 		Err(Error::from(ErrorKind::IncorrectCredentials).into())

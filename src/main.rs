@@ -84,12 +84,12 @@ fn daemonize() -> Result<()> {
 	log_file.push("polaris.log");
 	match daemonize_redirect(Some(&log_file), Some(&log_file), ChdirMode::NoChdir) {
 		Ok(_) => Ok(()),
-		Err(_) => bail!(ErrorKind::DaemonError)
+		Err(_) => bail!(ErrorKind::DaemonError),
 	}
 }
 
 fn run() -> Result<()> {
-	
+
 	#[cfg(unix)]
 	daemonize()?;
 
