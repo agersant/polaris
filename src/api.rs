@@ -5,7 +5,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use iron::prelude::*;
-use iron::headers::{Authorization, Basic, SetCookie};
+use iron::headers::{Authorization, Basic};
 use iron::{AroundMiddleware, Handler, status};
 use mount::Mount;
 use params;
@@ -144,15 +144,8 @@ struct AuthHandler {
 	collection: Arc<Collection>,
 }
 
-fn set_cookie(username: &str, response: &mut Response) {
-	response
-		.headers
-		.set(SetCookie(vec![format!("username={}; Path=/", username)]));
-}
-
 impl Handler for AuthHandler {
 	fn handle(&self, req: &mut Request) -> IronResult<Response> {
-		let mut username = None;
 		{
 			let mut auth_success = false;
 
@@ -161,7 +154,6 @@ impl Handler for AuthHandler {
 				if let Some(ref password) = auth.password {
 					auth_success = self.collection
 						.auth(auth.username.as_str(), password.as_str());
-					username = Some(auth.username.clone());
 					req.extensions
 						.insert::<SessionKey>(Session { username: auth.username.clone() });
 				}
@@ -179,16 +171,7 @@ impl Handler for AuthHandler {
 
 		}
 
-		let mut response = self.handler.handle(req);
-
-		// Add cookie to response
-		if let Some(username) = username {
-			if let Ok(ref mut response) = response {
-				set_cookie(username.as_str(), response);
-			}
-		}
-
-		response
+		self.handler.handle(req)
 	}
 }
 
@@ -215,12 +198,10 @@ fn auth(request: &mut Request, collection: &Collection) -> IronResult<Response> 
 		};
 	}
 	if collection.auth(username.as_str(), password.as_str()) {
-		let mut response = Response::with((status::Ok, ""));
-		set_cookie(&username, &mut response);
 		request
 			.extensions
 			.insert::<SessionKey>(Session { username: username.clone() });
-		Ok(response)
+		Ok(Response::with((status::Ok, "")))
 	} else {
 		Err(Error::from(ErrorKind::IncorrectCredentials).into())
 	}
