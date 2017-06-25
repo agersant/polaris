@@ -97,19 +97,23 @@ fn run() -> Result<()> {
 	let args: Vec<String> = std::env::args().collect();
 	let mut options = Options::new();
 	options.optopt("c", "config", "set the configuration file", "FILE");
+	options.optopt("d", "database", "set the path to index database", "FILE");
 	options.optopt("w", "web", "set the path to web client files", "DIRECTORY");
 	let matches = options.parse(&args[1..])?;
 
 	// Parse config
 	let config_file_name = matches.opt_str("c");
 	let config_file_path = config_file_name.map(|n| Path::new(n.as_str()).to_path_buf());
-	let config = config::Config::parse(config_file_path)?;
+	let mut config = config::Config::parse(config_file_path)?;
 
 	// Init VFS
 	let vfs = Arc::new(vfs::Vfs::new(config.vfs.clone()));
 
 	// Init index
 	println!("Starting up index");
+	let index_file_name = matches.opt_str("d");
+	let index_file_path = index_file_name.map(|n| Path::new(n.as_str()).to_path_buf());
+	config.index.path = index_file_path.unwrap_or( config.index.path );
 	let index = Arc::new(index::Index::new(vfs.clone(), &config.index)?);
 	let index_ref = index.clone();
 	std::thread::spawn(move || index_ref.run());
