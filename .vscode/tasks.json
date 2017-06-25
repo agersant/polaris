@@ -1,0 +1,25 @@
+{
+	"version": "0.1.0",
+	"showOutput": "always",
+	
+    "tasks": [
+
+		// Run test environment
+		{
+			"taskName": "Run",
+			"options": { "cwd": "${workspaceRoot}" },
+			"command": "cargo",
+			"args": ["run", "--", "-c", "./TestConfigWindows.toml", "-d", "test.sqlite", "-w", "../polaris-web"]
+		},
+
+		// Run unit tests
+        {
+			"isTestCommand": true,
+			"taskName": "Test",
+			"options": { "cwd": "${workspaceRoot}" },
+			"command": "cargo",
+			"args": ["test"]
+        }
+		
+    ]
+}
