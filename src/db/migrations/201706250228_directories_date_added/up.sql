@@ -1,0 +1,1 @@
+ALTER TABLE directories ADD COLUMN date_added INTEGER DEFAULT 0 NOT NULL;

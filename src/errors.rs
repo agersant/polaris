@@ -1,5 +1,6 @@
 use ape;
 use core;
+use diesel;
 use id3;
 use getopts;
 use image;
@@ -9,13 +10,15 @@ use iron::status::Status;
 use lewton;
 use metaflac;
 use regex;
-use sqlite;
 use std;
 use toml;
 
 error_chain! {
     foreign_links {
         Ape(ape::Error);
+        Diesel(diesel::result::Error);
+        DieselConnection(diesel::ConnectionError);
+        DieselMigration(diesel::migrations::RunMigrationsError);
         Encoding(core::str::Utf8Error);
         Flac(metaflac::Error);
         GetOpts(getopts::Fail);
@@ -26,7 +29,6 @@ error_chain! {
         Time(std::time::SystemTimeError);
         Toml(toml::de::Error);
         Regex(regex::Error);
-        SQLite(sqlite::Error);
         Vorbis(lewton::VorbisError);
     }
 

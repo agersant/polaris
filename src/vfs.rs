@@ -29,7 +29,11 @@ impl Vfs {
 			match real_path.strip_prefix(target) {
 				Ok(p) => {
 					let mount_path = Path::new(&name);
-					return Ok(mount_path.join(p));
+					return if p.components().count() == 0 {
+						       Ok(mount_path.to_path_buf())
+						      } else {
+						       Ok(mount_path.join(p))
+						      };
 				}
 				Err(_) => (),
 			}
@@ -46,7 +50,7 @@ impl Vfs {
 						       Ok(target.clone())
 						      } else {
 						       Ok(target.join(p))
-						      }
+						      };
 				}
 				Err(_) => (),
 			}

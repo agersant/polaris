@@ -7,7 +7,7 @@ use toml;
 use collection::User;
 use ddns::DDNSConfig;
 use errors::*;
-use index::IndexConfig;
+use db::IndexConfig;
 use utils;
 use vfs::VfsConfig;
 

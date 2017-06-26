@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use config::Config;
 use errors::*;
-use index::*;
+use db::*;
 use vfs::*;
 
 
@@ -49,11 +49,11 @@ impl Collection {
 		self.index.deref().flatten(virtual_path)
 	}
 
-	pub fn get_random_albums(&self, count: u32) -> Result<Vec<Directory>> {
+	pub fn get_random_albums(&self, count: i64) -> Result<Vec<Directory>> {
 		self.index.deref().get_random_albums(count)
 	}
 
-	pub fn get_recent_albums(&self, count: u32) -> Result<Vec<Directory>> {
+	pub fn get_recent_albums(&self, count: i64) -> Result<Vec<Directory>> {
 		self.index.deref().get_recent_albums(count)
 	}
 

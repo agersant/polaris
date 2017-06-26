@@ -9,6 +9,8 @@ ui = []
 [dependencies]
 ape = "0.1.2"
 app_dirs = { git = "https://github.com/agersant/app-dirs-rs" }
+diesel = { version = "0.13.0", features = ["sqlite"] }
+diesel_codegen = { version = "0.13.0", features = ["sqlite"] }
 error-chain = "0.10.0"
 getopts = "0.2.14"
 hyper = "0.10.0"
@@ -26,11 +28,14 @@ secure-session = "0.1.0"
 serde = "0.9"
 serde_derive = "0.9"
 serde_json = "0.9"
-sqlite = "0.23.0"
 staticfile = "0.4.0"
 toml = "=0.3.2"
 typemap = "0.3"
 url = "1.2.0"
+
+[dependencies.rusqlite]
+version = "0.11.0"
+features = ["bundled"]
 
 [target.'cfg(windows)'.dependencies]
 winapi = { git = "https://github.com/retep998/winapi-rs", branch="0.2" }
