@@ -9,7 +9,7 @@
 			"taskName": "Run",
 			"options": { "cwd": "${workspaceRoot}" },
 			"command": "cargo",
-			"args": ["run", "--release", "--", "-c", "./TestConfigWindows.toml", "-d", "dev.sqlite", "-w", "../polaris-web"]
+			"args": ["run", "--release", "--", "-c", "./TestConfigWindows.toml", "-d", "test/db.sqlite", "-w", "../polaris-web"]
 		},
 
 		// Run unit tests
