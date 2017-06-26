@@ -1,6 +1,6 @@
 use core::ops::Deref;
 use diesel;
-use diesel::expression::sql; 
+use diesel::expression::sql;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use diesel::types;
@@ -17,7 +17,8 @@ use errors::*;
 use metadata;
 use vfs::Vfs;
 
-#[allow(dead_code)] const DB_MIGRATIONS_PATH: &'static str = "src/db/migrations";
+#[allow(dead_code)]
+const DB_MIGRATIONS_PATH: &'static str = "src/db/migrations";
 embed_migrations!("src/db/migrations");
 
 const INDEX_BUILDING_INSERT_BUFFER_SIZE: usize = 1000; // Insertions in each transaction
@@ -88,16 +89,18 @@ impl<'db> IndexBuilder<'db> {
 		       new_songs: new_songs,
 		       new_directories: new_directories,
 		       db: db,
-		})
+		   })
 	}
 
 	fn flush_songs(&mut self) -> Result<()> {
 		let db = self.db.lock().unwrap();
 		let db = db.deref();
 		db.transaction::<_, Error, _>(|| {
-			diesel::insert(&self.new_songs).into(songs::table).execute(db)?;
-			Ok(())
-        })?;
+				                            diesel::insert(&self.new_songs)
+				                                .into(songs::table)
+				                                .execute(db)?;
+				                            Ok(())
+				                           })?;
 		self.new_songs.clear();
 		Ok(())
 	}
@@ -106,9 +109,11 @@ impl<'db> IndexBuilder<'db> {
 		let db = self.db.lock().unwrap();
 		let db = db.deref();
 		db.transaction::<_, Error, _>(|| {
-			diesel::insert(&self.new_directories).into(directories::table).execute(db)?;
-			Ok(())
-        })?;
+				                            diesel::insert(&self.new_directories)
+				                                .into(directories::table)
+				                                .execute(db)?;
+				                            Ok(())
+				                           })?;
 		self.new_directories.clear();
 		Ok(())
 	}
@@ -193,39 +198,50 @@ impl Index {
 
 	fn clean(&self) -> Result<()> {
 		{
-			let all_songs : Vec<String>;
+			let all_songs: Vec<String>;
 			{
 				let db = self.db.lock().unwrap();
 				let db = db.deref();
 				all_songs = songs::table.select(songs::columns::path).load(db)?;
 			}
 
-			let missing_songs = all_songs.into_iter().filter(|ref song_path| {
-				let path = Path::new(&song_path);
-				!path.exists() || self.vfs.real_to_virtual(path).is_err()
-			}).collect::<Vec<_>>();
+			let missing_songs = all_songs
+				.into_iter()
+				.filter(|ref song_path| {
+					        let path = Path::new(&song_path);
+					        !path.exists() || self.vfs.real_to_virtual(path).is_err()
+					       })
+				.collect::<Vec<_>>();
 
 			let db = self.db.lock().unwrap();
 			let db = db.deref();
-			diesel::delete(songs::table.filter(songs::columns::path.eq_any(missing_songs))).execute(db)?;
+			diesel::delete(songs::table.filter(songs::columns::path.eq_any(missing_songs)))
+				.execute(db)?;
 		}
 
 		{
-			let all_directories : Vec<String>;
+			let all_directories: Vec<String>;
 			{
 				let db = self.db.lock().unwrap();
 				let db = db.deref();
-				all_directories = directories::table.select(directories::columns::path).load(db)?;
+				all_directories = directories::table
+					.select(directories::columns::path)
+					.load(db)?;
 			}
 
-			let missing_directories = all_directories.into_iter().filter(|ref directory_path| {
-				let path = Path::new(&directory_path);
-				!path.exists() || self.vfs.real_to_virtual(path).is_err()
-			}).collect::<Vec<_>>();
+			let missing_directories = all_directories
+				.into_iter()
+				.filter(|ref directory_path| {
+					        let path = Path::new(&directory_path);
+					        !path.exists() || self.vfs.real_to_virtual(path).is_err()
+					       })
+				.collect::<Vec<_>>();
 
 			let db = self.db.lock().unwrap();
 			let db = db.deref();
-			diesel::delete(directories::table.filter(directories::columns::path.eq_any(missing_directories))).execute(db)?;
+			diesel::delete(directories::table.filter(directories::columns::path
+			                                             .eq_any(missing_directories)))
+					.execute(db)?;
 		}
 
 		Ok(())
@@ -264,8 +280,12 @@ impl Index {
 		None
 	}
 
-	fn populate_directory(&self, builder: &mut IndexBuilder, parent: Option<&Path>, path: &Path) -> Result<()> {
-		
+	fn populate_directory(&self,
+	                      builder: &mut IndexBuilder,
+	                      parent: Option<&Path>,
+	                      path: &Path)
+	                      -> Result<()> {
+
 		// Find artwork
 		let artwork = self.get_artwork(path);
 
@@ -365,7 +385,7 @@ impl Index {
 			date_added: created,
 		};
 		builder.push_directory(directory)?;
-		
+
 		Ok(())
 	}
 
@@ -413,21 +433,35 @@ impl Index {
 
 		// Browse top-level
 		if virtual_path.components().count() == 0 {
-			let real_directories : Vec<Directory> = directories::table.filter(directories::columns::parent.is_null()).load(db)?;
-			let virtual_directories = real_directories.into_iter().filter_map(|s| self.virtualize_directory(s));
-			output.extend(virtual_directories.into_iter().map(|d| CollectionFile::Directory(d)));
+			let real_directories: Vec<Directory> = directories::table
+				.filter(directories::columns::parent.is_null())
+				.load(db)?;
+			let virtual_directories = real_directories
+				.into_iter()
+				.filter_map(|s| self.virtualize_directory(s));
+			output.extend(virtual_directories
+			                  .into_iter()
+			                  .map(|d| CollectionFile::Directory(d)));
 
-		// Browse sub-directory
+			// Browse sub-directory
 		} else {
 			let real_path = self.vfs.virtual_to_real(virtual_path)?;
 			let real_path_string = real_path.as_path().to_string_lossy().into_owned();
 
-			let real_songs : Vec<Song> = songs::table.filter(songs::columns::parent.eq(&real_path_string)).load(db)?;
-			let virtual_songs = real_songs.into_iter().filter_map(|s| self.virtualize_song(s));
+			let real_songs: Vec<Song> = songs::table
+				.filter(songs::columns::parent.eq(&real_path_string))
+				.load(db)?;
+			let virtual_songs = real_songs
+				.into_iter()
+				.filter_map(|s| self.virtualize_song(s));
 			output.extend(virtual_songs.map(|s| CollectionFile::Song(s)));
 
-			let real_directories : Vec<Directory> = directories::table.filter(directories::columns::parent.eq(&real_path_string)).load(db)?;
-			let virtual_directories = real_directories.into_iter().filter_map(|s| self.virtualize_directory(s));
+			let real_directories: Vec<Directory> = directories::table
+				.filter(directories::columns::parent.eq(&real_path_string))
+				.load(db)?;
+			let virtual_directories = real_directories
+				.into_iter()
+				.filter_map(|s| self.virtualize_directory(s));
 			output.extend(virtual_directories.map(|d| CollectionFile::Directory(d)));
 		}
 
@@ -439,8 +473,12 @@ impl Index {
 		let db = db.deref();
 		let real_path = self.vfs.virtual_to_real(virtual_path)?;
 		let like_path = real_path.as_path().to_string_lossy().into_owned() + "%";
-		let real_songs : Vec<Song> = songs::table.filter(songs::columns::path.like(&like_path)).load(db)?;
-		let virtual_songs = real_songs.into_iter().filter_map(|s| self.virtualize_song(s));
+		let real_songs: Vec<Song> = songs::table
+			.filter(songs::columns::path.like(&like_path))
+			.load(db)?;
+		let virtual_songs = real_songs
+			.into_iter()
+			.filter_map(|s| self.virtualize_song(s));
 		Ok(virtual_songs.collect::<Vec<_>>())
 	}
 
@@ -452,15 +490,23 @@ impl Index {
 			.limit(count)
 			.order(sql::<types::Bool>("RANDOM()"))
 			.load(db)?;
-		let virtual_directories = real_directories.into_iter().filter_map(|s| self.virtualize_directory(s));
+		let virtual_directories = real_directories
+			.into_iter()
+			.filter_map(|s| self.virtualize_directory(s));
 		Ok(virtual_directories.collect::<Vec<_>>())
 	}
 
 	pub fn get_recent_albums(&self, count: i64) -> Result<Vec<Directory>> {
 		let db = self.db.lock().unwrap();
 		let db = db.deref();
-		let real_directories : Vec<Directory> = directories::table.filter(directories::columns::album.is_not_null()).order(directories::columns::date_added.desc()).limit(count).load(db)?;
-		let virtual_directories = real_directories.into_iter().filter_map(|s| self.virtualize_directory(s));
+		let real_directories: Vec<Directory> = directories::table
+			.filter(directories::columns::album.is_not_null())
+			.order(directories::columns::date_added.desc())
+			.limit(count)
+			.load(db)?;
+		let virtual_directories = real_directories
+			.into_iter()
+			.filter_map(|s| self.virtualize_directory(s));
 		Ok(virtual_directories.collect::<Vec<_>>())
 	}
 }
@@ -510,8 +556,8 @@ fn test_populate() {
 
 	let db = index.db.lock().unwrap();
 	let db = db.deref();
-	let all_directories : Vec<Directory> = directories::table.load(db).unwrap();
-	let all_songs : Vec<Song> = songs::table.load(db).unwrap();
+	let all_directories: Vec<Directory> = directories::table.load(db).unwrap();
+	let all_songs: Vec<Song> = songs::table.load(db).unwrap();
 	assert_eq!(all_directories.len(), 5);
 	assert_eq!(all_songs.len(), 12);
 }
@@ -543,7 +589,8 @@ fn test_metadata() {
 	assert_eq!(song.album_artist, None);
 	assert_eq!(song.album, Some("Picnic".to_owned()));
 	assert_eq!(song.year, Some(2016));
-	assert_eq!(song.artwork, Some(artwork_path.to_string_lossy().into_owned()));
+	assert_eq!(song.artwork,
+	           Some(artwork_path.to_string_lossy().into_owned()));
 }
 
 #[test]
@@ -558,7 +605,7 @@ fn test_browse_top_level() {
 	assert_eq!(results.len(), 1);
 	match results[0] {
 		CollectionFile::Directory(ref d) => assert_eq!(d.path, root_path.to_str().unwrap()),
-		_ => panic!("Expected directory")
+		_ => panic!("Expected directory"),
 	}
 }
 
@@ -579,11 +626,11 @@ fn test_browse() {
 	assert_eq!(results.len(), 2);
 	match results[0] {
 		CollectionFile::Directory(ref d) => assert_eq!(d.path, khemmis_path.to_str().unwrap()),
-		_ => panic!("Expected directory")
+		_ => panic!("Expected directory"),
 	}
 	match results[1] {
 		CollectionFile::Directory(ref d) => assert_eq!(d.path, tobokegao_path.to_str().unwrap()),
-		_ => panic!("Expected directory")
+		_ => panic!("Expected directory"),
 	}
 }
 

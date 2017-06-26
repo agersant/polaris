@@ -116,7 +116,7 @@ fn run() -> Result<()> {
 	println!("Starting up index");
 	let index_file_name = matches.opt_str("d");
 	let index_file_path = index_file_name.map(|n| Path::new(n.as_str()).to_path_buf());
-	config.index.path = index_file_path.unwrap_or( config.index.path );
+	config.index.path = index_file_path.unwrap_or(config.index.path);
 	let index = Arc::new(db::Index::new(vfs.clone(), &config.index)?);
 	let index_ref = index.clone();
 	std::thread::spawn(move || index_ref.run());

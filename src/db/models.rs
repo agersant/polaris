@@ -1,8 +1,10 @@
 #[derive(Debug, Queryable, Serialize)]
 pub struct Song {
-	#[serde(skip_serializing)] id: i32,
+	#[serde(skip_serializing)]
+	id: i32,
 	pub path: String,
-	#[serde(skip_serializing)] pub parent: String,
+	#[serde(skip_serializing)]
+	pub parent: String,
 	pub track_number: Option<i32>,
 	pub disc_number: Option<i32>,
 	pub title: Option<String>,
@@ -15,9 +17,11 @@ pub struct Song {
 
 #[derive(Debug, Queryable, Serialize)]
 pub struct Directory {
-	#[serde(skip_serializing)] id: i32,
+	#[serde(skip_serializing)]
+	id: i32,
 	pub path: String,
-	#[serde(skip_serializing)] pub parent: Option<String>,
+	#[serde(skip_serializing)]
+	pub parent: Option<String>,
 	pub artist: Option<String>,
 	pub year: Option<i32>,
 	pub album: Option<String>,
