@@ -1,9 +1,7 @@
 use core::ops::Deref;
 use diesel;
-use diesel::expression::sql;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
-use diesel::types;
 use regex::Regex;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -11,15 +9,11 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time;
 
-use db::models::*;
+use db::DB;
 use db::schema::{directories, songs};
 use errors::*;
 use metadata;
 use vfs::Vfs;
-
-#[allow(dead_code)]
-const DB_MIGRATIONS_PATH: &'static str = "src/db/migrations";
-embed_migrations!("src/db/migrations");
 
 const INDEX_BUILDING_INSERT_BUFFER_SIZE: usize = 1000; // Insertions in each transaction
 
@@ -37,13 +31,6 @@ impl IndexConfig {
 			path: Path::new(":memory:").to_path_buf(),
 		}
 	}
-}
-
-pub struct Index {
-	vfs: Arc<Vfs>,
-	db: Mutex<SqliteConnection>,
-	album_art_pattern: Option<Regex>,
-	sleep_duration: u64,
 }
 
 #[derive(Debug, Insertable)]
@@ -76,11 +63,11 @@ struct NewDirectory {
 struct IndexBuilder<'db> {
 	new_songs: Vec<NewSong>,
 	new_directories: Vec<NewDirectory>,
-	db: &'db Mutex<SqliteConnection>,
+	connection: &'db Mutex<SqliteConnection>,
 }
 
 impl<'db> IndexBuilder<'db> {
-	fn new(db: &Mutex<SqliteConnection>) -> Result<IndexBuilder> {
+	fn new(connection: &Mutex<SqliteConnection>) -> Result<IndexBuilder> {
 		let mut new_songs = Vec::new();
 		let mut new_directories = Vec::new();
 		new_songs.reserve_exact(INDEX_BUILDING_INSERT_BUFFER_SIZE);
@@ -88,17 +75,18 @@ impl<'db> IndexBuilder<'db> {
 		Ok(IndexBuilder {
 		       new_songs: new_songs,
 		       new_directories: new_directories,
-		       db: db,
+		       connection: connection,
 		   })
 	}
 
 	fn flush_songs(&mut self) -> Result<()> {
-		let db = self.db.lock().unwrap();
-		let db = db.deref();
-		db.transaction::<_, Error, _>(|| {
+		let connection = self.connection.lock().unwrap();
+		let connection = connection.deref();
+		connection
+			.transaction::<_, Error, _>(|| {
 				                            diesel::insert(&self.new_songs)
 				                                .into(songs::table)
-				                                .execute(db)?;
+				                                .execute(connection)?;
 				                            Ok(())
 				                           })?;
 		self.new_songs.clear();
@@ -106,12 +94,13 @@ impl<'db> IndexBuilder<'db> {
 	}
 
 	fn flush_directories(&mut self) -> Result<()> {
-		let db = self.db.lock().unwrap();
-		let db = db.deref();
-		db.transaction::<_, Error, _>(|| {
+		let connection = self.connection.lock().unwrap();
+		let connection = connection.deref();
+		connection
+			.transaction::<_, Error, _>(|| {
 				                            diesel::insert(&self.new_directories)
 				                                .into(directories::table)
-				                                .execute(db)?;
+				                                .execute(connection)?;
 				                            Ok(())
 				                           })?;
 		self.new_directories.clear();
@@ -135,58 +124,28 @@ impl<'db> IndexBuilder<'db> {
 	}
 }
 
+pub struct Index {
+	vfs: Arc<Vfs>,
+	connection: Arc<Mutex<SqliteConnection>>,
+	album_art_pattern: Option<Regex>,
+	sleep_duration: u64,
+}
+
 impl Index {
-	pub fn new(vfs: Arc<Vfs>, config: &IndexConfig) -> Result<Index> {
-
-		let path = &config.path;
-
-		println!("Index file path: {}", path.to_string_lossy());
-
-		let db = Mutex::new(SqliteConnection::establish(&path.to_string_lossy())?);
-
+	pub fn new(vfs: Arc<Vfs>,
+	           connection: Arc<Mutex<SqliteConnection>>,
+	           config: &IndexConfig)
+	           -> Index {
 		let index = Index {
 			vfs: vfs,
-			db: db,
+			connection: connection,
 			album_art_pattern: config.album_art_pattern.clone(),
 			sleep_duration: config.sleep_duration,
 		};
-
-		index.init()?;
-
-		Ok(index)
+		index
 	}
 
-	fn init(&self) -> Result<()> {
-		{
-			let db = self.db.lock().unwrap();
-			db.execute("PRAGMA synchronous = NORMAL")?;
-		}
-		self.migrate_up()?;
-		Ok(())
-	}
-
-	#[allow(dead_code)]
-	fn migrate_down(&self) -> Result<()> {
-		let db = self.db.lock().unwrap();
-		let db = db.deref();
-		loop {
-			match diesel::migrations::revert_latest_migration_in_directory(db, Path::new(DB_MIGRATIONS_PATH)) {
-				Ok(_) => (),
-				Err(diesel::migrations::RunMigrationsError::MigrationError(diesel::migrations::MigrationError::NoMigrationRun)) => break,
-				Err(e) => bail!(e),
-			}
-		}
-		Ok(())
-	}
-
-	fn migrate_up(&self) -> Result<()> {
-		let db = self.db.lock().unwrap();
-		let db = db.deref();
-		embedded_migrations::run(db)?;
-		Ok(())
-	}
-
-	fn update_index(&self) -> Result<()> {
+	pub fn update_index(&self) -> Result<()> {
 		let start = time::Instant::now();
 		println!("Beginning library index update");
 		self.clean()?;
@@ -200,9 +159,11 @@ impl Index {
 		{
 			let all_songs: Vec<String>;
 			{
-				let db = self.db.lock().unwrap();
-				let db = db.deref();
-				all_songs = songs::table.select(songs::columns::path).load(db)?;
+				let connection = self.connection.lock().unwrap();
+				let connection = connection.deref();
+				all_songs = songs::table
+					.select(songs::columns::path)
+					.load(connection)?;
 			}
 
 			let missing_songs = all_songs
@@ -213,20 +174,20 @@ impl Index {
 					       })
 				.collect::<Vec<_>>();
 
-			let db = self.db.lock().unwrap();
-			let db = db.deref();
+			let connection = self.connection.lock().unwrap();
+			let connection = connection.deref();
 			diesel::delete(songs::table.filter(songs::columns::path.eq_any(missing_songs)))
-				.execute(db)?;
+				.execute(connection)?;
 		}
 
 		{
 			let all_directories: Vec<String>;
 			{
-				let db = self.db.lock().unwrap();
-				let db = db.deref();
+				let connection = self.connection.lock().unwrap();
+				let connection = connection.deref();
 				all_directories = directories::table
 					.select(directories::columns::path)
-					.load(db)?;
+					.load(connection)?;
 			}
 
 			let missing_directories = all_directories
@@ -237,11 +198,11 @@ impl Index {
 					       })
 				.collect::<Vec<_>>();
 
-			let db = self.db.lock().unwrap();
-			let db = db.deref();
+			let connection = self.connection.lock().unwrap();
+			let connection = connection.deref();
 			diesel::delete(directories::table.filter(directories::columns::path
 			                                             .eq_any(missing_directories)))
-					.execute(db)?;
+					.execute(connection)?;
 		}
 
 		Ok(())
@@ -250,7 +211,7 @@ impl Index {
 	fn populate(&self) -> Result<()> {
 		let vfs = self.vfs.deref();
 		let mount_points = vfs.get_mount_points();
-		let mut builder = IndexBuilder::new(&self.db)?;
+		let mut builder = IndexBuilder::new(&self.connection)?;
 		for (_, target) in mount_points {
 			self.populate_directory(&mut builder, None, target.as_path())?;
 		}
@@ -389,7 +350,7 @@ impl Index {
 		Ok(())
 	}
 
-	pub fn run(&self) {
+	pub fn update_loop(&self) {
 		loop {
 			if let Err(e) = self.update_index() {
 				println!("Error while updating index: {}", e);
@@ -397,121 +358,9 @@ impl Index {
 			thread::sleep(time::Duration::from_secs(self.sleep_duration));
 		}
 	}
-
-	fn virtualize_song(&self, mut song: Song) -> Option<Song> {
-		song.path = match self.vfs.real_to_virtual(Path::new(&song.path)) {
-			Ok(p) => p.to_string_lossy().into_owned(),
-			_ => return None,
-		};
-		if let Some(artwork_path) = song.artwork {
-			song.artwork = match self.vfs.real_to_virtual(Path::new(&artwork_path)) {
-				Ok(p) => Some(p.to_string_lossy().into_owned()),
-				_ => None,
-			};
-		}
-		Some(song)
-	}
-
-	fn virtualize_directory(&self, mut directory: Directory) -> Option<Directory> {
-		directory.path = match self.vfs.real_to_virtual(Path::new(&directory.path)) {
-			Ok(p) => p.to_string_lossy().into_owned(),
-			_ => return None,
-		};
-		if let Some(artwork_path) = directory.artwork {
-			directory.artwork = match self.vfs.real_to_virtual(Path::new(&artwork_path)) {
-				Ok(p) => Some(p.to_string_lossy().into_owned()),
-				_ => None,
-			};
-		}
-		Some(directory)
-	}
-
-	pub fn browse(&self, virtual_path: &Path) -> Result<Vec<CollectionFile>> {
-		let mut output = Vec::new();
-		let db = self.db.lock().unwrap();
-		let db = db.deref();
-
-		// Browse top-level
-		if virtual_path.components().count() == 0 {
-			let real_directories: Vec<Directory> = directories::table
-				.filter(directories::columns::parent.is_null())
-				.load(db)?;
-			let virtual_directories = real_directories
-				.into_iter()
-				.filter_map(|s| self.virtualize_directory(s));
-			output.extend(virtual_directories
-			                  .into_iter()
-			                  .map(|d| CollectionFile::Directory(d)));
-
-			// Browse sub-directory
-		} else {
-			let real_path = self.vfs.virtual_to_real(virtual_path)?;
-			let real_path_string = real_path.as_path().to_string_lossy().into_owned();
-
-			let real_songs: Vec<Song> = songs::table
-				.filter(songs::columns::parent.eq(&real_path_string))
-				.load(db)?;
-			let virtual_songs = real_songs
-				.into_iter()
-				.filter_map(|s| self.virtualize_song(s));
-			output.extend(virtual_songs.map(|s| CollectionFile::Song(s)));
-
-			let real_directories: Vec<Directory> = directories::table
-				.filter(directories::columns::parent.eq(&real_path_string))
-				.load(db)?;
-			let virtual_directories = real_directories
-				.into_iter()
-				.filter_map(|s| self.virtualize_directory(s));
-			output.extend(virtual_directories.map(|d| CollectionFile::Directory(d)));
-		}
-
-		Ok(output)
-	}
-
-	pub fn flatten(&self, virtual_path: &Path) -> Result<Vec<Song>> {
-		let db = self.db.lock().unwrap();
-		let db = db.deref();
-		let real_path = self.vfs.virtual_to_real(virtual_path)?;
-		let like_path = real_path.as_path().to_string_lossy().into_owned() + "%";
-		let real_songs: Vec<Song> = songs::table
-			.filter(songs::columns::path.like(&like_path))
-			.load(db)?;
-		let virtual_songs = real_songs
-			.into_iter()
-			.filter_map(|s| self.virtualize_song(s));
-		Ok(virtual_songs.collect::<Vec<_>>())
-	}
-
-	pub fn get_random_albums(&self, count: i64) -> Result<Vec<Directory>> {
-		let db = self.db.lock().unwrap();
-		let db = db.deref();
-		let real_directories = directories::table
-			.filter(directories::columns::album.is_not_null())
-			.limit(count)
-			.order(sql::<types::Bool>("RANDOM()"))
-			.load(db)?;
-		let virtual_directories = real_directories
-			.into_iter()
-			.filter_map(|s| self.virtualize_directory(s));
-		Ok(virtual_directories.collect::<Vec<_>>())
-	}
-
-	pub fn get_recent_albums(&self, count: i64) -> Result<Vec<Directory>> {
-		let db = self.db.lock().unwrap();
-		let db = db.deref();
-		let real_directories: Vec<Directory> = directories::table
-			.filter(directories::columns::album.is_not_null())
-			.order(directories::columns::date_added.desc())
-			.limit(count)
-			.load(db)?;
-		let virtual_directories = real_directories
-			.into_iter()
-			.filter_map(|s| self.virtualize_directory(s));
-		Ok(virtual_directories.collect::<Vec<_>>())
-	}
 }
 
-fn _get_test_index(name: &str) -> Index {
+fn _get_test_db(name: &str) -> DB {
 	use vfs::VfsConfig;
 	use std::collections::HashMap;
 
@@ -533,39 +382,33 @@ fn _get_test_index(name: &str) -> Index {
 		fs::remove_file(&index_config.path).unwrap();
 	}
 
-	Index::new(vfs, &index_config).unwrap()
-}
-
-#[test]
-fn test_migrations_up() {
-	_get_test_index("migrations_up.sqlite");
-}
-
-#[test]
-fn test_migrations_down() {
-	let index = _get_test_index("migrations_down.sqlite");
-	index.migrate_down().unwrap();
-	index.migrate_up().unwrap();
+	DB::new(vfs, &index_config).unwrap()
 }
 
 #[test]
 fn test_populate() {
-	let index = _get_test_index("populate.sqlite");
+	use db::models::*;
+	
+	let db = _get_test_db("populate.sqlite");
+	let index = db.get_index();
 	index.update_index().unwrap();
 	index.update_index().unwrap(); // Check that subsequent updates don't run into conflicts
 
-	let db = index.db.lock().unwrap();
-	let db = db.deref();
-	let all_directories: Vec<Directory> = directories::table.load(db).unwrap();
-	let all_songs: Vec<Song> = songs::table.load(db).unwrap();
+	let connection = index.connection.lock().unwrap();
+	let connection = connection.deref();
+	let all_directories: Vec<Directory> = directories::table.load(connection).unwrap();
+	let all_songs: Vec<Song> = songs::table.load(connection).unwrap();
 	assert_eq!(all_directories.len(), 5);
 	assert_eq!(all_songs.len(), 12);
 }
 
 #[test]
 fn test_metadata() {
+	use db::models::*;
+
 	let mut target = PathBuf::new();
-	target.push("root");
+	target.push("test");
+	target.push("collection");
 	target.push("Tobokegao");
 	target.push("Picnic");
 
@@ -575,12 +418,19 @@ fn test_metadata() {
 	let mut artwork_path = target.clone();
 	artwork_path.push("Folder.png");
 
-	let index = _get_test_index("metadata.sqlite");
+	let db = _get_test_db("metadata.sqlite");
+	let index = db.get_index();
 	index.update_index().unwrap();
-	let results = index.flatten(target.as_path()).unwrap();
 
-	assert_eq!(results.len(), 7);
-	let song = &results[4];
+	let connection = index.connection.lock().unwrap();
+	let connection = connection.deref();
+	let songs: Vec<Song> = songs::table
+		.filter(songs::columns::title.eq("シャーベット (Sherbet)"))
+		.load(connection)
+		.unwrap();
+
+	assert_eq!(songs.len(), 1);
+	let song = &songs[0];
 	assert_eq!(song.path, song_path.to_string_lossy().as_ref());
 	assert_eq!(song.track_number, Some(5));
 	assert_eq!(song.disc_number, None);
@@ -591,70 +441,4 @@ fn test_metadata() {
 	assert_eq!(song.year, Some(2016));
 	assert_eq!(song.artwork,
 	           Some(artwork_path.to_string_lossy().into_owned()));
-}
-
-#[test]
-fn test_browse_top_level() {
-	let mut root_path = PathBuf::new();
-	root_path.push("root");
-
-	let index = _get_test_index("browse_top_level.sqlite");
-	index.update_index().unwrap();
-	let results = index.browse(Path::new("")).unwrap();
-
-	assert_eq!(results.len(), 1);
-	match results[0] {
-		CollectionFile::Directory(ref d) => assert_eq!(d.path, root_path.to_str().unwrap()),
-		_ => panic!("Expected directory"),
-	}
-}
-
-#[test]
-fn test_browse() {
-	let mut khemmis_path = PathBuf::new();
-	khemmis_path.push("root");
-	khemmis_path.push("Khemmis");
-
-	let mut tobokegao_path = PathBuf::new();
-	tobokegao_path.push("root");
-	tobokegao_path.push("Tobokegao");
-
-	let index = _get_test_index("browse.sqlite");
-	index.update_index().unwrap();
-	let results = index.browse(Path::new("root")).unwrap();
-
-	assert_eq!(results.len(), 2);
-	match results[0] {
-		CollectionFile::Directory(ref d) => assert_eq!(d.path, khemmis_path.to_str().unwrap()),
-		_ => panic!("Expected directory"),
-	}
-	match results[1] {
-		CollectionFile::Directory(ref d) => assert_eq!(d.path, tobokegao_path.to_str().unwrap()),
-		_ => panic!("Expected directory"),
-	}
-}
-
-#[test]
-fn test_flatten() {
-	let index = _get_test_index("flatten.sqlite");
-	index.update_index().unwrap();
-	let results = index.flatten(Path::new("root")).unwrap();
-	assert_eq!(results.len(), 12);
-}
-
-#[test]
-fn test_random() {
-	let index = _get_test_index("random.sqlite");
-	index.update_index().unwrap();
-	let results = index.get_random_albums(1).unwrap();
-	assert_eq!(results.len(), 1);
-}
-
-#[test]
-fn test_recent() {
-	let index = _get_test_index("recent.sqlite");
-	index.update_index().unwrap();
-	let results = index.get_recent_albums(2).unwrap();
-	assert_eq!(results.len(), 2);
-	assert!(results[0].date_added >= results[1].date_added);
 }

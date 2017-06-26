@@ -18,15 +18,15 @@ pub struct User {
 pub struct Collection {
 	vfs: Arc<Vfs>,
 	users: Vec<User>,
-	index: Arc<Index>,
+	db: Arc<DB>,
 }
 
 impl Collection {
-	pub fn new(vfs: Arc<Vfs>, index: Arc<Index>) -> Collection {
+	pub fn new(vfs: Arc<Vfs>, db: Arc<DB>) -> Collection {
 		Collection {
 			vfs: vfs,
 			users: Vec::new(),
-			index: index,
+			db: db,
 		}
 	}
 
@@ -42,19 +42,19 @@ impl Collection {
 	}
 
 	pub fn browse(&self, virtual_path: &Path) -> Result<Vec<CollectionFile>> {
-		self.index.deref().browse(virtual_path)
+		self.db.deref().browse(virtual_path)
 	}
 
 	pub fn flatten(&self, virtual_path: &Path) -> Result<Vec<Song>> {
-		self.index.deref().flatten(virtual_path)
+		self.db.deref().flatten(virtual_path)
 	}
 
 	pub fn get_random_albums(&self, count: i64) -> Result<Vec<Directory>> {
-		self.index.deref().get_random_albums(count)
+		self.db.deref().get_random_albums(count)
 	}
 
 	pub fn get_recent_albums(&self, count: i64) -> Result<Vec<Directory>> {
-		self.index.deref().get_recent_albums(count)
+		self.db.deref().get_recent_albums(count)
 	}
 
 	pub fn locate(&self, virtual_path: &Path) -> Result<PathBuf> {

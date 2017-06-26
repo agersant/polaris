@@ -112,19 +112,19 @@ fn run() -> Result<()> {
 	// Init VFS
 	let vfs = Arc::new(vfs::Vfs::new(config.vfs.clone()));
 
-	// Init index
-	println!("Starting up index");
-	let index_file_name = matches.opt_str("d");
-	let index_file_path = index_file_name.map(|n| Path::new(n.as_str()).to_path_buf());
-	config.index.path = index_file_path.unwrap_or(config.index.path);
-	let index = Arc::new(db::Index::new(vfs.clone(), &config.index)?);
-	let index_ref = index.clone();
-	std::thread::spawn(move || index_ref.run());
+	// Init DB
+	println!("Starting up database");
+	let db_file_name = matches.opt_str("d");
+	let db_file_path = db_file_name.map(|n| Path::new(n.as_str()).to_path_buf());
+	config.index.path = db_file_path.unwrap_or(config.index.path);
+	let db = Arc::new(db::DB::new(vfs.clone(), &config.index)?);
+	let db_ref = db.clone();
+	std::thread::spawn(move || db_ref.get_index().update_loop());
 
 	// Mount API
 	println!("Mounting API");
 	let mut mount = Mount::new();
-	let mut collection = collection::Collection::new(vfs, index);
+	let mut collection = collection::Collection::new(vfs, db);
 	collection.load_config(&config)?;
 	let handler = api::get_handler(collection, &config.secret);
 	mount.mount("/api/", handler);
