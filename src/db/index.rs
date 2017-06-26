@@ -388,7 +388,7 @@ fn _get_test_db(name: &str) -> DB {
 #[test]
 fn test_populate() {
 	use db::models::*;
-	
+
 	let db = _get_test_db("populate.sqlite");
 	let index = db.get_index();
 	index.update_index().unwrap();
