@@ -128,21 +128,23 @@ impl DB {
 			let real_path = self.vfs.virtual_to_real(virtual_path)?;
 			let real_path_string = real_path.as_path().to_string_lossy().into_owned();
 
-			let real_songs: Vec<Song> = songs::table
-				.filter(songs::columns::parent.eq(&real_path_string))
-				.load(connection)?;
-			let virtual_songs = real_songs
-				.into_iter()
-				.filter_map(|s| self.virtualize_song(s));
-			output.extend(virtual_songs.map(|s| CollectionFile::Song(s)));
-
 			let real_directories: Vec<Directory> = directories::table
 				.filter(directories::columns::parent.eq(&real_path_string))
+				.order(directories::columns::path)
 				.load(connection)?;
 			let virtual_directories = real_directories
 				.into_iter()
 				.filter_map(|s| self.virtualize_directory(s));
 			output.extend(virtual_directories.map(|d| CollectionFile::Directory(d)));
+
+			let real_songs: Vec<Song> = songs::table
+				.filter(songs::columns::parent.eq(&real_path_string))
+				.order(songs::columns::path)
+				.load(connection)?;
+			let virtual_songs = real_songs
+				.into_iter()
+				.filter_map(|s| self.virtualize_song(s));
+			output.extend(virtual_songs.map(|s| CollectionFile::Song(s)));
 		}
 
 		Ok(output)
