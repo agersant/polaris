@@ -99,18 +99,11 @@ impl NewUser {
 
 
 // VFS
-#[derive(Debug, Queryable)]
-pub struct MountPoint {
-	id: i32,
-	pub real_path: String,
-	pub name: String,
-}
-
-#[derive(Deserialize, Insertable)]
+#[derive(Debug, Deserialize, Insertable, Queryable)]
 #[table_name="mount_points"]
-pub struct NewMountPoint {
-	pub name: String,
+pub struct MountPoint {
 	pub source: String,
+	pub name: String,
 }
 
 

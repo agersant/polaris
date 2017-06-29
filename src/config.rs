@@ -5,7 +5,7 @@ use std::path;
 use toml;
 
 use errors::*;
-use db::NewMountPoint;
+use db::MountPoint;
 use ddns::DDNSConfig;
 
 #[derive(Deserialize)]
@@ -18,7 +18,7 @@ pub struct User {
 pub struct UserConfig {
 	pub album_art_pattern: Option<String>,
 	pub reindex_every_n_seconds: Option<u64>,
-	pub mount_dirs: Option<Vec<NewMountPoint>>,
+	pub mount_dirs: Option<Vec<MountPoint>>,
 	pub users: Option<Vec<User>>,
 	pub ydns: Option<DDNSConfig>,
 }

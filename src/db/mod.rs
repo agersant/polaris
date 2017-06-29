@@ -130,12 +130,15 @@ impl DB {
 	}
 
 	fn get_vfs(&self) -> Result<Vfs> {
+		use self::mount_points::dsl::*;
 		let mut vfs = Vfs::new();
 		let connection = self.connection.lock().unwrap();
 		let connection = connection.deref();
-		let mount_points: Vec<MountPoint> = mount_points::table.get_results(connection)?;
-		for mount_point in mount_points {
-			vfs.mount(&Path::new(&mount_point.real_path), &mount_point.name)?;
+		let points: Vec<MountPoint> = mount_points
+			.select((source, name))
+			.get_results(connection)?;
+		for point in points {
+			vfs.mount(&Path::new(&point.source), &point.name)?;
 		}
 		Ok(vfs)
 	}
