@@ -196,7 +196,7 @@ impl DB {
 
 			let real_directories: Vec<Directory> = directories::table
 				.filter(directories::parent.eq(&real_path_string))
-				.order(directories::path)
+				.order(sql::<types::Bool>("path COLLATE NOCASE ASC"))
 				.load(connection)?;
 			let virtual_directories = real_directories
 				.into_iter()
@@ -205,7 +205,7 @@ impl DB {
 
 			let real_songs: Vec<Song> = songs::table
 				.filter(songs::parent.eq(&real_path_string))
-				.order(songs::path)
+				.order(sql::<types::Bool>("path COLLATE NOCASE ASC"))
 				.load(connection)?;
 			let virtual_songs = real_songs
 				.into_iter()
