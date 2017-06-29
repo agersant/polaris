@@ -18,8 +18,10 @@ extern crate lewton;
 extern crate metaflac;
 extern crate mount;
 extern crate params;
+extern crate rand;
 extern crate reqwest;
 extern crate regex;
+extern crate ring;
 extern crate secure_session;
 extern crate serde;
 #[macro_use]
@@ -47,6 +49,7 @@ extern crate unix_daemonize;
 #[cfg(unix)]
 use unix_daemonize::{daemonize_redirect, ChdirMode};
 
+use core::ops::Deref;
 use errors::*;
 use getopts::Options;
 use iron::prelude::*;
@@ -56,7 +59,6 @@ use std::path::Path;
 use std::sync::Arc;
 
 mod api;
-mod collection;
 mod config;
 mod db;
 mod ddns;
@@ -104,29 +106,31 @@ fn run() -> Result<()> {
 	options.optopt("w", "web", "set the path to web client files", "DIRECTORY");
 	let matches = options.parse(&args[1..])?;
 
-	// Parse config
-	let config_file_name = matches.opt_str("c");
-	let config_file_path = config_file_name.map(|n| Path::new(n.as_str()).to_path_buf());
-	let mut config = config::Config::parse(config_file_path)?;
-
-	// Init VFS
-	let vfs = Arc::new(vfs::Vfs::new(config.vfs.clone()));
-
 	// Init DB
 	println!("Starting up database");
-	let db_file_name = matches.opt_str("d");
-	let db_file_path = db_file_name.map(|n| Path::new(n.as_str()).to_path_buf());
-	config.index.path = db_file_path.unwrap_or(config.index.path);
-	let db = Arc::new(db::DB::new(vfs.clone(), &config.index)?);
+	let db_file_name = matches.opt_str("d").unwrap_or("db.sqlite".to_owned());
+	let db_file_path = Path::new(&db_file_name);
+	let db = Arc::new(db::DB::new(&db_file_path)?);
+
+	// Parse config
+	let config_file_name = matches.opt_str("c");
+	let config_file_path = config_file_name.map(|p| Path::new(p.as_str()).to_path_buf());
+	if let Some(path) = config_file_path {
+		let config = config::UserConfig::parse(&path)?;
+		db.load_config(&config)?;
+	}
+
+	// Begin indexing
 	let db_ref = db.clone();
-	std::thread::spawn(move || db_ref.get_index().update_loop());
+	std::thread::spawn(move || {
+		let db = db_ref.deref();
+		db.get_index().update_loop(db);
+	});
 
 	// Mount API
 	println!("Mounting API");
 	let mut mount = Mount::new();
-	let mut collection = collection::Collection::new(vfs, db);
-	collection.load_config(&config)?;
-	let handler = api::get_handler(collection, &config.secret);
+	let handler = api::get_handler(db.clone())?;
 	mount.mount("/api/", handler);
 
 	// Mount static files
@@ -144,13 +148,8 @@ fn run() -> Result<()> {
 	let mut server = Iron::new(mount).http(("0.0.0.0", 5050))?;
 
 	// Start DDNS updates
-	match config.ddns {
-		Some(ref ddns_config) => {
-			let ddns_config = ddns_config.clone();
-			std::thread::spawn(|| { ddns::run(ddns_config); });
-		}
-		None => (),
-	};
+	let db_ref = db.clone();
+	std::thread::spawn(move || { ddns::run(db_ref.deref()); });
 
 	// Run UI
 	ui::run();

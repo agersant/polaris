@@ -1,0 +1,6 @@
+CREATE TABLE mount_points (
+	id INTEGER PRIMARY KEY NOT NULL,
+	source TEXT NOT NULL,
+	name TEXT NOT NULL,
+	UNIQUE(name)
+);

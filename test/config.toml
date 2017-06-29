@@ -1,0 +1,5 @@
+album_art_pattern = '^Folder\.(png|jpg|jpeg)$'
+
+[[mount_dirs]]
+name = 'root'
+source = 'test/collection'

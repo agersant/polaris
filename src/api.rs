@@ -15,7 +15,7 @@ use serde_json;
 use typemap;
 use url::percent_encoding::percent_decode;
 
-use collection::*;
+use db::DB;
 use errors::*;
 use thumbnails::*;
 use utils::*;
@@ -49,67 +49,67 @@ impl typemap::Key for SessionKey {
 	type Value = Session;
 }
 
-pub fn get_handler(collection: Collection, secret: &str) -> Chain {
-	let collection = Arc::new(collection);
-	let api_handler = get_endpoints(collection);
+pub fn get_handler(db: Arc<DB>) -> Result<Chain> {
+	let api_handler = get_endpoints(db.clone());
 	let mut api_chain = Chain::new(api_handler);
 
-	let manager = ChaCha20Poly1305SessionManager::<Session>::from_password(secret.as_bytes());
-	let config = SessionConfig::default();
+	let auth_secret = db.deref().get_auth_secret()?;
+	let session_manager = ChaCha20Poly1305SessionManager::<Session>::from_password(auth_secret.as_bytes());
+	let session_config = SessionConfig::default();
 	let session_middleware =
 		SessionMiddleware::<Session,
 		                    SessionKey,
-		                    ChaCha20Poly1305SessionManager<Session>>::new(manager, config);
+		                    ChaCha20Poly1305SessionManager<Session>>::new(session_manager, session_config);
 	api_chain.link_around(session_middleware);
 
-	api_chain
+	Ok(api_chain)
 }
 
-fn get_endpoints(collection: Arc<Collection>) -> Mount {
+fn get_endpoints(db: Arc<DB>) -> Mount {
 	let mut api_handler = Mount::new();
 
 	{
-		let collection = collection.clone();
+		let db = db.clone();
 		api_handler.mount("/version/", self::version);
 		api_handler.mount("/auth/",
-		                  move |request: &mut Request| self::auth(request, collection.deref()));
+		                  move |request: &mut Request| self::auth(request, db.deref()));
 	}
 
 	{
 		let mut auth_api_mount = Mount::new();
 		{
-			let collection = collection.clone();
+			let db = db.clone();
 			auth_api_mount.mount("/browse/", move |request: &mut Request| {
-				self::browse(request, collection.deref())
+				self::browse(request, db.deref())
 			});
 		}
 		{
-			let collection = collection.clone();
+			let db = db.clone();
 			auth_api_mount.mount("/flatten/", move |request: &mut Request| {
-				self::flatten(request, collection.deref())
+				self::flatten(request, db.deref())
 			});
 		}
 		{
-			let collection = collection.clone();
+			let db = db.clone();
 			auth_api_mount.mount("/random/", move |request: &mut Request| {
-				self::random(request, collection.deref())
+				self::random(request, db.deref())
 			});
 		}
 		{
-			let collection = collection.clone();
+			let db = db.clone();
 			auth_api_mount.mount("/recent/", move |request: &mut Request| {
-				self::recent(request, collection.deref())
+				self::recent(request, db.deref())
 			});
 		}
 		{
-			let collection = collection.clone();
+			let db = db.clone();
 			auth_api_mount.mount("/serve/", move |request: &mut Request| {
-				self::serve(request, collection.deref())
+				self::serve(request, db.deref())
 			});
 		}
 
 		let mut auth_api_chain = Chain::new(auth_api_mount);
-		let auth = AuthRequirement { collection: collection.clone() };
+		let auth = AuthRequirement { db: db.clone() };
 		auth_api_chain.link_around(auth);
 
 		api_handler.mount("/", auth_api_chain);
@@ -127,13 +127,13 @@ fn path_from_request(request: &Request) -> Result<PathBuf> {
 }
 
 struct AuthRequirement {
-	collection: Arc<Collection>,
+	db: Arc<DB>,
 }
 
 impl AroundMiddleware for AuthRequirement {
 	fn around(self, handler: Box<Handler>) -> Box<Handler> {
 		Box::new(AuthHandler {
-		             collection: self.collection,
+		             db: self.db,
 		             handler: handler,
 		         }) as Box<Handler>
 	}
@@ -141,7 +141,7 @@ impl AroundMiddleware for AuthRequirement {
 
 struct AuthHandler {
 	handler: Box<Handler>,
-	collection: Arc<Collection>,
+	db: Arc<DB>,
 }
 
 impl Handler for AuthHandler {
@@ -152,8 +152,8 @@ impl Handler for AuthHandler {
 			// Auth via Authorization header
 			if let Some(auth) = req.headers.get::<Authorization<Basic>>() {
 				if let Some(ref password) = auth.password {
-					auth_success = self.collection
-						.auth(auth.username.as_str(), password.as_str());
+					auth_success = self.db
+						.auth(auth.username.as_str(), password.as_str())?;
 					req.extensions
 						.insert::<SessionKey>(Session { username: auth.username.clone() });
 				}
@@ -183,7 +183,7 @@ fn version(_: &mut Request) -> IronResult<Response> {
 	}
 }
 
-fn auth(request: &mut Request, collection: &Collection) -> IronResult<Response> {
+fn auth(request: &mut Request, db: &DB) -> IronResult<Response> {
 	let username;
 	let password;
 	{
@@ -197,7 +197,7 @@ fn auth(request: &mut Request, collection: &Collection) -> IronResult<Response> 
 			_ => return Err(Error::from(ErrorKind::MissingPassword).into()), 
 		};
 	}
-	if collection.auth(username.as_str(), password.as_str()) {
+	if db.auth(username.as_str(), password.as_str())? {
 		request
 			.extensions
 			.insert::<SessionKey>(Session { username: username.clone() });
@@ -207,13 +207,13 @@ fn auth(request: &mut Request, collection: &Collection) -> IronResult<Response> 
 	}
 }
 
-fn browse(request: &mut Request, collection: &Collection) -> IronResult<Response> {
+fn browse(request: &mut Request, db: &DB) -> IronResult<Response> {
 	let path = path_from_request(request);
 	let path = match path {
 		Err(e) => return Err(IronError::new(e, status::BadRequest)),
 		Ok(p) => p,
 	};
-	let browse_result = collection.browse(&path)?;
+	let browse_result = db.browse(&path)?;
 
 	let result_json = serde_json::to_string(&browse_result);
 	let result_json = match result_json {
@@ -224,13 +224,13 @@ fn browse(request: &mut Request, collection: &Collection) -> IronResult<Response
 	Ok(Response::with((status::Ok, result_json)))
 }
 
-fn flatten(request: &mut Request, collection: &Collection) -> IronResult<Response> {
+fn flatten(request: &mut Request, db: &DB) -> IronResult<Response> {
 	let path = path_from_request(request);
 	let path = match path {
 		Err(e) => return Err(IronError::new(e, status::BadRequest)),
 		Ok(p) => p,
 	};
-	let flatten_result = collection.flatten(&path)?;
+	let flatten_result = db.flatten(&path)?;
 
 	let result_json = serde_json::to_string(&flatten_result);
 	let result_json = match result_json {
@@ -241,8 +241,8 @@ fn flatten(request: &mut Request, collection: &Collection) -> IronResult<Respons
 	Ok(Response::with((status::Ok, result_json)))
 }
 
-fn random(_: &mut Request, collection: &Collection) -> IronResult<Response> {
-	let random_result = collection.get_random_albums(20)?;
+fn random(_: &mut Request, db: &DB) -> IronResult<Response> {
+	let random_result = db.get_random_albums(20)?;
 	let result_json = serde_json::to_string(&random_result);
 	let result_json = match result_json {
 		Ok(j) => j,
@@ -251,8 +251,8 @@ fn random(_: &mut Request, collection: &Collection) -> IronResult<Response> {
 	Ok(Response::with((status::Ok, result_json)))
 }
 
-fn recent(_: &mut Request, collection: &Collection) -> IronResult<Response> {
-	let recent_result = collection.get_recent_albums(20)?;
+fn recent(_: &mut Request, db: &DB) -> IronResult<Response> {
+	let recent_result = db.get_recent_albums(20)?;
 	let result_json = serde_json::to_string(&recent_result);
 	let result_json = match result_json {
 		Ok(j) => j,
@@ -261,14 +261,14 @@ fn recent(_: &mut Request, collection: &Collection) -> IronResult<Response> {
 	Ok(Response::with((status::Ok, result_json)))
 }
 
-fn serve(request: &mut Request, collection: &Collection) -> IronResult<Response> {
+fn serve(request: &mut Request, db: &DB) -> IronResult<Response> {
 	let virtual_path = path_from_request(request);
 	let virtual_path = match virtual_path {
 		Err(e) => return Err(IronError::new(e, status::BadRequest)),
 		Ok(p) => p,
 	};
 
-	let real_path = collection.locate(virtual_path.as_path());
+	let real_path = db.locate(virtual_path.as_path());
 	let real_path = match real_path {
 		Err(e) => return Err(IronError::new(e, status::NotFound)),
 		Ok(p) => p,

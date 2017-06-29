@@ -16,15 +16,6 @@ const APP_INFO: AppInfo = AppInfo {
 	author: "permafrost",
 };
 
-pub fn get_config_root() -> Result<PathBuf> {
-	if let Ok(root) = app_root(AppDataType::UserConfig, &APP_INFO) {
-		fs::create_dir_all(&root)
-			.chain_err(|| format!("opening user config: {}", root.display()))?;
-		return Ok(root);
-	}
-	bail!("Could not retrieve config directory root");
-}
-
 pub fn get_data_root() -> Result<PathBuf> {
 	if let Ok(root) = app_root(AppDataType::UserData, &APP_INFO) {
 		fs::create_dir_all(&root)

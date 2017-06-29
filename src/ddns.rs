@@ -1,18 +1,18 @@
+use core::ops::Deref;
 use reqwest;
 use reqwest::header::{Authorization, Basic};
 use std::io;
+use std::sync::Arc;
 use std::thread;
 use std::time;
 
-#[derive(Clone, Debug, Deserialize)]
-pub struct DDNSConfig {
-	pub host: String,
-	pub username: String,
-	pub password: String,
-}
+use db::DB;
+use errors;
+
 
 #[derive(Debug)]
 enum DDNSError {
+	InternalError(errors::Error),
 	IoError(io::Error),
 	ReqwestError(reqwest::Error),
 	UpdateError(reqwest::StatusCode),
@@ -21,6 +21,12 @@ enum DDNSError {
 impl From<io::Error> for DDNSError {
 	fn from(err: io::Error) -> DDNSError {
 		DDNSError::IoError(err)
+	}
+}
+
+impl From<errors::Error> for DDNSError {
+	fn from(err: errors::Error) -> DDNSError {
+		DDNSError::InternalError(err)
 	}
 }
 
@@ -33,7 +39,13 @@ impl From<reqwest::Error> for DDNSError {
 const DDNS_UPDATE_URL: &'static str = "https://ydns.io/api/v1/update/";
 
 
-fn update_my_ip(config: &DDNSConfig) -> Result<(), DDNSError> {
+fn update_my_ip(db: &DB) -> Result<(), DDNSError> {
+	let config = db.get_ddns_config()?;
+	if config.host.len() == 0 || config.username.len() == 0 {
+		println!("Skipping DDNS update because credentials are missing");
+		return Ok(());
+	}
+
 	let full_url = format!("{}?host={}", DDNS_UPDATE_URL, &config.host);
 	let auth_header = Authorization(Basic {
 	                                    username: config.username.clone(),
@@ -50,9 +62,9 @@ fn update_my_ip(config: &DDNSConfig) -> Result<(), DDNSError> {
 	Ok(())
 }
 
-pub fn run(config: DDNSConfig) {
+pub fn run(db: &DB) {
 	loop {
-		match update_my_ip(&config) {
+		match update_my_ip(db) {
 			Err(e) => println!("Dynamic DNS Error: {:?}", e),
 			Ok(_) => (),
 		};

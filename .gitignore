@@ -1,7 +1,7 @@
 target
 release
 *.res
-test/*
+test/*.sqlite
 *.sqlite-journal
 *.sqlite-wal
 *.sqlite-shm

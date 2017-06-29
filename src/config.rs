@@ -4,90 +4,50 @@ use std::io::Read;
 use std::path;
 use toml;
 
-use collection::User;
-use ddns::DDNSConfig;
 use errors::*;
-use db::IndexConfig;
-use utils;
-use vfs::VfsConfig;
-
-const DEFAULT_CONFIG_FILE_NAME: &'static str = "polaris.toml";
-const INDEX_FILE_NAME: &'static str = "index.sqlite";
+use db::NewMountPoint;
 
 #[derive(Deserialize)]
-struct MountDir {
+pub struct User {
 	pub name: String,
-	pub source: String,
+	pub password: String,
 }
 
 #[derive(Deserialize)]
-struct UserConfig {
-	pub auth_secret: String,
+pub struct DDNSConfig {
+	pub host: String,
+	pub username: String,
+	pub password: String,
+}
+
+#[derive(Deserialize)]
+pub struct UserConfig {
 	pub album_art_pattern: Option<String>,
 	pub reindex_every_n_seconds: Option<u64>,
-	pub mount_dirs: Vec<MountDir>,
-	pub users: Vec<User>,
+	pub mount_dirs: Option<Vec<NewMountPoint>>,
+	pub users: Option<Vec<User>>,
 	pub ydns: Option<DDNSConfig>,
 }
 
-pub struct Config {
-	pub secret: String,
-	pub vfs: VfsConfig,
-	pub users: Vec<User>,
-	pub index: IndexConfig,
-	pub ddns: Option<DDNSConfig>,
-}
-
-impl Config {
-	pub fn parse(custom_path: Option<path::PathBuf>) -> Result<Config> {
-
-		let config_path = match custom_path {
-			Some(p) => p,
-			None => {
-				let mut root = utils::get_config_root()?;
-				root.push(DEFAULT_CONFIG_FILE_NAME);
-				root
-			}
-		};
-		println!("Config file path: {}", config_path.to_string_lossy());
+impl UserConfig {
+	pub fn parse(path: &path::Path) -> Result<UserConfig> {
+		println!("Config file path: {}", path.to_string_lossy());
 
 		// Parse user config
-		let mut config_file = fs::File::open(config_path)?;
+		let mut config_file = fs::File::open(path)?;
 		let mut config_file_content = String::new();
 		config_file.read_to_string(&mut config_file_content)?;
-		let user_config = toml::de::from_str::<UserConfig>(config_file_content.as_str())?;
+		let mut config = toml::de::from_str::<UserConfig>(config_file_content.as_str())?;
 
-		// Init VFS config
-		let mut vfs_config = VfsConfig::new();
-		for dir in user_config.mount_dirs {
-			if vfs_config.mount_points.contains_key(&dir.name) {
-				bail!("Conflicting mount directories");
+		// Clean path
+		if let Some(ref mut mount_dirs) = config.mount_dirs {
+			for mount_dir in mount_dirs {
+				match clean_path_string(&mount_dir.source).to_str() {
+					Some(p) => mount_dir.source = p.to_owned(),
+					_ => bail!("Bad mount directory path")
+				}
 			}
-			vfs_config
-				.mount_points
-				.insert(dir.name.to_owned(), clean_path_string(dir.source.as_str()));
 		}
-
-		// Init Index config
-		let mut index_config = IndexConfig::new();
-		index_config.album_art_pattern = user_config
-			.album_art_pattern
-			.and_then(|s| Regex::new(s.as_str()).ok());
-		if let Some(duration) = user_config.reindex_every_n_seconds {
-			index_config.sleep_duration = duration;
-		}
-		let mut index_path = utils::get_data_root()?;
-		index_path.push(INDEX_FILE_NAME);
-		index_config.path = index_path;
-
-		// Init master config
-		let config = Config {
-			secret: user_config.auth_secret,
-			vfs: vfs_config,
-			users: user_config.users,
-			index: index_config,
-			ddns: user_config.ydns,
-		};
 
 		Ok(config)
 	}

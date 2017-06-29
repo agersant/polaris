@@ -4,24 +4,19 @@ use std::path::Path;
 
 use errors::*;
 
-#[derive(Debug, Clone)]
-pub struct VfsConfig {
-	pub mount_points: HashMap<String, PathBuf>,
-}
-
-impl VfsConfig {
-	pub fn new() -> VfsConfig {
-		VfsConfig { mount_points: HashMap::new() }
-	}
-}
 
 pub struct Vfs {
 	mount_points: HashMap<String, PathBuf>,
 }
 
 impl Vfs {
-	pub fn new(config: VfsConfig) -> Vfs {
-		Vfs { mount_points: config.mount_points }
+	pub fn new() -> Vfs {
+		Vfs { mount_points: HashMap::new() }
+	}
+
+	pub fn mount(&mut self, real_path: &Path, name: &str) -> Result<()> {
+		self.mount_points.insert(name.to_owned(), real_path.to_path_buf());
+		Ok(())
 	}
 
 	pub fn real_to_virtual(&self, real_path: &Path) -> Result<PathBuf> {
@@ -65,11 +60,8 @@ impl Vfs {
 
 #[test]
 fn test_virtual_to_real() {
-	let mut config = VfsConfig::new();
-	config
-		.mount_points
-		.insert("root".to_owned(), Path::new("test_dir").to_path_buf());
-	let vfs = Vfs::new(config);
+	let mut vfs = Vfs::new();
+	vfs.mount(Path::new("test_dir"), "root").unwrap();
 
 	let mut correct_path = PathBuf::new();
 	correct_path.push("test_dir");
@@ -87,11 +79,8 @@ fn test_virtual_to_real() {
 
 #[test]
 fn test_virtual_to_real_no_trail() {
-	let mut config = VfsConfig::new();
-	config
-		.mount_points
-		.insert("root".to_owned(), Path::new("test_dir").to_path_buf());
-	let vfs = Vfs::new(config);
+	let mut vfs = Vfs::new();
+	vfs.mount(Path::new("test_dir"), "root").unwrap();
 	let correct_path = Path::new("test_dir");
 	let found_path = vfs.virtual_to_real(Path::new("root")).unwrap();
 	assert!(found_path.to_str() == correct_path.to_str());
@@ -99,11 +88,8 @@ fn test_virtual_to_real_no_trail() {
 
 #[test]
 fn test_real_to_virtual() {
-	let mut config = VfsConfig::new();
-	config
-		.mount_points
-		.insert("root".to_owned(), Path::new("test_dir").to_path_buf());
-	let vfs = Vfs::new(config);
+	let mut vfs = Vfs::new();
+	vfs.mount(Path::new("test_dir"), "root").unwrap();
 
 	let mut correct_path = PathBuf::new();
 	correct_path.push("root");
