@@ -5,7 +5,7 @@ use diesel::sqlite::SqliteConnection;
 use regex::Regex;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex};
+use std::sync::Mutex;
 use std::thread;
 use std::time;
 
@@ -128,10 +128,7 @@ impl<'db> IndexBuilder<'db> {
 		None
 	}
 
-	fn populate_directory(&mut self,
-	                      parent: Option<&Path>,
-	                      path: &Path)
-	                      -> Result<()> {
+	fn populate_directory(&mut self, parent: Option<&Path>, path: &Path) -> Result<()> {
 
 		// Find artwork
 		let artwork = self.get_artwork(path);
@@ -245,8 +242,7 @@ impl<'db> IndexBuilder<'db> {
 	}
 }
 
-pub struct Index {
-}
+pub struct Index {}
 
 impl Index {
 	pub fn new() -> Index {
@@ -364,11 +360,15 @@ impl Index {
 					let connection = db.get_connection();
 					let connection = connection.lock().unwrap();
 					let connection = connection.deref();
-					let settings: Result<MiscSettings> = misc_settings::table.get_result(connection).map_err(|e| e.into());
+					let settings: Result<MiscSettings> = misc_settings::table
+						.get_result(connection)
+						.map_err(|e| e.into());
 					if let Err(ref e) = settings {
 						println!("Could not retrieve index sleep duration: {}", e);
 					}
-					sleep_duration = settings.map(|s| s.index_sleep_duration_seconds).unwrap_or(1800);
+					sleep_duration = settings
+						.map(|s| s.index_sleep_duration_seconds)
+						.unwrap_or(1800);
 				}
 				thread::sleep(time::Duration::from_secs(sleep_duration as u64));
 			}

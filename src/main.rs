@@ -123,9 +123,9 @@ fn run() -> Result<()> {
 	// Begin indexing
 	let db_ref = db.clone();
 	std::thread::spawn(move || {
-		let db = db_ref.deref();
-		db.get_index().update_loop(db);
-	});
+		                   let db = db_ref.deref();
+		                   db.get_index().update_loop(db);
+		                  });
 
 	// Mount API
 	println!("Mounting API");

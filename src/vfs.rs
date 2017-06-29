@@ -15,7 +15,8 @@ impl Vfs {
 	}
 
 	pub fn mount(&mut self, real_path: &Path, name: &str) -> Result<()> {
-		self.mount_points.insert(name.to_owned(), real_path.to_path_buf());
+		self.mount_points
+			.insert(name.to_owned(), real_path.to_path_buf());
 		Ok(())
 	}
 

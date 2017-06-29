@@ -38,7 +38,7 @@ impl UserConfig {
 			for mount_dir in mount_dirs {
 				match clean_path_string(&mount_dir.source).to_str() {
 					Some(p) => mount_dir.source = p.to_owned(),
-					_ => bail!("Bad mount directory path")
+					_ => bail!("Bad mount directory path"),
 				}
 			}
 		}

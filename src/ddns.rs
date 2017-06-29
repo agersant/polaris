@@ -46,7 +46,9 @@ impl From<reqwest::Error> for DDNSError {
 const DDNS_UPDATE_URL: &'static str = "https://ydns.io/api/v1/update/";
 
 
-fn update_my_ip<T>(config_source: &T) -> Result<(), DDNSError> where T: DDNSConfigSource {
+fn update_my_ip<T>(config_source: &T) -> Result<(), DDNSError>
+	where T: DDNSConfigSource
+{
 	let config = config_source.get_ddns_config()?;
 	if config.host.len() == 0 || config.username.len() == 0 {
 		println!("Skipping DDNS update because credentials are missing");
@@ -69,7 +71,9 @@ fn update_my_ip<T>(config_source: &T) -> Result<(), DDNSError> where T: DDNSConf
 	Ok(())
 }
 
-pub fn run<T>(config_source: &T) where T: DDNSConfigSource {
+pub fn run<T>(config_source: &T)
+	where T: DDNSConfigSource
+{
 	loop {
 		if let Err(e) = update_my_ip(config_source) {
 			println!("Dynamic DNS update error: {:?}", e);

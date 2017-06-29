@@ -86,7 +86,9 @@ impl DB {
 		let connection = connection.deref();
 		if let Some(ref mount_dirs) = config.mount_dirs {
 			diesel::delete(mount_points::table).execute(connection)?;
-			diesel::insert(mount_dirs).into(mount_points::table).execute(connection)?;
+			diesel::insert(mount_dirs)
+				.into(mount_points::table)
+				.execute(connection)?;
 		}
 
 		if let Some(ref config_users) = config.users {
@@ -94,20 +96,23 @@ impl DB {
 			for config_user in config_users {
 				let new_user = NewUser::new(&config_user.name, &config_user.password);
 				println!("new user: {}", &config_user.name);
-				diesel::insert(&new_user).into(users::table).execute(connection)?;
+				diesel::insert(&new_user)
+					.into(users::table)
+					.execute(connection)?;
 			}
 		}
 
 		if let Some(sleep_duration) = config.reindex_every_n_seconds {
 			diesel::update(misc_settings::table)
-			.set(misc_settings::columns::index_sleep_duration_seconds.eq(sleep_duration as i32))
-			.execute(connection)?;
+				.set(misc_settings::columns::index_sleep_duration_seconds.eq(sleep_duration as
+				                                                             i32))
+				.execute(connection)?;
 		}
 
 		if let Some(ref album_art_pattern) = config.album_art_pattern {
 			diesel::update(misc_settings::table)
-			.set(misc_settings::columns::index_album_art_pattern.eq(album_art_pattern))
-			.execute(connection)?;
+				.set(misc_settings::columns::index_album_art_pattern.eq(album_art_pattern))
+				.execute(connection)?;
 		}
 
 		Ok(())
@@ -116,7 +121,7 @@ impl DB {
 	pub fn get_auth_secret(&self) -> Result<String> {
 		let connection = self.connection.lock().unwrap();
 		let connection = connection.deref();
-		let misc : MiscSettings = misc_settings::table.get_result(connection)?;
+		let misc: MiscSettings = misc_settings::table.get_result(connection)?;
 		Ok(misc.auth_secret.to_owned())
 	}
 
@@ -129,7 +134,7 @@ impl DB {
 		let mut vfs = Vfs::new();
 		let connection = self.connection.lock().unwrap();
 		let connection = connection.deref();
-		let mount_points : Vec<MountPoint> = mount_points::table.get_results(connection)?;
+		let mount_points: Vec<MountPoint> = mount_points::table.get_results(connection)?;
 		for mount_point in mount_points {
 			vfs.mount(&Path::new(&mount_point.real_path), &mount_point.name)?;
 		}
@@ -268,7 +273,11 @@ impl DDNSConfigSource for DB {
 	fn get_ddns_config(&self) -> Result<DDNSConfig> {
 		let connection = self.connection.lock().unwrap();
 		let connection = connection.deref();
-		Ok(ddns_config::table.select((ddns_config::columns::host, ddns_config::columns::username, ddns_config::columns::password)).get_result(connection)?)
+		Ok(ddns_config::table
+		       .select((ddns_config::columns::host,
+		                ddns_config::columns::username,
+		                ddns_config::columns::password))
+		       .get_result(connection)?)
 	}
 }
 

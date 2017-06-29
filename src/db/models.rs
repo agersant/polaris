@@ -53,7 +53,12 @@ pub struct User {
 
 impl User {
 	pub fn verify_password(&self, attempted_password: &str) -> bool {
-		pbkdf2::verify(DIGEST_ALG, HASH_ITERATIONS, &self.password_salt, attempted_password.as_bytes(), &self.password_hash).is_ok()
+		pbkdf2::verify(DIGEST_ALG,
+		               HASH_ITERATIONS,
+		               &self.password_salt,
+		               attempted_password.as_bytes(),
+		               &self.password_hash)
+				.is_ok()
 	}
 }
 
@@ -83,7 +88,11 @@ impl NewUser {
 
 	pub fn hash_password(salt: &Vec<u8>, password: &str) -> Vec<u8> {
 		let mut hash: PasswordHash = [0; CREDENTIAL_LEN];
-		pbkdf2::derive(DIGEST_ALG, HASH_ITERATIONS, salt, password.as_bytes(), &mut hash);
+		pbkdf2::derive(DIGEST_ALG,
+		               HASH_ITERATIONS,
+		               salt,
+		               password.as_bytes(),
+		               &mut hash);
 		hash.to_vec()
 	}
 }
@@ -92,7 +101,7 @@ impl NewUser {
 // VFS
 #[derive(Debug, Queryable)]
 pub struct MountPoint {
-	id: i32, 
+	id: i32,
 	pub real_path: String,
 	pub name: String,
 }
@@ -113,5 +122,3 @@ pub struct MiscSettings {
 	pub index_sleep_duration_seconds: i32,
 	pub index_album_art_pattern: String,
 }
-
-

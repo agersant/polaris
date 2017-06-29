@@ -54,12 +54,14 @@ pub fn get_handler(db: Arc<DB>) -> Result<Chain> {
 	let mut api_chain = Chain::new(api_handler);
 
 	let auth_secret = db.deref().get_auth_secret()?;
-	let session_manager = ChaCha20Poly1305SessionManager::<Session>::from_password(auth_secret.as_bytes());
+	let session_manager =
+		ChaCha20Poly1305SessionManager::<Session>::from_password(auth_secret.as_bytes());
 	let session_config = SessionConfig::default();
 	let session_middleware =
 		SessionMiddleware::<Session,
 		                    SessionKey,
-		                    ChaCha20Poly1305SessionManager<Session>>::new(session_manager, session_config);
+		                    ChaCha20Poly1305SessionManager<Session>>::new(session_manager,
+		                                                            session_config);
 	api_chain.link_around(session_middleware);
 
 	Ok(api_chain)
@@ -79,33 +81,28 @@ fn get_endpoints(db: Arc<DB>) -> Mount {
 		let mut auth_api_mount = Mount::new();
 		{
 			let db = db.clone();
-			auth_api_mount.mount("/browse/", move |request: &mut Request| {
-				self::browse(request, db.deref())
-			});
+			auth_api_mount.mount("/browse/",
+			                     move |request: &mut Request| self::browse(request, db.deref()));
 		}
 		{
 			let db = db.clone();
-			auth_api_mount.mount("/flatten/", move |request: &mut Request| {
-				self::flatten(request, db.deref())
-			});
+			auth_api_mount.mount("/flatten/",
+			                     move |request: &mut Request| self::flatten(request, db.deref()));
 		}
 		{
 			let db = db.clone();
-			auth_api_mount.mount("/random/", move |request: &mut Request| {
-				self::random(request, db.deref())
-			});
+			auth_api_mount.mount("/random/",
+			                     move |request: &mut Request| self::random(request, db.deref()));
 		}
 		{
 			let db = db.clone();
-			auth_api_mount.mount("/recent/", move |request: &mut Request| {
-				self::recent(request, db.deref())
-			});
+			auth_api_mount.mount("/recent/",
+			                     move |request: &mut Request| self::recent(request, db.deref()));
 		}
 		{
 			let db = db.clone();
-			auth_api_mount.mount("/serve/", move |request: &mut Request| {
-				self::serve(request, db.deref())
-			});
+			auth_api_mount.mount("/serve/",
+			                     move |request: &mut Request| self::serve(request, db.deref()));
 		}
 
 		let mut auth_api_chain = Chain::new(auth_api_mount);
@@ -152,8 +149,7 @@ impl Handler for AuthHandler {
 			// Auth via Authorization header
 			if let Some(auth) = req.headers.get::<Authorization<Basic>>() {
 				if let Some(ref password) = auth.password {
-					auth_success = self.db
-						.auth(auth.username.as_str(), password.as_str())?;
+					auth_success = self.db.auth(auth.username.as_str(), password.as_str())?;
 					req.extensions
 						.insert::<SessionKey>(Session { username: auth.username.clone() });
 				}
