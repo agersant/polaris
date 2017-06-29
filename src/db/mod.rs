@@ -95,7 +95,6 @@ impl DB {
 			diesel::delete(users::table).execute(connection)?;
 			for config_user in config_users {
 				let new_user = NewUser::new(&config_user.name, &config_user.password);
-				println!("new user: {}", &config_user.name);
 				diesel::insert(&new_user)
 					.into(users::table)
 					.execute(connection)?;
