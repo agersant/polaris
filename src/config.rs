@@ -6,17 +6,11 @@ use toml;
 
 use errors::*;
 use db::NewMountPoint;
+use ddns::DDNSConfig;
 
 #[derive(Deserialize)]
 pub struct User {
 	pub name: String,
-	pub password: String,
-}
-
-#[derive(Deserialize)]
-pub struct DDNSConfig {
-	pub host: String,
-	pub username: String,
 	pub password: String,
 }
 

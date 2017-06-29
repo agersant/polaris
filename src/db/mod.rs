@@ -10,6 +10,7 @@ use std::sync::{Arc, Mutex};
 
 use config::UserConfig;
 use db::schema::*;
+use ddns::{DDNSConfigSource, DDNSConfig};
 use errors::*;
 use vfs::Vfs;
 
@@ -117,12 +118,6 @@ impl DB {
 		let connection = connection.deref();
 		let misc : MiscSettings = misc_settings::table.get_result(connection)?;
 		Ok(misc.auth_secret.to_owned())
-	}
-
-	pub fn get_ddns_config(&self) -> Result<DDNSConfig> {
-		let connection = self.connection.lock().unwrap();
-		let connection = connection.deref();
-		Ok(ddns_config::table.get_result(connection)?)
 	}
 
 	pub fn locate(&self, virtual_path: &Path) -> Result<PathBuf> {
@@ -266,6 +261,14 @@ impl DB {
 			.filter(users::columns::name.eq(username))
 			.get_result(connection)?;
 		Ok(user.verify_password(password))
+	}
+}
+
+impl DDNSConfigSource for DB {
+	fn get_ddns_config(&self) -> Result<DDNSConfig> {
+		let connection = self.connection.lock().unwrap();
+		let connection = connection.deref();
+		Ok(ddns_config::table.select((ddns_config::columns::host, ddns_config::columns::username, ddns_config::columns::password)).get_result(connection)?)
 	}
 }
 

@@ -115,12 +115,3 @@ pub struct MiscSettings {
 }
 
 
-// DDNS Settings
-#[derive(Debug, Deserialize, Queryable)]
-pub struct DDNSConfig {
-	id : i32,
-	pub host: String,
-	pub username: String,
-	pub password: String,
-}
-

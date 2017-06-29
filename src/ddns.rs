@@ -4,9 +4,18 @@ use std::io;
 use std::thread;
 use std::time;
 
-use db::DB;
 use errors;
 
+#[derive(Debug, Deserialize, Queryable)]
+pub struct DDNSConfig {
+	pub host: String,
+	pub username: String,
+	pub password: String,
+}
+
+pub trait DDNSConfigSource {
+	fn get_ddns_config(&self) -> errors::Result<DDNSConfig>;
+}
 
 #[derive(Debug)]
 enum DDNSError {
@@ -37,8 +46,8 @@ impl From<reqwest::Error> for DDNSError {
 const DDNS_UPDATE_URL: &'static str = "https://ydns.io/api/v1/update/";
 
 
-fn update_my_ip(db: &DB) -> Result<(), DDNSError> {
-	let config = db.get_ddns_config()?;
+fn update_my_ip<T>(config_source: &T) -> Result<(), DDNSError> where T: DDNSConfigSource {
+	let config = config_source.get_ddns_config()?;
 	if config.host.len() == 0 || config.username.len() == 0 {
 		println!("Skipping DDNS update because credentials are missing");
 		return Ok(());
@@ -60,12 +69,11 @@ fn update_my_ip(db: &DB) -> Result<(), DDNSError> {
 	Ok(())
 }
 
-pub fn run(db: &DB) {
+pub fn run<T>(config_source: &T) where T: DDNSConfigSource {
 	loop {
-		match update_my_ip(db) {
-			Err(e) => println!("Dynamic DNS Error: {:?}", e),
-			Ok(_) => (),
-		};
+		if let Err(e) = update_my_ip(config_source) {
+			println!("Dynamic DNS update error: {:?}", e);
+		}
 		thread::sleep(time::Duration::from_secs(60 * 30));
 	}
 }
