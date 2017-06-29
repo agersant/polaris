@@ -104,14 +104,13 @@ impl DB {
 
 		if let Some(sleep_duration) = config.reindex_every_n_seconds {
 			diesel::update(misc_settings::table)
-				.set(misc_settings::columns::index_sleep_duration_seconds.eq(sleep_duration as
-				                                                             i32))
+				.set(misc_settings::index_sleep_duration_seconds.eq(sleep_duration as i32))
 				.execute(connection)?;
 		}
 
 		if let Some(ref album_art_pattern) = config.album_art_pattern {
 			diesel::update(misc_settings::table)
-				.set(misc_settings::columns::index_album_art_pattern.eq(album_art_pattern))
+				.set(misc_settings::index_album_art_pattern.eq(album_art_pattern))
 				.execute(connection)?;
 		}
 
@@ -178,7 +177,7 @@ impl DB {
 		if virtual_path.components().count() == 0 {
 			// Browse top-level
 			let real_directories: Vec<Directory> = directories::table
-				.filter(directories::columns::parent.is_null())
+				.filter(directories::parent.is_null())
 				.load(connection)?;
 			let virtual_directories = real_directories
 				.into_iter()
@@ -193,8 +192,8 @@ impl DB {
 			let real_path_string = real_path.as_path().to_string_lossy().into_owned();
 
 			let real_directories: Vec<Directory> = directories::table
-				.filter(directories::columns::parent.eq(&real_path_string))
-				.order(directories::columns::path)
+				.filter(directories::parent.eq(&real_path_string))
+				.order(directories::path)
 				.load(connection)?;
 			let virtual_directories = real_directories
 				.into_iter()
@@ -202,8 +201,8 @@ impl DB {
 			output.extend(virtual_directories.map(|d| CollectionFile::Directory(d)));
 
 			let real_songs: Vec<Song> = songs::table
-				.filter(songs::columns::parent.eq(&real_path_string))
-				.order(songs::columns::path)
+				.filter(songs::parent.eq(&real_path_string))
+				.order(songs::path)
 				.load(connection)?;
 			let virtual_songs = real_songs
 				.into_iter()
@@ -215,14 +214,13 @@ impl DB {
 	}
 
 	pub fn flatten(&self, virtual_path: &Path) -> Result<Vec<Song>> {
+		use self::songs::dsl::*;
 		let vfs = self.get_vfs()?;
 		let connection = self.connection.lock().unwrap();
 		let connection = connection.deref();
 		let real_path = vfs.virtual_to_real(virtual_path)?;
 		let like_path = real_path.as_path().to_string_lossy().into_owned() + "%";
-		let real_songs: Vec<Song> = songs::table
-			.filter(songs::columns::path.like(&like_path))
-			.load(connection)?;
+		let real_songs: Vec<Song> = songs.filter(path.like(&like_path)).load(connection)?;
 		let virtual_songs = real_songs
 			.into_iter()
 			.filter_map(|s| self.virtualize_song(&vfs, s));
@@ -230,11 +228,12 @@ impl DB {
 	}
 
 	pub fn get_random_albums(&self, count: i64) -> Result<Vec<Directory>> {
+		use self::directories::dsl::*;
 		let vfs = self.get_vfs()?;
 		let connection = self.connection.lock().unwrap();
 		let connection = connection.deref();
-		let real_directories = directories::table
-			.filter(directories::columns::album.is_not_null())
+		let real_directories = directories
+			.filter(album.is_not_null())
 			.limit(count)
 			.order(sql::<types::Bool>("RANDOM()"))
 			.load(connection)?;
@@ -245,12 +244,13 @@ impl DB {
 	}
 
 	pub fn get_recent_albums(&self, count: i64) -> Result<Vec<Directory>> {
+		use self::directories::dsl::*;
 		let vfs = self.get_vfs()?;
 		let connection = self.connection.lock().unwrap();
 		let connection = connection.deref();
-		let real_directories: Vec<Directory> = directories::table
-			.filter(directories::columns::album.is_not_null())
-			.order(directories::columns::date_added.desc())
+		let real_directories: Vec<Directory> = directories
+			.filter(album.is_not_null())
+			.order(date_added.desc())
 			.limit(count)
 			.load(connection)?;
 		let virtual_directories = real_directories
@@ -260,23 +260,21 @@ impl DB {
 	}
 
 	pub fn auth(&self, username: &str, password: &str) -> Result<bool> {
+		use self::users::dsl::*;
 		let connection = self.connection.lock().unwrap();
 		let connection = connection.deref();
-		let user: User = users::table
-			.filter(users::columns::name.eq(username))
-			.get_result(connection)?;
+		let user: User = users.filter(name.eq(username)).get_result(connection)?;
 		Ok(user.verify_password(password))
 	}
 }
 
 impl DDNSConfigSource for DB {
 	fn get_ddns_config(&self) -> Result<DDNSConfig> {
+		use self::ddns_config::dsl::*;
 		let connection = self.connection.lock().unwrap();
 		let connection = connection.deref();
-		Ok(ddns_config::table
-		       .select((ddns_config::columns::host,
-		                ddns_config::columns::username,
-		                ddns_config::columns::password))
+		Ok(ddns_config
+		       .select((host, username, password))
 		       .get_result(connection)?)
 	}
 }

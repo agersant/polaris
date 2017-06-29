@@ -268,9 +268,7 @@ impl Index {
 				let connection = db.get_connection();
 				let connection = connection.lock().unwrap();
 				let connection = connection.deref();
-				all_songs = songs::table
-					.select(songs::columns::path)
-					.load(connection)?;
+				all_songs = songs::table.select(songs::path).load(connection)?;
 			}
 
 			let missing_songs = all_songs
@@ -286,7 +284,7 @@ impl Index {
 				let connection = connection.lock().unwrap();
 				let connection = connection.deref();
 				for chunk in missing_songs[..].chunks(INDEX_BUILDING_CLEAN_BUFFER_SIZE) {
-					diesel::delete(songs::table.filter(songs::columns::path.eq_any(chunk)))
+					diesel::delete(songs::table.filter(songs::path.eq_any(chunk)))
 						.execute(connection)?;
 				}
 
@@ -300,7 +298,7 @@ impl Index {
 				let connection = connection.lock().unwrap();
 				let connection = connection.deref();
 				all_directories = directories::table
-					.select(directories::columns::path)
+					.select(directories::path)
 					.load(connection)?;
 			}
 
@@ -317,9 +315,8 @@ impl Index {
 				let connection = connection.lock().unwrap();
 				let connection = connection.deref();
 				for chunk in missing_directories[..].chunks(INDEX_BUILDING_CLEAN_BUFFER_SIZE) {
-					diesel::delete(directories::table.filter(directories::columns::path
-					                                             .eq_any(chunk)))
-							.execute(connection)?;
+					diesel::delete(directories::table.filter(directories::path.eq_any(chunk)))
+						.execute(connection)?;
 				}
 			}
 		}
@@ -434,7 +431,7 @@ fn test_metadata() {
 	let connection = connection.lock().unwrap();
 	let connection = connection.deref();
 	let songs: Vec<Song> = songs::table
-		.filter(songs::columns::title.eq("シャーベット (Sherbet)"))
+		.filter(songs::title.eq("シャーベット (Sherbet)"))
 		.load(connection)
 		.unwrap();
 
