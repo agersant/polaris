@@ -1,8 +1,6 @@
-use core::ops::Deref;
 use reqwest;
 use reqwest::header::{Authorization, Basic};
 use std::io;
-use std::sync::Arc;
 use std::thread;
 use std::time;
 
