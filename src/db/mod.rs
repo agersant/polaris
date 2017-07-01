@@ -9,15 +9,15 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use config::UserConfig;
-use db::schema::*;
 use ddns::{DDNSConfigSource, DDNSConfig};
 use errors::*;
-use vfs::Vfs;
+use vfs::{MountPoint, Vfs};
 
 mod index;
 mod models;
 mod schema;
 
+pub use self::schema::*;
 pub use self::models::*;
 
 #[allow(dead_code)]

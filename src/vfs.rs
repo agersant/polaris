@@ -2,8 +2,15 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::path::Path;
 
+use db::mount_points;
 use errors::*;
 
+#[derive(Debug, Deserialize, Insertable, Queryable)]
+#[table_name="mount_points"]
+pub struct MountPoint {
+	pub source: String,
+	pub name: String,
+}
 
 pub struct Vfs {
 	mount_points: HashMap<String, PathBuf>,

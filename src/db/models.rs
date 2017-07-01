@@ -97,16 +97,6 @@ impl NewUser {
 	}
 }
 
-
-// VFS
-#[derive(Debug, Deserialize, Insertable, Queryable)]
-#[table_name="mount_points"]
-pub struct MountPoint {
-	pub source: String,
-	pub name: String,
-}
-
-
 // Misc Settings
 #[derive(Debug, Queryable)]
 pub struct MiscSettings {

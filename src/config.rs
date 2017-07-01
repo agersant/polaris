@@ -5,7 +5,7 @@ use std::path;
 use toml;
 
 use errors::*;
-use db::MountPoint;
+use vfs::MountPoint;
 use ddns::DDNSConfig;
 
 #[derive(Deserialize)]
