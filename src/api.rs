@@ -18,6 +18,7 @@ use url::percent_encoding::percent_decode;
 use db::DB;
 use errors::*;
 use thumbnails::*;
+use user;
 use utils::*;
 
 const CURRENT_MAJOR_VERSION: i32 = 2;
@@ -149,7 +150,7 @@ impl Handler for AuthHandler {
 			// Auth via Authorization header
 			if let Some(auth) = req.headers.get::<Authorization<Basic>>() {
 				if let Some(ref password) = auth.password {
-					auth_success = self.db.auth(auth.username.as_str(), password.as_str())?;
+					auth_success = user::auth(self.db.deref(), auth.username.as_str(), password.as_str())?;
 					req.extensions
 						.insert::<SessionKey>(Session { username: auth.username.clone() });
 				}
@@ -193,7 +194,7 @@ fn auth(request: &mut Request, db: &DB) -> IronResult<Response> {
 			_ => return Err(Error::from(ErrorKind::MissingPassword).into()), 
 		};
 	}
-	if db.auth(username.as_str(), password.as_str())? {
+	if user::auth(db, username.as_str(), password.as_str())? {
 		request
 			.extensions
 			.insert::<SessionKey>(Session { username: username.clone() });

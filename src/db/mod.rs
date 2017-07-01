@@ -245,12 +245,6 @@ impl DB {
 			.filter_map(|s| self.virtualize_directory(&vfs, s));
 		Ok(virtual_directories.collect::<Vec<_>>())
 	}
-
-	pub fn auth(&self, username: &str, password: &str) -> Result<bool> {
-		let connection = self.connection.lock().unwrap();
-		let connection = connection.deref();
-		auth(connection, username, password)
-	}
 }
 
 impl ConnectionSource for DB {

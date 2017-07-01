@@ -1,8 +1,9 @@
+use core::ops::Deref;
 use diesel::prelude::*;
-use diesel::sqlite::SqliteConnection;
 use rand;
 use ring::{digest, pbkdf2};
 
+use db::ConnectionSource;
 use db::users;
 use errors::*;
 
@@ -60,8 +61,11 @@ impl NewUser {
 	}
 }
 
-pub fn auth(connection: &SqliteConnection, username: &str, password: &str) -> Result<bool> {
+pub fn auth<T>(db: &T, username: &str, password: &str) -> Result<bool> where T: ConnectionSource {
 	use db::users::dsl::*;
+	let connection = db.get_connection();
+	let connection = connection.lock().unwrap();
+	let connection = connection.deref();
 	let user: User = users.filter(name.eq(username)).get_result(connection)?;
 	Ok(user.verify_password(password))
 }
