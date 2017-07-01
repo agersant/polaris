@@ -8,7 +8,7 @@ use std::path;
 use toml;
 
 use db::ConnectionSource;
-use db::{misc_settings, mount_points, users};
+use db::{ddns_config, misc_settings, mount_points, users};
 use ddns::DDNSConfig;
 use errors::*;
 use user::*;
@@ -22,16 +22,16 @@ pub struct MiscSettings {
 	pub index_album_art_pattern: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct ConfigUser {
 	pub name: String,
 	pub password: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct Config {
 	pub album_art_pattern: Option<String>,
-	pub reindex_every_n_seconds: Option<u64>,
+	pub reindex_every_n_seconds: Option<i32>,
 	pub mount_dirs: Option<Vec<MountPoint>>,
 	pub users: Option<Vec<ConfigUser>>,
 	pub ydns: Option<DDNSConfig>,
@@ -55,6 +55,57 @@ pub fn parse(path: &path::Path) -> Result<Config> {
 			}
 		}
 	}
+
+	Ok(config)
+}
+
+pub fn read<T>(db: &T) -> Result<Config>
+	where T: ConnectionSource
+{
+	use self::misc_settings::dsl::*;
+	use self::mount_points::dsl::*;
+	use self::ddns_config::dsl::*;
+
+	let connection = db.get_connection();
+	let connection = connection.lock().unwrap();
+	let connection = connection.deref();
+
+	let mut config = Config {
+		album_art_pattern: None,
+		reindex_every_n_seconds: None,
+		mount_dirs: None,
+		users: None,
+		ydns: None,
+	};
+
+	let (art_pattern, sleep_duration) = misc_settings
+		.select((index_album_art_pattern, index_sleep_duration_seconds))
+		.get_result(connection)?;
+	config.album_art_pattern = Some(art_pattern);
+	config.reindex_every_n_seconds = Some(sleep_duration);
+
+	let mount_dirs = mount_points
+		.select((source, name))
+		.get_results(connection)?;
+	config.mount_dirs = Some(mount_dirs);
+
+	let usernames: Vec<String> = users::table
+		.select(users::columns::name)
+		.get_results(connection)?;
+	config.users = Some(usernames
+	                        .into_iter()
+	                        .map(|s| {
+		                             ConfigUser {
+		                                 name: s,
+		                                 password: "".to_owned(),
+		                             }
+		                            })
+	                        .collect::<_>());
+
+	let ydns = ddns_config
+		.select((host, username, password))
+		.get_result(connection)?;
+	config.ydns = Some(ydns);
 
 	Ok(config)
 }

@@ -15,6 +15,7 @@ use std::sync::Arc;
 use typemap;
 use url::percent_encoding::percent_decode;
 
+use config;
 use config::MiscSettings;
 use db::{ConnectionSource, DB};
 use db::misc_settings;
@@ -26,7 +27,7 @@ use utils::*;
 use vfs::VFSSource;
 
 const CURRENT_MAJOR_VERSION: i32 = 2;
-const CURRENT_MINOR_VERSION: i32 = 0;
+const CURRENT_MINOR_VERSION: i32 = 1;
 
 #[derive(Serialize)]
 struct Version {
@@ -119,6 +120,12 @@ fn get_endpoints(db: Arc<DB>) -> Mount {
 			let db = db.clone();
 			auth_api_mount.mount("/serve/",
 			                     move |request: &mut Request| self::serve(request, db.deref()));
+		}
+		{
+			let db = db.clone();
+			auth_api_mount.mount("/settings/", move |request: &mut Request| {
+				self::get_config(request, db.deref())
+			});
 		}
 
 		let mut auth_api_chain = Chain::new(auth_api_mount);
@@ -321,4 +328,14 @@ fn art(_: &mut Request, real_path: &Path) -> IronResult<Response> {
 		Ok(path) => Ok(Response::with((status::Ok, path))),
 		Err(e) => Err(IronError::from(e)),
 	}
+}
+
+fn get_config(_: &mut Request, db: &DB) -> IronResult<Response> {
+	let c = config::read(db)?;
+	let result_json = serde_json::to_string(&c);
+	let result_json = match result_json {
+		Ok(j) => j,
+		Err(e) => return Err(IronError::new(e, status::InternalServerError)),
+	};
+	Ok(Response::with((status::Ok, result_json)))
 }
