@@ -8,19 +8,17 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use config::UserConfig;
+use config::{MiscSettings, UserConfig};
 use ddns::{DDNSConfigSource, DDNSConfig};
 use errors::*;
 use user::*;
 use vfs::{MountPoint, Vfs};
 
 mod index;
-mod models;
 mod schema;
 
 use self::index::{CollectionFile, Directory, Song};
 pub use self::schema::*;
-pub use self::models::*;
 
 #[allow(dead_code)]
 const DB_MIGRATIONS_PATH: &'static str = "src/db/migrations";

@@ -9,9 +9,8 @@ use std::sync::Mutex;
 use std::thread;
 use std::time;
 
-use config::UserConfig;
+use config::{MiscSettings, UserConfig};
 use db::DB;
-use db::models::MiscSettings;
 use db::schema::*;
 use errors::*;
 use metadata;
