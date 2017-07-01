@@ -11,6 +11,7 @@ use std::sync::{Arc, Mutex};
 use config::UserConfig;
 use ddns::{DDNSConfigSource, DDNSConfig};
 use errors::*;
+use user::*;
 use vfs::{MountPoint, Vfs};
 
 mod index;
@@ -261,11 +262,9 @@ impl DB {
 	}
 
 	pub fn auth(&self, username: &str, password: &str) -> Result<bool> {
-		use self::users::dsl::*;
 		let connection = self.connection.lock().unwrap();
 		let connection = connection.deref();
-		let user: User = users.filter(name.eq(username)).get_result(connection)?;
-		Ok(user.verify_password(password))
+		auth(connection, username, password)
 	}
 }
 
