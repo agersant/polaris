@@ -82,14 +82,14 @@ struct NewDirectory {
 	date_added: i32,
 }
 
-struct IndexBuilder<'db> {
+struct IndexBuilder<'conn> {
 	new_songs: Vec<NewSong>,
 	new_directories: Vec<NewDirectory>,
-	connection: &'db Mutex<SqliteConnection>,
+	connection: &'conn Mutex<SqliteConnection>,
 	album_art_pattern: Regex,
 }
 
-impl<'db> IndexBuilder<'db> {
+impl<'conn> IndexBuilder<'conn> {
 	fn new(connection: &Mutex<SqliteConnection>, album_art_pattern: Regex) -> Result<IndexBuilder> {
 		let mut new_songs = Vec::new();
 		let mut new_directories = Vec::new();
