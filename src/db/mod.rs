@@ -8,7 +8,6 @@ use std::sync::{Arc, Mutex};
 
 use config::{MiscSettings, UserConfig};
 use errors::*;
-use index;
 use user::*;
 
 mod schema;
@@ -107,14 +106,6 @@ impl DB {
 		let connection = connection.deref();
 		let misc: MiscSettings = misc_settings::table.get_result(connection)?;
 		Ok(misc.auth_secret.to_owned())
-	}
-
-	pub fn index_update(&self) -> Result<()> {
-		index::update(self)
-	}
-
-	pub fn index_update_loop(&self) {
-		index::update_loop(self);
 	}
 }
 
