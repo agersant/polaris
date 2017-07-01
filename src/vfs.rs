@@ -29,7 +29,7 @@ impl VFSSource for DB {
 	}
 }
 
-#[derive(Debug, Deserialize, Insertable, Queryable, Serialize)]
+#[derive(Debug, Deserialize, Insertable, PartialEq, Queryable, Serialize)]
 #[table_name="mount_points"]
 pub struct MountPoint {
 	pub source: String,

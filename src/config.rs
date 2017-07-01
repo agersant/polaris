@@ -7,6 +7,7 @@ use std::io::Read;
 use std::path;
 use toml;
 
+use db::DB;
 use db::ConnectionSource;
 use db::{ddns_config, misc_settings, mount_points, users};
 use ddns::DDNSConfig;
@@ -22,13 +23,13 @@ pub struct MiscSettings {
 	pub index_album_art_pattern: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct ConfigUser {
 	pub name: String,
 	pub password: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Config {
 	pub album_art_pattern: Option<String>,
 	pub reindex_every_n_seconds: Option<i32>,
@@ -138,12 +139,14 @@ pub fn ammend<T>(db: &T, new_config: &Config) -> Result<()>
 	let connection = connection.deref();
 
 	if let Some(ref mount_dirs) = new_config.mount_dirs {
+		diesel::delete(mount_points::table).execute(connection)?;
 		diesel::insert(mount_dirs)
 			.into(mount_points::table)
 			.execute(connection)?;
 	}
 
 	if let Some(ref config_users) = new_config.users {
+		diesel::delete(users::table).execute(connection)?;
 		for config_user in config_users {
 			let new_user = User::new(&config_user.name, &config_user.password);
 			diesel::insert(&new_user)
@@ -164,6 +167,15 @@ pub fn ammend<T>(db: &T, new_config: &Config) -> Result<()>
 			.execute(connection)?;
 	}
 
+	if let Some(ref ydns) = new_config.ydns {
+		use self::ddns_config::dsl::*;
+		diesel::update(ddns_config)
+			.set((host.eq(ydns.host.clone()),
+			      username.eq(ydns.username.clone()),
+			      password.eq(ydns.password.clone())))
+			.execute(connection)?;
+	}
+
 	Ok(())
 }
 
@@ -173,6 +185,64 @@ fn clean_path_string(path_string: &str) -> path::PathBuf {
 	correct_separator.push(path::MAIN_SEPARATOR);
 	let path_string = separator_regex.replace_all(path_string, correct_separator.as_str());
 	path::Path::new(&path_string).iter().collect()
+}
+
+fn _get_test_db(name: &str) -> DB {
+	let mut db_path = path::PathBuf::new();
+	db_path.push("test");
+	db_path.push(name);
+	if db_path.exists() {
+		fs::remove_file(&db_path).unwrap();
+	}
+
+	let db = DB::new(&db_path).unwrap();
+	db
+}
+
+#[test]
+fn test_ammend() {
+	let db = _get_test_db("ammend.sqlite");
+
+	let initial_config = Config {
+		album_art_pattern: Some("file\\.png".into()),
+		reindex_every_n_seconds: Some(123),
+		mount_dirs: Some(vec![MountPoint {
+		                          source: "C:\\Music".into(),
+		                          name: "root".into(),
+		                      }]),
+		users: Some(vec![ConfigUser {
+		                     name: "Teddy🐻".into(),
+		                     password: "".into(),
+		                 }]),
+		ydns: Some(DDNSConfig {
+		               host: "🐻🐻🐻.ydns.eu".into(),
+		               username: "be🐻r".into(),
+		               password: "yummy🐇".into(),
+		           }),
+	};
+
+	let final_config = Config {
+		album_art_pattern: Some("🖼️\\.jpg".into()),
+		reindex_every_n_seconds: Some(7734),
+		mount_dirs: Some(vec![MountPoint {
+		                          source: "/home/music".into(),
+		                          name: "🎵📁".into(),
+		                      }]),
+		users: Some(vec![ConfigUser {
+		                     name: "Kermit🐸".into(),
+		                     password: "".into(),
+		                 }]),
+		ydns: Some(DDNSConfig {
+		               host: "🐸🐸🐸.ydns.eu".into(),
+		               username: "kfr🐸g".into(),
+		               password: "tasty🐞".into(),
+		           }),
+	};
+
+	ammend(&db, &initial_config).unwrap();
+	ammend(&db, &final_config).unwrap();
+	let db_config = read(&db).unwrap();
+	assert_eq!(db_config, final_config);
 }
 
 #[test]
@@ -198,5 +268,4 @@ fn test_clean_path_string() {
 		assert_eq!(correct_path, clean_path_string(r#"/usr\some\path\\\\"#));
 		assert_eq!(correct_path, clean_path_string(r#"/usr\some/path//"#));
 	}
-
 }
