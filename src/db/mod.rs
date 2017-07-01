@@ -7,11 +7,9 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use config::{MiscSettings, UserConfig};
-use ddns::{DDNSConfigSource, DDNSConfig};
 use errors::*;
 use index;
 use user::*;
-use vfs::{MountPoint, VFS, VFSSource};
 
 mod schema;
 
@@ -123,33 +121,6 @@ impl DB {
 impl ConnectionSource for DB {
 	fn get_connection(&self) -> Arc<Mutex<SqliteConnection>> {
 		self.connection.clone()
-	}
-}
-
-impl DDNSConfigSource for DB {
-	fn get_ddns_config(&self) -> Result<DDNSConfig> {
-		use self::ddns_config::dsl::*;
-		let connection = self.connection.lock().unwrap();
-		let connection = connection.deref();
-		Ok(ddns_config
-		       .select((host, username, password))
-		       .get_result(connection)?)
-	}
-}
-
-impl VFSSource for DB {
-	fn get_vfs(&self) -> Result<VFS> {
-		use self::mount_points::dsl::*;
-		let mut vfs = VFS::new();
-		let connection = self.connection.lock().unwrap();
-		let connection = connection.deref();
-		let points: Vec<MountPoint> = mount_points
-			.select((source, name))
-			.get_results(connection)?;
-		for point in points {
-			vfs.mount(&Path::new(&point.source), &point.name)?;
-		}
-		Ok(vfs)
 	}
 }
 

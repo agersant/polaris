@@ -1,9 +1,13 @@
+use core::ops::Deref;
+use diesel::prelude::*;
 use reqwest;
 use reqwest::header::{Authorization, Basic};
 use std::io;
 use std::thread;
 use std::time;
 
+use db::{ConnectionSource, DB};
+use db::ddns_config;
 use errors;
 
 #[derive(Debug, Deserialize, Queryable)]
@@ -15,6 +19,18 @@ pub struct DDNSConfig {
 
 pub trait DDNSConfigSource {
 	fn get_ddns_config(&self) -> errors::Result<DDNSConfig>;
+}
+
+impl DDNSConfigSource for DB {
+	fn get_ddns_config(&self) -> errors::Result<DDNSConfig> {
+		use self::ddns_config::dsl::*;
+		let connection = self.get_connection();
+		let connection = connection.lock().unwrap();
+		let connection = connection.deref();
+		Ok(ddns_config
+		       .select((host, username, password))
+		       .get_result(connection)?)
+	}
 }
 
 #[derive(Debug)]

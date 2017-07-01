@@ -1,12 +1,32 @@
+use core::ops::Deref;
+use diesel::prelude::*;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::path::Path;
 
+use db::{ConnectionSource, DB};
 use db::mount_points;
 use errors::*;
 
 pub trait VFSSource {
 	fn get_vfs(&self) -> Result<VFS>;
+}
+
+impl VFSSource for DB {
+	fn get_vfs(&self) -> Result<VFS> {
+		use self::mount_points::dsl::*;
+		let mut vfs = VFS::new();
+		let connection = self.get_connection();
+		let connection = connection.lock().unwrap();
+		let connection = connection.deref();
+		let points: Vec<MountPoint> = mount_points
+			.select((source, name))
+			.get_results(connection)?;
+		for point in points {
+			vfs.mount(&Path::new(&point.source), &point.name)?;
+		}
+		Ok(vfs)
+	}
 }
 
 #[derive(Debug, Deserialize, Insertable, Queryable)]
