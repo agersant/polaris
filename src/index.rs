@@ -1,7 +1,9 @@
 use core::ops::Deref;
 use diesel;
+use diesel::expression::sql;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
+use diesel::types;
 use regex::Regex;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -13,7 +15,7 @@ use config::{MiscSettings, UserConfig};
 use db::ConnectionSource;
 use db::DB;
 use db::{directories, misc_settings, songs};
-use vfs::VFSSource;
+use vfs::{Vfs, VFSSource};
 use errors::*;
 use metadata;
 
@@ -402,6 +404,129 @@ pub fn update_loop<T>(db: &T) where T: ConnectionSource + VFSSource {
 	}
 }
 
+fn virtualize_song(vfs: &Vfs, mut song: Song) -> Option<Song> {
+	song.path = match vfs.real_to_virtual(Path::new(&song.path)) {
+		Ok(p) => p.to_string_lossy().into_owned(),
+		_ => return None,
+	};
+	if let Some(artwork_path) = song.artwork {
+		song.artwork = match vfs.real_to_virtual(Path::new(&artwork_path)) {
+			Ok(p) => Some(p.to_string_lossy().into_owned()),
+			_ => None,
+		};
+	}
+	Some(song)
+}
+
+fn virtualize_directory(vfs: &Vfs, mut directory: Directory) -> Option<Directory> {
+	directory.path = match vfs.real_to_virtual(Path::new(&directory.path)) {
+		Ok(p) => p.to_string_lossy().into_owned(),
+		_ => return None,
+	};
+	if let Some(artwork_path) = directory.artwork {
+		directory.artwork = match vfs.real_to_virtual(Path::new(&artwork_path)) {
+			Ok(p) => Some(p.to_string_lossy().into_owned()),
+			_ => None,
+		};
+	}
+	Some(directory)
+}
+
+pub fn browse<T>(db: &T, virtual_path: &Path) -> Result<Vec<CollectionFile>> where T: ConnectionSource + VFSSource {
+	let mut output = Vec::new();
+	let vfs = db.get_vfs()?;
+	let connection = db.get_connection();
+	let connection = connection.lock().unwrap();
+	let connection = connection.deref();
+
+	if virtual_path.components().count() == 0 {
+		// Browse top-level
+		let real_directories: Vec<Directory> = directories::table
+			.filter(directories::parent.is_null())
+			.load(connection)?;
+		let virtual_directories = real_directories
+			.into_iter()
+			.filter_map(|s| virtualize_directory(&vfs, s));
+		output.extend(virtual_directories
+							.into_iter()
+							.map(|d| CollectionFile::Directory(d)));
+
+	} else {
+		// Browse sub-directory
+		let real_path = vfs.virtual_to_real(virtual_path)?;
+		let real_path_string = real_path.as_path().to_string_lossy().into_owned();
+
+		let real_directories: Vec<Directory> = directories::table
+			.filter(directories::parent.eq(&real_path_string))
+			.order(sql::<types::Bool>("path COLLATE NOCASE ASC"))
+			.load(connection)?;
+		let virtual_directories = real_directories
+			.into_iter()
+			.filter_map(|s| virtualize_directory(&vfs, s));
+		output.extend(virtual_directories.map(|d| CollectionFile::Directory(d)));
+
+		let real_songs: Vec<Song> = songs::table
+			.filter(songs::parent.eq(&real_path_string))
+			.order(sql::<types::Bool>("path COLLATE NOCASE ASC"))
+			.load(connection)?;
+		let virtual_songs = real_songs
+			.into_iter()
+			.filter_map(|s| virtualize_song(&vfs, s));
+		output.extend(virtual_songs.map(|s| CollectionFile::Song(s)));
+	}
+
+	Ok(output)
+}
+
+pub fn flatten<T>(db: &T, virtual_path: &Path) -> Result<Vec<Song>> where T: ConnectionSource + VFSSource {
+	use self::songs::dsl::*;
+	let vfs = db.get_vfs()?;
+	let connection = db.get_connection();
+	let connection = connection.lock().unwrap();
+	let connection = connection.deref();
+	let real_path = vfs.virtual_to_real(virtual_path)?;
+	let like_path = real_path.as_path().to_string_lossy().into_owned() + "%";
+	let real_songs: Vec<Song> = songs.filter(path.like(&like_path)).load(connection)?;
+	let virtual_songs = real_songs
+		.into_iter()
+		.filter_map(|s| virtualize_song(&vfs, s));
+	Ok(virtual_songs.collect::<Vec<_>>())
+}
+
+pub fn get_random_albums<T>(db: &T, count: i64) -> Result<Vec<Directory>> where T: ConnectionSource + VFSSource {
+	use self::directories::dsl::*;
+	let vfs = db.get_vfs()?;
+	let connection = db.get_connection();
+	let connection = connection.lock().unwrap();
+	let connection = connection.deref();
+	let real_directories = directories
+		.filter(album.is_not_null())
+		.limit(count)
+		.order(sql::<types::Bool>("RANDOM()"))
+		.load(connection)?;
+	let virtual_directories = real_directories
+		.into_iter()
+		.filter_map(|s| virtualize_directory(&vfs, s));
+	Ok(virtual_directories.collect::<Vec<_>>())
+}
+
+pub fn get_recent_albums<T>(db: &T, count: i64) -> Result<Vec<Directory>> where T: ConnectionSource + VFSSource {
+	use self::directories::dsl::*;
+	let vfs = db.get_vfs()?;
+	let connection = db.get_connection();
+	let connection = connection.lock().unwrap();
+	let connection = connection.deref();
+	let real_directories: Vec<Directory> = directories
+		.filter(album.is_not_null())
+		.order(date_added.desc())
+		.limit(count)
+		.load(connection)?;
+	let virtual_directories = real_directories
+		.into_iter()
+		.filter_map(|s| virtualize_directory(&vfs, s));
+	Ok(virtual_directories.collect::<Vec<_>>())
+}
+
 fn _get_test_db(name: &str) -> DB  {
 	let config_path = Path::new("test/config.toml");
 	let config = UserConfig::parse(&config_path).unwrap();
@@ -470,4 +595,70 @@ fn test_metadata() {
 	assert_eq!(song.year, Some(2016));
 	assert_eq!(song.artwork,
 	           Some(artwork_path.to_string_lossy().into_owned()));
+}
+
+#[test]
+fn test_browse_top_level() {
+	let mut root_path = PathBuf::new();
+	root_path.push("root");
+
+	let db = _get_test_db("browse_top_level.sqlite");
+	db.index_update().unwrap();
+	let results = browse(&db, Path::new("")).unwrap();
+
+	assert_eq!(results.len(), 1);
+	match results[0] {
+		CollectionFile::Directory(ref d) => assert_eq!(d.path, root_path.to_str().unwrap()),
+		_ => panic!("Expected directory"),
+	}
+}
+
+#[test]
+fn test_browse() {
+	let mut khemmis_path = PathBuf::new();
+	khemmis_path.push("root");
+	khemmis_path.push("Khemmis");
+
+	let mut tobokegao_path = PathBuf::new();
+	tobokegao_path.push("root");
+	tobokegao_path.push("Tobokegao");
+
+	let db = _get_test_db("browse.sqlite");
+	db.index_update().unwrap();
+	let results = browse(&db, Path::new("root")).unwrap();
+
+	assert_eq!(results.len(), 2);
+	match results[0] {
+		CollectionFile::Directory(ref d) => assert_eq!(d.path, khemmis_path.to_str().unwrap()),
+		_ => panic!("Expected directory"),
+	}
+	match results[1] {
+		CollectionFile::Directory(ref d) => assert_eq!(d.path, tobokegao_path.to_str().unwrap()),
+		_ => panic!("Expected directory"),
+	}
+}
+
+#[test]
+fn test_flatten() {
+	let db = _get_test_db("flatten.sqlite");
+	db.index_update().unwrap();
+	let results = flatten(&db, Path::new("root")).unwrap();
+	assert_eq!(results.len(), 12);
+}
+
+#[test]
+fn test_random() {
+	let db = _get_test_db("random.sqlite");
+	db.index_update().unwrap();
+	let results = get_random_albums(&db, 1).unwrap();
+	assert_eq!(results.len(), 1);
+}
+
+#[test]
+fn test_recent() {
+	let db = _get_test_db("recent.sqlite");
+	db.index_update().unwrap();
+	let results = get_recent_albums(&db, 2).unwrap();
+	assert_eq!(results.len(), 2);
+	assert!(results[0].date_added >= results[1].date_added);
 }

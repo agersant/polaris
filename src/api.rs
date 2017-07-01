@@ -18,6 +18,7 @@ use url::percent_encoding::percent_decode;
 use db::DB;
 use errors::*;
 use thumbnails::*;
+use index;
 use user;
 use utils::*;
 use vfs::VFSSource;
@@ -211,7 +212,7 @@ fn browse(request: &mut Request, db: &DB) -> IronResult<Response> {
 		Err(e) => return Err(IronError::new(e, status::BadRequest)),
 		Ok(p) => p,
 	};
-	let browse_result = db.browse(&path)?;
+	let browse_result = index::browse(db, &path)?;
 
 	let result_json = serde_json::to_string(&browse_result);
 	let result_json = match result_json {
@@ -228,7 +229,7 @@ fn flatten(request: &mut Request, db: &DB) -> IronResult<Response> {
 		Err(e) => return Err(IronError::new(e, status::BadRequest)),
 		Ok(p) => p,
 	};
-	let flatten_result = db.flatten(&path)?;
+	let flatten_result = index::flatten(db, &path)?;
 
 	let result_json = serde_json::to_string(&flatten_result);
 	let result_json = match result_json {
@@ -240,7 +241,7 @@ fn flatten(request: &mut Request, db: &DB) -> IronResult<Response> {
 }
 
 fn random(_: &mut Request, db: &DB) -> IronResult<Response> {
-	let random_result = db.get_random_albums(20)?;
+	let random_result = index::get_random_albums(db, 20)?;
 	let result_json = serde_json::to_string(&random_result);
 	let result_json = match result_json {
 		Ok(j) => j,
@@ -250,7 +251,7 @@ fn random(_: &mut Request, db: &DB) -> IronResult<Response> {
 }
 
 fn recent(_: &mut Request, db: &DB) -> IronResult<Response> {
-	let recent_result = db.get_recent_albums(20)?;
+	let recent_result = index::get_recent_albums(db, 20)?;
 	let result_json = serde_json::to_string(&recent_result);
 	let result_json = match result_json {
 		Ok(j) => j,
