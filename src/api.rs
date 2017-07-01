@@ -20,6 +20,7 @@ use errors::*;
 use thumbnails::*;
 use user;
 use utils::*;
+use vfs::VFSSource;
 
 const CURRENT_MAJOR_VERSION: i32 = 2;
 const CURRENT_MINOR_VERSION: i32 = 0;
@@ -265,7 +266,8 @@ fn serve(request: &mut Request, db: &DB) -> IronResult<Response> {
 		Ok(p) => p,
 	};
 
-	let real_path = db.locate(virtual_path.as_path());
+	let vfs = db.get_vfs()?;
+	let real_path = vfs.virtual_to_real(&virtual_path);
 	let real_path = match real_path {
 		Err(e) => return Err(IronError::new(e, status::NotFound)),
 		Ok(p) => p,

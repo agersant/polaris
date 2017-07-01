@@ -114,11 +114,6 @@ impl DB {
 		Ok(misc.auth_secret.to_owned())
 	}
 
-	pub fn locate(&self, virtual_path: &Path) -> Result<PathBuf> {
-		let vfs = self.get_vfs()?;
-		vfs.virtual_to_real(virtual_path)
-	}
-
 	pub fn index_update(&self) -> Result<()> {
 		index::update(self)
 	}
