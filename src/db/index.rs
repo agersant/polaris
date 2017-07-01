@@ -242,133 +242,125 @@ impl<'db> IndexBuilder<'db> {
 	}
 }
 
-pub struct Index {}
+fn clean(db: &DB) -> Result<()> {
+	let vfs = db.get_vfs()?;
 
-impl Index {
-	pub fn new() -> Index {
-		Index {}
-	}
-
-	pub fn update_index(&self, db: &DB) -> Result<()> {
-		let start = time::Instant::now();
-		println!("Beginning library index update");
-		self.clean(db)?;
-		self.populate(db)?;
-		println!("Library index update took {} seconds",
-		         start.elapsed().as_secs());
-		Ok(())
-	}
-
-	fn clean(&self, db: &DB) -> Result<()> {
-		let vfs = db.get_vfs()?;
-
+	{
+		let all_songs: Vec<String>;
 		{
-			let all_songs: Vec<String>;
-			{
-				let connection = db.get_connection();
-				let connection = connection.lock().unwrap();
-				let connection = connection.deref();
-				all_songs = songs::table.select(songs::path).load(connection)?;
-			}
-
-			let missing_songs = all_songs
-				.into_iter()
-				.filter(|ref song_path| {
-					        let path = Path::new(&song_path);
-					        !path.exists() || vfs.real_to_virtual(path).is_err()
-					       })
-				.collect::<Vec<_>>();
-
-			{
-				let connection = db.get_connection();
-				let connection = connection.lock().unwrap();
-				let connection = connection.deref();
-				for chunk in missing_songs[..].chunks(INDEX_BUILDING_CLEAN_BUFFER_SIZE) {
-					diesel::delete(songs::table.filter(songs::path.eq_any(chunk)))
-						.execute(connection)?;
-				}
-
-			}
-		}
-
-		{
-			let all_directories: Vec<String>;
-			{
-				let connection = db.get_connection();
-				let connection = connection.lock().unwrap();
-				let connection = connection.deref();
-				all_directories = directories::table
-					.select(directories::path)
-					.load(connection)?;
-			}
-
-			let missing_directories = all_directories
-				.into_iter()
-				.filter(|ref directory_path| {
-					        let path = Path::new(&directory_path);
-					        !path.exists() || vfs.real_to_virtual(path).is_err()
-					       })
-				.collect::<Vec<_>>();
-
-			{
-				let connection = db.get_connection();
-				let connection = connection.lock().unwrap();
-				let connection = connection.deref();
-				for chunk in missing_directories[..].chunks(INDEX_BUILDING_CLEAN_BUFFER_SIZE) {
-					diesel::delete(directories::table.filter(directories::path.eq_any(chunk)))
-						.execute(connection)?;
-				}
-			}
-		}
-
-		Ok(())
-	}
-
-	fn populate(&self, db: &DB) -> Result<()> {
-		let vfs = db.get_vfs()?;
-		let mount_points = vfs.get_mount_points();
-		let connection = db.get_connection();
-
-		let album_art_pattern;
-		{
+			let connection = db.get_connection();
 			let connection = connection.lock().unwrap();
 			let connection = connection.deref();
-			let settings: MiscSettings = misc_settings::table.get_result(connection)?;
-			album_art_pattern = Regex::new(&settings.index_album_art_pattern)?;
+			all_songs = songs::table.select(songs::path).load(connection)?;
 		}
 
-		let mut builder = IndexBuilder::new(&connection, album_art_pattern)?;
-		for (_, target) in mount_points {
-			builder.populate_directory(None, target.as_path())?;
+		let missing_songs = all_songs
+			.into_iter()
+			.filter(|ref song_path| {
+				        let path = Path::new(&song_path);
+				        !path.exists() || vfs.real_to_virtual(path).is_err()
+				       })
+			.collect::<Vec<_>>();
+
+		{
+			let connection = db.get_connection();
+			let connection = connection.lock().unwrap();
+			let connection = connection.deref();
+			for chunk in missing_songs[..].chunks(INDEX_BUILDING_CLEAN_BUFFER_SIZE) {
+				diesel::delete(songs::table.filter(songs::path.eq_any(chunk)))
+					.execute(connection)?;
+			}
+
 		}
-		builder.flush_songs()?;
-		builder.flush_directories()?;
-		Ok(())
 	}
 
-	pub fn update_loop(&self, db: &DB) {
-		loop {
-			if let Err(e) = self.update_index(db) {
-				println!("Error while updating index: {}", e);
+	{
+		let all_directories: Vec<String>;
+		{
+			let connection = db.get_connection();
+			let connection = connection.lock().unwrap();
+			let connection = connection.deref();
+			all_directories = directories::table
+				.select(directories::path)
+				.load(connection)?;
+		}
+
+		let missing_directories = all_directories
+			.into_iter()
+			.filter(|ref directory_path| {
+				        let path = Path::new(&directory_path);
+				        !path.exists() || vfs.real_to_virtual(path).is_err()
+				       })
+			.collect::<Vec<_>>();
+
+		{
+			let connection = db.get_connection();
+			let connection = connection.lock().unwrap();
+			let connection = connection.deref();
+			for chunk in missing_directories[..].chunks(INDEX_BUILDING_CLEAN_BUFFER_SIZE) {
+				diesel::delete(directories::table.filter(directories::path.eq_any(chunk)))
+					.execute(connection)?;
 			}
+		}
+	}
+
+	Ok(())
+}
+
+fn populate(db: &DB) -> Result<()> {
+	let vfs = db.get_vfs()?;
+	let mount_points = vfs.get_mount_points();
+	let connection = db.get_connection();
+
+	let album_art_pattern;
+	{
+		let connection = connection.lock().unwrap();
+		let connection = connection.deref();
+		let settings: MiscSettings = misc_settings::table.get_result(connection)?;
+		album_art_pattern = Regex::new(&settings.index_album_art_pattern)?;
+	}
+
+	let mut builder = IndexBuilder::new(&connection, album_art_pattern)?;
+	for (_, target) in mount_points {
+		builder.populate_directory(None, target.as_path())?;
+	}
+	builder.flush_songs()?;
+	builder.flush_directories()?;
+	Ok(())
+}
+
+pub fn update(db: &DB) -> Result<()> {
+	let start = time::Instant::now();
+	println!("Beginning library index update");
+	clean(db)?;
+	populate(db)?;
+	println!("Library index update took {} seconds",
+	         start.elapsed().as_secs());
+	Ok(())
+}
+
+pub fn update_loop(db: &DB) {
+	loop {
+		if let Err(e) = update(db) {
+			println!("Error while updating index: {}", e);
+		}
+		{
+			let sleep_duration;
 			{
-				let sleep_duration;
-				{
-					let connection = db.get_connection();
-					let connection = connection.lock().unwrap();
-					let connection = connection.deref();
-					let settings: Result<MiscSettings> = misc_settings::table
-						.get_result(connection)
-						.map_err(|e| e.into());
-					if let Err(ref e) = settings {
-						println!("Could not retrieve index sleep duration: {}", e);
-					}
-					sleep_duration = settings
-						.map(|s| s.index_sleep_duration_seconds)
-						.unwrap_or(1800);
+				let connection = db.get_connection();
+				let connection = connection.lock().unwrap();
+				let connection = connection.deref();
+				let settings: Result<MiscSettings> = misc_settings::table
+					.get_result(connection)
+					.map_err(|e| e.into());
+				if let Err(ref e) = settings {
+					println!("Could not retrieve index sleep duration: {}", e);
 				}
-				thread::sleep(time::Duration::from_secs(sleep_duration as u64));
+				sleep_duration = settings
+					.map(|s| s.index_sleep_duration_seconds)
+					.unwrap_or(1800);
 			}
+			thread::sleep(time::Duration::from_secs(sleep_duration as u64));
 		}
 	}
 }
@@ -394,9 +386,8 @@ fn test_populate() {
 	use db::models::*;
 
 	let db = _get_test_db("populate.sqlite");
-	let index = db.get_index();
-	index.update_index(&db).unwrap();
-	index.update_index(&db).unwrap(); // Check that subsequent updates don't run into conflicts
+	update(&db).unwrap();
+	update(&db).unwrap(); // Check that subsequent updates don't run into conflicts
 
 	let connection = db.get_connection();
 	let connection = connection.lock().unwrap();
@@ -424,8 +415,7 @@ fn test_metadata() {
 	artwork_path.push("Folder.png");
 
 	let db = _get_test_db("metadata.sqlite");
-	let index = db.get_index();
-	index.update_index(&db).unwrap();
+	update(&db).unwrap();
 
 	let connection = db.get_connection();
 	let connection = connection.lock().unwrap();

@@ -18,7 +18,6 @@ mod index;
 mod models;
 mod schema;
 
-pub use self::index::Index;
 pub use self::models::*;
 
 #[allow(dead_code)]
@@ -27,7 +26,6 @@ embed_migrations!("src/db/migrations");
 
 pub struct DB {
 	connection: Arc<Mutex<SqliteConnection>>,
-	index: Index,
 }
 
 impl DB {
@@ -35,10 +33,7 @@ impl DB {
 		println!("Database file path: {}", path.to_string_lossy());
 		let connection =
 			Arc::new(Mutex::new(SqliteConnection::establish(&path.to_string_lossy())?));
-		let db = DB {
-			connection: connection.clone(),
-			index: Index::new(),
-		};
+		let db = DB { connection: connection.clone() };
 		db.init()?;
 		Ok(db)
 	}
@@ -54,10 +49,6 @@ impl DB {
 
 	pub fn get_connection(&self) -> Arc<Mutex<SqliteConnection>> {
 		self.connection.clone()
-	}
-
-	pub fn get_index(&self) -> &Index {
-		&self.index
 	}
 
 	#[allow(dead_code)]
@@ -126,6 +117,14 @@ impl DB {
 	pub fn locate(&self, virtual_path: &Path) -> Result<PathBuf> {
 		let vfs = self.get_vfs()?;
 		vfs.virtual_to_real(virtual_path)
+	}
+
+	pub fn index_update(&self) -> Result<()> {
+		index::update(self)
+	}
+
+	pub fn index_update_loop(&self) {
+		index::update_loop(self);
 	}
 
 	fn get_vfs(&self) -> Result<Vfs> {
@@ -315,7 +314,7 @@ fn test_browse_top_level() {
 	root_path.push("root");
 
 	let db = _get_test_db("browse_top_level.sqlite");
-	db.get_index().update_index(&db).unwrap();
+	db.index_update().unwrap();
 	let results = db.browse(Path::new("")).unwrap();
 
 	assert_eq!(results.len(), 1);
@@ -336,7 +335,7 @@ fn test_browse() {
 	tobokegao_path.push("Tobokegao");
 
 	let db = _get_test_db("browse.sqlite");
-	db.get_index().update_index(&db).unwrap();
+	db.index_update().unwrap();
 	let results = db.browse(Path::new("root")).unwrap();
 
 	assert_eq!(results.len(), 2);
@@ -353,7 +352,7 @@ fn test_browse() {
 #[test]
 fn test_flatten() {
 	let db = _get_test_db("flatten.sqlite");
-	db.get_index().update_index(&db).unwrap();
+	db.index_update().unwrap();
 	let results = db.flatten(Path::new("root")).unwrap();
 	assert_eq!(results.len(), 12);
 }
@@ -361,7 +360,7 @@ fn test_flatten() {
 #[test]
 fn test_random() {
 	let db = _get_test_db("random.sqlite");
-	db.get_index().update_index(&db).unwrap();
+	db.index_update().unwrap();
 	let results = db.get_random_albums(1).unwrap();
 	assert_eq!(results.len(), 1);
 }
@@ -369,7 +368,7 @@ fn test_random() {
 #[test]
 fn test_recent() {
 	let db = _get_test_db("recent.sqlite");
-	db.get_index().update_index(&db).unwrap();
+	db.index_update().unwrap();
 	let results = db.get_recent_albums(2).unwrap();
 	assert_eq!(results.len(), 2);
 	assert!(results[0].date_added >= results[1].date_added);
