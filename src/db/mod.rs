@@ -6,7 +6,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use config::MiscSettings;
 use errors::*;
 
 mod schema;
@@ -63,13 +62,6 @@ impl DB {
 		let connection = connection.deref();
 		embedded_migrations::run(connection)?;
 		Ok(())
-	}
-
-	pub fn get_auth_secret(&self) -> Result<String> {
-		let connection = self.connection.lock().unwrap();
-		let connection = connection.deref();
-		let misc: MiscSettings = misc_settings::table.get_result(connection)?;
-		Ok(misc.auth_secret.to_owned())
 	}
 }
 

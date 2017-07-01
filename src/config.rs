@@ -59,23 +59,29 @@ pub fn parse(path: &path::Path) -> Result<UserConfig> {
 	Ok(config)
 }
 
-fn reset<T>(db: &T) -> Result<()> where T:ConnectionSource {
+fn reset<T>(db: &T) -> Result<()>
+	where T: ConnectionSource
+{
 	let connection = db.get_connection();
 	let connection = connection.lock().unwrap();
 	let connection = connection.deref();
 
 	diesel::delete(mount_points::table).execute(connection)?;
 	diesel::delete(users::table).execute(connection)?;
-	
+
 	Ok(())
 }
 
-pub fn overwrite<T>(db: &T, new_config: &UserConfig) -> Result<()> where T:ConnectionSource {
+pub fn overwrite<T>(db: &T, new_config: &UserConfig) -> Result<()>
+	where T: ConnectionSource
+{
 	reset(db)?;
 	ammend(db, new_config)
 }
 
-pub fn ammend<T>(db: &T, new_config: &UserConfig) -> Result<()> where T:ConnectionSource {
+pub fn ammend<T>(db: &T, new_config: &UserConfig) -> Result<()>
+	where T: ConnectionSource
+{
 	let connection = db.get_connection();
 	let connection = connection.lock().unwrap();
 	let connection = connection.deref();

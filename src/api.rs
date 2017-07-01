@@ -1,9 +1,4 @@
-use std::fs;
-use std::io;
-use std::path::*;
-use std::ops::Deref;
-use std::sync::Arc;
-
+use diesel::prelude::*;
 use iron::prelude::*;
 use iron::headers::{Authorization, Basic};
 use iron::{AroundMiddleware, Handler, status};
@@ -12,10 +7,17 @@ use params;
 use secure_session::middleware::{SessionMiddleware, SessionConfig};
 use secure_session::session::{SessionManager, ChaCha20Poly1305SessionManager};
 use serde_json;
+use std::fs;
+use std::io;
+use std::path::*;
+use std::ops::Deref;
+use std::sync::Arc;
 use typemap;
 use url::percent_encoding::percent_decode;
 
-use db::DB;
+use config::MiscSettings;
+use db::{ConnectionSource, DB};
+use db::misc_settings;
 use errors::*;
 use thumbnails::*;
 use index;
@@ -52,11 +54,22 @@ impl typemap::Key for SessionKey {
 	type Value = Session;
 }
 
+fn get_auth_secret<T>(db: &T) -> Result<String>
+	where T: ConnectionSource
+{
+	use self::misc_settings::dsl::*;
+	let connection = db.get_connection();
+	let connection = connection.lock().unwrap();
+	let connection = connection.deref();
+	let misc: MiscSettings = misc_settings.get_result(connection)?;
+	Ok(misc.auth_secret.to_owned())
+}
+
 pub fn get_handler(db: Arc<DB>) -> Result<Chain> {
 	let api_handler = get_endpoints(db.clone());
 	let mut api_chain = Chain::new(api_handler);
 
-	let auth_secret = db.deref().get_auth_secret()?;
+	let auth_secret = get_auth_secret(db.deref())?;
 	let session_manager =
 		ChaCha20Poly1305SessionManager::<Session>::from_password(auth_secret.as_bytes());
 	let session_config = SessionConfig::default();
