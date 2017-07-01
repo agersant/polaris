@@ -7,28 +7,9 @@ use db::ConnectionSource;
 use db::users;
 use errors::*;
 
-#[derive(Debug, Queryable)]
-pub struct User {
-	id: i32,
-	pub name: String,
-	pub password_salt: Vec<u8>,
-	pub password_hash: Vec<u8>,
-}
-
-impl User {
-	pub fn verify_password(&self, attempted_password: &str) -> bool {
-		pbkdf2::verify(DIGEST_ALG,
-		               HASH_ITERATIONS,
-		               &self.password_salt,
-		               attempted_password.as_bytes(),
-		               &self.password_hash)
-				.is_ok()
-	}
-}
-
-#[derive(Debug, Insertable)]
+#[derive(Debug, Insertable, Queryable)]
 #[table_name="users"]
-pub struct NewUser {
+pub struct User {
 	pub name: String,
 	pub password_salt: Vec<u8>,
 	pub password_hash: Vec<u8>,
@@ -39,18 +20,27 @@ const CREDENTIAL_LEN: usize = digest::SHA256_OUTPUT_LEN;
 const HASH_ITERATIONS: u32 = 10000;
 type PasswordHash = [u8; CREDENTIAL_LEN];
 
-impl NewUser {
-	pub fn new(name: &str, password: &str) -> NewUser {
+impl User {
+	pub fn new(name: &str, password: &str) -> User {
 		let salt = rand::random::<[u8; 16]>().to_vec();
-		let hash = NewUser::hash_password(&salt, password);
-		NewUser {
+		let hash = User::hash_password(&salt, password);
+		User {
 			name: name.to_owned(),
 			password_salt: salt,
 			password_hash: hash,
 		}
 	}
 
-	pub fn hash_password(salt: &Vec<u8>, password: &str) -> Vec<u8> {
+	pub fn verify_password(&self, attempted_password: &str) -> bool {
+		pbkdf2::verify(DIGEST_ALG,
+		               HASH_ITERATIONS,
+		               &self.password_salt,
+		               attempted_password.as_bytes(),
+		               &self.password_hash)
+				.is_ok()
+	}
+
+	fn hash_password(salt: &Vec<u8>, password: &str) -> Vec<u8> {
 		let mut hash: PasswordHash = [0; CREDENTIAL_LEN];
 		pbkdf2::derive(DIGEST_ALG,
 		               HASH_ITERATIONS,
@@ -68,6 +58,9 @@ pub fn auth<T>(db: &T, username: &str, password: &str) -> Result<bool>
 	let connection = db.get_connection();
 	let connection = connection.lock().unwrap();
 	let connection = connection.deref();
-	let user: User = users.filter(name.eq(username)).get_result(connection)?;
+	let user: User = users
+		.select((name, password_hash, password_salt))
+		.filter(name.eq(username))
+		.get_result(connection)?;
 	Ok(user.verify_password(password))
 }

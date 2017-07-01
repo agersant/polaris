@@ -23,7 +23,7 @@ pub struct MiscSettings {
 }
 
 #[derive(Deserialize)]
-pub struct User {
+pub struct ConfigUser {
 	pub name: String,
 	pub password: String,
 }
@@ -33,7 +33,7 @@ pub struct UserConfig {
 	pub album_art_pattern: Option<String>,
 	pub reindex_every_n_seconds: Option<u64>,
 	pub mount_dirs: Option<Vec<MountPoint>>,
-	pub users: Option<Vec<User>>,
+	pub users: Option<Vec<ConfigUser>>,
 	pub ydns: Option<DDNSConfig>,
 }
 
@@ -94,7 +94,7 @@ pub fn ammend<T>(db: &T, new_config: &UserConfig) -> Result<()>
 
 	if let Some(ref config_users) = new_config.users {
 		for config_user in config_users {
-			let new_user = NewUser::new(&config_user.name, &config_user.password);
+			let new_user = User::new(&config_user.name, &config_user.password);
 			diesel::insert(&new_user)
 				.into(users::table)
 				.execute(connection)?;
