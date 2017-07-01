@@ -29,7 +29,7 @@ pub struct ConfigUser {
 }
 
 #[derive(Deserialize)]
-pub struct UserConfig {
+pub struct Config {
 	pub album_art_pattern: Option<String>,
 	pub reindex_every_n_seconds: Option<u64>,
 	pub mount_dirs: Option<Vec<MountPoint>>,
@@ -37,14 +37,14 @@ pub struct UserConfig {
 	pub ydns: Option<DDNSConfig>,
 }
 
-pub fn parse(path: &path::Path) -> Result<UserConfig> {
+pub fn parse(path: &path::Path) -> Result<Config> {
 	println!("Config file path: {}", path.to_string_lossy());
 
 	// Parse user config
 	let mut config_file = fs::File::open(path)?;
 	let mut config_file_content = String::new();
 	config_file.read_to_string(&mut config_file_content)?;
-	let mut config = toml::de::from_str::<UserConfig>(config_file_content.as_str())?;
+	let mut config = toml::de::from_str::<Config>(config_file_content.as_str())?;
 
 	// Clean path
 	if let Some(ref mut mount_dirs) = config.mount_dirs {
@@ -72,14 +72,14 @@ fn reset<T>(db: &T) -> Result<()>
 	Ok(())
 }
 
-pub fn overwrite<T>(db: &T, new_config: &UserConfig) -> Result<()>
+pub fn overwrite<T>(db: &T, new_config: &Config) -> Result<()>
 	where T: ConnectionSource
 {
 	reset(db)?;
 	ammend(db, new_config)
 }
 
-pub fn ammend<T>(db: &T, new_config: &UserConfig) -> Result<()>
+pub fn ammend<T>(db: &T, new_config: &Config) -> Result<()>
 	where T: ConnectionSource
 {
 	let connection = db.get_connection();
