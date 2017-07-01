@@ -10,8 +10,10 @@ use std::thread;
 use std::time;
 
 use config::{MiscSettings, UserConfig};
+use db::ConnectionSource;
 use db::DB;
 use db::{directories, misc_settings, songs};
+use vfs::VFSSource;
 use errors::*;
 use metadata;
 
@@ -277,7 +279,7 @@ impl<'conn> IndexBuilder<'conn> {
 	}
 }
 
-fn clean(db: &DB) -> Result<()> {
+fn clean<T>(db: &T) -> Result<()> where T: ConnectionSource + VFSSource {
 	let vfs = db.get_vfs()?;
 
 	{
@@ -342,7 +344,7 @@ fn clean(db: &DB) -> Result<()> {
 	Ok(())
 }
 
-fn populate(db: &DB) -> Result<()> {
+fn populate<T>(db: &T) -> Result<()> where T: ConnectionSource + VFSSource {
 	let vfs = db.get_vfs()?;
 	let mount_points = vfs.get_mount_points();
 	let connection = db.get_connection();
@@ -364,7 +366,7 @@ fn populate(db: &DB) -> Result<()> {
 	Ok(())
 }
 
-pub fn update(db: &DB) -> Result<()> {
+pub fn update<T>(db: &T) -> Result<()> where T: ConnectionSource + VFSSource {
 	let start = time::Instant::now();
 	println!("Beginning library index update");
 	clean(db)?;
@@ -374,7 +376,7 @@ pub fn update(db: &DB) -> Result<()> {
 	Ok(())
 }
 
-pub fn update_loop(db: &DB) {
+pub fn update_loop<T>(db: &T) where T: ConnectionSource + VFSSource {
 	loop {
 		if let Err(e) = update(db) {
 			println!("Error while updating index: {}", e);
@@ -400,7 +402,7 @@ pub fn update_loop(db: &DB) {
 	}
 }
 
-fn _get_test_db(name: &str) -> DB {
+fn _get_test_db(name: &str) -> DB  {
 	let config_path = Path::new("test/config.toml");
 	let config = UserConfig::parse(&config_path).unwrap();
 

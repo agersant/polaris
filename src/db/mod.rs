@@ -12,7 +12,7 @@ use config::{MiscSettings, UserConfig};
 use ddns::{DDNSConfigSource, DDNSConfig};
 use errors::*;
 use user::*;
-use vfs::{MountPoint, Vfs};
+use vfs::{MountPoint, Vfs, VFSSource};
 
 mod schema;
 
@@ -23,6 +23,10 @@ pub use self::schema::*;
 #[allow(dead_code)]
 const DB_MIGRATIONS_PATH: &'static str = "src/db/migrations";
 embed_migrations!("src/db/migrations");
+
+pub trait ConnectionSource {
+	fn get_connection(&self) -> Arc<Mutex<SqliteConnection>>;
+}
 
 pub struct DB {
 	connection: Arc<Mutex<SqliteConnection>>,
@@ -45,10 +49,6 @@ impl DB {
 		}
 		self.migrate_up()?;
 		Ok(())
-	}
-
-	pub fn get_connection(&self) -> Arc<Mutex<SqliteConnection>> {
-		self.connection.clone()
 	}
 
 	#[allow(dead_code)]
@@ -125,20 +125,6 @@ impl DB {
 
 	pub fn index_update_loop(&self) {
 		index::update_loop(self);
-	}
-
-	pub fn get_vfs(&self) -> Result<Vfs> {
-		use self::mount_points::dsl::*;
-		let mut vfs = Vfs::new();
-		let connection = self.connection.lock().unwrap();
-		let connection = connection.deref();
-		let points: Vec<MountPoint> = mount_points
-			.select((source, name))
-			.get_results(connection)?;
-		for point in points {
-			vfs.mount(&Path::new(&point.source), &point.name)?;
-		}
-		Ok(vfs)
 	}
 
 	fn virtualize_song(&self, vfs: &Vfs, mut song: Song) -> Option<Song> {
@@ -267,6 +253,12 @@ impl DB {
 	}
 }
 
+impl ConnectionSource for DB {
+	fn get_connection(&self) -> Arc<Mutex<SqliteConnection>> {
+		self.connection.clone()
+	}
+}
+
 impl DDNSConfigSource for DB {
 	fn get_ddns_config(&self) -> Result<DDNSConfig> {
 		use self::ddns_config::dsl::*;
@@ -275,6 +267,22 @@ impl DDNSConfigSource for DB {
 		Ok(ddns_config
 		       .select((host, username, password))
 		       .get_result(connection)?)
+	}
+}
+
+impl VFSSource for DB {
+	fn get_vfs(&self) -> Result<Vfs> {
+		use self::mount_points::dsl::*;
+		let mut vfs = Vfs::new();
+		let connection = self.connection.lock().unwrap();
+		let connection = connection.deref();
+		let points: Vec<MountPoint> = mount_points
+			.select((source, name))
+			.get_results(connection)?;
+		for point in points {
+			vfs.mount(&Path::new(&point.source), &point.name)?;
+		}
+		Ok(vfs)
 	}
 }
 

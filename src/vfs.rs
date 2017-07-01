@@ -5,6 +5,10 @@ use std::path::Path;
 use db::mount_points;
 use errors::*;
 
+pub trait VFSSource {
+	fn get_vfs(&self) -> Result<Vfs>;
+}
+
 #[derive(Debug, Deserialize, Insertable, Queryable)]
 #[table_name="mount_points"]
 pub struct MountPoint {
