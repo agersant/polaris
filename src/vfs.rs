@@ -6,7 +6,7 @@ use db::mount_points;
 use errors::*;
 
 pub trait VFSSource {
-	fn get_vfs(&self) -> Result<Vfs>;
+	fn get_vfs(&self) -> Result<VFS>;
 }
 
 #[derive(Debug, Deserialize, Insertable, Queryable)]
@@ -16,13 +16,13 @@ pub struct MountPoint {
 	pub name: String,
 }
 
-pub struct Vfs {
+pub struct VFS {
 	mount_points: HashMap<String, PathBuf>,
 }
 
-impl Vfs {
-	pub fn new() -> Vfs {
-		Vfs { mount_points: HashMap::new() }
+impl VFS {
+	pub fn new() -> VFS {
+		VFS { mount_points: HashMap::new() }
 	}
 
 	pub fn mount(&mut self, real_path: &Path, name: &str) -> Result<()> {
@@ -72,7 +72,7 @@ impl Vfs {
 
 #[test]
 fn test_virtual_to_real() {
-	let mut vfs = Vfs::new();
+	let mut vfs = VFS::new();
 	vfs.mount(Path::new("test_dir"), "root").unwrap();
 
 	let mut correct_path = PathBuf::new();
@@ -91,7 +91,7 @@ fn test_virtual_to_real() {
 
 #[test]
 fn test_virtual_to_real_no_trail() {
-	let mut vfs = Vfs::new();
+	let mut vfs = VFS::new();
 	vfs.mount(Path::new("test_dir"), "root").unwrap();
 	let correct_path = Path::new("test_dir");
 	let found_path = vfs.virtual_to_real(Path::new("root")).unwrap();
@@ -100,7 +100,7 @@ fn test_virtual_to_real_no_trail() {
 
 #[test]
 fn test_real_to_virtual() {
-	let mut vfs = Vfs::new();
+	let mut vfs = VFS::new();
 	vfs.mount(Path::new("test_dir"), "root").unwrap();
 
 	let mut correct_path = PathBuf::new();

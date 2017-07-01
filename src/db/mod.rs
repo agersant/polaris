@@ -11,7 +11,7 @@ use ddns::{DDNSConfigSource, DDNSConfig};
 use errors::*;
 use index;
 use user::*;
-use vfs::{MountPoint, Vfs, VFSSource};
+use vfs::{MountPoint, VFS, VFSSource};
 
 mod schema;
 
@@ -138,9 +138,9 @@ impl DDNSConfigSource for DB {
 }
 
 impl VFSSource for DB {
-	fn get_vfs(&self) -> Result<Vfs> {
+	fn get_vfs(&self) -> Result<VFS> {
 		use self::mount_points::dsl::*;
-		let mut vfs = Vfs::new();
+		let mut vfs = VFS::new();
 		let connection = self.connection.lock().unwrap();
 		let connection = connection.deref();
 		let points: Vec<MountPoint> = mount_points
@@ -180,4 +180,3 @@ fn test_migrations_down() {
 	db.migrate_down().unwrap();
 	db.migrate_up().unwrap();
 }
-

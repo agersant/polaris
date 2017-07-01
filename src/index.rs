@@ -15,7 +15,7 @@ use config::{MiscSettings, UserConfig};
 use db::ConnectionSource;
 use db::DB;
 use db::{directories, misc_settings, songs};
-use vfs::{Vfs, VFSSource};
+use vfs::{VFS, VFSSource};
 use errors::*;
 use metadata;
 
@@ -281,7 +281,9 @@ impl<'conn> IndexBuilder<'conn> {
 	}
 }
 
-fn clean<T>(db: &T) -> Result<()> where T: ConnectionSource + VFSSource {
+fn clean<T>(db: &T) -> Result<()>
+	where T: ConnectionSource + VFSSource
+{
 	let vfs = db.get_vfs()?;
 
 	{
@@ -346,7 +348,9 @@ fn clean<T>(db: &T) -> Result<()> where T: ConnectionSource + VFSSource {
 	Ok(())
 }
 
-fn populate<T>(db: &T) -> Result<()> where T: ConnectionSource + VFSSource {
+fn populate<T>(db: &T) -> Result<()>
+	where T: ConnectionSource + VFSSource
+{
 	let vfs = db.get_vfs()?;
 	let mount_points = vfs.get_mount_points();
 	let connection = db.get_connection();
@@ -368,7 +372,9 @@ fn populate<T>(db: &T) -> Result<()> where T: ConnectionSource + VFSSource {
 	Ok(())
 }
 
-pub fn update<T>(db: &T) -> Result<()> where T: ConnectionSource + VFSSource {
+pub fn update<T>(db: &T) -> Result<()>
+	where T: ConnectionSource + VFSSource
+{
 	let start = time::Instant::now();
 	println!("Beginning library index update");
 	clean(db)?;
@@ -378,7 +384,9 @@ pub fn update<T>(db: &T) -> Result<()> where T: ConnectionSource + VFSSource {
 	Ok(())
 }
 
-pub fn update_loop<T>(db: &T) where T: ConnectionSource + VFSSource {
+pub fn update_loop<T>(db: &T)
+	where T: ConnectionSource + VFSSource
+{
 	loop {
 		if let Err(e) = update(db) {
 			println!("Error while updating index: {}", e);
@@ -404,7 +412,7 @@ pub fn update_loop<T>(db: &T) where T: ConnectionSource + VFSSource {
 	}
 }
 
-fn virtualize_song(vfs: &Vfs, mut song: Song) -> Option<Song> {
+fn virtualize_song(vfs: &VFS, mut song: Song) -> Option<Song> {
 	song.path = match vfs.real_to_virtual(Path::new(&song.path)) {
 		Ok(p) => p.to_string_lossy().into_owned(),
 		_ => return None,
@@ -418,7 +426,7 @@ fn virtualize_song(vfs: &Vfs, mut song: Song) -> Option<Song> {
 	Some(song)
 }
 
-fn virtualize_directory(vfs: &Vfs, mut directory: Directory) -> Option<Directory> {
+fn virtualize_directory(vfs: &VFS, mut directory: Directory) -> Option<Directory> {
 	directory.path = match vfs.real_to_virtual(Path::new(&directory.path)) {
 		Ok(p) => p.to_string_lossy().into_owned(),
 		_ => return None,
@@ -432,7 +440,9 @@ fn virtualize_directory(vfs: &Vfs, mut directory: Directory) -> Option<Directory
 	Some(directory)
 }
 
-pub fn browse<T>(db: &T, virtual_path: &Path) -> Result<Vec<CollectionFile>> where T: ConnectionSource + VFSSource {
+pub fn browse<T>(db: &T, virtual_path: &Path) -> Result<Vec<CollectionFile>>
+	where T: ConnectionSource + VFSSource
+{
 	let mut output = Vec::new();
 	let vfs = db.get_vfs()?;
 	let connection = db.get_connection();
@@ -448,8 +458,8 @@ pub fn browse<T>(db: &T, virtual_path: &Path) -> Result<Vec<CollectionFile>> whe
 			.into_iter()
 			.filter_map(|s| virtualize_directory(&vfs, s));
 		output.extend(virtual_directories
-							.into_iter()
-							.map(|d| CollectionFile::Directory(d)));
+		                  .into_iter()
+		                  .map(|d| CollectionFile::Directory(d)));
 
 	} else {
 		// Browse sub-directory
@@ -478,7 +488,9 @@ pub fn browse<T>(db: &T, virtual_path: &Path) -> Result<Vec<CollectionFile>> whe
 	Ok(output)
 }
 
-pub fn flatten<T>(db: &T, virtual_path: &Path) -> Result<Vec<Song>> where T: ConnectionSource + VFSSource {
+pub fn flatten<T>(db: &T, virtual_path: &Path) -> Result<Vec<Song>>
+	where T: ConnectionSource + VFSSource
+{
 	use self::songs::dsl::*;
 	let vfs = db.get_vfs()?;
 	let connection = db.get_connection();
@@ -493,7 +505,9 @@ pub fn flatten<T>(db: &T, virtual_path: &Path) -> Result<Vec<Song>> where T: Con
 	Ok(virtual_songs.collect::<Vec<_>>())
 }
 
-pub fn get_random_albums<T>(db: &T, count: i64) -> Result<Vec<Directory>> where T: ConnectionSource + VFSSource {
+pub fn get_random_albums<T>(db: &T, count: i64) -> Result<Vec<Directory>>
+	where T: ConnectionSource + VFSSource
+{
 	use self::directories::dsl::*;
 	let vfs = db.get_vfs()?;
 	let connection = db.get_connection();
@@ -510,7 +524,9 @@ pub fn get_random_albums<T>(db: &T, count: i64) -> Result<Vec<Directory>> where 
 	Ok(virtual_directories.collect::<Vec<_>>())
 }
 
-pub fn get_recent_albums<T>(db: &T, count: i64) -> Result<Vec<Directory>> where T: ConnectionSource + VFSSource {
+pub fn get_recent_albums<T>(db: &T, count: i64) -> Result<Vec<Directory>>
+	where T: ConnectionSource + VFSSource
+{
 	use self::directories::dsl::*;
 	let vfs = db.get_vfs()?;
 	let connection = db.get_connection();
@@ -527,7 +543,7 @@ pub fn get_recent_albums<T>(db: &T, count: i64) -> Result<Vec<Directory>> where 
 	Ok(virtual_directories.collect::<Vec<_>>())
 }
 
-fn _get_test_db(name: &str) -> DB  {
+fn _get_test_db(name: &str) -> DB {
 	let config_path = Path::new("test/config.toml");
 	let config = UserConfig::parse(&config_path).unwrap();
 

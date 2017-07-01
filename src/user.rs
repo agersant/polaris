@@ -61,7 +61,9 @@ impl NewUser {
 	}
 }
 
-pub fn auth<T>(db: &T, username: &str, password: &str) -> Result<bool> where T: ConnectionSource {
+pub fn auth<T>(db: &T, username: &str, password: &str) -> Result<bool>
+	where T: ConnectionSource
+{
 	use db::users::dsl::*;
 	let connection = db.get_connection();
 	let connection = connection.lock().unwrap();

@@ -152,7 +152,8 @@ impl Handler for AuthHandler {
 			// Auth via Authorization header
 			if let Some(auth) = req.headers.get::<Authorization<Basic>>() {
 				if let Some(ref password) = auth.password {
-					auth_success = user::auth(self.db.deref(), auth.username.as_str(), password.as_str())?;
+					auth_success =
+						user::auth(self.db.deref(), auth.username.as_str(), password.as_str())?;
 					req.extensions
 						.insert::<SessionKey>(Session { username: auth.username.clone() });
 				}
