@@ -14,10 +14,10 @@ use errors::*;
 use user::*;
 use vfs::{MountPoint, Vfs};
 
-mod index;
 mod schema;
 
-use self::index::{CollectionFile, Directory, Song};
+use index;
+use index::{CollectionFile, Directory, Song};
 pub use self::schema::*;
 
 #[allow(dead_code)]
@@ -127,7 +127,7 @@ impl DB {
 		index::update_loop(self);
 	}
 
-	fn get_vfs(&self) -> Result<Vfs> {
+	pub fn get_vfs(&self) -> Result<Vfs> {
 		use self::mount_points::dsl::*;
 		let mut vfs = Vfs::new();
 		let connection = self.connection.lock().unwrap();

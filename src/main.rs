@@ -63,6 +63,7 @@ mod config;
 mod db;
 mod ddns;
 mod errors;
+mod index;
 mod metadata;
 mod ui;
 mod user;

@@ -11,7 +11,7 @@ use std::time;
 
 use config::{MiscSettings, UserConfig};
 use db::DB;
-use db::schema::*;
+use db::{directories, misc_settings, songs};
 use errors::*;
 use metadata;
 
