@@ -18,6 +18,7 @@ mod index;
 mod models;
 mod schema;
 
+use self::index::{CollectionFile, Directory, Song};
 pub use self::schema::*;
 pub use self::models::*;
 

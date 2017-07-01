@@ -11,7 +11,7 @@ use std::time;
 
 use config::UserConfig;
 use db::DB;
-use db::models::*;
+use db::models::MiscSettings;
 use db::schema::*;
 use errors::*;
 use metadata;
@@ -19,6 +19,42 @@ use metadata;
 const INDEX_BUILDING_INSERT_BUFFER_SIZE: usize = 1000; // Insertions in each transaction
 const INDEX_BUILDING_CLEAN_BUFFER_SIZE: usize = 500; // Insertions in each transaction
 
+#[derive(Debug, Queryable, Serialize)]
+pub struct Song {
+	#[serde(skip_serializing)]
+	id: i32,
+	pub path: String,
+	#[serde(skip_serializing)]
+	pub parent: String,
+	pub track_number: Option<i32>,
+	pub disc_number: Option<i32>,
+	pub title: Option<String>,
+	pub artist: Option<String>,
+	pub album_artist: Option<String>,
+	pub year: Option<i32>,
+	pub album: Option<String>,
+	pub artwork: Option<String>,
+}
+
+#[derive(Debug, Queryable, Serialize)]
+pub struct Directory {
+	#[serde(skip_serializing)]
+	id: i32,
+	pub path: String,
+	#[serde(skip_serializing)]
+	pub parent: Option<String>,
+	pub artist: Option<String>,
+	pub year: Option<i32>,
+	pub album: Option<String>,
+	pub artwork: Option<String>,
+	pub date_added: i32,
+}
+
+#[derive(Debug, Serialize)]
+pub enum CollectionFile {
+	Directory(Directory),
+	Song(Song),
+}
 
 #[derive(Debug, Insertable)]
 #[table_name="songs"]
@@ -383,8 +419,6 @@ fn _get_test_db(name: &str) -> DB {
 
 #[test]
 fn test_populate() {
-	use db::models::*;
-
 	let db = _get_test_db("populate.sqlite");
 	update(&db).unwrap();
 	update(&db).unwrap(); // Check that subsequent updates don't run into conflicts
@@ -400,8 +434,6 @@ fn test_populate() {
 
 #[test]
 fn test_metadata() {
-	use db::models::*;
-
 	let mut target = PathBuf::new();
 	target.push("test");
 	target.push("collection");
