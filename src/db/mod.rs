@@ -6,9 +6,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use config::{MiscSettings, UserConfig};
+use config::MiscSettings;
 use errors::*;
-use user::*;
 
 mod schema;
 
@@ -66,41 +65,6 @@ impl DB {
 		Ok(())
 	}
 
-	pub fn load_config(&self, config: &UserConfig) -> Result<()> {
-		let connection = self.connection.lock().unwrap();
-		let connection = connection.deref();
-		if let Some(ref mount_dirs) = config.mount_dirs {
-			diesel::delete(mount_points::table).execute(connection)?;
-			diesel::insert(mount_dirs)
-				.into(mount_points::table)
-				.execute(connection)?;
-		}
-
-		if let Some(ref config_users) = config.users {
-			diesel::delete(users::table).execute(connection)?;
-			for config_user in config_users {
-				let new_user = NewUser::new(&config_user.name, &config_user.password);
-				diesel::insert(&new_user)
-					.into(users::table)
-					.execute(connection)?;
-			}
-		}
-
-		if let Some(sleep_duration) = config.reindex_every_n_seconds {
-			diesel::update(misc_settings::table)
-				.set(misc_settings::index_sleep_duration_seconds.eq(sleep_duration as i32))
-				.execute(connection)?;
-		}
-
-		if let Some(ref album_art_pattern) = config.album_art_pattern {
-			diesel::update(misc_settings::table)
-				.set(misc_settings::index_album_art_pattern.eq(album_art_pattern))
-				.execute(connection)?;
-		}
-
-		Ok(())
-	}
-
 	pub fn get_auth_secret(&self) -> Result<String> {
 		let connection = self.connection.lock().unwrap();
 		let connection = connection.deref();
@@ -116,8 +80,9 @@ impl ConnectionSource for DB {
 }
 
 fn _get_test_db(name: &str) -> DB {
+	use config;
 	let config_path = Path::new("test/config.toml");
-	let config = UserConfig::parse(&config_path).unwrap();
+	let config = config::parse(&config_path).unwrap();
 
 	let mut db_path = PathBuf::new();
 	db_path.push("test");
@@ -127,7 +92,7 @@ fn _get_test_db(name: &str) -> DB {
 	}
 
 	let db = DB::new(&db_path).unwrap();
-	db.load_config(&config).unwrap();
+	config::overwrite(&db, &config).unwrap();
 	db
 }
 

@@ -11,7 +11,7 @@ use std::sync::Mutex;
 use std::thread;
 use std::time;
 
-use config::{MiscSettings, UserConfig};
+use config::MiscSettings;
 use db::ConnectionSource;
 use db::DB;
 use db::{directories, misc_settings, songs};
@@ -544,8 +544,9 @@ pub fn get_recent_albums<T>(db: &T, count: i64) -> Result<Vec<Directory>>
 }
 
 fn _get_test_db(name: &str) -> DB {
+	use config;
 	let config_path = Path::new("test/config.toml");
-	let config = UserConfig::parse(&config_path).unwrap();
+	let config = config::parse(&config_path).unwrap();
 
 	let mut db_path = PathBuf::new();
 	db_path.push("test");
@@ -555,7 +556,7 @@ fn _get_test_db(name: &str) -> DB {
 	}
 
 	let db = DB::new(&db_path).unwrap();
-	db.load_config(&config).unwrap();
+	config::overwrite(&db, &config).unwrap();
 	db
 }
 

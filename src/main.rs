@@ -118,8 +118,8 @@ fn run() -> Result<()> {
 	let config_file_name = matches.opt_str("c");
 	let config_file_path = config_file_name.map(|p| Path::new(p.as_str()).to_path_buf());
 	if let Some(path) = config_file_path {
-		let config = config::UserConfig::parse(&path)?;
-		db.load_config(&config)?;
+		let config = config::parse(&path)?;
+		config::overwrite(db.deref(), &config)?;
 	}
 
 	// Begin indexing
