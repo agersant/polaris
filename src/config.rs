@@ -141,10 +141,10 @@ pub fn overwrite<T>(db: &T, new_config: &Config) -> Result<()>
 	where T: ConnectionSource
 {
 	reset(db)?;
-	ammend(db, new_config)
+	amend(db, new_config)
 }
 
-pub fn ammend<T>(db: &T, new_config: &Config) -> Result<()>
+pub fn amend<T>(db: &T, new_config: &Config) -> Result<()>
 	where T: ConnectionSource
 {
 	let connection = db.get_connection();
@@ -233,8 +233,8 @@ fn _get_test_db(name: &str) -> DB {
 }
 
 #[test]
-fn test_ammend() {
-	let db = _get_test_db("ammend.sqlite");
+fn test_amend() {
+	let db = _get_test_db("amend.sqlite");
 
 	let initial_config = Config {
 		album_art_pattern: Some("file\\.png".into()),
@@ -274,17 +274,17 @@ fn test_ammend() {
 		users[0].password = "".into();
 	}
 
-	ammend(&db, &initial_config).unwrap();
-	ammend(&db, &new_config).unwrap();
+	amend(&db, &initial_config).unwrap();
+	amend(&db, &new_config).unwrap();
 	let db_config = read(&db).unwrap();
 	assert_eq!(db_config, expected_config);
 }
 
 #[test]
-fn test_ammend_preserve_password_hashes() {
+fn test_amend_preserve_password_hashes() {
 	use self::users::dsl::*;
 
-	let db = _get_test_db("ammend_preserve_password_hashes.sqlite");
+	let db = _get_test_db("amend_preserve_password_hashes.sqlite");
 	let initial_hash: Vec<u8>;
 	let new_hash: Vec<u8>;
 
@@ -298,7 +298,7 @@ fn test_ammend_preserve_password_hashes() {
 		                 }]),
 		ydns: None,
 	};
-	ammend(&db, &initial_config).unwrap();
+	amend(&db, &initial_config).unwrap();
 
 	{
 		let connection = db.get_connection();
@@ -325,7 +325,7 @@ fn test_ammend_preserve_password_hashes() {
 		                 }]),
 		ydns: None,
 	};
-	ammend(&db, &new_config).unwrap();
+	amend(&db, &new_config).unwrap();
 
 	{
 		let connection = db.get_connection();
