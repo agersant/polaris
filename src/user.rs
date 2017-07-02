@@ -1,4 +1,5 @@
 use core::ops::Deref;
+use diesel;
 use diesel::prelude::*;
 use rand;
 use ring::{digest, pbkdf2};
@@ -58,9 +59,13 @@ pub fn auth<T>(db: &T, username: &str, password: &str) -> Result<bool>
 	let connection = db.get_connection();
 	let connection = connection.lock().unwrap();
 	let connection = connection.deref();
-	let user: User = users
+	let user: QueryResult<User> = users
 		.select((name, password_salt, password_hash))
 		.filter(name.eq(username))
-		.get_result(connection)?;
-	Ok(user.verify_password(password))
+		.get_result(connection);
+	match user {
+		Err(diesel::result::Error::NotFound) => Ok(false),
+		Ok(u) => Ok(u.verify_password(password)),
+		Err(e) => Err(e.into()),
+	}
 }

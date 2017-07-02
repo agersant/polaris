@@ -55,7 +55,9 @@ impl From<Error> for IronError {
 			}
 			e @ Error(ErrorKind::MissingUsername, _) => IronError::new(e, Status::BadRequest),
 			e @ Error(ErrorKind::MissingPassword, _) => IronError::new(e, Status::BadRequest),
-			e @ Error(ErrorKind::IncorrectCredentials, _) => IronError::new(e, Status::BadRequest),
+			e @ Error(ErrorKind::IncorrectCredentials, _) => {
+				IronError::new(e, Status::Unauthorized)
+			}
 			e @ Error(ErrorKind::CannotServeDirectory, _) => IronError::new(e, Status::BadRequest),
 			e @ Error(ErrorKind::UnsupportedFileType, _) => IronError::new(e, Status::BadRequest),
 			e => IronError::new(e, Status::InternalServerError),
