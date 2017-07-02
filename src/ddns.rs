@@ -10,7 +10,7 @@ use db::{ConnectionSource, DB};
 use db::ddns_config;
 use errors;
 
-#[derive(Debug, Deserialize, Insertable, PartialEq, Queryable, Serialize)]
+#[derive(Clone, Debug, Deserialize, Insertable, PartialEq, Queryable, Serialize)]
 #[table_name="ddns_config"]
 pub struct DDNSConfig {
 	pub host: String,
