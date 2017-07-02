@@ -123,12 +123,16 @@ pub fn read<T>(db: &T) -> Result<Config>
 fn reset<T>(db: &T) -> Result<()>
 	where T: ConnectionSource
 {
+	use self::ddns_config::dsl::*;
 	let connection = db.get_connection();
 	let connection = connection.lock().unwrap();
 	let connection = connection.deref();
 
 	diesel::delete(mount_points::table).execute(connection)?;
 	diesel::delete(users::table).execute(connection)?;
+	diesel::update(ddns_config)
+		.set((host.eq(""), username.eq(""), password.eq("")))
+		.execute(connection)?;
 
 	Ok(())
 }
