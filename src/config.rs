@@ -24,13 +24,13 @@ pub struct MiscSettings {
 	pub index_album_art_pattern: String,
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ConfigUser {
 	pub name: String,
 	pub password: String,
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Config {
 	pub album_art_pattern: Option<String>,
 	pub reindex_every_n_seconds: Option<i32>,
@@ -155,8 +155,28 @@ pub fn ammend<T>(db: &T, new_config: &Config) -> Result<()>
 	}
 
 	if let Some(ref config_users) = new_config.users {
-		diesel::delete(users::table).execute(connection)?;
-		for config_user in config_users {
+		let old_usernames: Vec<String> = users::table
+			.select(users::name)
+			.get_results(connection)?;
+
+		// Delete users that are not in new list
+		// Delete users that have a new password
+		let delete_usernames: Vec<String> = old_usernames
+			.into_iter()
+			.filter(|old_name| match config_users.iter().find(|u| &u.name == old_name) {
+			            None => true,
+			            Some(new_user) => !new_user.password.is_empty(),
+			        })
+			.collect::<_>();
+		diesel::delete(users::table.filter(users::name.eq_any(&delete_usernames)))
+			.execute(connection)?;
+
+		// Insert users that have a new password
+		let insert_users: Vec<&ConfigUser> = config_users
+			.iter()
+			.filter(|u| !u.password.is_empty())
+			.collect::<_>();
+		for ref config_user in insert_users {
 			let new_user = User::new(&config_user.name, &config_user.password);
 			diesel::insert(&new_user)
 				.into(users::table)
@@ -221,25 +241,21 @@ fn test_ammend() {
 		                      }]),
 		users: Some(vec![ConfigUser {
 		                     name: "Teddy🐻".into(),
-		                     password: "".into(),
+		                     password: "Tasty🍖".into(),
 		                 }]),
-		ydns: Some(DDNSConfig {
-		               host: "🐻🐻🐻.ydns.eu".into(),
-		               username: "be🐻r".into(),
-		               password: "yummy🐇".into(),
-		           }),
+		ydns: None,
 	};
 
-	let final_config = Config {
+	let new_config = Config {
 		album_art_pattern: Some("🖼️\\.jpg".into()),
-		reindex_every_n_seconds: Some(7734),
+		reindex_every_n_seconds: None,
 		mount_dirs: Some(vec![MountPoint {
 		                          source: "/home/music".into(),
 		                          name: "🎵📁".into(),
 		                      }]),
 		users: Some(vec![ConfigUser {
 		                     name: "Kermit🐸".into(),
-		                     password: "".into(),
+		                     password: "🐞🐞".into(),
 		                 }]),
 		ydns: Some(DDNSConfig {
 		               host: "🐸🐸🐸.ydns.eu".into(),
@@ -248,10 +264,77 @@ fn test_ammend() {
 		           }),
 	};
 
+	let mut expected_config = new_config.clone();
+	expected_config.reindex_every_n_seconds = initial_config.reindex_every_n_seconds;
+	if let Some(ref mut users) = expected_config.users {
+		users[0].password = "".into();
+	}
+
 	ammend(&db, &initial_config).unwrap();
-	ammend(&db, &final_config).unwrap();
+	ammend(&db, &new_config).unwrap();
 	let db_config = read(&db).unwrap();
-	assert_eq!(db_config, final_config);
+	assert_eq!(db_config, expected_config);
+}
+
+#[test]
+fn test_ammend_preserve_password_hashes() {
+	use self::users::dsl::*;
+
+	let db = _get_test_db("ammend_preserve_password_hashes.sqlite");
+	let initial_hash: Vec<u8>;
+	let new_hash: Vec<u8>;
+
+	let initial_config = Config {
+		album_art_pattern: None,
+		reindex_every_n_seconds: None,
+		mount_dirs: None,
+		users: Some(vec![ConfigUser {
+		                     name: "Teddy🐻".into(),
+		                     password: "Tasty🍖".into(),
+		                 }]),
+		ydns: None,
+	};
+	ammend(&db, &initial_config).unwrap();
+
+	{
+		let connection = db.get_connection();
+		let connection = connection.lock().unwrap();
+		let connection = connection.deref();
+		initial_hash = users
+			.select(password_hash)
+			.filter(name.eq("Teddy🐻"))
+			.get_result(connection)
+			.unwrap();
+	}
+
+	let new_config = Config {
+		album_art_pattern: None,
+		reindex_every_n_seconds: None,
+		mount_dirs: None,
+		users: Some(vec![ConfigUser {
+		                     name: "Kermit🐸".into(),
+		                     password: "tasty🐞".into(),
+		                 },
+		                 ConfigUser {
+		                     name: "Teddy🐻".into(),
+		                     password: "".into(),
+		                 }]),
+		ydns: None,
+	};
+	ammend(&db, &new_config).unwrap();
+
+	{
+		let connection = db.get_connection();
+		let connection = connection.lock().unwrap();
+		let connection = connection.deref();
+		new_hash = users
+			.select(password_hash)
+			.filter(name.eq("Teddy🐻"))
+			.get_result(connection)
+			.unwrap();
+	}
+
+	assert_eq!(new_hash, initial_hash);
 }
 
 #[test]
