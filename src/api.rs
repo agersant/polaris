@@ -127,10 +127,14 @@ fn get_endpoints(db: Arc<DB>) -> Mount {
 			let get_db = db.clone();
 			let put_db = db.clone();
 			settings_router.get("/",
-			                    move |request: &mut Request| self::get_config(request, get_db.deref()),
+			                    move |request: &mut Request| {
+				                    self::get_config(request, get_db.deref())
+				                   },
 			                    "get_settings");
 			settings_router.put("/",
-			                    move |request: &mut Request| self::put_config(request, put_db.deref()),
+			                    move |request: &mut Request| {
+				                    self::put_config(request, put_db.deref())
+				                   },
 			                    "put_config");
 			auth_api_mount.mount("/settings/", settings_router);
 		}
