@@ -59,7 +59,7 @@ pub fn auth<T>(db: &T, username: &str, password: &str) -> Result<bool>
 	let connection = connection.lock().unwrap();
 	let connection = connection.deref();
 	let user: User = users
-		.select((name, password_hash, password_salt))
+		.select((name, password_salt, password_hash))
 		.filter(name.eq(username))
 		.get_result(connection)?;
 	Ok(user.verify_password(password))
