@@ -10,6 +10,7 @@ use iron::status::Status;
 use lewton;
 use metaflac;
 use regex;
+use serde_json;
 use std;
 use toml;
 
@@ -26,6 +27,7 @@ error_chain! {
         Id3(id3::Error);
         Image(image::ImageError);
         Io(std::io::Error);
+        Json(serde_json::Error);
         Time(std::time::SystemTimeError);
         Toml(toml::de::Error);
         Regex(regex::Error);
@@ -37,6 +39,7 @@ error_chain! {
         AuthenticationRequired {}
         MissingUsername {}
         MissingPassword {}
+        MissingConfig {}
         IncorrectCredentials {}
         CannotServeDirectory {}
         UnsupportedFileType {}

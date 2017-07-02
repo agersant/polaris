@@ -74,7 +74,7 @@ impl ConnectionSource for DB {
 fn _get_test_db(name: &str) -> DB {
 	use config;
 	let config_path = Path::new("test/config.toml");
-	let config = config::parse(&config_path).unwrap();
+	let config = config::parse_toml_file(&config_path).unwrap();
 
 	let mut db_path = PathBuf::new();
 	db_path.push("test");

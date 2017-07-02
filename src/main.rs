@@ -22,6 +22,7 @@ extern crate rand;
 extern crate reqwest;
 extern crate regex;
 extern crate ring;
+extern crate router;
 extern crate secure_session;
 extern crate serde;
 #[macro_use]
@@ -118,7 +119,7 @@ fn run() -> Result<()> {
 	let config_file_name = matches.opt_str("c");
 	let config_file_path = config_file_name.map(|p| Path::new(p.as_str()).to_path_buf());
 	if let Some(path) = config_file_path {
-		let config = config::parse(&path)?;
+		let config = config::parse_toml_file(&path)?;
 		config::overwrite(db.deref(), &config)?;
 	}
 

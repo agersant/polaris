@@ -2,6 +2,7 @@ use core::ops::Deref;
 use diesel;
 use diesel::prelude::*;
 use regex::Regex;
+use serde_json;
 use std::fs;
 use std::io::Read;
 use std::path;
@@ -38,25 +39,33 @@ pub struct Config {
 	pub ydns: Option<DDNSConfig>,
 }
 
-pub fn parse(path: &path::Path) -> Result<Config> {
-	println!("Config file path: {}", path.to_string_lossy());
+impl Config {
+	fn clean_paths(&mut self) -> Result<()> {
+		if let Some(ref mut mount_dirs) = self.mount_dirs {
+			for mount_dir in mount_dirs {
+				match clean_path_string(&mount_dir.source).to_str() {
+					Some(p) => mount_dir.source = p.to_owned(),
+					_ => bail!("Bad mount directory path"),
+				}
+			}
+		}
+		Ok(())
+	}
+}
 
-	// Parse user config
+pub fn parse_json(content: &str) -> Result<Config> {
+	let mut config = serde_json::from_str::<Config>(content)?;
+	config.clean_paths()?;
+	Ok(config)
+}
+
+pub fn parse_toml_file(path: &path::Path) -> Result<Config> {
+	println!("Config file path: {}", path.to_string_lossy());
 	let mut config_file = fs::File::open(path)?;
 	let mut config_file_content = String::new();
 	config_file.read_to_string(&mut config_file_content)?;
-	let mut config = toml::de::from_str::<Config>(config_file_content.as_str())?;
-
-	// Clean path
-	if let Some(ref mut mount_dirs) = config.mount_dirs {
-		for mount_dir in mount_dirs {
-			match clean_path_string(&mount_dir.source).to_str() {
-				Some(p) => mount_dir.source = p.to_owned(),
-				_ => bail!("Bad mount directory path"),
-			}
-		}
-	}
-
+	let mut config = toml::de::from_str::<Config>(&config_file_content)?;
+	config.clean_paths()?;
 	Ok(config)
 }
 

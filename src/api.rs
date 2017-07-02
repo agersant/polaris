@@ -3,6 +3,7 @@ use iron::prelude::*;
 use iron::headers::{Authorization, Basic};
 use iron::{AroundMiddleware, Handler, status};
 use mount::Mount;
+use router::Router;
 use params;
 use secure_session::middleware::{SessionMiddleware, SessionConfig};
 use secure_session::session::{SessionManager, ChaCha20Poly1305SessionManager};
@@ -122,10 +123,16 @@ fn get_endpoints(db: Arc<DB>) -> Mount {
 			                     move |request: &mut Request| self::serve(request, db.deref()));
 		}
 		{
-			let db = db.clone();
-			auth_api_mount.mount("/settings/", move |request: &mut Request| {
-				self::get_config(request, db.deref())
-			});
+			let mut settings_router = Router::new();
+			let get_db = db.clone();
+			let put_db = db.clone();
+			settings_router.get("/",
+			                    move |request: &mut Request| self::get_config(request, get_db.deref()),
+			                    "get_settings");
+			settings_router.put("/",
+			                    move |request: &mut Request| self::put_config(request, put_db.deref()),
+			                    "put_config");
+			auth_api_mount.mount("/settings/", settings_router);
 		}
 
 		let mut auth_api_chain = Chain::new(auth_api_mount);
@@ -338,4 +345,15 @@ fn get_config(_: &mut Request, db: &DB) -> IronResult<Response> {
 		Err(e) => return Err(IronError::new(e, status::InternalServerError)),
 	};
 	Ok(Response::with((status::Ok, result_json)))
+}
+
+fn put_config(request: &mut Request, db: &DB) -> IronResult<Response> {
+	let input = request.get_ref::<params::Params>().unwrap();
+	let config = match input.find(&["config"]) {
+		Some(&params::Value::String(ref config)) => config,
+		_ => return Err(Error::from(ErrorKind::MissingConfig).into()),
+	};
+	let config = config::parse_json(config)?;
+	config::ammend(db, &config)?;
+	Ok(Response::with(status::Ok))
 }
