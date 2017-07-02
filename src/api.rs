@@ -358,6 +358,6 @@ fn put_config(request: &mut Request, db: &DB) -> IronResult<Response> {
 		_ => return Err(Error::from(ErrorKind::MissingConfig).into()),
 	};
 	let config = config::parse_json(config)?;
-	config::ammend(db, &config)?;
+	config::amend(db, &config)?;
 	Ok(Response::with(status::Ok))
 }
