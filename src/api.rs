@@ -30,20 +30,6 @@ use vfs::VFSSource;
 const CURRENT_MAJOR_VERSION: i32 = 2;
 const CURRENT_MINOR_VERSION: i32 = 1;
 
-#[derive(Serialize)]
-struct Version {
-	major: i32,
-	minor: i32,
-}
-
-impl Version {
-	fn new(major: i32, minor: i32) -> Version {
-		Version {
-			major: major,
-			minor: minor,
-		}
-	}
-}
 
 #[derive(Deserialize, Serialize)]
 struct Session {
@@ -89,10 +75,18 @@ fn get_endpoints(db: Arc<DB>) -> Mount {
 	let mut api_handler = Mount::new();
 
 	{
-		let db = db.clone();
 		api_handler.mount("/version/", self::version);
-		api_handler.mount("/auth/",
-		                  move |request: &mut Request| self::auth(request, db.deref()));
+		{
+			let db = db.clone();
+			api_handler.mount("/auth/",
+			                  move |request: &mut Request| self::auth(request, db.deref()));
+		}
+		{
+			let db = db.clone();
+			api_handler.mount("/initial_setup/", move |request: &mut Request| {
+				self::initial_setup(request, db.deref())
+			});
+		}
 	}
 
 	{
@@ -207,8 +201,34 @@ impl Handler for AuthHandler {
 }
 
 fn version(_: &mut Request) -> IronResult<Response> {
-	let current_version = Version::new(CURRENT_MAJOR_VERSION, CURRENT_MINOR_VERSION);
+	#[derive(Serialize)]
+	struct Version {
+		major: i32,
+		minor: i32,
+	}
+
+	let current_version = Version {
+		major: CURRENT_MAJOR_VERSION,
+		minor: CURRENT_MINOR_VERSION,
+	};
+
 	match serde_json::to_string(&current_version) {
+		Ok(result_json) => Ok(Response::with((status::Ok, result_json))),
+		Err(e) => Err(IronError::new(e, status::InternalServerError)),
+	}
+}
+
+fn initial_setup(_: &mut Request, db: &DB) -> IronResult<Response> {
+	#[derive(Serialize)]
+	struct InitialSetup {
+		has_any_users: bool,
+	};
+
+	let initial_setup = InitialSetup {
+		has_any_users: user::count(db)? > 0,
+	};
+
+	match serde_json::to_string(&initial_setup) {
 		Ok(result_json) => Ok(Response::with((status::Ok, result_json))),
 		Err(e) => Err(IronError::new(e, status::InternalServerError)),
 	}

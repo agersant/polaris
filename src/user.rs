@@ -1,5 +1,6 @@
 use core::ops::Deref;
 use diesel;
+use diesel::expression;
 use diesel::prelude::*;
 use rand;
 use ring::{digest, pbkdf2};
@@ -68,4 +69,14 @@ pub fn auth<T>(db: &T, username: &str, password: &str) -> Result<bool>
 		Ok(u) => Ok(u.verify_password(password)),
 		Err(e) => Err(e.into()),
 	}
+}
+
+pub fn count<T>(db: &T) -> Result<i64>
+	where T: ConnectionSource
+{
+	use db::users::dsl::*;
+	let connection = db.get_connection();
+	let connection = connection.lock().unwrap();
+	let connection = connection.deref();
+	Ok(users.select(expression::count(name)).first(connection)?)
 }
