@@ -174,13 +174,20 @@ impl Handler for AuthHandler {
 		{
 			let mut auth_success = false;
 
+			// Skip auth for first time setup
+			if user::count(self.db.deref())? == 0 {
+				auth_success = true;
+			}
+
 			// Auth via Authorization header
-			if let Some(auth) = req.headers.get::<Authorization<Basic>>() {
-				if let Some(ref password) = auth.password {
-					auth_success =
-						user::auth(self.db.deref(), auth.username.as_str(), password.as_str())?;
-					req.extensions
-						.insert::<SessionKey>(Session { username: auth.username.clone() });
+			if !auth_success {
+				if let Some(auth) = req.headers.get::<Authorization<Basic>>() {
+					if let Some(ref password) = auth.password {
+						auth_success =
+							user::auth(self.db.deref(), auth.username.as_str(), password.as_str())?;
+						req.extensions
+							.insert::<SessionKey>(Session { username: auth.username.clone() });
+					}
 				}
 			}
 
@@ -193,7 +200,6 @@ impl Handler for AuthHandler {
 			if !auth_success {
 				return Err(Error::from(ErrorKind::AuthenticationRequired).into());
 			}
-
 		}
 
 		self.handler.handle(req)
