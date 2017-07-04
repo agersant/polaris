@@ -1,36 +1,10 @@
-dist: trusty
-sudo: false
-
 language: rust
 rust:
   - stable
   - beta
   - nightly
 
-addons:
-  apt:
-    packages:
-      - oracle-java8-installer
-      - oracle-java8-set-default
-
 matrix:
   allow_failures:
     - rust: beta
     - rust: nightly
-
-before_install:
-  - java -version
-  - wget http://selenium-release.storage.googleapis.com/3.4/selenium-server-standalone-3.4.0.jar -O selenium.jar
-  - java -jar selenium.jar &
-  - npm install -g nightwatch
-  - nightwatch -v
-  - npm install -g phantomjs-prebuilt
-  - phantomjs -v
-  - npm install node-fetch --no-save
-
-script:
-  - cargo build --verbose
-  - cargo test --verbose
-  - cargo run -- -d test/db.sqlite -w web &
-  - sleep 5
-  - nightwatch
