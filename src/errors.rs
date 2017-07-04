@@ -37,6 +37,7 @@ error_chain! {
     errors {
         DaemonError {}
         AuthenticationRequired {}
+        AdminPrivilegeRequired {}
         MissingUsername {}
         MissingPassword {}
         MissingConfig {}
@@ -53,6 +54,7 @@ impl From<Error> for IronError {
 			e @ Error(ErrorKind::AuthenticationRequired, _) => {
 				IronError::new(e, Status::Unauthorized)
 			}
+			e @ Error(ErrorKind::AdminPrivilegeRequired, _) => IronError::new(e, Status::Forbidden),
 			e @ Error(ErrorKind::MissingUsername, _) => IronError::new(e, Status::BadRequest),
 			e @ Error(ErrorKind::MissingPassword, _) => IronError::new(e, Status::BadRequest),
 			e @ Error(ErrorKind::IncorrectCredentials, _) => {

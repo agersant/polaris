@@ -28,6 +28,7 @@ pub struct MiscSettings {
 pub struct ConfigUser {
 	pub name: String,
 	pub password: String,
+	pub admin: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -99,15 +100,16 @@ pub fn read<T>(db: &T) -> Result<Config>
 		.get_results(connection)?;
 	config.mount_dirs = Some(mount_dirs);
 
-	let usernames: Vec<String> = users::table
-		.select(users::columns::name)
+	let found_users: Vec<(String, i32)> = users::table
+		.select((users::columns::name, users::columns::admin))
 		.get_results(connection)?;
-	config.users = Some(usernames
+	config.users = Some(found_users
 	                        .into_iter()
-	                        .map(|s| {
+	                        .map(|(n, a)| {
 		                             ConfigUser {
-		                                 name: s,
+		                                 name: n,
 		                                 password: "".to_owned(),
+		                                 admin: a != 0,
 		                             }
 		                            })
 	                        .collect::<_>());
@@ -181,9 +183,16 @@ pub fn amend<T>(db: &T, new_config: &Config) -> Result<()>
 			.filter(|u| !u.password.is_empty())
 			.collect::<_>();
 		for ref config_user in insert_users {
-			let new_user = User::new(&config_user.name, &config_user.password);
+			let new_user = User::new(&config_user.name, &config_user.password, config_user.admin);
 			diesel::insert(&new_user)
 				.into(users::table)
+				.execute(connection)?;
+		}
+
+		// Grant admin rights
+		for ref user in config_users {
+			diesel::update(users::table.filter(users::name.eq(&user.name)))
+				.set(users::admin.eq(user.admin as i32))
 				.execute(connection)?;
 		}
 	}
@@ -246,6 +255,7 @@ fn test_amend() {
 		users: Some(vec![ConfigUser {
 		                     name: "Teddy🐻".into(),
 		                     password: "Tasty🍖".into(),
+		                     admin: false,
 		                 }]),
 		ydns: None,
 	};
@@ -260,6 +270,7 @@ fn test_amend() {
 		users: Some(vec![ConfigUser {
 		                     name: "Kermit🐸".into(),
 		                     password: "🐞🐞".into(),
+		                     admin: false,
 		                 }]),
 		ydns: Some(DDNSConfig {
 		               host: "🐸🐸🐸.ydns.eu".into(),
@@ -295,6 +306,7 @@ fn test_amend_preserve_password_hashes() {
 		users: Some(vec![ConfigUser {
 		                     name: "Teddy🐻".into(),
 		                     password: "Tasty🍖".into(),
+		                     admin: false,
 		                 }]),
 		ydns: None,
 	};
@@ -318,10 +330,12 @@ fn test_amend_preserve_password_hashes() {
 		users: Some(vec![ConfigUser {
 		                     name: "Kermit🐸".into(),
 		                     password: "tasty🐞".into(),
+		                     admin: false,
 		                 },
 		                 ConfigUser {
 		                     name: "Teddy🐻".into(),
 		                     password: "".into(),
+		                     admin: false,
 		                 }]),
 		ydns: None,
 	};
@@ -339,6 +353,56 @@ fn test_amend_preserve_password_hashes() {
 	}
 
 	assert_eq!(new_hash, initial_hash);
+}
+
+
+#[test]
+fn test_toggle_admin() {
+	use self::users::dsl::*;
+
+	let db = _get_test_db("amend_toggle_admin.sqlite");
+
+	let initial_config = Config {
+		album_art_pattern: None,
+		reindex_every_n_seconds: None,
+		mount_dirs: None,
+		users: Some(vec![ConfigUser {
+		                     name: "Teddy🐻".into(),
+		                     password: "Tasty🍖".into(),
+		                     admin: true,
+		                 }]),
+		ydns: None,
+	};
+	amend(&db, &initial_config).unwrap();
+
+	{
+		let connection = db.get_connection();
+		let connection = connection.lock().unwrap();
+		let connection = connection.deref();
+		let is_admin: i32 = users.select(admin).get_result(connection).unwrap();
+		assert_eq!(is_admin, 1);
+	}
+
+	let new_config = Config {
+		album_art_pattern: None,
+		reindex_every_n_seconds: None,
+		mount_dirs: None,
+		users: Some(vec![ConfigUser {
+		                     name: "Teddy🐻".into(),
+		                     password: "".into(),
+		                     admin: false,
+		                 }]),
+		ydns: None,
+	};
+	amend(&db, &new_config).unwrap();
+
+	{
+		let connection = db.get_connection();
+		let connection = connection.lock().unwrap();
+		let connection = connection.deref();
+		let is_admin: i32 = users.select(admin).get_result(connection).unwrap();
+		assert_eq!(is_admin, 0);
+	}
 }
 
 #[test]

@@ -124,13 +124,18 @@ fn get_endpoints(db: Arc<DB>) -> Mount {
 			                    move |request: &mut Request| {
 				                    self::get_config(request, get_db.deref())
 				                   },
-			                    "get_settings");
+			                    "get_config");
 			settings_router.put("/",
 			                    move |request: &mut Request| {
 				                    self::put_config(request, put_db.deref())
 				                   },
 			                    "put_config");
-			auth_api_mount.mount("/settings/", settings_router);
+
+			let mut settings_api_chain = Chain::new(settings_router);
+			let admin_req = AdminRequirement { db: db.clone() };
+			settings_api_chain.link_around(admin_req);
+
+			auth_api_mount.mount("/settings/", settings_api_chain);
 		}
 
 		let mut auth_api_chain = Chain::new(auth_api_mount);
@@ -139,6 +144,7 @@ fn get_endpoints(db: Arc<DB>) -> Mount {
 
 		api_handler.mount("/", auth_api_chain);
 	}
+
 	api_handler
 }
 
@@ -206,6 +212,51 @@ impl Handler for AuthHandler {
 	}
 }
 
+
+struct AdminRequirement {
+	db: Arc<DB>,
+}
+
+impl AroundMiddleware for AdminRequirement {
+	fn around(self, handler: Box<Handler>) -> Box<Handler> {
+		Box::new(AdminHandler {
+		             db: self.db,
+		             handler: handler,
+		         }) as Box<Handler>
+	}
+}
+
+struct AdminHandler {
+	handler: Box<Handler>,
+	db: Arc<DB>,
+}
+
+impl Handler for AdminHandler {
+	fn handle(&self, req: &mut Request) -> IronResult<Response> {
+		{
+			let mut auth_success = false;
+
+			// Skip auth for first time setup
+			if user::count(self.db.deref())? == 0 {
+				auth_success = true;
+			}
+
+			if !auth_success {
+				match req.extensions.get::<SessionKey>() {
+					Some(s) => auth_success = user::is_admin(self.db.deref(), &s.username)?,
+					_ => return Err(Error::from(ErrorKind::AuthenticationRequired).into()),
+				}
+			}
+
+			if !auth_success {
+				return Err(Error::from(ErrorKind::AdminPrivilegeRequired).into());
+			}
+		}
+
+		self.handler.handle(req)
+	}
+}
+
 fn version(_: &mut Request) -> IronResult<Response> {
 	#[derive(Serialize)]
 	struct Version {
@@ -230,9 +281,7 @@ fn initial_setup(_: &mut Request, db: &DB) -> IronResult<Response> {
 		has_any_users: bool,
 	};
 
-	let initial_setup = InitialSetup {
-		has_any_users: user::count(db)? > 0,
-	};
+	let initial_setup = InitialSetup { has_any_users: user::count(db)? > 0 };
 
 	match serde_json::to_string(&initial_setup) {
 		Ok(result_json) => Ok(Response::with((status::Ok, result_json))),
