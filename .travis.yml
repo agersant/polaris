@@ -24,6 +24,8 @@ before_install:
   - java -jar selenium.jar &
   - npm install -g nightwatch
   - nightwatch -v
+  - npm install -g phantomjs
+  - phantomjs -v
   - npm install node-fetch --no-save
 
 script:
