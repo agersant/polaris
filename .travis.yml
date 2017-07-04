@@ -24,6 +24,7 @@ before_install:
   - java -jar selenium.jar &
   - npm install -g nightwatch
   - nightwatch -v
+  - npm install whatwg-fetch --save
 
 script:
   - cargo build --verbose
