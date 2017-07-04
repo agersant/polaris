@@ -8,6 +8,7 @@ addons:
   apt:
     packages:
       - oracle-java8-installer
+      - oracle-java8-set-default
 
 matrix:
   allow_failures:
@@ -19,7 +20,8 @@ before_install:
   - wget http://selenium-release.storage.googleapis.com/3.4/selenium-server-standalone-3.4.0.jar -O selenium.jar
 
 script:
+  - nightwatch -v
+  - java -version
   - cargo build --verbose
   - cargo test --verbose
-  - nightwatch -v
   - java -jar selenium.jar
