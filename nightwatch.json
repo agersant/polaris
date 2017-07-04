@@ -1,6 +1,6 @@
 {
 	"src_folders" : ["test/nightwatch"],
-	"globals": "test/nightwatch/globals.js",
+	"globals": "test/nightwatch/globals",
 
 	"test_settings" : {
 		"default" : {
