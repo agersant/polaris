@@ -25,6 +25,6 @@ before_install:
 script:
   - cargo build --verbose
   - cargo test --verbose
-  - cargo run -d test/db.sqlite &
+  - cargo run -- -d test/db.sqlite &
   - sleep 5
   - nightwatch
