@@ -4,6 +4,11 @@ rust:
   - beta
   - nightly
 
+addons:
+  apt:
+    packages:
+      - oracle-java8-installer
+
 matrix:
   allow_failures:
     - rust: beta
@@ -13,6 +18,8 @@ before_install:
   - npm install -g nightwatch
   - wget http://selenium-release.storage.googleapis.com/3.4/selenium-server-standalone-3.4.0.jar -O selenium.jar
 
-after_script:
+script:
+  - cargo build --verbose
+  - cargo test --verbose
   - nightwatch -v
   - java -jar selenium.jar
