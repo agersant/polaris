@@ -11,6 +11,8 @@ matrix:
 
 before_install:
   - npm install -g nightwatch
+  - wget http://selenium-release.storage.googleapis.com/3.4/selenium-server-standalone-3.4.0.jar -O selenium.jar
 
-before_script:
+after_script:
   - nightwatch -v
+  - java -jar selenium.jar
