@@ -303,14 +303,28 @@ fn auth(request: &mut Request, db: &DB) -> IronResult<Response> {
 			_ => return Err(Error::from(ErrorKind::MissingPassword).into()), 
 		};
 	}
-	if user::auth(db, username.as_str(), password.as_str())? {
-		request
-			.extensions
-			.insert::<SessionKey>(Session { username: username.clone() });
-		Ok(Response::with((status::Ok, "")))
-	} else {
-		Err(Error::from(ErrorKind::IncorrectCredentials).into())
+	
+	if !user::auth(db, username.as_str(), password.as_str())? {
+		return Err(Error::from(ErrorKind::IncorrectCredentials).into());
 	}
+
+	request
+		.extensions
+		.insert::<SessionKey>(Session { username: username.clone() });
+
+	#[derive(Serialize)]
+	struct AuthOutput {
+		admin: bool,
+	}
+
+	let auth_output = AuthOutput { admin: user::is_admin(db.deref(), &username)? };
+	let result_json = serde_json::to_string(&auth_output);
+	let result_json = match result_json {
+		Ok(j) => j,
+		Err(e) => return Err(IronError::new(e, status::InternalServerError)),
+	};
+
+	Ok(Response::with((status::Ok, result_json)))
 }
 
 fn browse(request: &mut Request, db: &DB) -> IronResult<Response> {
