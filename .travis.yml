@@ -16,12 +16,12 @@ matrix:
     - rust: nightly
 
 before_install:
-  - npm install -g nightwatch
+  - java -version
   - wget http://selenium-release.storage.googleapis.com/3.4/selenium-server-standalone-3.4.0.jar -O selenium.jar
+  - java -jar selenium.jar &
+  - npm install -g nightwatch
+  - nightwatch -v
 
 script:
-  - nightwatch -v
-  - java -version
   - cargo build --verbose
   - cargo test --verbose
-  - java -jar selenium.jar
