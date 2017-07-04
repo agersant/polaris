@@ -3,7 +3,14 @@ rust:
   - stable
   - beta
   - nightly
+
 matrix:
   allow_failures:
     - rust: beta
     - rust: nightly
+
+before_install:
+  - npm install -g nightwatch
+
+before_script:
+  - nightwatch -v
