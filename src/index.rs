@@ -7,7 +7,8 @@ use diesel::types;
 use regex::Regex;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
+use std::sync::mpsc::*;
 use std::thread;
 use std::time;
 
@@ -21,6 +22,10 @@ use metadata;
 
 const INDEX_BUILDING_INSERT_BUFFER_SIZE: usize = 1000; // Insertions in each transaction
 const INDEX_BUILDING_CLEAN_BUFFER_SIZE: usize = 500; // Insertions in each transaction
+
+pub enum Command {
+	REINDEX,
+}
 
 #[derive(Debug, Queryable, Serialize)]
 pub struct Song {
@@ -384,31 +389,63 @@ pub fn update<T>(db: &T) -> Result<()>
 	Ok(())
 }
 
-pub fn update_loop<T>(db: &T)
+pub fn update_loop<T>(db: &T, command_buffer: Receiver<Command>)
 	where T: ConnectionSource + VFSSource
 {
 	loop {
+		// Wait for a command
+		if let Err(e) = command_buffer.recv() {
+			println!("Error while waiting on index command buffer: {}", e);
+			return;
+		}
+
+		// Flush the buffer to ignore spammy requests
+		loop {
+			match command_buffer.try_recv() {
+				Err(TryRecvError::Disconnected) => {
+					println!("Error while flushing index command buffer");
+					return;
+				}
+				Err(TryRecvError::Empty) => break,
+				Ok(_) => (),
+			}
+		}
+
+		// Do the update
 		if let Err(e) = update(db) {
 			println!("Error while updating index: {}", e);
 		}
+	}
+}
+
+pub fn self_trigger<T>(db: &T, command_buffer: Arc<Mutex<Sender<Command>>>)
+	where T: ConnectionSource
+{
+	loop {
 		{
-			let sleep_duration;
-			{
-				let connection = db.get_connection();
-				let connection = connection.lock().unwrap();
-				let connection = connection.deref();
-				let settings: Result<MiscSettings> = misc_settings::table
-					.get_result(connection)
-					.map_err(|e| e.into());
-				if let Err(ref e) = settings {
-					println!("Could not retrieve index sleep duration: {}", e);
-				}
-				sleep_duration = settings
-					.map(|s| s.index_sleep_duration_seconds)
-					.unwrap_or(1800);
+			let command_buffer = command_buffer.lock().unwrap();
+			let command_buffer = command_buffer.deref();
+			if let Err(e) = command_buffer.send(Command::REINDEX) {
+				println!("Error while writing to index command buffer: {}", e);
+				return;
 			}
-			thread::sleep(time::Duration::from_secs(sleep_duration as u64));
 		}
+		let sleep_duration;
+		{
+			let connection = db.get_connection();
+			let connection = connection.lock().unwrap();
+			let connection = connection.deref();
+			let settings: Result<MiscSettings> = misc_settings::table
+				.get_result(connection)
+				.map_err(|e| e.into());
+			if let Err(ref e) = settings {
+				println!("Could not retrieve index sleep duration: {}", e);
+			}
+			sleep_duration = settings
+				.map(|s| s.index_sleep_duration_seconds)
+				.unwrap_or(1800);
+		}
+		thread::sleep(time::Duration::from_secs(sleep_duration as u64));
 	}
 }
 

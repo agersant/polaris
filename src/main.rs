@@ -57,7 +57,8 @@ use iron::prelude::*;
 use mount::Mount;
 use staticfile::Static;
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
+use std::sync::mpsc::channel;
 
 mod api;
 mod config;
@@ -123,17 +124,24 @@ fn run() -> Result<()> {
 		config::overwrite(db.deref(), &config)?;
 	}
 
-	// Begin indexing
+	// Init index
+	let (index_sender, index_receiver) = channel();
+	let index_sender = Arc::new(Mutex::new(index_sender));
 	let db_ref = db.clone();
 	std::thread::spawn(move || {
 		                   let db = db_ref.deref();
-		                   index::update_loop(db);
+		                   index::update_loop(db, index_receiver);
 		                  });
+
+	// Trigger auto-indexing
+	let db_ref = db.clone();
+	let sender_ref = index_sender.clone();
+	std::thread::spawn(move || { index::self_trigger(db_ref.deref(), sender_ref); });
 
 	// Mount API
 	println!("Mounting API");
 	let mut mount = Mount::new();
-	let handler = api::get_handler(db.clone())?;
+	let handler = api::get_handler(db.clone(), index_sender)?;
 	mount.mount("/api/", handler);
 
 	// Mount static files

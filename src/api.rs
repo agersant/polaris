@@ -12,7 +12,8 @@ use std::fs;
 use std::io;
 use std::path::*;
 use std::ops::Deref;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
+use std::sync::mpsc::Sender;
 use typemap;
 use url::percent_encoding::percent_decode;
 
@@ -53,8 +54,8 @@ fn get_auth_secret<T>(db: &T) -> Result<String>
 	Ok(misc.auth_secret.to_owned())
 }
 
-pub fn get_handler(db: Arc<DB>) -> Result<Chain> {
-	let api_handler = get_endpoints(db.clone());
+pub fn get_handler(db: Arc<DB>, index: Arc<Mutex<Sender<index::Command>>>) -> Result<Chain> {
+	let api_handler = get_endpoints(db.clone(), index);
 	let mut api_chain = Chain::new(api_handler);
 
 	let auth_secret = get_auth_secret(db.deref())?;
@@ -71,7 +72,7 @@ pub fn get_handler(db: Arc<DB>) -> Result<Chain> {
 	Ok(api_chain)
 }
 
-fn get_endpoints(db: Arc<DB>) -> Mount {
+fn get_endpoints(db: Arc<DB>, index_channel: Arc<Mutex<Sender<index::Command>>>) -> Mount {
 	let mut api_handler = Mount::new();
 
 	{
@@ -136,6 +137,19 @@ fn get_endpoints(db: Arc<DB>) -> Mount {
 			settings_api_chain.link_around(admin_req);
 
 			auth_api_mount.mount("/settings/", settings_api_chain);
+		}
+		{
+			let index_channel = index_channel.clone();
+			let mut reindex_router = Router::new();
+			reindex_router.post("/",
+			                    move |_: &mut Request| self::trigger_index(index_channel.deref()),
+			                    "trigger_index");
+
+			let mut reindex_api_chain = Chain::new(reindex_router);
+			let admin_req = AdminRequirement { db: db.clone() };
+			reindex_api_chain.link_around(admin_req);
+
+			auth_api_mount.mount("/trigger_index/", reindex_api_chain);
 		}
 
 		let mut auth_api_chain = Chain::new(auth_api_mount);
@@ -303,7 +317,7 @@ fn auth(request: &mut Request, db: &DB) -> IronResult<Response> {
 			_ => return Err(Error::from(ErrorKind::MissingPassword).into()), 
 		};
 	}
-	
+
 	if !user::auth(db, username.as_str(), password.as_str())? {
 		return Err(Error::from(ErrorKind::IncorrectCredentials).into());
 	}
@@ -448,5 +462,14 @@ fn put_config(request: &mut Request, db: &DB) -> IronResult<Response> {
 	};
 	let config = config::parse_json(config)?;
 	config::amend(db, &config)?;
+	Ok(Response::with(status::Ok))
+}
+
+fn trigger_index(channel: &Mutex<Sender<index::Command>>) -> IronResult<Response> {
+	let channel = channel.lock().unwrap();
+	let channel = channel.deref();
+	if let Err(e) = channel.send(index::Command::REINDEX) {
+		return Err(IronError::new(e, status::InternalServerError));
+	};
 	Ok(Response::with(status::Ok))
 }
