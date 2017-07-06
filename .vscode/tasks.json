@@ -9,7 +9,7 @@
 			"taskName": "Run",
 			"options": { "cwd": "${workspaceRoot}" },
 			"command": "cargo",
-			"args": ["run", "--release", "--", "-c", "./TestConfigWindows.toml", "-d", "test/db.sqlite", "-w", "../polaris-web"]
+			"args": ["run", "--", "-c", "./TestConfigWindows.toml", "-d", "test/db.sqlite", "-w", "../polaris-web"]
 		},
 
 		// Run unit tests
@@ -19,7 +19,14 @@
 			"options": { "cwd": "${workspaceRoot}" },
 			"command": "cargo",
 			"args": ["test"]
-        }
-		
+        },
+
+		// Compile
+		{
+			"taskName": "Compile",
+			"options": { "cwd": "${workspaceRoot}" },
+			"command": "cargo",
+			"args": ["check"]
+		}
     ]
 }
