@@ -74,8 +74,8 @@ fn read_ape_x_of_y(item: &ape::Item) -> Option<u32> {
 	match item.value {
 		ape::ItemValue::Text(ref s) => {
 			let format = Regex::new(r#"^\d+"#).unwrap();
-			if let Some((start, end)) = format.find(s) {
-				s[start..end].parse().ok()
+			if let Some(m) = format.find(s) {
+				s[m.start()..m.end()].parse().ok()
 			} else {
 				None
 			}

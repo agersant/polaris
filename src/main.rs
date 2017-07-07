@@ -156,7 +156,10 @@ fn run() -> Result<()> {
 	mount.mount("/", Static::new(web_dir_path));
 
 	println!("Starting up server");
-	let mut server = Iron::new(mount).http(("0.0.0.0", 5050))?;
+	let mut server = match Iron::new(mount).http(("0.0.0.0", 5050)) {
+		Ok(s) => s,
+		Err(e) => bail!("Error starting up server: {}", e),
+	};
 
 	// Start DDNS updates
 	let db_ref = db.clone();
@@ -166,7 +169,9 @@ fn run() -> Result<()> {
 	ui::run();
 
 	println!("Shutting down server");
-	server.close()?;
+	if let Err(e) = server.close() {
+		bail!("Error shutting down server: {}", e);
+	}
 
 	Ok(())
 }
