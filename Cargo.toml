@@ -8,7 +8,7 @@ ui = []
 
 [dependencies]
 ape = "0.1.2"
-app_dirs = { git = "https://github.com/agersant/app-dirs-rs" }
+app_dirs = "1.1.1"
 diesel = { version = "0.14.0", features = ["sqlite"] }
 diesel_codegen = { version = "0.14.0", features = ["sqlite"] }
 error-chain = "0.10.0"
