@@ -22,12 +22,20 @@ Copy-Item .\res\windows\installer\license.rtf	.\release\tmp\
 Copy-Item .\res\windows\installer\banner.bmp	.\release\tmp\
 Copy-Item .\res\windows\installer\dialog.bmp	.\release\tmp\
 Copy-Item .\target\release\polaris.exe 			  .\release\tmp\
-Copy-Item .\web\ 								              .\release\tmp\ -recurse
+Copy-Item .\web\img								            .\release\tmp\web\img   -recurse
+Copy-Item .\web\js								            .\release\tmp\web\js    -recurse
+Copy-Item .\web\lib								            .\release\tmp\web\lib   -recurse
+Copy-Item .\web\style								          .\release\tmp\web\style -recurse
+Copy-Item .\web\tags								          .\release\tmp\web\tags  -recurse
+Copy-Item .\web\favicon.png					          .\release\tmp\web\
+Copy-Item .\web\index.html					          .\release\tmp\web\
 
 ""
 "Creating installer"
-candle -wx -ext WixUtilExtension -arch x64							-out .\release\tmp\installer.wixobj 			.\res\windows\installer\installer.wxs
-light  -wx -ext WixUtilExtension -ext WixUIExtension -spdb -sw1076 	-out .\release\Polaris_$POLARIS_VERSION.msi 	.\release\tmp\installer.wixobj
+heat dir .\release\tmp\web\ -ag -g1 -dr AppDataPolaris -cg WebUI -sfrag -var wix.WebUIDir -out .\release\tmp\web_ui_fragment.wxs
+candle -wx -ext WixUtilExtension -arch x64 -out .\release\tmp\web_ui_fragment.wixobj .\release\tmp\web_ui_fragment.wxs
+candle -wx -ext WixUtilExtension -arch x64 -out .\release\tmp\installer.wixobj .\res\windows\installer\installer.wxs
+light -dWebUIDir=".\release\tmp\web" -wx -ext WixUtilExtension -ext WixUIExtension -spdb -sw1076 -sice:ICE38 -sice:ICE64 -out .\release\Polaris_$POLARIS_VERSION.msi	.\release\tmp\installer.wixobj .\release\tmp\web_ui_fragment.wixobj
 
 "Cleaning up"
 Remove-Item -Recurse .\release\tmp

@@ -1,8 +1,8 @@
 <?xml version='1.0' encoding='windows-1252'?>
 <Wix xmlns='http://schemas.microsoft.com/wix/2006/wi' xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
-    <Product Name='Polaris' Id='4EFAE037-167F-43F0-9AA9-04F4DC7D49A1' UpgradeCode='C106B17B-95C0-49BB-BF1A-BC5CAD245076' Language='1033' Codepage='1252' Version='0.6.0' Manufacturer='Permafrost'>
+    <Product Name='Polaris' Id='4EFAE037-167F-43F0-9AA9-04F4DC7D49A1' UpgradeCode='FF16B075-1D36-47F4-BE37-D95BBC1A412C' Language='1033' Codepage='1252' Version='0.6.0' Manufacturer='Permafrost'>
 
-		<Package Id='*' Keywords='Installer' Platform='x64' InstallScope='perMachine' Description='Polaris Installer' Manufacturer='Permafrost' Languages='1033' Compressed='yes' SummaryCodepage='1252' />
+		<Package Id='*' Keywords='Installer' Platform='x64' InstallScope='perUser' Description='Polaris Installer' Manufacturer='Permafrost' Languages='1033' Compressed='yes' SummaryCodepage='1252' />
 
 		<MajorUpgrade DowngradeErrorMessage='A newer version of Polaris is already installed.' Schedule='afterInstallExecute' />
 
@@ -10,149 +10,30 @@
 		<Property Id='DiskPrompt' Value='Polaris Installation [1]' />
 
 		<Directory Id='TARGETDIR' Name='SourceDir'>
-			<Directory Id='ProgramFiles64Folder' Name='PFiles'>
-				<Directory Id='Permafrost' Name='Permafrost'>
-					<Directory Id='INSTALL_DIR' Name='Polaris' FileSource='.'>
-						<Component Id='MainExecutable' Guid='4E27209A-48B6-4A2A-8778-6383C83F0B24'>
+			<Directory Id='AppDataFolder'>
+				<Directory Id='AppDataPermafrost' Name='Permafrost'>
+					<Directory Id='AppDataPolaris' Name='Polaris' FileSource='.'>
+						<Component Id='MainExecutable' Guid='*'>
 							<File Source='polaris.exe' KeyPath='yes' Checksum='yes'>
-								<Shortcut Id='StartupMenuPolaris' Directory='StartupFolder' Name='Polaris' WorkingDirectory='INSTALL_DIR' Icon='polaris.exe' IconIndex='0' Advertise='yes' />
-								<Shortcut Id='StartMenuPolaris' Directory='ProgramMenuDir' Name='Polaris' WorkingDirectory='INSTALL_DIR' Icon='polaris.exe' IconIndex='0' Advertise='yes' />
-								<Shortcut Id='DesktopPolaris' Directory='DesktopFolder' Name='Polaris' WorkingDirectory='INSTALL_DIR' Icon='polaris.exe' IconIndex='0' Advertise='yes' />
+								<Shortcut Id='StartupMenuPolaris' Directory='StartupFolder' Name='Polaris' WorkingDirectory='AppDataPolaris' Icon='polaris.exe' IconIndex='0' Advertise='yes' />
+								<Shortcut Id='StartMenuPolaris' Directory='ProgramMenuDir' Name='Polaris' WorkingDirectory='AppDataPolaris' Icon='polaris.exe' IconIndex='0' Advertise='yes' />
+								<Shortcut Id='DesktopPolaris' Directory='DesktopFolder' Name='Polaris' WorkingDirectory='AppDataPolaris' Icon='polaris.exe' IconIndex='0' Advertise='yes' />
 							</File>
 						</Component>
 					</Directory>
 				</Directory>
 			</Directory>
 
-			<Directory Id='AppDataFolder'>
-  				<Directory Id='AppDataPermafrost' Name='Permafrost'>
-					<Directory Id='AppDataPolaris' Name='Polaris' FileSource='.'>
-
-						<Directory Id='web' Name='web'>
-							<Component Id="WebUI" Guid="A48BC5BB-E4CA-40A8-BF47-690E61358C0E">
-								<RegistryValue Root='HKCU' Key='Software\Permafrost\Polaris' Name='RemoveWeb' Type='string' Value='[REMOVEWEB]' KeyPath='yes' />
-								<RemoveFolder Id='RemoveWeb' Directory='web' On='uninstall' />								
-							</Component>
-
-							<Component Id='WebUIFavicon' Guid='65D5A87D-5A5C-4655-9F74-F37F4F64BB6E'>
-								<RegistryValue Root='HKCU' Key='Software\Permafrost\Polaris' Name='WebUIFavicon' Type='string' Value='[WEBUIFAVICON]' KeyPath='yes' />
-								<File Name='favicon.png' />
-							</Component>
-
-							<Component Id='WebUIIndex' Guid='B666CED5-951E-40F4-8A33-E9C4FEEFF578'>
-								<RegistryValue Root='HKCU' Key='Software\Permafrost\Polaris' Name='WebUIIndex' Type='string' Value='[WEBUIINDEX]' KeyPath='yes' />
-								<File Name='index.html' />
-							</Component>
-
-							<Directory Id='img' Name='img'>
-								<Component Id="WebUIImg" Guid="0DACEDCC-82C9-4EB0-8650-D989FF790DDF">
-									<RegistryValue Root='HKCU' Key='Software\Permafrost\Polaris' Name='WebUIImg' Type='string' Value='[WEBUIIMG]' KeyPath='yes' />
-									<RemoveFolder Id='RemoveWebUIImg' Directory='img' On='uninstall' />								
-								</Component>
-								<Component Id='WebUIImgLogo' Guid='343BDE12-EE3E-4659-A9F8-A217B933FBF2'>
-									<RegistryValue Root='HKCU' Key='Software\Permafrost\Polaris' Name='WebUIImgLogo' Type='string' Value='[WEBUIIMGLOGO]' KeyPath='yes' />
-									<File Name='logo.png' />
-								</Component>
-							</Directory>
-
-							<Directory Id='js' Name='js'>
-								<Component Id="WebUIJS" Guid="3D186FC0-2228-429F-ABD2-EB3292D93B80">
-									<RegistryValue Root='HKCU' Key='Software\Permafrost\Polaris' Name='WebUIJS' Type='string' Value='[WEBUIJS]' KeyPath='yes' />
-									<RemoveFolder Id='RemoveJS' Directory='js' On='uninstall' />								
-								</Component>
-								<Component Id='WebUIJSUtils' Guid='D5C12922-182A-4AE9-B863-D7ACA7FC2357'>
-									<RegistryValue Root='HKCU' Key='Software\Permafrost\Polaris' Name='WebUIJSUtils' Type='string' Value='[WEBUIJSUTILS]' KeyPath='yes' />
-									<File Name='utils.js' />
-								</Component>
-								<Component Id='WebUIJSNotify' Guid='0D6CDA89-2F75-487D-B14D-FCE27DE31215'>
-									<RegistryValue Root='HKCU' Key='Software\Permafrost\Polaris' Name='WebUIJSNotify' Type='string' Value='[WEBUIJSNOTIFY]' KeyPath='yes' />
-									<File Name='notify.js' />
-								</Component>
-							</Directory>
-
-							<Directory Id='lib' Name='lib'>
-								<Component Id="WebUILib" Guid="7DCC9F4B-FC6B-4E27-9EC0-515CAC60CDD8">
-									<RegistryValue Root='HKCU' Key='Software\Permafrost\Polaris' Name='WebUILib' Type='string' Value='[WEBUILIB]' KeyPath='yes' />
-									<RemoveFolder Id='RemoveLib' Directory='lib' On='uninstall' />								
-								</Component>
-								<Component Id='WebUILibCookie' Guid='294ECB0A-2CE7-4F1F-852C-FA81E6082B4C'>
-									<RegistryValue Root='HKCU' Key='Software\Permafrost\Polaris' Name='WebUILibCookie' Type='string' Value='[WEBUILIBCOOKIE]' KeyPath='yes' />
-									<File Name='js.cookie.js' />
-								</Component>
-								<Component Id='WebUILibRiot' Guid='460200A1-6926-4FA9-98D5-A9F72555FBFC'>
-									<RegistryValue Root='HKCU' Key='Software\Permafrost\Polaris' Name='WebUILibRiot' Type='string' Value='[WEBUILIBRIOT]' KeyPath='yes' />
-									<File Name='riot+compiler.min.js' />
-								</Component>
-								<Component Id='WebUILibRouteTag' Guid='6728F797-21A9-4218-BD1B-074E5E005798'>
-									<RegistryValue Root='HKCU' Key='Software\Permafrost\Polaris' Name='WebUILibRouteTag' Type='string' Value='[WEBUILIBROUTETAG]' KeyPath='yes' />
-									<File Name='route+tag.min.js' />
-								</Component>
-							</Directory>	
-
-							<Directory Id='tags' Name='tags'>
-								<Component Id="WebUITags" Guid="0633A446-1A76-4DCF-9E27-F46920DB4168">
-									<RegistryValue Root='HKCU' Key='Software\Permafrost\Polaris' Name='WebUITags' Type='string' Value='[WEBUITAGS]' KeyPath='yes' />
-									<RemoveFolder Id='RemoveTags' Directory='tags' On='uninstall' />								
-								</Component>
-								<Component Id='WebUITagsApp' Guid='5B8B3B24-24B1-4B7A-8682-8858B7A93326'>
-									<RegistryValue Root='HKCU' Key='Software\Permafrost\Polaris' Name='WebUITagsApp' Type='string' Value='[WEBUITAGSAPP]' KeyPath='yes' />
-									<File Name='app.tag' />
-								</Component>
-								<Component Id='WebUITagsAuth' Guid='E1058E84-EC96-4CD8-8E51-DBB1F2DAA593'>
-									<RegistryValue Root='HKCU' Key='Software\Permafrost\Polaris' Name='WebUITagsAuth' Type='string' Value='[WEBUITAGSAUTH]' KeyPath='yes' />
-									<File Name='auth.tag' />
-								</Component>
-								<Component Id='WebUITagsBreadcrumbs' Guid='EA2F36E1-6182-4249-A612-06D74B491AD7'>
-									<RegistryValue Root='HKCU' Key='Software\Permafrost\Polaris' Name='WebUITagsBreadcrumbs' Type='string' Value='[WEBUITAGSBREADCRUMBS]' KeyPath='yes' />
-									<File Name='breadcrumbs.tag' />
-								</Component>
-								<Component Id='WebUITagsBrowser' Guid='576EB281-3BB8-48BC-8221-F63D674C99F3'>
-									<RegistryValue Root='HKCU' Key='Software\Permafrost\Polaris' Name='WebUITagsBrowser' Type='string' Value='[WEBUITAGSBROWSER]' KeyPath='yes' />
-									<File Name='browser.tag' />
-								</Component>
-								<Component Id='WebUITagsMain' Guid='B85532D1-B288-48C5-872D-31078949DFB7'>
-									<RegistryValue Root='HKCU' Key='Software\Permafrost\Polaris' Name='WebUITagsMain' Type='string' Value='[WEBUITAGSMAIN]' KeyPath='yes' />
-									<File Name='main.tag' />
-								</Component>
-								<Component Id='WebUITagsPlayer' Guid='AE56FB97-E933-4369-9680-E05F89CAA01A'>
-									<RegistryValue Root='HKCU' Key='Software\Permafrost\Polaris' Name='WebUITagsPlayer' Type='string' Value='[WEBUITAGSPLAYER]' KeyPath='yes' />
-									<File Name='player.tag' />
-								</Component>
-								<Component Id='WebUITagsPlaylist' Guid='4E1E08A5-494F-4230-879C-2187706E8CEA'>
-									<RegistryValue Root='HKCU' Key='Software\Permafrost\Polaris' Name='WebUITagsPlaylist' Type='string' Value='[WEBUITAGSPLAYLIST]' KeyPath='yes' />
-									<File Name='playlist.tag' />
-								</Component>
-							</Directory>
-
-							<Directory Id='style' Name='style'>
-								<Component Id="WebUIStyle" Guid="5677F638-2A36-472B-BB47-B0DE7A96CB05">
-									<RegistryValue Root='HKCU' Key='Software\Permafrost\Polaris' Name='WebUIStyle' Type='string' Value='[WEBUISTYLE]' KeyPath='yes' />
-									<RemoveFolder Id='RemoveStyle' Directory='style' On='uninstall' />								
-								</Component>
-								<Component Id='WebUIStyleDefault' Guid='9D8F839D-7E94-4DE4-9B22-30360C1A433D'>
-									<RegistryValue Root='HKCU' Key='Software\Permafrost\Polaris' Name='WebUIStyleDefault' Type='string' Value='[WEBUISTYLEDEFAULT]' KeyPath='yes' />
-									<File Name='default.css' />
-								</Component>
-							</Directory>
-
-						</Directory>
-
-					</Directory>
-				</Directory>
-			</Directory>
-
 			<Directory Id='DesktopFolder' Name='Desktop' />
 			<Directory Id='StartupFolder' Name='Startup' />
-
 			<Directory Id='ProgramMenuFolder' Name='Programs'>
 				<Directory Id='ProgramMenuDir' Name='Permafrost'>
-					<Component Id='ProgramMenuDir' Guid='228B33C8-2391-4693-A5AC-C1128F05C753'>
+					<Component Id="ProgramMenuDir" Guid='*'>
 						<RemoveFolder Id='ProgramMenuDir' On='uninstall' />
 						<RegistryValue Root='HKCU' Key='Software\Permafrost\Polaris' Name='ProgramMenuEntry' Type='string' Value='' KeyPath='yes' />
 					</Component>
 				</Directory>
 			</Directory>
-
 		</Directory>
 
 		<!--Remove extra files after uninstall (db, thumbnails, etc.)-->
@@ -168,38 +49,9 @@
 
 		<Feature Id='Complete' Level='1'>
 			<ComponentRef Id='MainExecutable' />
-			
-			<ComponentRef Id='WebUI' />
-			<ComponentRef Id='WebUIFavicon' />
-			<ComponentRef Id='WebUIIndex' />
-
-			<ComponentRef Id='WebUIImg' />
-			<ComponentRef Id='WebUIImgLogo' />
-
-			<ComponentRef Id='WebUIJS' />
-			<ComponentRef Id='WebUIJSUtils' />
-			<ComponentRef Id='WebUIJSNotify' />
-
-			<ComponentRef Id='WebUILib' />
-			<ComponentRef Id='WebUILibCookie' />
-			<ComponentRef Id='WebUILibRiot' />
-			<ComponentRef Id='WebUILibRouteTag' />
-
-			<ComponentRef Id='WebUIStyle' />
-			<ComponentRef Id='WebUIStyleDefault' />
-
-			<ComponentRef Id='WebUITags' />
-			<ComponentRef Id='WebUITagsApp' />
-			<ComponentRef Id='WebUITagsAuth' />
-			<ComponentRef Id='WebUITagsBreadcrumbs' />
-			<ComponentRef Id='WebUITagsBrowser' />
-
-			<ComponentRef Id='WebUITagsMain' />
-			<ComponentRef Id='WebUITagsPlayer' />
-			<ComponentRef Id='WebUITagsPlaylist' />
-
 			<ComponentRef Id='ProgramMenuDir' />
 			<ComponentRef Id='CleanupExtraData' />
+			<ComponentGroupRef Id="WebUI" />
 		</Feature>
 
 		<Icon Id='polaris.exe' SourceFile='polaris.exe' />
