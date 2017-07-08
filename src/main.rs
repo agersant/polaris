@@ -112,9 +112,13 @@ fn run() -> Result<()> {
 
 	// Init DB
 	println!("Starting up database");
-	let db_file_name = matches.opt_str("d").unwrap_or("db.sqlite".to_owned());
-	let db_file_path = Path::new(&db_file_name);
-	let db = Arc::new(db::DB::new(&db_file_path)?);
+	let db_path = matches.opt_str("d");
+	let mut default_db_path = utils::get_data_root()?;
+	default_db_path.push("db.sqlite");
+	let db_path = db_path
+		.map(|n| Path::new(n.as_str()).to_path_buf())
+		.unwrap_or(default_db_path);
+	let db = Arc::new(db::DB::new(&db_path)?);
 
 	// Parse config
 	let config_file_name = matches.opt_str("c");
