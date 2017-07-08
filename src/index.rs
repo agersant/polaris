@@ -156,26 +156,22 @@ impl<'conn> IndexBuilder<'conn> {
 		Ok(())
 	}
 
-	fn get_artwork(&self, dir: &Path) -> Option<String> {
-		if let Ok(dir_content) = fs::read_dir(dir) {
-			for file in dir_content {
-				if let Ok(file) = file {
-					if let Some(name_string) = file.file_name().to_str() {
-						if self.album_art_pattern.is_match(name_string) {
-							return file.path().to_str().map(|p| p.to_owned());
-						}
-					}
+	fn get_artwork(&self, dir: &Path) -> Result<Option<String>> {
+		for file in fs::read_dir(dir)? {
+			let file = file?;
+			if let Some(name_string) = file.file_name().to_str() {
+				if self.album_art_pattern.is_match(name_string) {
+					return Ok(file.path().to_str().map(|p| p.to_owned()));
 				}
 			}
 		}
-
-		None
+		Ok(None)
 	}
 
 	fn populate_directory(&mut self, parent: Option<&Path>, path: &Path) -> Result<()> {
 
 		// Find artwork
-		let artwork = self.get_artwork(path);
+		let artwork = self.get_artwork(path).unwrap_or(None);
 
 		// Extract path and parent path
 		let parent_string = parent.and_then(|p| p.to_str()).map(|s| s.to_owned());
@@ -200,57 +196,58 @@ impl<'conn> IndexBuilder<'conn> {
 		let mut sub_directories = Vec::new();
 
 		// Insert content
-		if let Ok(dir_content) = fs::read_dir(path) {
-			for file in dir_content {
-				let file_path = match file {
-					Ok(f) => f.path(),
-					_ => continue,
-				};
+		for file in fs::read_dir(path)? {
+			let file_path = match file {
+				Ok(f) => f.path(),
+				_ => {
+					println!("File read error within {}", path_string);
+					break;
+				},
+			};
 
-				if file_path.is_dir() {
-					sub_directories.push(file_path.to_path_buf());
-					continue;
-				}
+			if file_path.is_dir() {
+				sub_directories.push(file_path.to_path_buf());
+				continue;
+			}
 
-				if let Some(file_path_string) = file_path.to_str() {
-					if let Ok(tags) = metadata::read(file_path.as_path()) {
-						if tags.year.is_some() {
-							inconsistent_directory_year |= directory_year.is_some() &&
-							                               directory_year != tags.year;
-							directory_year = tags.year;
-						}
-
-						if tags.album.is_some() {
-							inconsistent_directory_album |= directory_album.is_some() &&
-							                                directory_album != tags.album;
-							directory_album = tags.album.as_ref().map(|a| a.clone());
-						}
-
-						if tags.album_artist.is_some() {
-							inconsistent_directory_artist |= directory_artist.is_some() &&
-							                                 directory_artist != tags.album_artist;
-							directory_artist = tags.album_artist.as_ref().map(|a| a.clone());
-						} else if tags.artist.is_some() {
-							inconsistent_directory_artist |= directory_artist.is_some() &&
-							                                 directory_artist != tags.artist;
-							directory_artist = tags.artist.as_ref().map(|a| a.clone());
-						}
-
-						let song = NewSong {
-							path: file_path_string.to_owned(),
-							parent: path_string.to_owned(),
-							disc_number: tags.disc_number.map(|n| n as i32),
-							track_number: tags.track_number.map(|n| n as i32),
-							title: tags.title,
-							artist: tags.artist,
-							album_artist: tags.album_artist,
-							album: tags.album,
-							year: tags.year,
-							artwork: artwork.as_ref().map(|s| s.to_owned()),
-						};
-
-						self.push_song(song)?;
+			if let Some(file_path_string) = file_path.to_str() {
+				if let Ok(tags) = metadata::read(file_path.as_path()) {
+					if tags.year.is_some() {
+						inconsistent_directory_year |= directory_year.is_some() &&
+														directory_year != tags.year;
+						directory_year = tags.year;
 					}
+
+					if tags.album.is_some() {
+						inconsistent_directory_album |= directory_album.is_some() &&
+														directory_album != tags.album;
+						directory_album = tags.album.as_ref().map(|a| a.clone());
+					}
+
+					if tags.album_artist.is_some() {
+						inconsistent_directory_artist |= directory_artist.is_some() &&
+															directory_artist != tags.album_artist;
+						directory_artist = tags.album_artist.as_ref().map(|a| a.clone());
+					} else if tags.artist.is_some() {
+						inconsistent_directory_artist |= directory_artist.is_some() &&
+															directory_artist != tags.artist;
+						directory_artist = tags.artist.as_ref().map(|a| a.clone());
+					}
+
+					let song = NewSong {
+						path: file_path_string.to_owned(),
+						parent: path_string.to_owned(),
+						disc_number: tags.disc_number.map(|n| n as i32),
+						track_number: tags.track_number.map(|n| n as i32),
+						title: tags.title,
+						artist: tags.artist,
+						album_artist: tags.album_artist,
+						album: tags.album,
+						year: tags.year,
+						artwork: artwork.as_ref().map(|s| s.to_owned()),
+					};
+
+					self.push_song(song)?;
 				}
 			}
 		}
