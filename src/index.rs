@@ -202,7 +202,7 @@ impl<'conn> IndexBuilder<'conn> {
 				_ => {
 					println!("File read error within {}", path_string);
 					break;
-				},
+				}
 			};
 
 			if file_path.is_dir() {
@@ -214,23 +214,23 @@ impl<'conn> IndexBuilder<'conn> {
 				if let Ok(tags) = metadata::read(file_path.as_path()) {
 					if tags.year.is_some() {
 						inconsistent_directory_year |= directory_year.is_some() &&
-														directory_year != tags.year;
+						                               directory_year != tags.year;
 						directory_year = tags.year;
 					}
 
 					if tags.album.is_some() {
 						inconsistent_directory_album |= directory_album.is_some() &&
-														directory_album != tags.album;
+						                                directory_album != tags.album;
 						directory_album = tags.album.as_ref().map(|a| a.clone());
 					}
 
 					if tags.album_artist.is_some() {
 						inconsistent_directory_artist |= directory_artist.is_some() &&
-															directory_artist != tags.album_artist;
+						                                 directory_artist != tags.album_artist;
 						directory_artist = tags.album_artist.as_ref().map(|a| a.clone());
 					} else if tags.artist.is_some() {
 						inconsistent_directory_artist |= directory_artist.is_some() &&
-															directory_artist != tags.artist;
+						                                 directory_artist != tags.artist;
 						directory_artist = tags.artist.as_ref().map(|a| a.clone());
 					}
 
