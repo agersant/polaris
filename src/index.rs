@@ -23,6 +23,8 @@ use metadata;
 const INDEX_BUILDING_INSERT_BUFFER_SIZE: usize = 1000; // Insertions in each transaction
 const INDEX_BUILDING_CLEAN_BUFFER_SIZE: usize = 500; // Insertions in each transaction
 
+no_arg_sql_function!(random, types::Integer, "Represents the SQL RANDOM() function");
+
 pub enum Command {
 	REINDEX,
 }
@@ -550,7 +552,7 @@ pub fn get_random_albums<T>(db: &T, count: i64) -> Result<Vec<Directory>>
 	let real_directories = directories
 		.filter(album.is_not_null())
 		.limit(count)
-		.order(sql::<types::Bool>("RANDOM()"))
+		.order(random)
 		.load(connection)?;
 	let virtual_directories = real_directories
 		.into_iter()
