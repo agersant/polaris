@@ -21,9 +21,8 @@ Remove-Item -Recurse .\release\tmp\*
 Copy-Item .\res\windows\installer\license.rtf	.\release\tmp\
 Copy-Item .\res\windows\installer\banner.bmp	.\release\tmp\
 Copy-Item .\res\windows\installer\dialog.bmp	.\release\tmp\
-Copy-Item .\target\release\polaris.exe 			.\release\tmp\
-Copy-Item .\res\default_config.toml 			.\release\tmp\polaris.toml
-Copy-Item .\web\ 								.\release\tmp\ -recurse
+Copy-Item .\target\release\polaris.exe 			  .\release\tmp\
+Copy-Item .\web\ 								              .\release\tmp\ -recurse
 
 ""
 "Creating installer"
