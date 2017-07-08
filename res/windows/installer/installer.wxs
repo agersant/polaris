@@ -28,15 +28,6 @@
   				<Directory Id='AppDataPermafrost' Name='Permafrost'>
 					<Directory Id='AppDataPolaris' Name='Polaris' FileSource='.'>
 
-						<Component Id='ConfigFile' Guid='3E84B72F-83FC-4B0B-B5FC-1347F1A03421'>
-							<RegistryValue Root='HKCU' Key='Software\Permafrost\Polaris' Name='ConfigDirectory' Type='string' Value='[CONFIGDIRECTORY]' KeyPath='yes' />
-							<File Source='polaris.toml'>
-								<Permission GenericAll='yes' User='Everyone' />
-							</File>
-							<RemoveFolder Id='RemoveAppDataPolaris' Directory='AppDataPolaris' On='uninstall' />
-							<RemoveFolder Id='RemoveAppDataPermafrost' Directory='AppDataPermafrost' On='uninstall' />
-						</Component>
-
 						<Directory Id='web' Name='web'>
 							<Component Id="WebUI" Guid="A48BC5BB-E4CA-40A8-BF47-690E61358C0E">
 								<RegistryValue Root='HKCU' Key='Software\Permafrost\Polaris' Name='RemoveWeb' Type='string' Value='[REMOVEWEB]' KeyPath='yes' />
@@ -119,10 +110,6 @@
 									<RegistryValue Root='HKCU' Key='Software\Permafrost\Polaris' Name='WebUITagsBrowser' Type='string' Value='[WEBUITAGSBROWSER]' KeyPath='yes' />
 									<File Name='browser.tag' />
 								</Component>
-								<Component Id='WebUITagsBrowserTabs' Guid='E02B5342-137C-4D74-93A5-AE16161E303D'>
-									<RegistryValue Root='HKCU' Key='Software\Permafrost\Polaris' Name='WebUITagsBrowserTabs' Type='string' Value='[WEBUITAGSBROWSERTABS]' KeyPath='yes' />
-									<File Name='browser-tabs.tag' />
-								</Component>
 								<Component Id='WebUITagsMain' Guid='B85532D1-B288-48C5-872D-31078949DFB7'>
 									<RegistryValue Root='HKCU' Key='Software\Permafrost\Polaris' Name='WebUITagsMain' Type='string' Value='[WEBUITAGSMAIN]' KeyPath='yes' />
 									<File Name='main.tag' />
@@ -181,7 +168,6 @@
 
 		<Feature Id='Complete' Level='1'>
 			<ComponentRef Id='MainExecutable' />
-			<ComponentRef Id='ConfigFile' />
 			
 			<ComponentRef Id='WebUI' />
 			<ComponentRef Id='WebUIFavicon' />
@@ -207,7 +193,7 @@
 			<ComponentRef Id='WebUITagsAuth' />
 			<ComponentRef Id='WebUITagsBreadcrumbs' />
 			<ComponentRef Id='WebUITagsBrowser' />
-			<ComponentRef Id='WebUITagsBrowserTabs' />
+
 			<ComponentRef Id='WebUITagsMain' />
 			<ComponentRef Id='WebUITagsPlayer' />
 			<ComponentRef Id='WebUITagsPlaylist' />

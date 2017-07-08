@@ -12,7 +12,6 @@ install: build
 	install -d $(POLARIS_CONFIG_DIR)
 	install -d $(POLARIS_DATA_DIR)
 	install ./target/release/polaris $(POLARIS_BIN_DIR)
-	install ./polaris.toml $(POLARIS_CONFIG_DIR)
 	cp -r ./web $(POLARIS_DATA_DIR)
 	@echo "Polaris installation complete!"
 
