@@ -4,7 +4,6 @@ mkdir -p release/tmp
 
 echo "Copying package files"
 cp -r web src Cargo.toml Cargo.lock res/unix/Makefile release/tmp
-cp res/default_config.toml release/tmp/polaris.toml
 
 echo "Creating tarball"
 POLARIS_VERSION=$(grep -m 1 ^version Cargo.toml | awk '{print $3}' | tr -d '"\r\n')
