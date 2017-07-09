@@ -13,8 +13,7 @@ use std::thread;
 use std::time;
 
 use config::MiscSettings;
-use db::ConnectionSource;
-use db::DB;
+use db::{self, ConnectionSource, DB};
 use db::{directories, misc_settings, songs};
 use vfs::{VFS, VFSSource};
 use errors::*;
@@ -579,26 +578,9 @@ pub fn get_recent_albums<T>(db: &T, count: i64) -> Result<Vec<Directory>>
 	Ok(virtual_directories.collect::<Vec<_>>())
 }
 
-fn _get_test_db(name: &str) -> DB {
-	use config;
-	let config_path = Path::new("test/config.toml");
-	let config = config::parse_toml_file(&config_path).unwrap();
-
-	let mut db_path = PathBuf::new();
-	db_path.push("test");
-	db_path.push(name);
-	if db_path.exists() {
-		fs::remove_file(&db_path).unwrap();
-	}
-
-	let db = DB::new(&db_path).unwrap();
-	config::overwrite(&db, &config).unwrap();
-	db
-}
-
 #[test]
 fn test_populate() {
-	let db = _get_test_db("populate.sqlite");
+	let db = db::_get_test_db("populate.sqlite");
 	update(&db).unwrap();
 	update(&db).unwrap(); // Check that subsequent updates don't run into conflicts
 
@@ -625,7 +607,7 @@ fn test_metadata() {
 	let mut artwork_path = target.clone();
 	artwork_path.push("Folder.png");
 
-	let db = _get_test_db("metadata.sqlite");
+	let db = db::_get_test_db("metadata.sqlite");
 	update(&db).unwrap();
 
 	let connection = db.get_connection();
@@ -655,7 +637,7 @@ fn test_browse_top_level() {
 	let mut root_path = PathBuf::new();
 	root_path.push("root");
 
-	let db = _get_test_db("browse_top_level.sqlite");
+	let db = db::_get_test_db("browse_top_level.sqlite");
 	update(&db).unwrap();
 	let results = browse(&db, Path::new("")).unwrap();
 
@@ -676,7 +658,7 @@ fn test_browse() {
 	tobokegao_path.push("root");
 	tobokegao_path.push("Tobokegao");
 
-	let db = _get_test_db("browse.sqlite");
+	let db = db::_get_test_db("browse.sqlite");
 	update(&db).unwrap();
 	let results = browse(&db, Path::new("root")).unwrap();
 
@@ -693,7 +675,7 @@ fn test_browse() {
 
 #[test]
 fn test_flatten() {
-	let db = _get_test_db("flatten.sqlite");
+	let db = db::_get_test_db("flatten.sqlite");
 	update(&db).unwrap();
 	let results = flatten(&db, Path::new("root")).unwrap();
 	assert_eq!(results.len(), 12);
@@ -701,7 +683,7 @@ fn test_flatten() {
 
 #[test]
 fn test_random() {
-	let db = _get_test_db("random.sqlite");
+	let db = db::_get_test_db("random.sqlite");
 	update(&db).unwrap();
 	let results = get_random_albums(&db, 1).unwrap();
 	assert_eq!(results.len(), 1);
@@ -709,7 +691,7 @@ fn test_random() {
 
 #[test]
 fn test_recent() {
-	let db = _get_test_db("recent.sqlite");
+	let db = db::_get_test_db("recent.sqlite");
 	update(&db).unwrap();
 	let results = get_recent_albums(&db, 2).unwrap();
 	assert_eq!(results.len(), 2);
