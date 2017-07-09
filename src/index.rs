@@ -13,7 +13,7 @@ use std::thread;
 use std::time;
 
 use config::MiscSettings;
-use db::{self, ConnectionSource, DB};
+use db::{self, ConnectionSource};
 use db::{directories, misc_settings, songs};
 use vfs::{VFS, VFSSource};
 use errors::*;
@@ -22,7 +22,9 @@ use metadata;
 const INDEX_BUILDING_INSERT_BUFFER_SIZE: usize = 1000; // Insertions in each transaction
 const INDEX_BUILDING_CLEAN_BUFFER_SIZE: usize = 500; // Insertions in each transaction
 
-no_arg_sql_function!(random, types::Integer, "Represents the SQL RANDOM() function");
+no_arg_sql_function!(random,
+                     types::Integer,
+                     "Represents the SQL RANDOM() function");
 
 pub enum Command {
 	REINDEX,
