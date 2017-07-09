@@ -33,53 +33,17 @@ You can now start Polaris from the start menu or from your desktop, Polaris will
 2. Extract the polaris archive in a directory and open a terminal in that directory
 3. Execute `make install` (this may take several minutes)
 
-This installation process puts the polaris executable in `~/.local/bin/polaris`, a configuration file in `~/.config/polaris` and several data files under `~/.local/share/polaris`.
+This installation process puts the polaris executable in `~/.local/bin/polaris` and several data files under `~/.local/share/polaris`.
 
 From here, you might want to adjust your system to run Polaris on login using Cron, Systemd or whichever method your distribution endorses.
 
 If you want to uninstall Polaris, execute `make uninstall` from the extracted archive's directory. This will simply delete the directories created by the install process.
 
-## Basic Configuration
-
-All configuration is done by editing your configuration file. On Windows, the file is located at `%appdata%\Roaming\Permafrost\Polaris\polaris.toml`. On Linux, the file is located at `~/.config/polaris/polaris.toml`. Note that Polaris needs to be restarted for configuration changes to be taken into account.
-
-### Locating Your Music
-
-Locate the following block in the configuration file:
-
-```
-[[mount_dirs]]
-source = 'C:/Users/your_name/Music'		# Location of the directory on your computer
-name = 'root'							# Public-facing name for this directory
-```
-
-Edit the source field so it points to your music. You can set the name field to anything you like, or keep the default value.
-
-If you would like to stream music from other directories, you can add similar `[[mount_dirs]]` blocks after this one. The default configuration file comes with another such block, prefixed with `#` signs which indicate comments. Feel free to uncomment and use this block.
-
-### Setting Up Users
-
-Locate the following block in the configuration file:
-
-```
-[[users]]
-name = 'your_first_user'
-password = 'your_first_password'		# Passwords are stored unencrypted. Do not re-use a sensitive password!
-```
-
-Update the username and password to your liking. Heed the warning about password safety, do not re-use your email or banking password here! 
-
-Similar to the `[[mount_dirs]]` block, you can add additional `[[users]]` block to create additional users.
-
 ### Test Run
 
-Now would be a good time to try out your installation!
-
-- Start Polaris using the shortcut on your desktop
+- Start Polaris using the shortcut on your desktop (Windows) or by running the executable in `~/.local/bin/polaris` (Linux)
 - In your Web browser, access http://localhost:5050
-- If all goes well, you will see a login form
-- Enter your credentials as you typed them in the `[[users]]` block of your polaris.toml file
-- Enjoy the music!
+- You will see a welcome page that will guide you through the Polaris configuration
 
 ![Polaris Web UI](res/readme/web_ui.png?raw=true "Polaris Web UI")
 
@@ -117,18 +81,10 @@ The steps below will walk you through setting up YDNS and Polaris to give your i
 	- Click on the ID number on the left (#28717 in the example above) of the column that has AAAA listed as its "Type".
 	- Click on the red trash can icon in the corner to delete this record
 	- Done!
-6. Back to your Polaris configuration file, locate the following block:
-```
-# Use this section if you want Polaris to broadcast your IP to https://ydns.io 
-# [ydns]
-# host = 'your_hostname.ydns.eu'
-# username = 'your_username'
-# password = 'your_ydns_password'
-```
-- Uncomment this block by removing the # signs and leading space from all the lines
-- Update the hostname to match what you set in step 5. (eg. yourdomain.ydns.eu)
-- Update the username to the email address you use when creating your YDNS account
-- You can find your YDNS API password on https://ydns.io. Click on the "User" icon in the top right and then `Preferences > API`.
+6. In the Polaris web interface, access the `Dynamic DNS` tab of the settings screen:
+- Update the hostname field to match what you set in step 5. (eg. http://yourdomain.ydns.eu)
+- Update the username field to the email address you use when creating your YDNS account
+- Update the password field with your YDNS API password. You can find this password on https://ydns.io: click on the "User" icon in the top right and then `Preferences > API`.
 
 #### Port Forwarding
 Configure port forwarding on your router to redirect port 80 towards port 5050 on the computer where you run Polaris. The exact way to do this depends on your router manufacturer and model.
