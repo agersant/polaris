@@ -1,5 +1,4 @@
 POLARIS_BIN_DIR := ~/.local/bin/polaris
-POLARIS_CONFIG_DIR := ~/.config/polaris
 POLARIS_DATA_DIR := ~/.local/share/polaris
 
 all: build
@@ -9,7 +8,6 @@ build:
 
 install: build
 	install -d $(POLARIS_BIN_DIR)
-	install -d $(POLARIS_CONFIG_DIR)
 	install -d $(POLARIS_DATA_DIR)
 	install ./target/release/polaris $(POLARIS_BIN_DIR)
 	cp -r ./web $(POLARIS_DATA_DIR)
@@ -20,5 +18,4 @@ clean:
 
 uninstall:
 	rm -r $(POLARIS_BIN_DIR)
-	rm -r $(POLARIS_CONFIG_DIR)
 	rm -r $(POLARIS_DATA_DIR)
