@@ -67,6 +67,7 @@ mod ddns;
 mod errors;
 mod index;
 mod metadata;
+mod playlist;
 mod ui;
 mod user;
 mod utils;
