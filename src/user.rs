@@ -60,12 +60,10 @@ pub fn auth<T>(db: &T, username: &str, password: &str) -> Result<bool>
 {
 	use db::users::dsl::*;
 	let connection = db.get_connection();
-	let connection = connection.lock().unwrap();
-	let connection = connection.deref();
 	let user: QueryResult<User> = users
 		.select((name, password_salt, password_hash, admin))
 		.filter(name.eq(username))
-		.get_result(connection);
+		.get_result(connection.deref());
 	match user {
 		Err(diesel::result::Error::NotFound) => Ok(false),
 		Ok(u) => Ok(u.verify_password(password)),
@@ -78,9 +76,9 @@ pub fn count<T>(db: &T) -> Result<i64>
 {
 	use db::users::dsl::*;
 	let connection = db.get_connection();
-	let connection = connection.lock().unwrap();
-	let connection = connection.deref();
-	Ok(users.select(expression::count(name)).first(connection)?)
+	Ok(users
+	       .select(expression::count(name))
+	       .first(connection.deref())?)
 }
 
 pub fn is_admin<T>(db: &T, username: &str) -> Result<bool>
@@ -88,11 +86,9 @@ pub fn is_admin<T>(db: &T, username: &str) -> Result<bool>
 {
 	use db::users::dsl::*;
 	let connection = db.get_connection();
-	let connection = connection.lock().unwrap();
-	let connection = connection.deref();
 	let is_admin: i32 = users
 		.filter(name.eq(username))
 		.select(admin)
-		.get_result(connection)?;
+		.get_result(connection.deref())?;
 	Ok(is_admin != 0)
 }

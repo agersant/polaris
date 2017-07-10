@@ -26,11 +26,9 @@ impl DDNSConfigSource for DB {
 	fn get_ddns_config(&self) -> errors::Result<DDNSConfig> {
 		use self::ddns_config::dsl::*;
 		let connection = self.get_connection();
-		let connection = connection.lock().unwrap();
-		let connection = connection.deref();
 		Ok(ddns_config
 		       .select((host, username, password))
-		       .get_result(connection)?)
+		       .get_result(connection.deref())?)
 	}
 }
 

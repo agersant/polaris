@@ -48,9 +48,7 @@ fn get_auth_secret<T>(db: &T) -> Result<String>
 {
 	use self::misc_settings::dsl::*;
 	let connection = db.get_connection();
-	let connection = connection.lock().unwrap();
-	let connection = connection.deref();
-	let misc: MiscSettings = misc_settings.get_result(connection)?;
+	let misc: MiscSettings = misc_settings.get_result(connection.deref())?;
 	Ok(misc.auth_secret.to_owned())
 }
 

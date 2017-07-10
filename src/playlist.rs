@@ -52,8 +52,6 @@ fn list_playlists<T>(owner: &str, db: &T) -> Result<Vec<String>>
 	where T: ConnectionSource + VFSSource
 {
 	let connection = db.get_connection();
-	let connection = connection.lock().unwrap();
-	let connection = connection.deref();
 
 	let user: User;
 	{
@@ -61,14 +59,14 @@ fn list_playlists<T>(owner: &str, db: &T) -> Result<Vec<String>>
 		user = users
 			.filter(name.eq(owner))
 			.select((id, name))
-			.first(connection)?;
+			.first(connection.deref())?;
 	}
 
 	{
 		use self::playlists::dsl::*;
 		let found_playlists: Vec<String> = Playlist::belonging_to(&user)
 			.select(name)
-			.load(connection)?;
+			.load(connection.deref())?;
 		Ok(found_playlists)
 	}
 }
@@ -83,8 +81,6 @@ fn save_playlist<T>(name: &str, owner: &str, content: &Vec<String>, db: &T) -> R
 
 	{
 		let connection = db.get_connection();
-		let connection = connection.lock().unwrap();
-		let connection = connection.deref();
 
 		// Find owner
 		{
@@ -92,7 +88,7 @@ fn save_playlist<T>(name: &str, owner: &str, content: &Vec<String>, db: &T) -> R
 			user = users
 				.filter(name.eq(owner))
 				.select((id, name))
-				.get_result(connection)?;
+				.get_result(connection.deref())?;
 		}
 
 		// Create playlist
@@ -102,19 +98,19 @@ fn save_playlist<T>(name: &str, owner: &str, content: &Vec<String>, db: &T) -> R
 		};
 
 		diesel::insert(&new_playlist)
-		.into(playlists::table)
-		.execute(connection)?;
+			.into(playlists::table)
+			.execute(connection.deref())?;
 
 		{
 			use self::playlists::dsl::*;
 			playlist = playlists
 				.filter(name.eq(name).and(owner.eq(user.id)))
-				.get_result(connection)?;
+				.get_result(connection.deref())?;
 		}
 
 		// Delete old content (if any)
 		let old_songs = PlaylistSong::belonging_to(&playlist);
-		diesel::delete(old_songs).execute(connection)?;
+		diesel::delete(old_songs).execute(connection.deref())?;
 	}
 
 	// Insert content
@@ -136,12 +132,9 @@ fn save_playlist<T>(name: &str, owner: &str, content: &Vec<String>, db: &T) -> R
 
 	{
 		let connection = db.get_connection();
-		let connection = connection.lock().unwrap();
-		let connection = connection.deref();
-
 		diesel::insert(&new_songs)
 			.into(playlist_songs::table)
-			.execute(connection)?;
+			.execute(connection.deref())?;
 	}
 
 	Ok(())
@@ -157,8 +150,6 @@ fn read_playlist<T>(playlist_name: &str, owner: &str, db: &T) -> Result<Vec<Song
 
 	{
 		let connection = db.get_connection();
-		let connection = connection.lock().unwrap();
-		let connection = connection.deref();
 
 		// Find owner
 		{
@@ -166,7 +157,7 @@ fn read_playlist<T>(playlist_name: &str, owner: &str, db: &T) -> Result<Vec<Song
 			user = users
 				.filter(name.eq(owner))
 				.select((id, name))
-				.get_result(connection)?;
+				.get_result(connection.deref())?;
 		}
 
 		// Find playlist
@@ -174,13 +165,13 @@ fn read_playlist<T>(playlist_name: &str, owner: &str, db: &T) -> Result<Vec<Song
 			use self::playlists::dsl::*;
 			playlist = playlists
 				.filter(name.eq(playlist_name).and(owner.eq(user.id)))
-				.get_result(connection)?;
+				.get_result(connection.deref())?;
 		}
 
 		// Find content
 		playlist_songs = PlaylistSong::belonging_to(&playlist)
 			.order(playlist_songs::columns::ordering)
-			.get_results(connection)?;
+			.get_results(connection.deref())?;
 	}
 
 	// TODO
@@ -191,8 +182,6 @@ fn delete_playlist<T>(playlist_name: &str, owner: &str, db: &T) -> Result<()>
 	where T: ConnectionSource + VFSSource
 {
 	let connection = db.get_connection();
-	let connection = connection.lock().unwrap();
-	let connection = connection.deref();
 
 	let user: User;
 	{
@@ -200,13 +189,13 @@ fn delete_playlist<T>(playlist_name: &str, owner: &str, db: &T) -> Result<()>
 		user = users
 			.filter(name.eq(owner))
 			.select((id, name))
-			.first(connection)?;
+			.first(connection.deref())?;
 	}
 
 	{
 		use self::playlists::dsl::*;
 		let q = Playlist::belonging_to(&user).filter(name.eq(playlist_name));
-		diesel::delete(q).execute(connection)?;
+		diesel::delete(q).execute(connection.deref())?;
 	}
 
 	Ok(())

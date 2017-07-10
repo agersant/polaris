@@ -17,11 +17,9 @@ impl VFSSource for DB {
 		use self::mount_points::dsl::*;
 		let mut vfs = VFS::new();
 		let connection = self.get_connection();
-		let connection = connection.lock().unwrap();
-		let connection = connection.deref();
 		let points: Vec<MountPoint> = mount_points
 			.select((source, name))
-			.get_results(connection)?;
+			.get_results(connection.deref())?;
 		for point in points {
 			vfs.mount(&Path::new(&point.source), &point.name)?;
 		}

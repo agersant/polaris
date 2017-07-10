@@ -295,9 +295,9 @@ fn clean<T>(db: &T) -> Result<()>
 		let all_songs: Vec<String>;
 		{
 			let connection = db.get_connection();
-			let connection = connection.lock().unwrap();
-			let connection = connection.deref();
-			all_songs = songs::table.select(songs::path).load(connection)?;
+			all_songs = songs::table
+				.select(songs::path)
+				.load(connection.deref())?;
 		}
 
 		let missing_songs = all_songs
@@ -310,11 +310,9 @@ fn clean<T>(db: &T) -> Result<()>
 
 		{
 			let connection = db.get_connection();
-			let connection = connection.lock().unwrap();
-			let connection = connection.deref();
 			for chunk in missing_songs[..].chunks(INDEX_BUILDING_CLEAN_BUFFER_SIZE) {
 				diesel::delete(songs::table.filter(songs::path.eq_any(chunk)))
-					.execute(connection)?;
+					.execute(connection.deref())?;
 			}
 
 		}
@@ -324,11 +322,9 @@ fn clean<T>(db: &T) -> Result<()>
 		let all_directories: Vec<String>;
 		{
 			let connection = db.get_connection();
-			let connection = connection.lock().unwrap();
-			let connection = connection.deref();
 			all_directories = directories::table
 				.select(directories::path)
-				.load(connection)?;
+				.load(connection.deref())?;
 		}
 
 		let missing_directories = all_directories
@@ -341,11 +337,9 @@ fn clean<T>(db: &T) -> Result<()>
 
 		{
 			let connection = db.get_connection();
-			let connection = connection.lock().unwrap();
-			let connection = connection.deref();
 			for chunk in missing_directories[..].chunks(INDEX_BUILDING_CLEAN_BUFFER_SIZE) {
 				diesel::delete(directories::table.filter(directories::path.eq_any(chunk)))
-					.execute(connection)?;
+					.execute(connection.deref())?;
 			}
 		}
 	}
@@ -358,17 +352,16 @@ fn populate<T>(db: &T) -> Result<()>
 {
 	let vfs = db.get_vfs()?;
 	let mount_points = vfs.get_mount_points();
-	let connection = db.get_connection();
 
 	let album_art_pattern;
 	{
-		let connection = connection.lock().unwrap();
-		let connection = connection.deref();
-		let settings: MiscSettings = misc_settings::table.get_result(connection)?;
+		let connection = db.get_connection();
+		let settings: MiscSettings = misc_settings::table.get_result(connection.deref())?;
 		album_art_pattern = Regex::new(&settings.index_album_art_pattern)?;
 	}
 
-	let mut builder = IndexBuilder::new(&connection, album_art_pattern)?;
+	let connection_mutex = db.get_connection_mutex();
+	let mut builder = IndexBuilder::new(connection_mutex.deref(), album_art_pattern)?;
 	for (_, target) in mount_points {
 		builder.populate_directory(None, target.as_path())?;
 	}
@@ -433,10 +426,8 @@ pub fn self_trigger<T>(db: &T, command_buffer: Arc<Mutex<Sender<Command>>>)
 		let sleep_duration;
 		{
 			let connection = db.get_connection();
-			let connection = connection.lock().unwrap();
-			let connection = connection.deref();
 			let settings: Result<MiscSettings> = misc_settings::table
-				.get_result(connection)
+				.get_result(connection.deref())
 				.map_err(|e| e.into());
 			if let Err(ref e) = settings {
 				println!("Could not retrieve index sleep duration: {}", e);
@@ -483,14 +474,12 @@ pub fn browse<T>(db: &T, virtual_path: &Path) -> Result<Vec<CollectionFile>>
 	let mut output = Vec::new();
 	let vfs = db.get_vfs()?;
 	let connection = db.get_connection();
-	let connection = connection.lock().unwrap();
-	let connection = connection.deref();
 
 	if virtual_path.components().count() == 0 {
 		// Browse top-level
 		let real_directories: Vec<Directory> = directories::table
 			.filter(directories::parent.is_null())
-			.load(connection)?;
+			.load(connection.deref())?;
 		let virtual_directories = real_directories
 			.into_iter()
 			.filter_map(|s| virtualize_directory(&vfs, s));
@@ -506,7 +495,7 @@ pub fn browse<T>(db: &T, virtual_path: &Path) -> Result<Vec<CollectionFile>>
 		let real_directories: Vec<Directory> = directories::table
 			.filter(directories::parent.eq(&real_path_string))
 			.order(sql::<types::Bool>("path COLLATE NOCASE ASC"))
-			.load(connection)?;
+			.load(connection.deref())?;
 		let virtual_directories = real_directories
 			.into_iter()
 			.filter_map(|s| virtualize_directory(&vfs, s));
@@ -515,7 +504,7 @@ pub fn browse<T>(db: &T, virtual_path: &Path) -> Result<Vec<CollectionFile>>
 		let real_songs: Vec<Song> = songs::table
 			.filter(songs::parent.eq(&real_path_string))
 			.order(sql::<types::Bool>("path COLLATE NOCASE ASC"))
-			.load(connection)?;
+			.load(connection.deref())?;
 		let virtual_songs = real_songs
 			.into_iter()
 			.filter_map(|s| virtualize_song(&vfs, s));
@@ -531,11 +520,11 @@ pub fn flatten<T>(db: &T, virtual_path: &Path) -> Result<Vec<Song>>
 	use self::songs::dsl::*;
 	let vfs = db.get_vfs()?;
 	let connection = db.get_connection();
-	let connection = connection.lock().unwrap();
-	let connection = connection.deref();
 	let real_path = vfs.virtual_to_real(virtual_path)?;
 	let like_path = real_path.as_path().to_string_lossy().into_owned() + "%";
-	let real_songs: Vec<Song> = songs.filter(path.like(&like_path)).load(connection)?;
+	let real_songs: Vec<Song> = songs
+		.filter(path.like(&like_path))
+		.load(connection.deref())?;
 	let virtual_songs = real_songs
 		.into_iter()
 		.filter_map(|s| virtualize_song(&vfs, s));
@@ -548,13 +537,11 @@ pub fn get_random_albums<T>(db: &T, count: i64) -> Result<Vec<Directory>>
 	use self::directories::dsl::*;
 	let vfs = db.get_vfs()?;
 	let connection = db.get_connection();
-	let connection = connection.lock().unwrap();
-	let connection = connection.deref();
 	let real_directories = directories
 		.filter(album.is_not_null())
 		.limit(count)
 		.order(random)
-		.load(connection)?;
+		.load(connection.deref())?;
 	let virtual_directories = real_directories
 		.into_iter()
 		.filter_map(|s| virtualize_directory(&vfs, s));
@@ -567,13 +554,11 @@ pub fn get_recent_albums<T>(db: &T, count: i64) -> Result<Vec<Directory>>
 	use self::directories::dsl::*;
 	let vfs = db.get_vfs()?;
 	let connection = db.get_connection();
-	let connection = connection.lock().unwrap();
-	let connection = connection.deref();
 	let real_directories: Vec<Directory> = directories
 		.filter(album.is_not_null())
 		.order(date_added.desc())
 		.limit(count)
-		.load(connection)?;
+		.load(connection.deref())?;
 	let virtual_directories = real_directories
 		.into_iter()
 		.filter_map(|s| virtualize_directory(&vfs, s));
@@ -587,10 +572,8 @@ fn test_populate() {
 	update(&db).unwrap(); // Check that subsequent updates don't run into conflicts
 
 	let connection = db.get_connection();
-	let connection = connection.lock().unwrap();
-	let connection = connection.deref();
-	let all_directories: Vec<Directory> = directories::table.load(connection).unwrap();
-	let all_songs: Vec<Song> = songs::table.load(connection).unwrap();
+	let all_directories: Vec<Directory> = directories::table.load(connection.deref()).unwrap();
+	let all_songs: Vec<Song> = songs::table.load(connection.deref()).unwrap();
 	assert_eq!(all_directories.len(), 5);
 	assert_eq!(all_songs.len(), 12);
 }
@@ -613,11 +596,9 @@ fn test_metadata() {
 	update(&db).unwrap();
 
 	let connection = db.get_connection();
-	let connection = connection.lock().unwrap();
-	let connection = connection.deref();
 	let songs: Vec<Song> = songs::table
 		.filter(songs::title.eq("シャーベット (Sherbet)"))
-		.load(connection)
+		.load(connection.deref())
 		.unwrap();
 
 	assert_eq!(songs.len(), 1);
