@@ -3,3 +3,8 @@ album_art_pattern = '^Folder\.(png|jpg|jpeg)$'
 [[mount_dirs]]
 name = 'root'
 source = 'test/collection'
+
+[[users]]
+name = 'test_user'
+password = 'very_secret_password'
+admin = true
