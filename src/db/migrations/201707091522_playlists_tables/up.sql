@@ -3,7 +3,7 @@ CREATE TABLE playlists (
 	owner INTEGER NOT NULL,
 	name TEXT NOT NULL,
 	FOREIGN KEY(owner) REFERENCES users(id) ON DELETE CASCADE,
-	UNIQUE(owner, name)
+	UNIQUE(owner, name) ON CONFLICT REPLACE
 );
 
 CREATE TABLE playlist_songs (
@@ -11,7 +11,7 @@ CREATE TABLE playlist_songs (
 	playlist INTEGER NOT NULL,
 	path TEXT NOT NULL,
 	ordering INTEGER NOT NULL,
-	FOREIGN KEY(path) REFERENCES songs(path) ON DELETE NO ACTION,
-	FOREIGN KEY(playlist) REFERENCES playlists(id) ON DELETE CASCADE,
-	UNIQUE(playlist, ordering)
+	FOREIGN KEY(path) REFERENCES songs(path),
+	FOREIGN KEY(playlist) REFERENCES playlists(id) ON DELETE CASCADE ON UPDATE CASCADE,
+	UNIQUE(playlist, ordering) ON CONFLICT REPLACE
 );
