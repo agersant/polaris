@@ -11,7 +11,6 @@ CREATE TABLE playlist_songs (
 	playlist INTEGER NOT NULL,
 	path TEXT NOT NULL,
 	ordering INTEGER NOT NULL,
-	FOREIGN KEY(path) REFERENCES songs(path),
 	FOREIGN KEY(playlist) REFERENCES playlists(id) ON DELETE CASCADE ON UPDATE CASCADE,
 	UNIQUE(playlist, ordering) ON CONFLICT REPLACE
 );
