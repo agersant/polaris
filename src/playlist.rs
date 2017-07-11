@@ -78,10 +78,10 @@ fn list_playlists<T>(owner: &str, db: &T) -> Result<Vec<String>>
 fn save_playlist<T>(name: &str, owner: &str, content: &Vec<String>, db: &T) -> Result<()>
 	where T: ConnectionSource + VFSSource
 {
-	// TODO transaction for content delete+add
 	let user: User;
 	let new_playlist: NewPlaylist;
 	let playlist: Playlist;
+	let vfs = db.get_vfs()?;
 
 	{
 		let connection = db.get_connection();
@@ -111,16 +111,11 @@ fn save_playlist<T>(name: &str, owner: &str, content: &Vec<String>, db: &T) -> R
 				.filter(name.eq(name).and(owner.eq(user.id)))
 				.get_result(connection.deref())?;
 		}
-
-		// Delete old content (if any)
-		let old_songs = PlaylistSong::belonging_to(&playlist);
-		diesel::delete(old_songs).execute(connection.deref())?;
 	}
 
-	// Insert content
-	let vfs = db.get_vfs()?;
 	let mut new_songs: Vec<NewPlaylistSong> = Vec::new();
 	new_songs.reserve(content.len());
+
 	for (i, path) in content.iter().enumerate() {
 		let virtual_path = Path::new(&path);
 		if let Some(real_path) = vfs.virtual_to_real(virtual_path)
@@ -136,9 +131,19 @@ fn save_playlist<T>(name: &str, owner: &str, content: &Vec<String>, db: &T) -> R
 
 	{
 		let connection = db.get_connection();
-		diesel::insert(&new_songs)
-			.into(playlist_songs::table)
-			.execute(connection.deref())?;
+		connection
+			.deref()
+			.transaction::<_, diesel::result::Error, _>(|| {
+				// Delete old content (if any)
+				let old_songs = PlaylistSong::belonging_to(&playlist);
+				diesel::delete(old_songs).execute(connection.deref())?;
+
+				// Insert content
+				diesel::insert(&new_songs)
+					.into(playlist_songs::table)
+					.execute(connection.deref())?;
+				Ok(())
+			})?;
 	}
 
 	Ok(())
@@ -185,17 +190,20 @@ fn read_playlist<T>(playlist_name: &str, owner: &str, db: &T) -> Result<Vec<Song
 	}
 
 	// Map real path to virtual paths
-	let songs = songs.into_iter().filter_map(|mut s| {
-		let real_path = s.path.clone();
-		let real_path = Path::new(&real_path);
-		if let Ok(virtual_path) = vfs.real_to_virtual(real_path) {
-			if let Some(virtual_path) = virtual_path.to_str() {
-				s.path = virtual_path.to_owned();
+	let songs = songs
+		.into_iter()
+		.filter_map(|mut s| {
+			let real_path = s.path.clone();
+			let real_path = Path::new(&real_path);
+			if let Ok(virtual_path) = vfs.real_to_virtual(real_path) {
+				if let Some(virtual_path) = virtual_path.to_str() {
+					s.path = virtual_path.to_owned();
+				}
+				return Some(s);
 			}
-			return Some(s);
-		}
-		None
-	}).collect();
+			None
+		})
+		.collect();
 
 	Ok(songs)
 }
@@ -290,4 +298,9 @@ fn test_fill_playlist() {
 	first_song_path.push("Hunted");
 	first_song_path.push("01 - Above The Water.mp3");
 	assert_eq!(songs[0].path, first_song_path.to_str().unwrap());
+
+	// Save again to verify that we don't dupe the content
+	save_playlist("all_the_music", "test_user", &playlist_content, &db).unwrap();
+	let songs = read_playlist("all_the_music", "test_user", &db).unwrap();
+	assert_eq!(songs.len(), 13);
 }
