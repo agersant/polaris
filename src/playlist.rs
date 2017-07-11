@@ -1,19 +1,18 @@
 use core::clone::Clone;
 use core::ops::Deref;
 use diesel;
+use diesel::expression::sql;
 use diesel::prelude::*;
 use diesel::BelongingToDsl;
-use std::collections::HashMap;
+use diesel::types::*;
 use std::path::Path;
 #[cfg(test)]
 use db;
 use db::ConnectionSource;
-use db::{playlists, playlist_songs, songs, users};
+use db::{playlists, playlist_songs, users};
 use index::Song;
 use vfs::VFSSource;
 use errors::*;
-
-const PLAYLIST_CHUNK: usize = 500;
 
 #[derive(Insertable)]
 #[table_name="playlists"]
@@ -148,15 +147,13 @@ fn save_playlist<T>(name: &str, owner: &str, content: &Vec<String>, db: &T) -> R
 fn read_playlist<T>(playlist_name: &str, owner: &str, db: &T) -> Result<Vec<Song>>
 	where T: ConnectionSource + VFSSource
 {
-	let user: User;
-	let playlist: Playlist;
-	let song_paths: Vec<String>;
-	let unique_songs: Vec<Song>;
 	let vfs = db.get_vfs()?;
-	let mut songs_map: HashMap<String, Song> = HashMap::new();
+	let songs: Vec<Song>;
 
 	{
 		let connection = db.get_connection();
+		let user: User;
+		let playlist: Playlist;
 
 		// Find owner
 		{
@@ -175,45 +172,32 @@ fn read_playlist<T>(playlist_name: &str, owner: &str, db: &T) -> Result<Vec<Song
 				.get_result(connection.deref())?;
 		}
 
-		// Find playlist songs
-		// TODO If we could do a outer join with the songs table
-		// using the path column, most of this function would go
-		// away.
-		song_paths = PlaylistSong::belonging_to(&playlist)
-			.select(playlist_songs::columns::path)
-			.order(playlist_songs::columns::ordering)
-			.get_results(connection.deref())?;
-
-		// Find Song objects at the relevant paths
-		{
-			use self::songs::dsl::*;
-			for chunk in song_paths[..].chunks(PLAYLIST_CHUNK) {
-				let unique_songs: Vec<Song> = songs
-					.filter(path.eq_any(chunk))
-					.get_results(connection.deref())?;
-				for playlist_song in &unique_songs {
-					songs_map.insert(playlist_song.path.clone(), playlist_song.clone());
-				}
-			}
-		}
+		// Select songs. Not using Diesel because we need to LEFT JOIN using a custom column
+		let query = sql::<(Integer, Text, Text, Nullable<Integer>, Nullable<Integer>, Nullable<Text>, Nullable<Text>, Nullable<Text>, Nullable<Integer>, Nullable<Text>, Nullable<Text>)>(r#"
+			SELECT s.id, s.path, s.parent, s.track_number, s.disc_number, s.title, s.artist, s.album_artist, s.year, s.album, s.artwork
+			FROM playlist_songs ps
+			LEFT JOIN songs s ON ps.path = s.path
+			WHERE ps.playlist = ?
+			ORDER BY ps.ordering
+		"#);
+		let query = query.clone().bind::<Integer, _>(playlist.id);
+		songs = query.get_results(connection.deref())?;
 	}
 
-	// Build playlist
-	let mut playlist_songs = Vec::new();
-	for path in &song_paths {
-		let song: &Song = songs_map.get(path.as_str()).unwrap();
-		let real_path = &song.path;
-		let mut song = (*song).clone();
+	// Map real path to virtual paths
+	let songs = songs.into_iter().filter_map(|mut s| {
+		let real_path = s.path.clone();
 		let real_path = Path::new(&real_path);
 		if let Ok(virtual_path) = vfs.real_to_virtual(real_path) {
 			if let Some(virtual_path) = virtual_path.to_str() {
-				song.path = virtual_path.to_owned();
-				playlist_songs.push(song);
+				s.path = virtual_path.to_owned();
 			}
+			return Some(s);
 		}
-	}
+		None
+	}).collect();
 
-	Ok(playlist_songs)
+	Ok(songs)
 }
 
 fn delete_playlist<T>(playlist_name: &str, owner: &str, db: &T) -> Result<()>

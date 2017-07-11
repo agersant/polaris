@@ -34,7 +34,7 @@ pub enum Command {
 	REINDEX,
 }
 
-#[derive(Clone, Debug, Queryable, Serialize)]
+#[derive(Debug, Queryable, Serialize)]
 pub struct Song {
 	#[serde(skip_serializing)]
 	id: i32,
