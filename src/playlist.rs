@@ -1,7 +1,9 @@
+use core::clone::Clone;
 use core::ops::Deref;
 use diesel;
 use diesel::prelude::*;
 use diesel::BelongingToDsl;
+use std::collections::HashMap;
 use std::path::Path;
 
 use db::{self, ConnectionSource};
@@ -145,7 +147,8 @@ fn read_playlist<T>(playlist_name: &str, owner: &str, db: &T) -> Result<Vec<Song
 {
 	let user: User;
 	let playlist: Playlist;
-	let playlist_songs: Vec<PlaylistSong>;
+	let song_paths: Vec<String>;
+	let unique_songs: Vec<Song>;
 	let vfs = db.get_vfs()?;
 
 	{
@@ -168,14 +171,43 @@ fn read_playlist<T>(playlist_name: &str, owner: &str, db: &T) -> Result<Vec<Song
 				.get_result(connection.deref())?;
 		}
 
-		// Find content
-		playlist_songs = PlaylistSong::belonging_to(&playlist)
+		// Find playlist songs
+		// TODO If we could do a outer join with the songs table
+		// using the path column, most of this function would go
+		// away.
+		song_paths = PlaylistSong::belonging_to(&playlist)
+			.select(playlist_songs::columns::path)
 			.order(playlist_songs::columns::ordering)
 			.get_results(connection.deref())?;
+
+		// Find Song objects at the relevant paths
+		{
+			use self::songs::dsl::*;
+			unique_songs = songs.filter(path.eq_any(&song_paths)).get_results(connection.deref())?;
+		}
 	}
 
-	// TODO
-	Ok(Vec::new())
+	let mut songs_map: HashMap<&str, &Song> = HashMap::new();
+	for playlist_song in &unique_songs {
+		songs_map.insert(&playlist_song.path, &playlist_song);
+	}
+
+	// Build playlist
+	let mut playlist_songs = Vec::new();
+	for path in &song_paths {
+		let song: &Song = songs_map.get(path.as_str()).unwrap();
+		let real_path = &song.path;
+		let mut song = (*song).clone();
+		let real_path = Path::new(&real_path);
+		if let Ok(virtual_path) = vfs.real_to_virtual(real_path) {
+			if let Some(virtual_path) = virtual_path.to_str() {
+				song.path = virtual_path.to_owned();
+				playlist_songs.push(song);
+			}
+		}
+	}
+
+	Ok(playlist_songs)
 }
 
 fn delete_playlist<T>(playlist_name: &str, owner: &str, db: &T) -> Result<()>
@@ -256,8 +288,16 @@ fn test_fill_playlist() {
 
 	save_playlist("all_the_music", "test_user", &playlist_content, &db).unwrap();
 
-	// let songs = read_playlist("all_the_music", "test_user", &db).unwrap();
-	// assert_eq!(songs.len(), 13);
-	// assert_eq!(songs[0].title, Some("Above The Water".to_owned()));
-	// assert_eq!(songs[12].title, Some("Above The Water".to_owned()));
+	let songs = read_playlist("all_the_music", "test_user", &db).unwrap();
+	assert_eq!(songs.len(), 13);
+	assert_eq!(songs[0].title, Some("Above The Water".to_owned()));
+	assert_eq!(songs[12].title, Some("Above The Water".to_owned()));
+
+	use std::path::PathBuf;
+	let mut first_song_path = PathBuf::new();
+	first_song_path.push("root");
+	first_song_path.push("Khemmis");
+	first_song_path.push("Hunted");
+	first_song_path.push("01 - Above The Water.mp3");
+	assert_eq!(songs[0].path, first_song_path.to_str().unwrap());
 }
