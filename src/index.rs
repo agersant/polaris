@@ -524,6 +524,7 @@ pub fn flatten<T>(db: &T, virtual_path: &Path) -> Result<Vec<Song>>
 	let like_path = real_path.as_path().to_string_lossy().into_owned() + "%";
 	let real_songs: Vec<Song> = songs
 		.filter(path.like(&like_path))
+		.order(path)
 		.load(connection.deref())?;
 	let virtual_songs = real_songs
 		.into_iter()
@@ -662,6 +663,7 @@ fn test_flatten() {
 	update(&db).unwrap();
 	let results = flatten(&db, Path::new("root")).unwrap();
 	assert_eq!(results.len(), 12);
+	assert_eq!(results[0].title, Some("Above The Water".to_owned()));
 }
 
 #[test]
