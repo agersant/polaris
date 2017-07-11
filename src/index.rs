@@ -6,14 +6,18 @@ use diesel::sqlite::SqliteConnection;
 use diesel::types;
 use regex::Regex;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+#[cfg(test)]
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc::*;
 use std::thread;
 use std::time;
 
 use config::MiscSettings;
-use db::{self, ConnectionSource};
+#[cfg(test)]
+use db;
+use db::ConnectionSource;
 use db::{directories, misc_settings, songs};
 use vfs::{VFS, VFSSource};
 use errors::*;

@@ -5,8 +5,9 @@ use diesel::prelude::*;
 use diesel::BelongingToDsl;
 use std::collections::HashMap;
 use std::path::Path;
-
-use db::{self, ConnectionSource};
+#[cfg(test)]
+use db;
+use db::ConnectionSource;
 use db::{playlists, playlist_songs, songs, users};
 use index::Song;
 use vfs::VFSSource;
@@ -183,7 +184,9 @@ fn read_playlist<T>(playlist_name: &str, owner: &str, db: &T) -> Result<Vec<Song
 		// Find Song objects at the relevant paths
 		{
 			use self::songs::dsl::*;
-			unique_songs = songs.filter(path.eq_any(&song_paths)).get_results(connection.deref())?;
+			unique_songs = songs
+				.filter(path.eq_any(&song_paths))
+				.get_results(connection.deref())?;
 		}
 	}
 
