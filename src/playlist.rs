@@ -13,6 +13,8 @@ use index::Song;
 use vfs::VFSSource;
 use errors::*;
 
+const PLAYLIST_CHUNK: usize = 500;
+
 #[derive(Insertable)]
 #[table_name="playlists"]
 struct NewPlaylist {
@@ -151,6 +153,7 @@ fn read_playlist<T>(playlist_name: &str, owner: &str, db: &T) -> Result<Vec<Song
 	let song_paths: Vec<String>;
 	let unique_songs: Vec<Song>;
 	let vfs = db.get_vfs()?;
+	let mut songs_map: HashMap<String, Song> = HashMap::new();
 
 	{
 		let connection = db.get_connection();
@@ -184,15 +187,15 @@ fn read_playlist<T>(playlist_name: &str, owner: &str, db: &T) -> Result<Vec<Song
 		// Find Song objects at the relevant paths
 		{
 			use self::songs::dsl::*;
-			unique_songs = songs
-				.filter(path.eq_any(&song_paths))
-				.get_results(connection.deref())?;
+			for chunk in song_paths[..].chunks(PLAYLIST_CHUNK) {
+				let unique_songs: Vec<Song> = songs
+					.filter(path.eq_any(chunk))
+					.get_results(connection.deref())?;
+				for playlist_song in &unique_songs {
+					songs_map.insert(playlist_song.path.clone(), playlist_song.clone());
+				}
+			}
 		}
-	}
-
-	let mut songs_map: HashMap<&str, &Song> = HashMap::new();
-	for playlist_song in &unique_songs {
-		songs_map.insert(&playlist_song.path, &playlist_song);
 	}
 
 	// Build playlist
