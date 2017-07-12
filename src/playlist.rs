@@ -9,7 +9,7 @@ use std::path::Path;
 #[cfg(test)]
 use db;
 use db::ConnectionSource;
-use db::{playlists, playlist_songs, users};
+use db::{playlists, playlist_songs, songs, users};
 use index::Song;
 use vfs::VFSSource;
 use errors::*;
@@ -177,7 +177,7 @@ fn read_playlist<T>(playlist_name: &str, owner: &str, db: &T) -> Result<Vec<Song
 		}
 
 		// Select songs. Not using Diesel because we need to LEFT JOIN using a custom column
-		let query = sql::<(Integer, Text, Text, Nullable<Integer>, Nullable<Integer>, Nullable<Text>, Nullable<Text>, Nullable<Text>, Nullable<Integer>, Nullable<Text>, Nullable<Text>)>(r#"
+		let query = sql::<songs::SqlType>(r#"
 			SELECT s.id, s.path, s.parent, s.track_number, s.disc_number, s.title, s.artist, s.album_artist, s.year, s.album, s.artwork
 			FROM playlist_songs ps
 			LEFT JOIN songs s ON ps.path = s.path
