@@ -24,7 +24,6 @@ struct NewPlaylist {
 #[derive(Identifiable, Queryable)]
 pub struct User {
 	id: i32,
-	name: String,
 }
 
 #[derive(Identifiable, Queryable, Associations)]
@@ -62,7 +61,7 @@ fn list_playlists<T>(owner: &str, db: &T) -> Result<Vec<String>>
 		use self::users::dsl::*;
 		user = users
 			.filter(name.eq(owner))
-			.select((id, name))
+			.select((id,))
 			.first(connection.deref())?;
 	}
 
@@ -91,7 +90,7 @@ fn save_playlist<T>(name: &str, owner: &str, content: &Vec<String>, db: &T) -> R
 			use self::users::dsl::*;
 			user = users
 				.filter(name.eq(owner))
-				.select((id, name))
+				.select((id,))
 				.get_result(connection.deref())?;
 		}
 
@@ -165,7 +164,7 @@ fn read_playlist<T>(playlist_name: &str, owner: &str, db: &T) -> Result<Vec<Song
 			use self::users::dsl::*;
 			user = users
 				.filter(name.eq(owner))
-				.select((id, name))
+				.select((id,))
 				.get_result(connection.deref())?;
 		}
 
@@ -218,7 +217,7 @@ fn delete_playlist<T>(playlist_name: &str, owner: &str, db: &T) -> Result<()>
 		use self::users::dsl::*;
 		user = users
 			.filter(name.eq(owner))
-			.select((id, name))
+			.select((id,))
 			.first(connection.deref())?;
 	}
 
