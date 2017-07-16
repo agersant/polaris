@@ -22,9 +22,10 @@ use config::MiscSettings;
 use db::{ConnectionSource, DB};
 use db::misc_settings;
 use errors::*;
-use thumbnails::*;
 use index;
+use playlist;
 use user;
+use thumbnails::*;
 use utils::*;
 use vfs::VFSSource;
 
@@ -148,6 +149,19 @@ fn get_endpoints(db: Arc<DB>, index_channel: Arc<Mutex<Sender<index::Command>>>)
 			reindex_api_chain.link_around(admin_req);
 
 			auth_api_mount.mount("/trigger_index/", reindex_api_chain);
+		}
+		{
+			let mut playlist_router = Router::new();
+			let put_db = db.clone();
+			playlist_router.put("/",
+			                    move |request: &mut Request| self::save_playlist(request, put_db.deref()),
+			                    "save_playlist");
+
+			let mut playlist_api_chain = Chain::new(playlist_router);
+			let admin_req = AdminRequirement { db: db.clone() };
+			playlist_api_chain.link_around(admin_req);
+
+			auth_api_mount.mount("/playlist/", playlist_api_chain);
 		}
 
 		let mut auth_api_chain = Chain::new(auth_api_mount);
@@ -469,5 +483,34 @@ fn trigger_index(channel: &Mutex<Sender<index::Command>>) -> IronResult<Response
 	if let Err(e) = channel.send(index::Command::REINDEX) {
 		return Err(IronError::new(e, status::InternalServerError));
 	};
+	Ok(Response::with(status::Ok))
+}
+
+fn save_playlist(request: &mut Request, db: &DB) -> IronResult<Response> {
+
+	let username = match request.extensions.get::<SessionKey>() {
+		Some(s) => s.username.clone(),
+		None => return Err(Error::from(ErrorKind::AuthenticationRequired).into()),
+	};
+
+	let input = request.get_ref::<params::Params>().unwrap();
+	let playlist = match input.find(&["playlist"]) {
+		Some(&params::Value::String(ref playlist)) => playlist,
+		_ => return Err(Error::from(ErrorKind::MissingPlaylist).into()),
+	};
+
+	#[derive(Deserialize)]
+	struct SavePlaylistInput {
+		name: String,
+		tracks: Vec<String>,
+	}
+
+	let playlist = match serde_json::from_str::<SavePlaylistInput>(playlist) {
+		Ok(p) => p,
+		Err(e) => return Err(IronError::new(e, status::BadRequest)),
+	};
+
+	playlist::save_playlist(&playlist.name, &username, &playlist.tracks, db)?;
+
 	Ok(Response::with(status::Ok))
 }

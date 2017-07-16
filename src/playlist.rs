@@ -51,7 +51,7 @@ pub struct NewPlaylistSong {
 	ordering: i32,
 }
 
-fn list_playlists<T>(owner: &str, db: &T) -> Result<Vec<String>>
+pub fn list_playlists<T>(owner: &str, db: &T) -> Result<Vec<String>>
 	where T: ConnectionSource + VFSSource
 {
 	let connection = db.get_connection();
@@ -74,7 +74,7 @@ fn list_playlists<T>(owner: &str, db: &T) -> Result<Vec<String>>
 	}
 }
 
-fn save_playlist<T>(name: &str, owner: &str, content: &Vec<String>, db: &T) -> Result<()>
+pub fn save_playlist<T>(name: &str, owner: &str, content: &Vec<String>, db: &T) -> Result<()>
 	where T: ConnectionSource + VFSSource
 {
 	let user: User;
@@ -148,7 +148,7 @@ fn save_playlist<T>(name: &str, owner: &str, content: &Vec<String>, db: &T) -> R
 	Ok(())
 }
 
-fn read_playlist<T>(playlist_name: &str, owner: &str, db: &T) -> Result<Vec<Song>>
+pub fn read_playlist<T>(playlist_name: &str, owner: &str, db: &T) -> Result<Vec<Song>>
 	where T: ConnectionSource + VFSSource
 {
 	let vfs = db.get_vfs()?;
@@ -207,7 +207,7 @@ fn read_playlist<T>(playlist_name: &str, owner: &str, db: &T) -> Result<Vec<Song
 	Ok(songs)
 }
 
-fn delete_playlist<T>(playlist_name: &str, owner: &str, db: &T) -> Result<()>
+pub fn delete_playlist<T>(playlist_name: &str, owner: &str, db: &T) -> Result<()>
 	where T: ConnectionSource + VFSSource
 {
 	let connection = db.get_connection();

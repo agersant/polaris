@@ -38,9 +38,10 @@ error_chain! {
         DaemonError {}
         AuthenticationRequired {}
         AdminPrivilegeRequired {}
+        MissingConfig {}
         MissingUsername {}
         MissingPassword {}
-        MissingConfig {}
+        MissingPlaylist {}
         IncorrectCredentials {}
         CannotServeDirectory {}
         UnsupportedFileType {}
