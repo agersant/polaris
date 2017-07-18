@@ -166,11 +166,7 @@ fn get_endpoints(db: Arc<DB>, index_channel: Arc<Mutex<Sender<index::Command>>>)
 				                   },
 			                    "list_playlists");
 
-			let mut playlist_api_chain = Chain::new(playlist_router);
-			let admin_req = AdminRequirement { db: db.clone() };
-			playlist_api_chain.link_around(admin_req);
-
-			auth_api_mount.mount("/playlist/", playlist_api_chain);
+			auth_api_mount.mount("/playlist/", playlist_router);
 		}
 
 		let mut auth_api_chain = Chain::new(auth_api_mount);
