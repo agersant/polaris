@@ -153,9 +153,18 @@ fn get_endpoints(db: Arc<DB>, index_channel: Arc<Mutex<Sender<index::Command>>>)
 		{
 			let mut playlist_router = Router::new();
 			let put_db = db.clone();
+			let list_db = db.clone();
 			playlist_router.put("/",
-			                    move |request: &mut Request| self::save_playlist(request, put_db.deref()),
+			                    move |request: &mut Request| {
+				                    self::save_playlist(request, put_db.deref())
+				                   },
 			                    "save_playlist");
+
+			playlist_router.get("/list",
+			                    move |request: &mut Request| {
+				                    self::list_playlists(request, list_db.deref())
+				                   },
+			                    "list_playlists");
 
 			let mut playlist_api_chain = Chain::new(playlist_router);
 			let admin_req = AdminRequirement { db: db.clone() };
@@ -513,4 +522,28 @@ fn save_playlist(request: &mut Request, db: &DB) -> IronResult<Response> {
 	playlist::save_playlist(&playlist.name, &username, &playlist.tracks, db)?;
 
 	Ok(Response::with(status::Ok))
+}
+
+fn list_playlists(request: &mut Request, db: &DB) -> IronResult<Response> {
+	let username = match request.extensions.get::<SessionKey>() {
+		Some(s) => s.username.clone(),
+		None => return Err(Error::from(ErrorKind::AuthenticationRequired).into()),
+	};
+
+	#[derive(Serialize)]
+	struct ListPlaylistsOutput {
+		name: String,
+	}
+
+	let playlist_name = playlist::list_playlists(&username, db)?;
+	let playlists: Vec<ListPlaylistsOutput> = playlist_name.into_iter().map(|p| ListPlaylistsOutput{
+		name: p,
+	}).collect();
+
+	let result_json = serde_json::to_string(&playlists);
+	let result_json = match result_json {
+		Ok(j) => j,
+		Err(e) => return Err(IronError::new(e, status::InternalServerError)),
+	};
+	Ok(Response::with((status::Ok, result_json)))	
 }
