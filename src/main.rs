@@ -100,16 +100,32 @@ fn daemonize() -> Result<()> {
 
 fn run() -> Result<()> {
 
-	#[cfg(unix)]
-	daemonize()?;
-
 	// Parse CLI options
 	let args: Vec<String> = std::env::args().collect();
 	let mut options = Options::new();
 	options.optopt("c", "config", "set the configuration file", "FILE");
 	options.optopt("d", "database", "set the path to index database", "FILE");
 	options.optopt("w", "web", "set the path to web client files", "DIRECTORY");
+
+	#[cfg(unix)]
+	options.optflag("f", "foreground", "run polaris in the foreground instead of daemonizing");
+
+	options.optflag("h", "help", "print this help menu");
+
 	let matches = options.parse(&args[1..])?;
+
+	if matches.opt_present("h") {
+		let program = args[0].clone();
+		let brief = format!("Usage: {} [options]", program);
+		print!("{}", options.usage(&brief));
+		return Ok(());
+	}
+
+	//attribute inside the if clause, because they are not yet allowed on `if` expressions
+	if !matches.opt_present("f") {
+		#[cfg(unix)]
+		daemonize()?;
+	}
 
 	// Init DB
 	println!("Starting up database");
@@ -134,9 +150,9 @@ fn run() -> Result<()> {
 	let index_sender = Arc::new(Mutex::new(index_sender));
 	let db_ref = db.clone();
 	std::thread::spawn(move || {
-		                   let db = db_ref.deref();
-		                   index::update_loop(db, index_receiver);
-		                  });
+		let db = db_ref.deref();
+		index::update_loop(db, index_receiver);
+	});
 
 	// Trigger auto-indexing
 	let db_ref = db.clone();
