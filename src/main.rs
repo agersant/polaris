@@ -104,6 +104,7 @@ fn run() -> Result<()> {
 	let args: Vec<String> = std::env::args().collect();
 	let mut options = Options::new();
 	options.optopt("c", "config", "set the configuration file", "FILE");
+	options.optopt("p", "port", "set polaris to run on a custom port", "PORT");
 	options.optopt("d", "database", "set the path to index database", "FILE");
 	options.optopt("w", "web", "set the path to web client files", "DIRECTORY");
 
@@ -177,7 +178,8 @@ fn run() -> Result<()> {
 	mount.mount("/", Static::new(web_dir_path));
 
 	println!("Starting up server");
-	let mut server = match Iron::new(mount).http(("0.0.0.0", 5050)) {
+	let port: u16 = matches.opt_str("p").unwrap_or("5050".to_owned()).parse().or(Err("invalid port number"))?;
+	let mut server = match Iron::new(mount).http(("0.0.0.0", port)) {
 		Ok(s) => s,
 		Err(e) => bail!("Error starting up server: {}", e),
 	};
