@@ -9,16 +9,16 @@ ui = []
 [dependencies]
 ape = "0.1.2"
 app_dirs = "1.1.1"
-diesel = { version = "0.14.0", features = ["sqlite"] }
-diesel_codegen = { version = "0.14.0", features = ["sqlite"] }
-error-chain = "0.10.0"
-getopts = "0.2.14"
-hyper = "0.11.1"
-id3 = "0.1.11"
-image = "0.14.0"
+diesel = { version = "0.16.0", features = ["sqlite"] }
+diesel_codegen = { version = "0.16.0", features = ["sqlite"] }
+error-chain = "0.11.0"
+getopts = "0.2.15"
+hyper = "0.11.2"
+id3 = "0.2.0"
+image = "0.15.0"
 iron = "0.5.1"
 lewton = "0.6.2"
-metaflac = "0.1.4"
+metaflac = "0.1.7"
 mount = "0.3.0"
 params = { git = "https://github.com/euclio/params", branch="update" }
 rand = "0.3.15"

@@ -42,8 +42,8 @@ fn read_id3(path: &Path) -> Result<SongTags> {
 	let track_number = tag.track();
 	let year = tag.year()
 		.map(|y| y as i32)
-		.or(tag.date_released().and_then(|d| d.year))
-		.or(tag.date_recorded().and_then(|d| d.year));
+		.or(tag.date_released().and_then(|d| Some(d.year)))
+		.or(tag.date_recorded().and_then(|d| Some(d.year)));
 
 	Ok(SongTags {
 	       artist: artist,
