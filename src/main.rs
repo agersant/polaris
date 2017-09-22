@@ -109,7 +109,9 @@ fn run() -> Result<()> {
 	options.optopt("w", "web", "set the path to web client files", "DIRECTORY");
 
 	#[cfg(unix)]
-	options.optflag("f", "foreground", "run polaris in the foreground instead of daemonizing");
+	options.optflag("f",
+	                "foreground",
+	                "run polaris in the foreground instead of daemonizing");
 
 	options.optflag("h", "help", "print this help menu");
 
@@ -151,9 +153,9 @@ fn run() -> Result<()> {
 	let index_sender = Arc::new(Mutex::new(index_sender));
 	let db_ref = db.clone();
 	std::thread::spawn(move || {
-		let db = db_ref.deref();
-		index::update_loop(db, index_receiver);
-	});
+		                   let db = db_ref.deref();
+		                   index::update_loop(db, index_receiver);
+		                  });
 
 	// Trigger auto-indexing
 	let db_ref = db.clone();
@@ -178,7 +180,11 @@ fn run() -> Result<()> {
 	mount.mount("/", Static::new(web_dir_path));
 
 	println!("Starting up server");
-	let port: u16 = matches.opt_str("p").unwrap_or("5050".to_owned()).parse().or(Err("invalid port number"))?;
+	let port: u16 = matches
+		.opt_str("p")
+		.unwrap_or("5050".to_owned())
+		.parse()
+		.or(Err("invalid port number"))?;
 	let mut server = match Iron::new(mount).http(("0.0.0.0", port)) {
 		Ok(s) => s,
 		Err(e) => bail!("Error starting up server: {}", e),

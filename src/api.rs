@@ -532,14 +532,15 @@ fn list_playlists(request: &mut Request, db: &DB) -> IronResult<Response> {
 	}
 
 	let playlist_name = playlist::list_playlists(&username, db)?;
-	let playlists: Vec<ListPlaylistsOutput> = playlist_name.into_iter().map(|p| ListPlaylistsOutput{
-		name: p,
-	}).collect();
+	let playlists: Vec<ListPlaylistsOutput> = playlist_name
+		.into_iter()
+		.map(|p| ListPlaylistsOutput { name: p })
+		.collect();
 
 	let result_json = serde_json::to_string(&playlists);
 	let result_json = match result_json {
 		Ok(j) => j,
 		Err(e) => return Err(IronError::new(e, status::InternalServerError)),
 	};
-	Ok(Response::with((status::Ok, result_json)))	
+	Ok(Response::with((status::Ok, result_json)))
 }
