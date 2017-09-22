@@ -52,6 +52,8 @@ use unix_daemonize::{daemonize_redirect, ChdirMode};
 
 use core::ops::Deref;
 use errors::*;
+#[cfg(unix)]
+use getopts::Matches;
 use getopts::Options;
 use iron::prelude::*;
 use mount::Mount;
@@ -88,8 +90,11 @@ fn main() {
 	}
 }
 
-#[cfg(unix)]
-fn daemonize() -> Result<()> {
+ #[cfg(unix)]
+fn daemonize(options : &getopts::Matches) -> Result<()> {
+	if options.opt_present("f") {
+		return Ok(());
+	}
 	let mut log_file = utils::get_data_root()?;
 	log_file.push("polaris.log");
 	match daemonize_redirect(Some(&log_file), Some(&log_file), ChdirMode::NoChdir) {
@@ -107,7 +112,7 @@ fn run() -> Result<()> {
 	options.optopt("p", "port", "set polaris to run on a custom port", "PORT");
 	options.optopt("d", "database", "set the path to index database", "FILE");
 	options.optopt("w", "web", "set the path to web client files", "DIRECTORY");
-
+	
 	#[cfg(unix)]
 	options.optflag("f",
 	                "foreground",
@@ -124,11 +129,8 @@ fn run() -> Result<()> {
 		return Ok(());
 	}
 
-	//attribute inside the if clause, because they are not yet allowed on `if` expressions
-	if !matches.opt_present("f") {
-		#[cfg(unix)]
-		daemonize()?;
-	}
+	#[cfg(unix)]
+	daemonize(&matches)?;
 
 	// Init DB
 	println!("Starting up database");
