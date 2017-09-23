@@ -73,6 +73,7 @@ mod playlist;
 mod ui;
 mod user;
 mod utils;
+mod serve;
 mod thumbnails;
 mod vfs;
 
@@ -90,8 +91,8 @@ fn main() {
 	}
 }
 
- #[cfg(unix)]
-fn daemonize(options : &getopts::Matches) -> Result<()> {
+#[cfg(unix)]
+fn daemonize(options: &getopts::Matches) -> Result<()> {
 	if options.opt_present("f") {
 		return Ok(());
 	}
@@ -112,7 +113,7 @@ fn run() -> Result<()> {
 	options.optopt("p", "port", "set polaris to run on a custom port", "PORT");
 	options.optopt("d", "database", "set the path to index database", "FILE");
 	options.optopt("w", "web", "set the path to web client files", "DIRECTORY");
-	
+
 	#[cfg(unix)]
 	options.optflag("f",
 	                "foreground",

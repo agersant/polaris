@@ -1,6 +1,6 @@
 use diesel::prelude::*;
 use iron::prelude::*;
-use iron::headers::{Authorization, Basic};
+use iron::headers::{Authorization, Basic, Range};
 use iron::{AroundMiddleware, Handler, status};
 use mount::Mount;
 use router::Router;
@@ -25,6 +25,7 @@ use errors::*;
 use index;
 use playlist;
 use user;
+use serve;
 use thumbnails::*;
 use utils::*;
 use vfs::VFSSource;
@@ -443,7 +444,8 @@ fn serve(request: &mut Request, db: &DB) -> IronResult<Response> {
 	}
 
 	if is_song(real_path.as_path()) {
-		return Ok(Response::with((status::Ok, real_path)));
+		let range_header = request.headers.get::<Range>();
+		return serve::deliver(&real_path, range_header);
 	}
 
 	if is_image(real_path.as_path()) {

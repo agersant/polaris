@@ -45,6 +45,7 @@ error_chain! {
         IncorrectCredentials {}
         CannotServeDirectory {}
         UnsupportedFileType {}
+        FileNotFound {}
         MissingIndexVersion {}
     }
 }
