@@ -155,6 +155,7 @@ fn get_endpoints(db: Arc<DB>, index_channel: Arc<Mutex<Sender<index::Command>>>)
 			let mut playlist_router = Router::new();
 			let put_db = db.clone();
 			let list_db = db.clone();
+			let read_db = db.clone();
 			playlist_router.put("/",
 			                    move |request: &mut Request| {
 				                    self::save_playlist(request, put_db.deref())
@@ -166,6 +167,12 @@ fn get_endpoints(db: Arc<DB>, index_channel: Arc<Mutex<Sender<index::Command>>>)
 				                    self::list_playlists(request, list_db.deref())
 				                   },
 			                    "list_playlists");
+
+			playlist_router.get("/read/:playlist_name",
+			                    move |request: &mut Request| {
+				                    self::read_playlist(request, read_db.deref())
+				                   },
+			                    "read_playlist");
 
 			auth_api_mount.mount("/playlist/", playlist_router);
 		}
@@ -544,5 +551,27 @@ fn list_playlists(request: &mut Request, db: &DB) -> IronResult<Response> {
 		Ok(j) => j,
 		Err(e) => return Err(IronError::new(e, status::InternalServerError)),
 	};
+	Ok(Response::with((status::Ok, result_json)))
+}
+
+fn read_playlist(request: &mut Request, db: &DB) -> IronResult<Response> {
+	let username = match request.extensions.get::<SessionKey>() {
+		Some(s) => s.username.clone(),
+		None => return Err(Error::from(ErrorKind::AuthenticationRequired).into()),
+	};
+
+	let params = request.extensions.get::<Router>().unwrap();
+	let ref playlist_name = match params.find("playlist_name") { 
+		Some(s) => s,
+		_ => return Err(Error::from(ErrorKind::MissingPlaylistName).into()), 
+	};
+
+	let songs = playlist::read_playlist(&playlist_name, &username, db)?;
+	let result_json = serde_json::to_string(&songs);
+	let result_json = match result_json {
+		Ok(j) => j,
+		Err(e) => return Err(IronError::new(e, status::InternalServerError)),
+	};
+
 	Ok(Response::with((status::Ok, result_json)))
 }

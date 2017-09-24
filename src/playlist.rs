@@ -10,7 +10,7 @@ use std::path::Path;
 use db;
 use db::ConnectionSource;
 use db::{playlists, playlist_songs, songs, users};
-use index::Song;
+use index::{self, Song};
 use vfs::VFSSource;
 use errors::*;
 
@@ -189,22 +189,12 @@ pub fn read_playlist<T>(playlist_name: &str, owner: &str, db: &T) -> Result<Vec<
 	}
 
 	// Map real path to virtual paths
-	let songs = songs
+	let virtual_songs = songs
 		.into_iter()
-		.filter_map(|mut s| {
-			let real_path = s.path.clone();
-			let real_path = Path::new(&real_path);
-			if let Ok(virtual_path) = vfs.real_to_virtual(real_path) {
-				if let Some(virtual_path) = virtual_path.to_str() {
-					s.path = virtual_path.to_owned();
-				}
-				return Some(s);
-			}
-			None
-		})
+		.filter_map(|s| index::virtualize_song(&vfs, s))
 		.collect();
 
-	Ok(songs)
+	Ok(virtual_songs)
 }
 
 pub fn delete_playlist<T>(playlist_name: &str, owner: &str, db: &T) -> Result<()>

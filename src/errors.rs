@@ -47,6 +47,7 @@ error_chain! {
         UnsupportedFileType {}
         FileNotFound {}
         MissingIndexVersion {}
+        MissingPlaylistName {}
     }
 }
 

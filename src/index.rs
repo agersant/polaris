@@ -444,7 +444,7 @@ pub fn self_trigger<T>(db: &T, command_buffer: Arc<Mutex<Sender<Command>>>)
 	}
 }
 
-fn virtualize_song(vfs: &VFS, mut song: Song) -> Option<Song> {
+pub fn virtualize_song(vfs: &VFS, mut song: Song) -> Option<Song> {
 	song.path = match vfs.real_to_virtual(Path::new(&song.path)) {
 		Ok(p) => p.to_string_lossy().into_owned(),
 		_ => return None,
