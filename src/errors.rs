@@ -48,6 +48,7 @@ error_chain! {
         FileNotFound {}
         MissingIndexVersion {}
         MissingPlaylistName {}
+        EncodingError {}
     }
 }
 

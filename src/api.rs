@@ -573,6 +573,11 @@ fn read_playlist(request: &mut Request, db: &DB) -> IronResult<Response> {
 		_ => return Err(Error::from(ErrorKind::MissingPlaylistName).into()), 
 	};
 
+	let playlist_name = match percent_decode(playlist_name.as_bytes()).decode_utf8() {
+		Ok(s) => s,
+		Err(e) => return Err(Error::from(ErrorKind::EncodingError).into()), 
+	};
+
 	let songs = playlist::read_playlist(&playlist_name, &username, db)?;
 	let result_json = serde_json::to_string(&songs);
 	let result_json = match result_json {
@@ -593,6 +598,11 @@ fn delete_playlist(request: &mut Request, db: &DB) -> IronResult<Response> {
 	let ref playlist_name = match params.find("playlist_name") { 
 		Some(s) => s,
 		_ => return Err(Error::from(ErrorKind::MissingPlaylistName).into()), 
+	};
+
+	let playlist_name = match percent_decode(playlist_name.as_bytes()).decode_utf8() {
+		Ok(s) => s,
+		Err(e) => return Err(Error::from(ErrorKind::EncodingError).into()), 
 	};
 
 	playlist::delete_playlist(&playlist_name, &username, db)?;
