@@ -74,7 +74,7 @@ pub fn list_playlists<T>(owner: &str, db: &T) -> Result<Vec<String>>
 	}
 }
 
-pub fn save_playlist<T>(name: &str, owner: &str, content: &Vec<String>, db: &T) -> Result<()>
+pub fn save_playlist<T>(playlist_name: &str, owner: &str, content: &Vec<String>, db: &T) -> Result<()>
 	where T: ConnectionSource + VFSSource
 {
 	let user: User;
@@ -96,7 +96,7 @@ pub fn save_playlist<T>(name: &str, owner: &str, content: &Vec<String>, db: &T) 
 
 		// Create playlist
 		new_playlist = NewPlaylist {
-			name: name.into(),
+			name: playlist_name.into(),
 			owner: user.id,
 		};
 
@@ -107,7 +107,7 @@ pub fn save_playlist<T>(name: &str, owner: &str, content: &Vec<String>, db: &T) 
 		{
 			use self::playlists::dsl::*;
 			playlist = playlists
-				.filter(name.eq(name).and(owner.eq(user.id)))
+				.filter(name.eq(playlist_name).and(owner.eq(user.id)))
 				.get_result(connection.deref())?;
 		}
 	}
