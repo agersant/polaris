@@ -524,12 +524,18 @@ pub fn flatten<T>(db: &T, virtual_path: &Path) -> Result<Vec<Song>>
 	use self::songs::dsl::*;
 	let vfs = db.get_vfs()?;
 	let connection = db.get_connection();
-	let real_path = vfs.virtual_to_real(virtual_path)?;
-	let like_path = real_path.as_path().to_string_lossy().into_owned() + "%";
-	let real_songs: Vec<Song> = songs
-		.filter(path.like(&like_path))
-		.order(path)
-		.load(connection.deref())?;
+
+	let real_songs: Vec<Song> = if virtual_path.parent() != None {
+		let real_path = vfs.virtual_to_real(virtual_path)?;
+		let like_path = real_path.as_path().to_string_lossy().into_owned() + "%";
+		songs
+			.filter(path.like(&like_path))
+			.order(path)
+			.load(connection.deref())?
+	} else {
+		songs.order(path).load(connection.deref())?
+	};
+
 	let virtual_songs = real_songs
 		.into_iter()
 		.filter_map(|s| virtualize_song(&vfs, s));
