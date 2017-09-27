@@ -74,7 +74,11 @@ pub fn list_playlists<T>(owner: &str, db: &T) -> Result<Vec<String>>
 	}
 }
 
-pub fn save_playlist<T>(playlist_name: &str, owner: &str, content: &Vec<String>, db: &T) -> Result<()>
+pub fn save_playlist<T>(playlist_name: &str,
+                        owner: &str,
+                        content: &Vec<String>,
+                        db: &T)
+                        -> Result<()>
 	where T: ConnectionSource + VFSSource
 {
 	let user: User;

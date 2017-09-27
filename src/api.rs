@@ -176,10 +176,10 @@ fn get_endpoints(db: Arc<DB>, index_channel: Arc<Mutex<Sender<index::Command>>>)
 			                    "read_playlist");
 
 			playlist_router.delete("/:playlist_name",
-			                    move |request: &mut Request| {
-				                    self::delete_playlist(request, delete_db.deref())
-				                   },
-			                    "delete_playlist");
+			                       move |request: &mut Request| {
+				                       self::delete_playlist(request, delete_db.deref())
+				                      },
+			                       "delete_playlist");
 
 			auth_api_mount.mount("/playlist/", playlist_router);
 		}
