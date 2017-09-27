@@ -52,8 +52,6 @@ use unix_daemonize::{daemonize_redirect, ChdirMode};
 
 use core::ops::Deref;
 use errors::*;
-#[cfg(unix)]
-use getopts::Matches;
 use getopts::Options;
 use iron::prelude::*;
 use mount::Mount;
