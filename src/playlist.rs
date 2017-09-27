@@ -31,7 +31,6 @@ pub struct User {
 pub struct Playlist {
 	id: i32,
 	owner: i32,
-	name: String,
 }
 
 #[derive(Identifiable, Queryable, Associations)]
@@ -39,8 +38,6 @@ pub struct Playlist {
 pub struct PlaylistSong {
 	id: i32,
 	playlist: i32,
-	path: String,
-	ordering: i32,
 }
 
 #[derive(Insertable)]
@@ -111,6 +108,7 @@ pub fn save_playlist<T>(playlist_name: &str,
 		{
 			use self::playlists::dsl::*;
 			playlist = playlists
+				.select((id, owner))
 				.filter(name.eq(playlist_name).and(owner.eq(user.id)))
 				.get_result(connection.deref())?;
 		}
@@ -176,6 +174,7 @@ pub fn read_playlist<T>(playlist_name: &str, owner: &str, db: &T) -> Result<Vec<
 		{
 			use self::playlists::dsl::*;
 			playlist = playlists
+				.select((id, owner))
 				.filter(name.eq(playlist_name).and(owner.eq(user.id)))
 				.get_result(connection.deref())?;
 		}

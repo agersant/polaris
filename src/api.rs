@@ -340,13 +340,13 @@ fn auth(request: &mut Request, db: &DB) -> IronResult<Response> {
 	let password;
 	{
 		let input = request.get_ref::<params::Params>().unwrap();
-		username = match input.find(&["username"]) { 
+		username = match input.find(&["username"]) {
 			Some(&params::Value::String(ref username)) => username.clone(),
-			_ => return Err(Error::from(ErrorKind::MissingUsername).into()), 
+			_ => return Err(Error::from(ErrorKind::MissingUsername).into()),
 		};
-		password = match input.find(&["password"]) { 
+		password = match input.find(&["password"]) {
 			Some(&params::Value::String(ref password)) => password.clone(),
-			_ => return Err(Error::from(ErrorKind::MissingPassword).into()), 
+			_ => return Err(Error::from(ErrorKind::MissingPassword).into()),
 		};
 	}
 
@@ -568,14 +568,14 @@ fn read_playlist(request: &mut Request, db: &DB) -> IronResult<Response> {
 	};
 
 	let params = request.extensions.get::<Router>().unwrap();
-	let ref playlist_name = match params.find("playlist_name") { 
+	let ref playlist_name = match params.find("playlist_name") {
 		Some(s) => s,
-		_ => return Err(Error::from(ErrorKind::MissingPlaylistName).into()), 
+		_ => return Err(Error::from(ErrorKind::MissingPlaylistName).into()),
 	};
 
 	let playlist_name = match percent_decode(playlist_name.as_bytes()).decode_utf8() {
 		Ok(s) => s,
-		Err(e) => return Err(Error::from(ErrorKind::EncodingError).into()), 
+		Err(_) => return Err(Error::from(ErrorKind::EncodingError).into()),
 	};
 
 	let songs = playlist::read_playlist(&playlist_name, &username, db)?;
@@ -595,14 +595,14 @@ fn delete_playlist(request: &mut Request, db: &DB) -> IronResult<Response> {
 	};
 
 	let params = request.extensions.get::<Router>().unwrap();
-	let ref playlist_name = match params.find("playlist_name") { 
+	let ref playlist_name = match params.find("playlist_name") {
 		Some(s) => s,
-		_ => return Err(Error::from(ErrorKind::MissingPlaylistName).into()), 
+		_ => return Err(Error::from(ErrorKind::MissingPlaylistName).into()),
 	};
 
 	let playlist_name = match percent_decode(playlist_name.as_bytes()).decode_utf8() {
 		Ok(s) => s,
-		Err(e) => return Err(Error::from(ErrorKind::EncodingError).into()), 
+		Err(_) => return Err(Error::from(ErrorKind::EncodingError).into()),
 	};
 
 	playlist::delete_playlist(&playlist_name, &username, db)?;
