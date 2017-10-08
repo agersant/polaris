@@ -106,15 +106,15 @@ pub fn read<T>(db: &T) -> Result<Config>
 		.select((users::columns::name, users::columns::admin))
 		.get_results(connection.deref())?;
 	config.users = Some(found_users
-						.into_iter()
-						.map(|(n, a)| {
-							ConfigUser {
-								name: n,
-								password: "".to_owned(),
-								admin: a != 0,
-							}
-						})
-						.collect::<_>());
+	                        .into_iter()
+	                        .map(|(n, a)| {
+		                             ConfigUser {
+		                                 name: n,
+		                                 password: "".to_owned(),
+		                                 admin: a != 0,
+		                             }
+		                            })
+	                        .collect::<_>());
 
 	let ydns = ddns_config
 		.select((host, username, password))
@@ -170,9 +170,9 @@ pub fn amend<T>(db: &T, new_config: &Config) -> Result<()>
 		let delete_usernames: Vec<String> = old_usernames
 			.into_iter()
 			.filter(|old_name| match config_users.iter().find(|u| &u.name == old_name) {
-				None => true,
-				Some(new_user) => !new_user.password.is_empty(),
-			})
+			            None => true,
+			            Some(new_user) => !new_user.password.is_empty(),
+			        })
 			.collect::<_>();
 		diesel::delete(users::table.filter(users::name.eq_any(&delete_usernames)))
 			.execute(connection.deref())?;
@@ -213,8 +213,8 @@ pub fn amend<T>(db: &T, new_config: &Config) -> Result<()>
 		use self::ddns_config::dsl::*;
 		diesel::update(ddns_config)
 			.set((host.eq(ydns.host.clone()),
-				  username.eq(ydns.username.clone()),
-				  password.eq(ydns.password.clone())))
+			      username.eq(ydns.username.clone()),
+			      password.eq(ydns.password.clone())))
 			.execute(connection.deref())?;
 	}
 
@@ -256,14 +256,14 @@ fn test_amend() {
 		reindex_every_n_seconds: Some(123),
 		prefix_url: None,
 		mount_dirs: Some(vec![MountPoint {
-			source: "C:\\Music".into(),
-			name: "root".into(),
-		}]),
+		                          source: "C:\\Music".into(),
+		                          name: "root".into(),
+		                      }]),
 		users: Some(vec![ConfigUser {
-			name: "Teddy🐻".into(),
-			password: "Tasty🍖".into(),
-			admin: false,
-		}]),
+		                     name: "Teddy🐻".into(),
+		                     password: "Tasty🍖".into(),
+		                     admin: false,
+		                 }]),
 		ydns: None,
 	};
 
@@ -272,19 +272,19 @@ fn test_amend() {
 		reindex_every_n_seconds: None,
 		prefix_url: Some("polaris".into()),
 		mount_dirs: Some(vec![MountPoint {
-			source: "/home/music".into(),
-			name: "🎵📁".into(),
-		}]),
+		                          source: "/home/music".into(),
+		                          name: "🎵📁".into(),
+		                      }]),
 		users: Some(vec![ConfigUser {
-			name: "Kermit🐸".into(),
-			password: "🐞🐞".into(),
-			admin: false,
-		}]),
+		                     name: "Kermit🐸".into(),
+		                     password: "🐞🐞".into(),
+		                     admin: false,
+		                 }]),
 		ydns: Some(DDNSConfig {
-			host: "🐸🐸🐸.ydns.eu".into(),
-			username: "kfr🐸g".into(),
-			password: "tasty🐞".into(),
-		}),
+		               host: "🐸🐸🐸.ydns.eu".into(),
+		               username: "kfr🐸g".into(),
+		               password: "tasty🐞".into(),
+		           }),
 	};
 
 	let mut expected_config = new_config.clone();
@@ -313,10 +313,10 @@ fn test_amend_preserve_password_hashes() {
 		prefix_url: None,
 		mount_dirs: None,
 		users: Some(vec![ConfigUser {
-			name: "Teddy🐻".into(),
-			password: "Tasty🍖".into(),
-			admin: false,
-		}]),
+		                     name: "Teddy🐻".into(),
+		                     password: "Tasty🍖".into(),
+		                     admin: false,
+		                 }]),
 		ydns: None,
 	};
 	amend(&db, &initial_config).unwrap();
@@ -336,15 +336,15 @@ fn test_amend_preserve_password_hashes() {
 		prefix_url: None,
 		mount_dirs: None,
 		users: Some(vec![ConfigUser {
-			name: "Kermit🐸".into(),
-			password: "tasty🐞".into(),
-			admin: false,
-		},
-						 ConfigUser {
-							 name: "Teddy🐻".into(),
-							 password: "".into(),
-							 admin: false,
-						 }]),
+		                     name: "Kermit🐸".into(),
+		                     password: "tasty🐞".into(),
+		                     admin: false,
+		                 },
+		                 ConfigUser {
+		                     name: "Teddy🐻".into(),
+		                     password: "".into(),
+		                     admin: false,
+		                 }]),
 		ydns: None,
 	};
 	amend(&db, &new_config).unwrap();
@@ -374,10 +374,10 @@ fn test_toggle_admin() {
 		prefix_url: None,
 		mount_dirs: None,
 		users: Some(vec![ConfigUser {
-			name: "Teddy🐻".into(),
-			password: "Tasty🍖".into(),
-			admin: true,
-		}]),
+		                     name: "Teddy🐻".into(),
+		                     password: "Tasty🍖".into(),
+		                     admin: true,
+		                 }]),
 		ydns: None,
 	};
 	amend(&db, &initial_config).unwrap();
@@ -397,10 +397,10 @@ fn test_toggle_admin() {
 		prefix_url: None,
 		mount_dirs: None,
 		users: Some(vec![ConfigUser {
-			name: "Teddy🐻".into(),
-			password: "".into(),
-			admin: false,
-		}]),
+		                     name: "Teddy🐻".into(),
+		                     password: "".into(),
+		                     admin: false,
+		                 }]),
 		ydns: None,
 	};
 	amend(&db, &new_config).unwrap();
