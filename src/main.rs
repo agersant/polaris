@@ -148,6 +148,7 @@ fn run() -> Result<()> {
 		let config = config::parse_toml_file(&path)?;
 		config::overwrite(db.deref(), &config)?;
 	}
+	let config = config::read(db.deref())?;
 
 	// Init index
 	let (index_sender, index_receiver) = channel();
@@ -164,13 +165,17 @@ fn run() -> Result<()> {
 	std::thread::spawn(move || { index::self_trigger(db_ref.deref(), sender_ref); });
 
 	// Mount API
-	println!("Mounting API");
+	let prefix_url = config.prefix_url.unwrap_or("".to_string());
+	let api_url = format!("{}/api", &prefix_url);
+	println!("Mounting API on {}", api_url);
 	let mut mount = Mount::new();
 	let handler = api::get_handler(db.clone(), index_sender)?;
-	mount.mount("/api/", handler);
+	mount.mount(&api_url, handler);
 
 	// Mount static files
-	println!("Mounting static files");
+	let static_url = format!("/{}", &prefix_url);
+
+	println!("Mounting static files on {}", static_url);
 	let web_dir_name = matches.opt_str("w");
 	let mut default_web_dir = utils::get_data_root()?;
 	default_web_dir.push("web");
@@ -178,7 +183,7 @@ fn run() -> Result<()> {
 		.map(|n| Path::new(n.as_str()).to_path_buf())
 		.unwrap_or(default_web_dir);
 
-	mount.mount("/", Static::new(web_dir_path));
+	mount.mount(&static_url, Static::new(web_dir_path));
 
 	println!("Starting up server");
 	let port: u16 = matches
