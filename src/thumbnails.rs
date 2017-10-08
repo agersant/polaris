@@ -1,11 +1,11 @@
 use image;
 use image::GenericImage;
 use image::ImageBuffer;
+use image::ImageFormat;
 use image::FilterType;
-use image::imageops::resize;
 use std::cmp;
 use std::collections::hash_map::DefaultHasher;
-use std::fs::DirBuilder;
+use std::fs::{DirBuilder, File};
 use std::hash::{Hash, Hasher};
 use std::path::*;
 
@@ -42,22 +42,20 @@ pub fn get_thumbnail(real_path: &Path, max_dimension: u32) -> Result<PathBuf> {
 	if !out_path.exists() {
 		let source_aspect_ratio: f32 = source_width as f32 / source_height as f32;
 		if source_aspect_ratio < 0.8 || source_aspect_ratio > 1.2 {
-			let mut cropped_image = ImageBuffer::new(cropped_dimension, cropped_dimension);
-			cropped_image.copy_from(&source_image,
-			                        (cropped_dimension - source_width) / 2,
-			                        (cropped_dimension - source_height) / 2);
-			let out_image = resize(&cropped_image,
-			                       out_dimension,
-			                       out_dimension,
-			                       FilterType::Lanczos3);
-			out_image.save(out_path.as_path())?;
+			let scaled_image =
+				source_image.resize(out_dimension, out_dimension, FilterType::Lanczos3);
+			let (scaled_width, scaled_height) = scaled_image.dimensions();
+			let mut final_image = ImageBuffer::new(out_dimension, out_dimension);
+			final_image.copy_from(&scaled_image,
+			                      (out_dimension - scaled_width) / 2,
+			                      (out_dimension - scaled_height) / 2);
+			final_image.save(&out_path)?;
 		} else {
-			let out_image = resize(&source_image,
-			                       out_dimension,
-			                       out_dimension,
-			                       FilterType::Lanczos3);
-			out_image.save(out_path.as_path())?;
-		}
+			let mut out_file = File::create(&out_path)?;
+			let final_image =
+				source_image.resize_exact(max_dimension, out_dimension, FilterType::Lanczos3);
+			final_image.save(&mut out_file, ImageFormat::PNG)?;
+		};
 	}
 
 	Ok(out_path)
