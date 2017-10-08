@@ -22,6 +22,7 @@ pub struct MiscSettings {
 	pub auth_secret: String,
 	pub index_sleep_duration_seconds: i32,
 	pub index_album_art_pattern: String,
+	pub prefix_url: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -36,6 +37,7 @@ pub struct Config {
 	pub album_art_pattern: Option<String>,
 	pub reindex_every_n_seconds: Option<i32>,
 	pub mount_dirs: Option<Vec<MountPoint>>,
+	pub prefix_url: Option<String>,
 	pub users: Option<Vec<ConfigUser>>,
 	pub ydns: Option<DDNSConfig>,
 }
@@ -83,15 +85,17 @@ pub fn read<T>(db: &T) -> Result<Config>
 		album_art_pattern: None,
 		reindex_every_n_seconds: None,
 		mount_dirs: None,
+		prefix_url: None,
 		users: None,
 		ydns: None,
 	};
 
-	let (art_pattern, sleep_duration) = misc_settings
-		.select((index_album_art_pattern, index_sleep_duration_seconds))
+	let (art_pattern, sleep_duration, url) = misc_settings
+		.select((index_album_art_pattern, index_sleep_duration_seconds, prefix_url))
 		.get_result(connection.deref())?;
 	config.album_art_pattern = Some(art_pattern);
 	config.reindex_every_n_seconds = Some(sleep_duration);
+	config.prefix_url = if url != "" { Some(url) } else { None };
 
 	let mount_dirs = mount_points
 		.select((source, name))
@@ -102,15 +106,15 @@ pub fn read<T>(db: &T) -> Result<Config>
 		.select((users::columns::name, users::columns::admin))
 		.get_results(connection.deref())?;
 	config.users = Some(found_users
-	                        .into_iter()
-	                        .map(|(n, a)| {
-		                             ConfigUser {
-		                                 name: n,
-		                                 password: "".to_owned(),
-		                                 admin: a != 0,
-		                             }
-		                            })
-	                        .collect::<_>());
+						.into_iter()
+						.map(|(n, a)| {
+							ConfigUser {
+								name: n,
+								password: "".to_owned(),
+								admin: a != 0,
+							}
+						})
+						.collect::<_>());
 
 	let ydns = ddns_config
 		.select((host, username, password))
@@ -166,9 +170,9 @@ pub fn amend<T>(db: &T, new_config: &Config) -> Result<()>
 		let delete_usernames: Vec<String> = old_usernames
 			.into_iter()
 			.filter(|old_name| match config_users.iter().find(|u| &u.name == old_name) {
-			            None => true,
-			            Some(new_user) => !new_user.password.is_empty(),
-			        })
+				None => true,
+				Some(new_user) => !new_user.password.is_empty(),
+			})
 			.collect::<_>();
 		diesel::delete(users::table.filter(users::name.eq_any(&delete_usernames)))
 			.execute(connection.deref())?;
@@ -209,8 +213,14 @@ pub fn amend<T>(db: &T, new_config: &Config) -> Result<()>
 		use self::ddns_config::dsl::*;
 		diesel::update(ddns_config)
 			.set((host.eq(ydns.host.clone()),
-			      username.eq(ydns.username.clone()),
-			      password.eq(ydns.password.clone())))
+				  username.eq(ydns.username.clone()),
+				  password.eq(ydns.password.clone())))
+			.execute(connection.deref())?;
+	}
+
+	if let Some(ref prefix_url) = new_config.prefix_url {
+		diesel::update(misc_settings::table)
+			.set(misc_settings::prefix_url.eq(prefix_url))
 			.execute(connection.deref())?;
 	}
 
@@ -244,35 +254,37 @@ fn test_amend() {
 	let initial_config = Config {
 		album_art_pattern: Some("file\\.png".into()),
 		reindex_every_n_seconds: Some(123),
+		prefix_url: None,
 		mount_dirs: Some(vec![MountPoint {
-		                          source: "C:\\Music".into(),
-		                          name: "root".into(),
-		                      }]),
+			source: "C:\\Music".into(),
+			name: "root".into(),
+		}]),
 		users: Some(vec![ConfigUser {
-		                     name: "Teddy🐻".into(),
-		                     password: "Tasty🍖".into(),
-		                     admin: false,
-		                 }]),
+			name: "Teddy🐻".into(),
+			password: "Tasty🍖".into(),
+			admin: false,
+		}]),
 		ydns: None,
 	};
 
 	let new_config = Config {
 		album_art_pattern: Some("🖼️\\.jpg".into()),
 		reindex_every_n_seconds: None,
+		prefix_url: Some("polaris".into()),
 		mount_dirs: Some(vec![MountPoint {
-		                          source: "/home/music".into(),
-		                          name: "🎵📁".into(),
-		                      }]),
+			source: "/home/music".into(),
+			name: "🎵📁".into(),
+		}]),
 		users: Some(vec![ConfigUser {
-		                     name: "Kermit🐸".into(),
-		                     password: "🐞🐞".into(),
-		                     admin: false,
-		                 }]),
+			name: "Kermit🐸".into(),
+			password: "🐞🐞".into(),
+			admin: false,
+		}]),
 		ydns: Some(DDNSConfig {
-		               host: "🐸🐸🐸.ydns.eu".into(),
-		               username: "kfr🐸g".into(),
-		               password: "tasty🐞".into(),
-		           }),
+			host: "🐸🐸🐸.ydns.eu".into(),
+			username: "kfr🐸g".into(),
+			password: "tasty🐞".into(),
+		}),
 	};
 
 	let mut expected_config = new_config.clone();
@@ -298,12 +310,13 @@ fn test_amend_preserve_password_hashes() {
 	let initial_config = Config {
 		album_art_pattern: None,
 		reindex_every_n_seconds: None,
+		prefix_url: None,
 		mount_dirs: None,
 		users: Some(vec![ConfigUser {
-		                     name: "Teddy🐻".into(),
-		                     password: "Tasty🍖".into(),
-		                     admin: false,
-		                 }]),
+			name: "Teddy🐻".into(),
+			password: "Tasty🍖".into(),
+			admin: false,
+		}]),
 		ydns: None,
 	};
 	amend(&db, &initial_config).unwrap();
@@ -320,17 +333,18 @@ fn test_amend_preserve_password_hashes() {
 	let new_config = Config {
 		album_art_pattern: None,
 		reindex_every_n_seconds: None,
+		prefix_url: None,
 		mount_dirs: None,
 		users: Some(vec![ConfigUser {
-		                     name: "Kermit🐸".into(),
-		                     password: "tasty🐞".into(),
-		                     admin: false,
-		                 },
-		                 ConfigUser {
-		                     name: "Teddy🐻".into(),
-		                     password: "".into(),
-		                     admin: false,
-		                 }]),
+			name: "Kermit🐸".into(),
+			password: "tasty🐞".into(),
+			admin: false,
+		},
+						 ConfigUser {
+							 name: "Teddy🐻".into(),
+							 password: "".into(),
+							 admin: false,
+						 }]),
 		ydns: None,
 	};
 	amend(&db, &new_config).unwrap();
@@ -357,12 +371,13 @@ fn test_toggle_admin() {
 	let initial_config = Config {
 		album_art_pattern: None,
 		reindex_every_n_seconds: None,
+		prefix_url: None,
 		mount_dirs: None,
 		users: Some(vec![ConfigUser {
-		                     name: "Teddy🐻".into(),
-		                     password: "Tasty🍖".into(),
-		                     admin: true,
-		                 }]),
+			name: "Teddy🐻".into(),
+			password: "Tasty🍖".into(),
+			admin: true,
+		}]),
 		ydns: None,
 	};
 	amend(&db, &initial_config).unwrap();
@@ -379,12 +394,13 @@ fn test_toggle_admin() {
 	let new_config = Config {
 		album_art_pattern: None,
 		reindex_every_n_seconds: None,
+		prefix_url: None,
 		mount_dirs: None,
 		users: Some(vec![ConfigUser {
-		                     name: "Teddy🐻".into(),
-		                     password: "".into(),
-		                     admin: false,
-		                 }]),
+			name: "Teddy🐻".into(),
+			password: "".into(),
+			admin: false,
+		}]),
 		ydns: None,
 	};
 	amend(&db, &new_config).unwrap();
