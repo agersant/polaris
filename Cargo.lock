@@ -1,6 +1,6 @@
 [root]
 name = "polaris"
-version = "0.7.0"
+version = "0.7.1"
 dependencies = [
  "ape 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "app_dirs 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
