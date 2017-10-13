@@ -237,8 +237,10 @@ impl Handler for AuthHandler {
 					if let Some(ref password) = auth.password {
 						auth_success =
 							user::auth(self.db.deref(), auth.username.as_str(), password.as_str())?;
-						req.extensions
-							.insert::<SessionKey>(Session { username: auth.username.clone() });
+						if auth_success {
+							req.extensions
+								.insert::<SessionKey>(Session { username: auth.username.clone() });
+						}
 					}
 				}
 			}
