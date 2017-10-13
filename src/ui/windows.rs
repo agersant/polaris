@@ -158,7 +158,7 @@ fn remove_notification_icon(window: winapi::HWND) {
 }
 
 fn open_notification_context_menu(window: winapi::HWND) {
-	println!("Opening notification icon context menu");
+	info!("Opening notification icon context menu");
 	let quit_string = "Quit Polaris".to_win();
 
 	unsafe {
@@ -187,20 +187,20 @@ fn open_notification_context_menu(window: winapi::HWND) {
 		                       std::ptr::null_mut());
 		user32::PostMessageW(window, 0, 0, 0);
 
-		println!("Closing notification context menu");
+		info!("Closing notification context menu");
 		user32::DestroyMenu(context_menu);
 	}
 }
 
 fn quit(window: winapi::HWND) {
-	println!("Shutting down UI");
+	info!("Shutting down UI");
 	unsafe {
 		user32::PostMessageW(window, winapi::winuser::WM_CLOSE, 0, 0);
 	}
 }
 
 pub fn run() {
-	println!("Starting up UI (Windows)");
+	info!("Starting up UI (Windows)");
 
 	create_window().expect("Could not initialize window");
 
