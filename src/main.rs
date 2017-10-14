@@ -32,6 +32,9 @@ extern crate staticfile;
 extern crate toml;
 extern crate typemap;
 extern crate url;
+#[macro_use]
+extern crate log;
+extern crate simplelog;
 
 #[cfg(windows)]
 extern crate uuid;
@@ -59,6 +62,7 @@ use staticfile::Static;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc::channel;
+use simplelog::{Config, TermLogger, LogLevelFilter};
 
 mod api;
 mod config;
@@ -111,6 +115,7 @@ fn run() -> Result<()> {
 	options.optopt("p", "port", "set polaris to run on a custom port", "PORT");
 	options.optopt("d", "database", "set the path to index database", "FILE");
 	options.optopt("w", "web", "set the path to web client files", "DIRECTORY");
+	options.optopt("l", "log", "set the log level to a value between 0 (off) and 3 (debug)", "LEVEL");
 
 	#[cfg(unix)]
 	options.optflag("f",
@@ -128,11 +133,23 @@ fn run() -> Result<()> {
 		return Ok(());
 	}
 
+	let log_level = match matches.opt_str("l").as_ref().map(String::as_ref) {
+		Some("0") => LogLevelFilter::Off,
+		Some("1") => LogLevelFilter::Error,
+		Some("2") => LogLevelFilter::Info,
+		Some("3") => LogLevelFilter::Debug,
+		_ => LogLevelFilter::Info,
+	};
+
+	if let Err(e) = TermLogger::init(log_level, Config::default()) {
+		bail!("Error starting logger: {}", e);
+	};
+
 	#[cfg(unix)]
 	daemonize(&matches)?;
 
 	// Init DB
-	println!("Starting up database");
+	info!("Starting up database");
 	let db_path = matches.opt_str("d");
 	let mut default_db_path = utils::get_data_root()?;
 	default_db_path.push("db.sqlite");
@@ -167,7 +184,7 @@ fn run() -> Result<()> {
 	// Mount API
 	let prefix_url = config.prefix_url.unwrap_or("".to_string());
 	let api_url = format!("{}/api", &prefix_url);
-	println!("Mounting API on {}", api_url);
+	info!("Mounting API on {}", api_url);
 	let mut mount = Mount::new();
 	let handler = api::get_handler(db.clone(), index_sender)?;
 	mount.mount(&api_url, handler);
@@ -175,7 +192,7 @@ fn run() -> Result<()> {
 	// Mount static files
 	let static_url = format!("/{}", &prefix_url);
 
-	println!("Mounting static files on {}", static_url);
+	info!("Mounting static files on {}", static_url);
 	let web_dir_name = matches.opt_str("w");
 	let mut default_web_dir = utils::get_data_root()?;
 	default_web_dir.push("web");
@@ -185,12 +202,13 @@ fn run() -> Result<()> {
 
 	mount.mount(&static_url, Static::new(web_dir_path));
 
-	println!("Starting up server");
+	info!("Starting up server");
 	let port: u16 = matches
 		.opt_str("p")
 		.unwrap_or("5050".to_owned())
 		.parse()
 		.or(Err("invalid port number"))?;
+
 	let mut server = match Iron::new(mount).http(("0.0.0.0", port)) {
 		Ok(s) => s,
 		Err(e) => bail!("Error starting up server: {}", e),
@@ -203,7 +221,7 @@ fn run() -> Result<()> {
 	// Run UI
 	ui::run();
 
-	println!("Shutting down server");
+	info!("Shutting down server");
 	if let Err(e) = server.close() {
 		bail!("Error shutting down server: {}", e);
 	}

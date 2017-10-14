@@ -27,7 +27,7 @@ pub struct DB {
 
 impl DB {
 	pub fn new(path: &Path) -> Result<DB> {
-		println!("Database file path: {}", path.to_string_lossy());
+		info!("Database file path: {}", path.to_string_lossy());
 		let connection =
 			Arc::new(Mutex::new(SqliteConnection::establish(&path.to_string_lossy())?));
 		let db = DB { connection: connection.clone() };

@@ -63,7 +63,7 @@ pub fn parse_json(content: &str) -> Result<Config> {
 }
 
 pub fn parse_toml_file(path: &path::Path) -> Result<Config> {
-	println!("Config file path: {}", path.to_string_lossy());
+	info!("Config file path: {}", path.to_string_lossy());
 	let mut config_file = fs::File::open(path)?;
 	let mut config_file_content = String::new();
 	config_file.read_to_string(&mut config_file_content)?;

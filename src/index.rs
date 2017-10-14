@@ -207,7 +207,7 @@ impl<'conn> IndexBuilder<'conn> {
 			let file_path = match file {
 				Ok(f) => f.path(),
 				_ => {
-					println!("File read error within {}", path_string);
+					error!("File read error within {}", path_string);
 					break;
 				}
 			};
@@ -378,10 +378,10 @@ pub fn update<T>(db: &T) -> Result<()>
 	where T: ConnectionSource + VFSSource
 {
 	let start = time::Instant::now();
-	println!("Beginning library index update");
+	info!("Beginning library index update");
 	clean(db)?;
 	populate(db)?;
-	println!("Library index update took {} seconds",
+	info!("Library index update took {} seconds",
 	         start.elapsed().as_secs());
 	Ok(())
 }
@@ -392,7 +392,7 @@ pub fn update_loop<T>(db: &T, command_buffer: Receiver<Command>)
 	loop {
 		// Wait for a command
 		if let Err(e) = command_buffer.recv() {
-			println!("Error while waiting on index command buffer: {}", e);
+			error!("Error while waiting on index command buffer: {}", e);
 			return;
 		}
 
@@ -400,7 +400,7 @@ pub fn update_loop<T>(db: &T, command_buffer: Receiver<Command>)
 		loop {
 			match command_buffer.try_recv() {
 				Err(TryRecvError::Disconnected) => {
-					println!("Error while flushing index command buffer");
+					error!("Error while flushing index command buffer");
 					return;
 				}
 				Err(TryRecvError::Empty) => break,
@@ -410,7 +410,7 @@ pub fn update_loop<T>(db: &T, command_buffer: Receiver<Command>)
 
 		// Do the update
 		if let Err(e) = update(db) {
-			println!("Error while updating index: {}", e);
+			error!("Error while updating index: {}", e);
 		}
 	}
 }
@@ -423,7 +423,7 @@ pub fn self_trigger<T>(db: &T, command_buffer: Arc<Mutex<Sender<Command>>>)
 			let command_buffer = command_buffer.lock().unwrap();
 			let command_buffer = command_buffer.deref();
 			if let Err(e) = command_buffer.send(Command::REINDEX) {
-				println!("Error while writing to index command buffer: {}", e);
+				error!("Error while writing to index command buffer: {}", e);
 				return;
 			}
 		}
@@ -434,7 +434,7 @@ pub fn self_trigger<T>(db: &T, command_buffer: Arc<Mutex<Sender<Command>>>)
 				.get_result(connection.deref())
 				.map_err(|e| e.into());
 			if let Err(ref e) = settings {
-				println!("Could not retrieve index sleep duration: {}", e);
+				error!("Could not retrieve index sleep duration: {}", e);
 			}
 			sleep_duration = settings
 				.map(|s| s.index_sleep_duration_seconds)

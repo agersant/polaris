@@ -66,7 +66,7 @@ fn update_my_ip<T>(config_source: &T) -> Result<(), DDNSError>
 {
 	let config = config_source.get_ddns_config()?;
 	if config.host.len() == 0 || config.username.len() == 0 {
-		println!("Skipping DDNS update because credentials are missing");
+		info!("Skipping DDNS update because credentials are missing");
 		return Ok(());
 	}
 
@@ -91,7 +91,7 @@ pub fn run<T>(config_source: &T)
 {
 	loop {
 		if let Err(e) = update_my_ip(config_source) {
-			println!("Dynamic DNS update error: {:?}", e);
+			error!("Dynamic DNS update error: {:?}", e);
 		}
 		thread::sleep(time::Duration::from_secs(60 * 30));
 	}
