@@ -579,12 +579,46 @@ pub fn get_recent_albums<T>(db: &T, count: i64) -> Result<Vec<Directory>>
 pub fn search<T>(db: &T, query: &str) -> Result<Vec<CollectionFile>>
 	where T: ConnectionSource + VFSSource
 {
-	Ok(vec![])
+	let vfs = db.get_vfs()?;
+	let connection = db.get_connection();
+	let like_test = format!("%{}%", query);
+	let mut output = Vec::new();
+
 	// Find dirs with matching path and parent not matching
+	{
+		use self::directories::dsl::*;
+		let real_directories: Vec<Directory> = directories
+			.filter(path.like(&like_test))
+			.filter(parent.not_like(&like_test))
+			.load(connection.deref())?;
 
+		let virtual_directories = real_directories
+			.into_iter()
+			.filter_map(|s| virtualize_directory(&vfs, s));
 
-	// Find songs with matching title/album/artist
-	// Remove songs within a matched directory
+		output.extend(virtual_directories.map(|d| CollectionFile::Directory(d)));
+	}
+
+	// Find songs with matching title/album/artist and non-matching parent
+	{
+		use self::songs::dsl::*;
+		let real_songs: Vec<Song> = songs
+			.filter(path.like(&like_test)
+			            .or(title.like(&like_test))
+			            .or(album.like(&like_test))
+			            .or(artist.like(&like_test))
+			            .or(album_artist.like(&like_test)))
+			.filter(parent.not_like(&like_test))
+			.load(connection.deref())?;
+
+		let virtual_songs = real_songs
+			.into_iter()
+			.filter_map(|s| virtualize_song(&vfs, s));
+
+		output.extend(virtual_songs.map(|s| CollectionFile::Song(s)));
+	}
+
+	Ok(output)
 }
 
 #[test]

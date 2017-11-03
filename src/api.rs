@@ -435,7 +435,10 @@ fn recent(_: &mut Request, db: &DB) -> IronResult<Response> {
 }
 
 fn search(request: &mut Request, db: &DB) -> IronResult<Response> {
-	let query = "Stratovarius"; // TODO
+	let query = request
+		.url
+		.path()
+		.join(&::std::path::MAIN_SEPARATOR.to_string());
 	let search_result = index::search(db, &query)?;
 	let result_json = serde_json::to_string(&search_result);
 	let result_json = match result_json {
