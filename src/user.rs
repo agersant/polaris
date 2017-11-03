@@ -1,6 +1,5 @@
 use core::ops::Deref;
 use diesel;
-use diesel::expression;
 use diesel::prelude::*;
 use rand;
 use ring::{digest, pbkdf2};
@@ -76,9 +75,8 @@ pub fn count<T>(db: &T) -> Result<i64>
 {
 	use db::users::dsl::*;
 	let connection = db.get_connection();
-	Ok(users
-	       .select(expression::count(name))
-	       .first(connection.deref())?)
+	let count = users.count().get_result(connection.deref())?;
+    Ok(count)
 }
 
 pub fn is_admin<T>(db: &T, username: &str) -> Result<bool>

@@ -1,6 +1,6 @@
 use core::ops::Deref;
 use diesel;
-use diesel::expression::sql;
+use diesel::dsl::sql;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use diesel::types;
@@ -574,6 +574,17 @@ pub fn get_recent_albums<T>(db: &T, count: i64) -> Result<Vec<Directory>>
 		.into_iter()
 		.filter_map(|s| virtualize_directory(&vfs, s));
 	Ok(virtual_directories.collect::<Vec<_>>())
+}
+
+pub fn search<T>(db: &T, query: &str) -> Result<Vec<CollectionFile>>
+	where T: ConnectionSource + VFSSource
+{
+    Ok(vec![])
+    // Find dirs with matching path and parent not matching
+
+
+    // Find songs with matching title/album/artist
+    // Remove songs within a matched directory
 }
 
 #[test]

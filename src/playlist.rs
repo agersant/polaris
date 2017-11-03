@@ -1,7 +1,7 @@
 use core::clone::Clone;
 use core::ops::Deref;
 use diesel;
-use diesel::expression::sql;
+use diesel::dsl::sql;
 use diesel::prelude::*;
 use diesel::BelongingToDsl;
 use diesel::types::*;
