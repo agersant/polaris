@@ -114,6 +114,11 @@ fn get_endpoints(db: Arc<DB>, index_channel: Arc<Mutex<Sender<index::Command>>>)
 		}
 		{
 			let db = db.clone();
+			auth_api_mount.mount("/search/",
+			                     move |request: &mut Request| self::search(request, db.deref()));
+		}
+		{
+			let db = db.clone();
 			auth_api_mount.mount("/serve/",
 			                     move |request: &mut Request| self::serve(request, db.deref()));
 		}
@@ -422,6 +427,20 @@ fn random(_: &mut Request, db: &DB) -> IronResult<Response> {
 fn recent(_: &mut Request, db: &DB) -> IronResult<Response> {
 	let recent_result = index::get_recent_albums(db, 20)?;
 	let result_json = serde_json::to_string(&recent_result);
+	let result_json = match result_json {
+		Ok(j) => j,
+		Err(e) => return Err(IronError::new(e, status::InternalServerError)),
+	};
+	Ok(Response::with((status::Ok, result_json)))
+}
+
+fn search(request: &mut Request, db: &DB) -> IronResult<Response> {
+	let query = request
+		.url
+		.path()
+		.join(&::std::path::MAIN_SEPARATOR.to_string());
+	let search_result = index::search(db, &query)?;
+	let result_json = serde_json::to_string(&search_result);
 	let result_json = match result_json {
 		Ok(j) => j,
 		Err(e) => return Err(IronError::new(e, status::InternalServerError)),

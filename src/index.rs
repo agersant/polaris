@@ -1,6 +1,6 @@
 use core::ops::Deref;
 use diesel;
-use diesel::expression::sql;
+use diesel::dsl::sql;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use diesel::types;
@@ -124,8 +124,8 @@ impl<'conn> IndexBuilder<'conn> {
 		let connection = connection.deref();
 		connection
 			.transaction::<_, Error, _>(|| {
-				                            diesel::insert(&self.new_songs)
-				                                .into(songs::table)
+				                            diesel::insert_into(songs::table)
+				                                .values(&self.new_songs)
 				                                .execute(connection)?;
 				                            Ok(())
 				                           })?;
@@ -138,8 +138,8 @@ impl<'conn> IndexBuilder<'conn> {
 		let connection = connection.deref();
 		connection
 			.transaction::<_, Error, _>(|| {
-				                            diesel::insert(&self.new_directories)
-				                                .into(directories::table)
+				                            diesel::insert_into(directories::table)
+				                                .values(&self.new_directories)
 				                                .execute(connection)?;
 				                            Ok(())
 				                           })?;
@@ -382,7 +382,7 @@ pub fn update<T>(db: &T) -> Result<()>
 	clean(db)?;
 	populate(db)?;
 	info!("Library index update took {} seconds",
-	         start.elapsed().as_secs());
+	      start.elapsed().as_secs());
 	Ok(())
 }
 
@@ -574,6 +574,51 @@ pub fn get_recent_albums<T>(db: &T, count: i64) -> Result<Vec<Directory>>
 		.into_iter()
 		.filter_map(|s| virtualize_directory(&vfs, s));
 	Ok(virtual_directories.collect::<Vec<_>>())
+}
+
+pub fn search<T>(db: &T, query: &str) -> Result<Vec<CollectionFile>>
+	where T: ConnectionSource + VFSSource
+{
+	let vfs = db.get_vfs()?;
+	let connection = db.get_connection();
+	let like_test = format!("%{}%", query);
+	let mut output = Vec::new();
+
+	// Find dirs with matching path and parent not matching
+	{
+		use self::directories::dsl::*;
+		let real_directories: Vec<Directory> = directories
+			.filter(path.like(&like_test))
+			.filter(parent.not_like(&like_test))
+			.load(connection.deref())?;
+
+		let virtual_directories = real_directories
+			.into_iter()
+			.filter_map(|s| virtualize_directory(&vfs, s));
+
+		output.extend(virtual_directories.map(|d| CollectionFile::Directory(d)));
+	}
+
+	// Find songs with matching title/album/artist and non-matching parent
+	{
+		use self::songs::dsl::*;
+		let real_songs: Vec<Song> = songs
+			.filter(path.like(&like_test)
+			            .or(title.like(&like_test))
+			            .or(album.like(&like_test))
+			            .or(artist.like(&like_test))
+			            .or(album_artist.like(&like_test)))
+			.filter(parent.not_like(&like_test))
+			.load(connection.deref())?;
+
+		let virtual_songs = real_songs
+			.into_iter()
+			.filter_map(|s| virtualize_song(&vfs, s));
+
+		output.extend(virtual_songs.map(|s| CollectionFile::Song(s)));
+	}
+
+	Ok(output)
 }
 
 #[test]

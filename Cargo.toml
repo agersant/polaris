@@ -9,7 +9,7 @@ ui = []
 [dependencies]
 ape = "0.1.2"
 app_dirs = "1.1.1"
-diesel = { version = "0.16.0", features = ["sqlite"] }
+diesel = { git = "https://github.com/diesel-rs/diesel", rev = "034049d", features = ["sqlite"] }
 diesel_codegen = { version = "0.16.0", features = ["sqlite"] }
 error-chain = "0.11.0"
 getopts = "0.2.15"
