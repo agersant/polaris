@@ -76,7 +76,7 @@ pub fn count<T>(db: &T) -> Result<i64>
 	use db::users::dsl::*;
 	let connection = db.get_connection();
 	let count = users.count().get_result(connection.deref())?;
-    Ok(count)
+	Ok(count)
 }
 
 pub fn is_admin<T>(db: &T, username: &str) -> Result<bool>

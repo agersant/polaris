@@ -115,7 +115,10 @@ fn run() -> Result<()> {
 	options.optopt("p", "port", "set polaris to run on a custom port", "PORT");
 	options.optopt("d", "database", "set the path to index database", "FILE");
 	options.optopt("w", "web", "set the path to web client files", "DIRECTORY");
-	options.optopt("l", "log", "set the log level to a value between 0 (off) and 3 (debug)", "LEVEL");
+	options.optopt("l",
+	               "log",
+	               "set the log level to a value between 0 (off) and 3 (debug)",
+	               "LEVEL");
 
 	#[cfg(unix)]
 	options.optflag("f",

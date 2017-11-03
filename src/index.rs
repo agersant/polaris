@@ -382,7 +382,7 @@ pub fn update<T>(db: &T) -> Result<()>
 	clean(db)?;
 	populate(db)?;
 	info!("Library index update took {} seconds",
-	         start.elapsed().as_secs());
+	      start.elapsed().as_secs());
 	Ok(())
 }
 
@@ -579,12 +579,12 @@ pub fn get_recent_albums<T>(db: &T, count: i64) -> Result<Vec<Directory>>
 pub fn search<T>(db: &T, query: &str) -> Result<Vec<CollectionFile>>
 	where T: ConnectionSource + VFSSource
 {
-    Ok(vec![])
-    // Find dirs with matching path and parent not matching
+	Ok(vec![])
+	// Find dirs with matching path and parent not matching
 
 
-    // Find songs with matching title/album/artist
-    // Remove songs within a matched directory
+	// Find songs with matching title/album/artist
+	// Remove songs within a matched directory
 }
 
 #[test]

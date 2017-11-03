@@ -112,7 +112,7 @@ fn get_endpoints(db: Arc<DB>, index_channel: Arc<Mutex<Sender<index::Command>>>)
 			auth_api_mount.mount("/recent/",
 			                     move |request: &mut Request| self::recent(request, db.deref()));
 		}
-        {
+		{
 			let db = db.clone();
 			auth_api_mount.mount("/search/",
 			                     move |request: &mut Request| self::search(request, db.deref()));
