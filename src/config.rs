@@ -155,8 +155,8 @@ pub fn amend<T>(db: &T, new_config: &Config) -> Result<()>
 	if let Some(ref mount_dirs) = new_config.mount_dirs {
 		diesel::delete(mount_points::table)
 			.execute(connection.deref())?;
-		diesel::insert(mount_dirs)
-			.into(mount_points::table)
+		diesel::insert_into(mount_points::table)
+			.values(mount_dirs)
 			.execute(connection.deref())?;
 	}
 
@@ -184,8 +184,8 @@ pub fn amend<T>(db: &T, new_config: &Config) -> Result<()>
 			.collect::<_>();
 		for ref config_user in insert_users {
 			let new_user = User::new(&config_user.name, &config_user.password, config_user.admin);
-			diesel::insert(&new_user)
-				.into(users::table)
+			diesel::insert_into(users::table)
+				.values(&new_user)
 				.execute(connection.deref())?;
 		}
 

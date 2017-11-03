@@ -124,8 +124,8 @@ impl<'conn> IndexBuilder<'conn> {
 		let connection = connection.deref();
 		connection
 			.transaction::<_, Error, _>(|| {
-				                            diesel::insert(&self.new_songs)
-				                                .into(songs::table)
+				                            diesel::insert_into(songs::table)
+				                                .values(&self.new_songs)
 				                                .execute(connection)?;
 				                            Ok(())
 				                           })?;
@@ -138,8 +138,8 @@ impl<'conn> IndexBuilder<'conn> {
 		let connection = connection.deref();
 		connection
 			.transaction::<_, Error, _>(|| {
-				                            diesel::insert(&self.new_directories)
-				                                .into(directories::table)
+				                            diesel::insert_into(directories::table)
+				                                .values(&self.new_directories)
 				                                .execute(connection)?;
 				                            Ok(())
 				                           })?;

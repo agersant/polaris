@@ -101,8 +101,8 @@ pub fn save_playlist<T>(playlist_name: &str,
 			owner: user.id,
 		};
 
-		diesel::insert(&new_playlist)
-			.into(playlists::table)
+		diesel::insert_into(playlists::table)
+			.values(&new_playlist)
 			.execute(connection.deref())?;
 
 		{
@@ -140,8 +140,8 @@ pub fn save_playlist<T>(playlist_name: &str,
 				diesel::delete(old_songs).execute(connection.deref())?;
 
 				// Insert content
-				diesel::insert(&new_songs)
-					.into(playlist_songs::table)
+				diesel::insert_into(playlist_songs::table)
+					.values(&new_songs)
 					.execute(connection.deref())?;
 				Ok(())
 			})?;
