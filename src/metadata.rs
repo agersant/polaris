@@ -148,8 +148,8 @@ fn read_flac(path: &Path) -> Result<SongTags> {
 	let year = vorbis.get("DATE").and_then(|d| d[0].parse::<i32>().ok());
 	let streaminfo = tag.get_blocks(metaflac::BlockType::StreamInfo);
 	let duration = match streaminfo.first() {
-        Some(&&metaflac::Block::StreamInfo(ref s)) => (s.total_samples as u32 / s.sample_rate) as u32,
-        _ => 0
+        Some(&&metaflac::Block::StreamInfo(ref s)) => Some((s.total_samples as u32 / s.sample_rate) as u32),
+        _ => None
 	};
 
 	Ok(SongTags {
@@ -157,7 +157,7 @@ fn read_flac(path: &Path) -> Result<SongTags> {
 	       album_artist: vorbis.album_artist().map(|v| v[0].clone()),
 	       album: vorbis.album().map(|v| v[0].clone()),
 	       title: vorbis.title().map(|v| v[0].clone()),
-	       duration: Some(duration),
+	       duration: duration,
 	       disc_number: disc_number,
 	       track_number: vorbis.track(),
 	       year: year,
