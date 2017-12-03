@@ -10,7 +10,7 @@ use errors::*;
 use utils;
 use utils::AudioFormat;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SongTags {
 	pub disc_number: Option<u32>,
 	pub track_number: Option<u32>,
@@ -146,12 +146,18 @@ fn read_flac(path: &Path) -> Result<SongTags> {
 		.get("DISCNUMBER")
 		.and_then(|d| d[0].parse::<u32>().ok());
 	let year = vorbis.get("DATE").and_then(|d| d[0].parse::<i32>().ok());
+	let streaminfo = tag.get_blocks(metaflac::BlockType::StreamInfo);
+	let duration = match streaminfo.first() {
+        Some(&&metaflac::Block::StreamInfo(ref s)) => (s.total_samples as u32 / s.sample_rate) as u32,
+        _ => 0
+	};
+
 	Ok(SongTags {
 	       artist: vorbis.artist().map(|v| v[0].clone()),
 	       album_artist: vorbis.album_artist().map(|v| v[0].clone()),
 	       album: vorbis.album().map(|v| v[0].clone()),
 	       title: vorbis.title().map(|v| v[0].clone()),
-	       duration: None,
+	       duration: Some(duration),
 	       disc_number: disc_number,
 	       track_number: vorbis.track(),
 	       year: year,
@@ -167,9 +173,11 @@ fn test_read_metadata() {
 		artist: Some("TEST ARTIST".into()),
 		album_artist: Some("TEST ALBUM ARTIST".into()),
 		album: Some("TEST ALBUM".into()),
+        duration: None,
 		year: Some(2016),
 	};
+	let flac_sample_tag = SongTags {duration: Some(0), ..sample_tags.clone()};
 	assert_eq!(read(Path::new("test/sample.mp3")).unwrap(), sample_tags);
 	assert_eq!(read(Path::new("test/sample.ogg")).unwrap(), sample_tags);
-	assert_eq!(read(Path::new("test/sample.flac")).unwrap(), sample_tags);
+	assert_eq!(read(Path::new("test/sample.flac")).unwrap(), flac_sample_tag);
 }
