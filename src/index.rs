@@ -49,6 +49,7 @@ pub struct Song {
 	pub year: Option<i32>,
 	pub album: Option<String>,
 	pub artwork: Option<String>,
+	pub duration: Option<i32>,
 }
 
 #[derive(Debug, Queryable, Serialize)]
@@ -84,6 +85,7 @@ struct NewSong {
 	year: Option<i32>,
 	album: Option<String>,
 	artwork: Option<String>,
+	duration: Option<i32>
 }
 
 #[derive(Debug, Insertable)]
@@ -247,6 +249,7 @@ impl<'conn> IndexBuilder<'conn> {
 						disc_number: tags.disc_number.map(|n| n as i32),
 						track_number: tags.track_number.map(|n| n as i32),
 						title: tags.title,
+						duration: tags.duration.map(|n| n as i32),
 						artist: tags.artist,
 						album_artist: tags.album_artist,
 						album: tags.album,
