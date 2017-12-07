@@ -1,45 +1,3 @@
-[root]
-name = "polaris"
-version = "0.7.1"
-dependencies = [
- "ape 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "app_dirs 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "diesel 0.16.0 (git+https://github.com/diesel-rs/diesel?rev=034049d)",
- "diesel_codegen 0.16.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "error-chain 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "getopts 0.2.15 (registry+https://github.com/rust-lang/crates.io-index)",
- "hyper 0.11.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "id3 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "image 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "iron 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "kernel32-sys 0.2.2 (git+https://github.com/retep998/winapi-rs?branch=0.2)",
- "lewton 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "metaflac 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
- "mount 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "params 0.6.0 (git+https://github.com/euclio/params?branch=update)",
- "rand 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)",
- "regex 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "reqwest 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "ring 0.9.7 (registry+https://github.com/rust-lang/crates.io-index)",
- "router 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "rusqlite 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "secure-session 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde 1.0.9 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_derive 1.0.9 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_json 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "shell32-sys 0.1.1 (git+https://github.com/retep998/winapi-rs?branch=0.2)",
- "simplelog 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "staticfile 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "toml 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "typemap 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "unix-daemonize 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "url 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "user32-sys 0.2.0 (git+https://github.com/retep998/winapi-rs?branch=0.2)",
- "uuid 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "winapi 0.2.8 (git+https://github.com/retep998/winapi-rs?branch=0.2)",
-]
-
 [[package]]
 name = "adler32"
 version = "1.0.0"
@@ -1089,6 +1047,48 @@ dependencies = [
  "deflate 0.7.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "inflate 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "num-iter 0.1.33 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "polaris"
+version = "0.7.1"
+dependencies = [
+ "ape 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "app_dirs 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "diesel 0.16.0 (git+https://github.com/diesel-rs/diesel?rev=034049d)",
+ "diesel_codegen 0.16.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "error-chain 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "getopts 0.2.15 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hyper 0.11.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "id3 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "image 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "iron 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "kernel32-sys 0.2.2 (git+https://github.com/retep998/winapi-rs?branch=0.2)",
+ "lewton 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "metaflac 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "mount 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "params 0.6.0 (git+https://github.com/euclio/params?branch=update)",
+ "rand 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)",
+ "regex 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "reqwest 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ring 0.9.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "router 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rusqlite 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "secure-session 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_derive 1.0.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_json 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "shell32-sys 0.1.1 (git+https://github.com/retep998/winapi-rs?branch=0.2)",
+ "simplelog 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "staticfile 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "toml 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "typemap 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "unix-daemonize 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "url 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "user32-sys 0.2.0 (git+https://github.com/retep998/winapi-rs?branch=0.2)",
+ "uuid 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "winapi 0.2.8 (git+https://github.com/retep998/winapi-rs?branch=0.2)",
 ]
 
 [[package]]
