@@ -12,6 +12,7 @@ extern crate error_chain;
 extern crate getopts;
 extern crate hyper;
 extern crate id3;
+extern crate mp3_metadata;
 extern crate image;
 extern crate iron;
 extern crate lewton;
