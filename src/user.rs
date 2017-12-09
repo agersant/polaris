@@ -17,7 +17,7 @@ pub struct User {
 	pub admin: i32,
 }
 
-static DIGEST_ALG: &'static pbkdf2::PRF = &pbkdf2::HMAC_SHA256;
+static DIGEST_ALG: &'static digest::Algorithm = &digest::SHA256;
 const CREDENTIAL_LEN: usize = digest::SHA256_OUTPUT_LEN;
 const HASH_ITERATIONS: u32 = 10000;
 type PasswordHash = [u8; CREDENTIAL_LEN];
