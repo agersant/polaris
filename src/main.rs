@@ -52,6 +52,10 @@ extern crate unix_daemonize;
 
 #[cfg(unix)]
 use unix_daemonize::{daemonize_redirect, ChdirMode};
+#[cfg(unix)]
+use std::fs::File;
+#[cfg(unix)]
+use std::io::prelude::*;
 
 use core::ops::Deref;
 use errors::*;
@@ -100,10 +104,15 @@ fn daemonize(options: &getopts::Matches) -> Result<()> {
 	}
 	let mut log_file = utils::get_data_root()?;
 	log_file.push("polaris.log");
-	match daemonize_redirect(Some(&log_file), Some(&log_file), ChdirMode::NoChdir) {
-		Ok(_) => Ok(()),
+	let pid = match daemonize_redirect(Some(&log_file), Some(&log_file), ChdirMode::NoChdir) {
+		Ok(p) => p,
 		Err(_) => bail!(ErrorKind::DaemonError),
-	}
+	};
+	let mut pid_path = utils::get_data_root()?;
+	pid_path.push("polaris.pid");
+	let mut file = File::create(pid_path)?;
+	file.write_all(pid.to_string().as_bytes())?;
+	Ok(())
 }
 
 fn run() -> Result<()> {
