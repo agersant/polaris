@@ -67,6 +67,8 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc::channel;
 use simplelog::{Config, TermLogger, LogLevelFilter};
+#[cfg(unix)]
+use simplelog::{SimpleLogger};
 
 mod api;
 mod config;
@@ -115,6 +117,30 @@ fn daemonize(options: &getopts::Matches) -> Result<()> {
 	Ok(())
 }
 
+#[cfg(unix)]
+fn init_log(log_level: LogLevelFilter, options: &getopts::Matches) -> Result<()> {
+	if options.opt_present("f") {
+		if let Err(e) = TermLogger::init(log_level, Config::default()) {
+			bail!("Error starting terminal logger: {}", e);
+		};
+	}
+	else
+	{
+		if let Err(e) = SimpleLogger::init(log_level, Config::default()) {
+			bail!("Error starting simple logger: {}", e);
+		}
+	}
+	Ok(())
+}
+
+#[cfg(windows)]
+fn init_log(log_level: LogLevelFilter, _: &getopts::Matches) -> Result<()> {
+	if let Err(e) = TermLogger::init(log_level, Config::default()) {
+		bail!("Error starting terminal logger: {}", e);
+	};
+	Ok(())
+}
+
 fn run() -> Result<()> {
 
 	// Parse CLI options
@@ -153,9 +179,7 @@ fn run() -> Result<()> {
 		_ => LogLevelFilter::Info,
 	};
 
-	if let Err(e) = TermLogger::init(log_level, Config::default()) {
-		bail!("Error starting logger: {}", e);
-	};
+	init_log(log_level, &matches)?;
 
 	#[cfg(unix)]
 	daemonize(&matches)?;
