@@ -2,6 +2,7 @@ use ape;
 use core;
 use diesel;
 use id3;
+use mp3_metadata;
 use getopts;
 use image;
 use hyper;
@@ -25,6 +26,7 @@ error_chain! {
         GetOpts(getopts::Fail);
         Hyper(hyper::Error);
         Id3(id3::Error);
+		Mp3MetaData(mp3_metadata::Error);
         Image(image::ImageError);
         Io(std::io::Error);
         Json(serde_json::Error);
