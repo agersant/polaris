@@ -1,6 +1,7 @@
 use ape;
 use core;
 use diesel;
+use diesel_migrations;
 use id3;
 use getopts;
 use image;
@@ -19,7 +20,7 @@ error_chain! {
         Ape(ape::Error);
         Diesel(diesel::result::Error);
         DieselConnection(diesel::ConnectionError);
-        DieselMigration(diesel::migrations::RunMigrationsError);
+        DieselMigration(diesel_migrations::RunMigrationsError);
         Encoding(core::str::Utf8Error);
         Flac(metaflac::Error);
         GetOpts(getopts::Fail);

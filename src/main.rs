@@ -6,7 +6,9 @@ extern crate core;
 #[macro_use]
 extern crate diesel;
 #[macro_use]
-extern crate diesel_codegen;
+extern crate diesel_infer_schema;
+#[macro_use]
+extern crate diesel_migrations;
 #[macro_use]
 extern crate error_chain;
 extern crate getopts;

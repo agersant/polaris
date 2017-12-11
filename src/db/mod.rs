@@ -1,5 +1,5 @@
 use core::ops::Deref;
-use diesel;
+use diesel_migrations;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use std::fs;
@@ -49,9 +49,9 @@ impl DB {
 		let connection = self.connection.lock().unwrap();
 		let connection = connection.deref();
 		loop {
-			match diesel::migrations::revert_latest_migration_in_directory(connection, Path::new(DB_MIGRATIONS_PATH)) {
+			match diesel_migrations::revert_latest_migration_in_directory(connection, Path::new(DB_MIGRATIONS_PATH)) {
 				Ok(_) => (),
-				Err(diesel::migrations::RunMigrationsError::MigrationError(diesel::migrations::MigrationError::NoMigrationRun)) => break,
+				Err(diesel_migrations::RunMigrationsError::MigrationError(diesel_migrations::MigrationError::NoMigrationRun)) => break,
 				Err(e) => bail!(e),
 			}
 		}
