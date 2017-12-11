@@ -2,6 +2,7 @@ use ape;
 use id3;
 use lewton::inside_ogg::OggStreamReader;
 use metaflac;
+use mp3_duration;
 use regex::Regex;
 use std::fs;
 use std::path::Path;
@@ -33,7 +34,9 @@ pub fn read(path: &Path) -> Result<SongTags> {
 }
 
 fn read_id3(path: &Path) -> Result<SongTags> {
-	let tag = id3::Tag::read_from_path(path)?;
+	let file = fs::File::open(path)?;
+	let tag = id3::Tag::read_from(&file)?;
+	let duration = mp3_duration::from_file(&file).map(|d| d.as_secs() as u32).ok();
 
 	let artist = tag.artist().map(|s| s.to_string());
 	let album_artist = tag.album_artist().map(|s| s.to_string());
@@ -51,7 +54,7 @@ fn read_id3(path: &Path) -> Result<SongTags> {
 	       album_artist: album_artist,
 	       album: album,
 	       title: title,
-		   duration: None,
+		   duration: duration,
 	       disc_number: disc_number,
 	       track_number: track_number,
 	       year: year,
@@ -177,7 +180,8 @@ fn test_read_metadata() {
 		year: Some(2016),
 	};
 	let flac_sample_tag = SongTags {duration: Some(0), ..sample_tags.clone()};
-	assert_eq!(read(Path::new("test/sample.mp3")).unwrap(), sample_tags);
+	let mp3_sample_tag = SongTags {duration: Some(0), ..sample_tags.clone()};
+	assert_eq!(read(Path::new("test/sample.mp3")).unwrap(), mp3_sample_tag);
 	assert_eq!(read(Path::new("test/sample.ogg")).unwrap(), sample_tags);
 	assert_eq!(read(Path::new("test/sample.flac")).unwrap(), flac_sample_tag);
 }

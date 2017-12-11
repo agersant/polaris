@@ -17,6 +17,7 @@ extern crate iron;
 extern crate lewton;
 extern crate metaflac;
 extern crate mount;
+extern crate mp3_duration;
 extern crate params;
 extern crate rand;
 extern crate reqwest;
