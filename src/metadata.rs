@@ -34,9 +34,8 @@ pub fn read(path: &Path) -> Result<SongTags> {
 }
 
 fn read_id3(path: &Path) -> Result<SongTags> {
-	let file = fs::File::open(path)?;
-	let tag = id3::Tag::read_from(&file)?;
-	let duration = mp3_duration::from_file(&file).map(|d| d.as_secs() as u32).ok();
+	let tag = id3::Tag::read_from_path(&path)?;
+	let duration = mp3_duration::from_path(&path).map(|d| d.as_secs() as u32).ok();
 
 	let artist = tag.artist().map(|s| s.to_string());
 	let album_artist = tag.album_artist().map(|s| s.to_string());
