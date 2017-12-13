@@ -35,7 +35,9 @@ pub fn read(path: &Path) -> Result<SongTags> {
 
 fn read_id3(path: &Path) -> Result<SongTags> {
 	let tag = id3::Tag::read_from_path(&path)?;
-	let duration = mp3_duration::from_path(&path).map(|d| d.as_secs() as u32).ok();
+	let duration = mp3_duration::from_path(&path)
+		.map(|d| d.as_secs() as u32)
+		.ok();
 
 	let artist = tag.artist().map(|s| s.to_string());
 	let album_artist = tag.album_artist().map(|s| s.to_string());
@@ -53,7 +55,7 @@ fn read_id3(path: &Path) -> Result<SongTags> {
 	       album_artist: album_artist,
 	       album: album,
 	       title: title,
-		   duration: duration,
+	       duration: duration,
 	       disc_number: disc_number,
 	       track_number: track_number,
 	       year: year,
@@ -102,7 +104,7 @@ fn read_ape(path: &Path) -> Result<SongTags> {
 	       album_artist: album_artist,
 	       album: album,
 	       title: title,
-		   duration: None,
+	       duration: None,
 	       disc_number: disc_number,
 	       track_number: track_number,
 	       year: year,
@@ -119,7 +121,7 @@ fn read_vorbis(path: &Path) -> Result<SongTags> {
 		album_artist: None,
 		album: None,
 		title: None,
-		duration:None,
+		duration: None,
 		disc_number: None,
 		track_number: None,
 		year: None,
@@ -150,8 +152,10 @@ fn read_flac(path: &Path) -> Result<SongTags> {
 	let year = vorbis.get("DATE").and_then(|d| d[0].parse::<i32>().ok());
 	let streaminfo = tag.get_blocks(metaflac::BlockType::StreamInfo);
 	let duration = match streaminfo.first() {
-        Some(&&metaflac::Block::StreamInfo(ref s)) => Some((s.total_samples as u32 / s.sample_rate) as u32),
-        _ => None
+		Some(&&metaflac::Block::StreamInfo(ref s)) => {
+			Some((s.total_samples as u32 / s.sample_rate) as u32)
+		}
+		_ => None,
 	};
 
 	Ok(SongTags {
@@ -175,12 +179,19 @@ fn test_read_metadata() {
 		artist: Some("TEST ARTIST".into()),
 		album_artist: Some("TEST ALBUM ARTIST".into()),
 		album: Some("TEST ALBUM".into()),
-        duration: None,
+		duration: None,
 		year: Some(2016),
 	};
-	let flac_sample_tag = SongTags {duration: Some(0), ..sample_tags.clone()};
-	let mp3_sample_tag = SongTags {duration: Some(0), ..sample_tags.clone()};
+	let flac_sample_tag = SongTags {
+		duration: Some(0),
+		..sample_tags.clone()
+	};
+	let mp3_sample_tag = SongTags {
+		duration: Some(0),
+		..sample_tags.clone()
+	};
 	assert_eq!(read(Path::new("test/sample.mp3")).unwrap(), mp3_sample_tag);
 	assert_eq!(read(Path::new("test/sample.ogg")).unwrap(), sample_tags);
-	assert_eq!(read(Path::new("test/sample.flac")).unwrap(), flac_sample_tag);
+	assert_eq!(read(Path::new("test/sample.flac")).unwrap(),
+	           flac_sample_tag);
 }

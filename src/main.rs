@@ -71,7 +71,7 @@ use std::sync::{Arc, Mutex};
 use std::sync::mpsc::channel;
 use simplelog::{Config, TermLogger, LogLevelFilter};
 #[cfg(unix)]
-use simplelog::{SimpleLogger};
+use simplelog::SimpleLogger;
 
 mod api;
 mod config;
@@ -126,9 +126,7 @@ fn init_log(log_level: LogLevelFilter, options: &getopts::Matches) -> Result<()>
 		if let Err(e) = TermLogger::init(log_level, Config::default()) {
 			bail!("Error starting terminal logger: {}", e);
 		};
-	}
-	else
-	{
+	} else {
 		if let Err(e) = SimpleLogger::init(log_level, Config::default()) {
 			bail!("Error starting simple logger: {}", e);
 		}
