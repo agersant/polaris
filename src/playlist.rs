@@ -1,7 +1,6 @@
 use core::clone::Clone;
 use core::ops::Deref;
 use diesel;
-use diesel::dsl::sql;
 use diesel::prelude::*;
 use diesel::BelongingToDsl;
 use diesel::types::*;
@@ -9,7 +8,7 @@ use std::path::Path;
 #[cfg(test)]
 use db;
 use db::ConnectionSource;
-use db::{playlists, playlist_songs, songs, users};
+use db::{playlists, playlist_songs, users};
 use index::{self, Song};
 use vfs::VFSSource;
 use errors::*;
@@ -180,8 +179,8 @@ pub fn read_playlist<T>(playlist_name: &str, owner: &str, db: &T) -> Result<Vec<
 		}
 
 		// Select songs. Not using Diesel because we need to LEFT JOIN using a custom column
-		let query = sql::<songs::SqlType>(r#"
-			SELECT s.id, s.path, s.parent, s.track_number, s.disc_number, s.title, s.artist, s.album_artist, s.year, s.album, s.artwork
+		let query = diesel::sql_query(r#"
+			SELECT s.id, s.path, s.parent, s.track_number, s.disc_number, s.title, s.artist, s.album_artist, s.year, s.album, s.artwork, s.duration
 			FROM playlist_songs ps
 			LEFT JOIN songs s ON ps.path = s.path
 			WHERE ps.playlist = ?
