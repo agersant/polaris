@@ -7,7 +7,7 @@ authors = ["Antoine Gersant <antoine.gersant@lesforges.org>"]
 ui = []
 
 [dependencies]
-ape = "0.1.2"
+ape = "0.2.0"
 app_dirs = "1.1.1"
 diesel = { version = "0.99.0", features = ["sqlite"] }
 diesel_infer_schema = { version = "0.99.0", features = ["sqlite"] }
