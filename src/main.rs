@@ -43,12 +43,6 @@ extern crate simplelog;
 extern crate uuid;
 #[cfg(windows)]
 extern crate winapi;
-#[cfg(windows)]
-extern crate kernel32;
-#[cfg(windows)]
-extern crate shell32;
-#[cfg(windows)]
-extern crate user32;
 
 #[cfg(unix)]
 extern crate unix_daemonize;

@@ -1,16 +1,13 @@
-use kernel32;
-use shell32;
 use std;
 use std::ffi::OsStr;
 use std::os::windows::ffi::OsStrExt;
-use user32;
 use uuid;
 use winapi;
 
 const IDI_POLARIS_TRAY: isize = 0x102;
 const UID_NOTIFICATION_ICON: u32 = 0;
-const MESSAGE_NOTIFICATION_ICON: u32 = winapi::WM_USER + 1;
-const MESSAGE_NOTIFICATION_ICON_QUIT: u32 = winapi::WM_USER + 2;
+const MESSAGE_NOTIFICATION_ICON: u32 = winapi::um::winuser::WM_USER + 1;
+const MESSAGE_NOTIFICATION_ICON_QUIT: u32 = winapi::um::winuser::WM_USER + 2;
 
 pub trait ToWin {
 	type Out;
@@ -29,14 +26,14 @@ impl<'a> ToWin for &'a str {
 }
 
 impl ToWin for uuid::Uuid {
-	type Out = winapi::GUID;
+	type Out = winapi::shared::guiddef::GUID;
 
 	fn to_win(&self) -> Self::Out {
 		let bytes = self.as_bytes();
 		let end = [bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14],
 		           bytes[15]];
 
-		winapi::GUID {
+		winapi::shared::guiddef::GUID {
 			Data1: ((bytes[0] as u32) << 24 | (bytes[1] as u32) << 16 | (bytes[2] as u32) << 8 |
 			        (bytes[3] as u32)),
 			Data2: ((bytes[4] as u16) << 8 | (bytes[5] as u16)),
@@ -51,12 +48,19 @@ pub trait Constructible {
 	fn new() -> Self::Out;
 }
 
-impl Constructible for winapi::NOTIFYICONDATAW {
-	type Out = winapi::NOTIFYICONDATAW;
+impl Constructible for winapi::um::shellapi::NOTIFYICONDATAW {
+	type Out = winapi::um::shellapi::NOTIFYICONDATAW;
 
 	fn new() -> Self::Out {
-		winapi::NOTIFYICONDATAW {
-			cbSize: std::mem::size_of::<winapi::NOTIFYICONDATAW>() as u32,
+
+		let mut version_union: winapi::um::shellapi::NOTIFYICONDATAW_u = unsafe { std::mem::zeroed() };
+		unsafe {
+			let version = version_union.uVersion_mut();
+			*version = winapi::um::shellapi::NOTIFYICON_VERSION_4;
+		}
+
+		winapi::um::shellapi::NOTIFYICONDATAW {
+			cbSize: std::mem::size_of::<winapi::um::shellapi::NOTIFYICONDATAW>() as u32,
 			hWnd: std::ptr::null_mut(),
 			uFlags: 0,
 			guidItem: uuid::Uuid::nil().to_win(),
@@ -67,7 +71,7 @@ impl Constructible for winapi::NOTIFYICONDATAW {
 			dwState: 0,
 			dwStateMask: 0,
 			szInfo: [0; 256],
-			uTimeout: winapi::NOTIFYICON_VERSION_4,
+			u: version_union,
 			szInfoTitle: [0; 64],
 			dwInfoFlags: 0,
 			hBalloonIcon: std::ptr::null_mut(),
@@ -75,40 +79,40 @@ impl Constructible for winapi::NOTIFYICONDATAW {
 	}
 }
 
-fn create_window() -> Option<winapi::HWND> {
+fn create_window() -> Option<winapi::shared::windef::HWND> {
 
 	let class_name = "Polaris-class".to_win();
 	let window_name = "Polaris-window".to_win();
 
 	unsafe {
-		let module_handle = kernel32::GetModuleHandleW(std::ptr::null());
-		let wnd = winapi::WNDCLASSW {
+		let module_handle = winapi::um::libloaderapi::GetModuleHandleW(std::ptr::null());
+		let wnd = winapi::um::winuser::WNDCLASSW {
 			style: 0,
 			lpfnWndProc: Some(window_proc),
 			hInstance: module_handle,
 			hIcon: std::ptr::null_mut(),
 			hCursor: std::ptr::null_mut(),
 			lpszClassName: class_name.as_ptr(),
-			hbrBackground: winapi::COLOR_WINDOW as winapi::HBRUSH,
+			hbrBackground: winapi::um::winuser::COLOR_WINDOW as winapi::shared::windef::HBRUSH,
 			lpszMenuName: std::ptr::null_mut(),
 			cbClsExtra: 0,
 			cbWndExtra: 0,
 		};
 
-		let atom = user32::RegisterClassW(&wnd);
+		let atom = winapi::um::winuser::RegisterClassW(&wnd);
 		if atom == 0 {
 			return None;
 		}
 
-		let window_handle = user32::CreateWindowExW(0,
-		                                            atom as winapi::LPCWSTR,
+		let window_handle = winapi::um::winuser::CreateWindowExW(0,
+		                                            atom as winapi::shared::ntdef::LPCWSTR,
 		                                            window_name.as_ptr(),
-		                                            winapi::WS_DISABLED,
+		                                            winapi::um::winuser::WS_DISABLED,
 		                                            0,
 		                                            0,
 		                                            0,
 		                                            0,
-		                                            user32::GetDesktopWindow(),
+		                                            winapi::um::winuser::GetDesktopWindow(),
 		                                            std::ptr::null_mut(),
 		                                            std::ptr::null_mut(),
 		                                            std::ptr::null_mut());
@@ -121,22 +125,22 @@ fn create_window() -> Option<winapi::HWND> {
 	}
 }
 
-fn add_notification_icon(window: winapi::HWND) {
+fn add_notification_icon(window: winapi::shared::windef::HWND) {
 
-	let mut tooltip = [0 as winapi::WCHAR; 128];
+	let mut tooltip = [0 as winapi::um::winnt::WCHAR; 128];
 	for (&x, p) in "Polaris".to_win().iter().zip(tooltip.iter_mut()) {
 		*p = x;
 	}
 
 	unsafe {
-		let module = kernel32::GetModuleHandleW(std::ptr::null());
-		let icon = user32::LoadIconW(module, std::mem::transmute(IDI_POLARIS_TRAY));
-		let mut flags = winapi::NIF_MESSAGE | winapi::NIF_TIP;
+		let module = winapi::um::libloaderapi::GetModuleHandleW(std::ptr::null());
+		let icon = winapi::um::winuser::LoadIconW(module, std::mem::transmute(IDI_POLARIS_TRAY));
+		let mut flags = winapi::um::shellapi::NIF_MESSAGE | winapi::um::shellapi::NIF_TIP;
 		if !icon.is_null() {
-			flags |= winapi::NIF_ICON;
+			flags |= winapi::um::shellapi::NIF_ICON;
 		}
 
-		let mut icon_data = winapi::NOTIFYICONDATAW::new();
+		let mut icon_data = winapi::um::shellapi::NOTIFYICONDATAW::new();
 		icon_data.hWnd = window;
 		icon_data.uID = UID_NOTIFICATION_ICON;
 		icon_data.uFlags = flags;
@@ -144,58 +148,58 @@ fn add_notification_icon(window: winapi::HWND) {
 		icon_data.uCallbackMessage = MESSAGE_NOTIFICATION_ICON;
 		icon_data.szTip = tooltip;
 
-		shell32::Shell_NotifyIconW(winapi::NIM_ADD, &mut icon_data);
+		winapi::um::shellapi::Shell_NotifyIconW(winapi::um::shellapi::NIM_ADD, &mut icon_data);
 	}
 }
 
-fn remove_notification_icon(window: winapi::HWND) {
-	let mut icon_data = winapi::NOTIFYICONDATAW::new();
+fn remove_notification_icon(window: winapi::shared::windef::HWND) {
+	let mut icon_data = winapi::um::shellapi::NOTIFYICONDATAW::new();
 	icon_data.hWnd = window;
 	icon_data.uID = UID_NOTIFICATION_ICON;
 	unsafe {
-		shell32::Shell_NotifyIconW(winapi::NIM_DELETE, &mut icon_data);
+		winapi::um::shellapi::Shell_NotifyIconW(winapi::um::shellapi::NIM_DELETE, &mut icon_data);
 	}
 }
 
-fn open_notification_context_menu(window: winapi::HWND) {
+fn open_notification_context_menu(window: winapi::shared::windef::HWND) {
 	info!("Opening notification icon context menu");
 	let quit_string = "Quit Polaris".to_win();
 
 	unsafe {
-		let context_menu = user32::CreatePopupMenu();
+		let context_menu = winapi::um::winuser::CreatePopupMenu();
 		if context_menu.is_null() {
 			return;
 		}
-		user32::InsertMenuW(context_menu,
+		winapi::um::winuser::InsertMenuW(context_menu,
 		                    0,
-		                    winapi::winuser::MF_STRING,
-		                    MESSAGE_NOTIFICATION_ICON_QUIT as u64,
+		                    winapi::um::winuser::MF_STRING,
+		                    MESSAGE_NOTIFICATION_ICON_QUIT as usize,
 		                    quit_string.as_ptr());
 
-		let mut cursor_position = winapi::POINT { x: 0, y: 0 };
-		user32::GetCursorPos(&mut cursor_position);
+		let mut cursor_position = winapi::shared::windef::POINT { x: 0, y: 0 };
+		winapi::um::winuser::GetCursorPos(&mut cursor_position);
 
-		user32::SetForegroundWindow(window);
-		let flags = winapi::winuser::TPM_RIGHTALIGN | winapi::winuser::TPM_BOTTOMALIGN |
-		            winapi::winuser::TPM_RIGHTBUTTON;
-		user32::TrackPopupMenu(context_menu,
+		winapi::um::winuser::SetForegroundWindow(window);
+		let flags = winapi::um::winuser::TPM_RIGHTALIGN | winapi::um::winuser::TPM_BOTTOMALIGN |
+		            winapi::um::winuser::TPM_RIGHTBUTTON;
+		winapi::um::winuser::TrackPopupMenu(context_menu,
 		                       flags,
 		                       cursor_position.x,
 		                       cursor_position.y,
 		                       0,
 		                       window,
 		                       std::ptr::null_mut());
-		user32::PostMessageW(window, 0, 0, 0);
+		winapi::um::winuser::PostMessageW(window, 0, 0, 0);
 
 		info!("Closing notification context menu");
-		user32::DestroyMenu(context_menu);
+		winapi::um::winuser::DestroyMenu(context_menu);
 	}
 }
 
-fn quit(window: winapi::HWND) {
+fn quit(window: winapi::shared::windef::HWND) {
 	info!("Shutting down UI");
 	unsafe {
-		user32::PostMessageW(window, winapi::winuser::WM_CLOSE, 0, 0);
+		winapi::um::winuser::PostMessageW(window, winapi::um::winuser::WM_CLOSE, 0, 0);
 	}
 }
 
@@ -204,53 +208,53 @@ pub fn run() {
 
 	create_window().expect("Could not initialize window");
 
-	let mut message = winapi::MSG {
+	let mut message = winapi::um::winuser::MSG {
 		hwnd: std::ptr::null_mut(),
 		message: 0,
 		wParam: 0,
 		lParam: 0,
 		time: 0,
-		pt: winapi::POINT { x: 0, y: 0 },
+		pt: winapi::shared::windef::POINT { x: 0, y: 0 },
 	};
 
 	loop {
 		let status: i32;
 		unsafe {
-			status = user32::GetMessageW(&mut message, std::ptr::null_mut(), 0, 0);
+			status = winapi::um::winuser::GetMessageW(&mut message, std::ptr::null_mut(), 0, 0);
 			if status == -1 {
-				panic!("GetMessageW error: {}", kernel32::GetLastError());
+				panic!("GetMessageW error: {}", winapi::um::errhandlingapi::GetLastError());
 			}
 			if status == 0 {
 				break;
 			}
-			user32::TranslateMessage(&message);
-			user32::DispatchMessageW(&message);
+			winapi::um::winuser::TranslateMessage(&message);
+			winapi::um::winuser::DispatchMessageW(&message);
 		}
 	}
 }
 
-pub unsafe extern "system" fn window_proc(window: winapi::HWND,
-                                          msg: winapi::UINT,
-                                          w_param: winapi::WPARAM,
-                                          l_param: winapi::LPARAM)
-                                          -> winapi::LRESULT {
+pub unsafe extern "system" fn window_proc(window: winapi::shared::windef::HWND,
+                                          msg: winapi::shared::minwindef::UINT,
+                                          w_param: winapi::shared::minwindef::WPARAM,
+                                          l_param: winapi::shared::minwindef::LPARAM)
+                                          -> winapi::shared::minwindef::LRESULT {
 	match msg {
 
-		winapi::winuser::WM_CREATE => {
+		winapi::um::winuser::WM_CREATE => {
 			add_notification_icon(window);
 		}
 
 		MESSAGE_NOTIFICATION_ICON => {
-			match winapi::LOWORD(l_param as winapi::DWORD) as u32 {
-				winapi::winuser::WM_RBUTTONUP => {
+			match winapi::shared::minwindef::LOWORD(l_param as winapi::shared::minwindef::DWORD) as u32 {
+				winapi::um::winuser::WM_RBUTTONUP => {
 					open_notification_context_menu(window);
 				}
 				_ => (),
 			}
 		}
 
-		winapi::winuser::WM_COMMAND => {
-			match winapi::LOWORD(w_param as winapi::DWORD) as u32 {
+		winapi::um::winuser::WM_COMMAND => {
+			match winapi::shared::minwindef::LOWORD(w_param as winapi::shared::minwindef::DWORD) as u32 {
 				MESSAGE_NOTIFICATION_ICON_QUIT => {
 					quit(window);
 				}
@@ -258,13 +262,13 @@ pub unsafe extern "system" fn window_proc(window: winapi::HWND,
 			}
 		}
 
-		winapi::winuser::WM_DESTROY => {
+		winapi::um::winuser::WM_DESTROY => {
 			remove_notification_icon(window);
-			user32::PostQuitMessage(0);
+			winapi::um::winuser::PostQuitMessage(0);
 		}
 
 		_ => (),
 	};
 
-	return user32::DefWindowProcW(window, msg, w_param, l_param);
+	return winapi::um::winuser::DefWindowProcW(window, msg, w_param, l_param);
 }
