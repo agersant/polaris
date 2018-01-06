@@ -108,17 +108,17 @@ fn create_window() -> Option<HWND> {
 		}
 
 		let window_handle = winuser::CreateWindowExW(0,
-		                                            atom as winapi::shared::ntdef::LPCWSTR,
-		                                            window_name.as_ptr(),
-		                                            winuser::WS_DISABLED,
-		                                            0,
-		                                            0,
-		                                            0,
-		                                            0,
-		                                            winuser::GetDesktopWindow(),
-		                                            std::ptr::null_mut(),
-		                                            std::ptr::null_mut(),
-		                                            std::ptr::null_mut());
+		                                             atom as winapi::shared::ntdef::LPCWSTR,
+		                                             window_name.as_ptr(),
+		                                             winuser::WS_DISABLED,
+		                                             0,
+		                                             0,
+		                                             0,
+		                                             0,
+		                                             winuser::GetDesktopWindow(),
+		                                             std::ptr::null_mut(),
+		                                             std::ptr::null_mut(),
+		                                             std::ptr::null_mut());
 
 		if window_handle.is_null() {
 			return None;
@@ -174,24 +174,23 @@ fn open_notification_context_menu(window: HWND) {
 			return;
 		}
 		winuser::InsertMenuW(context_menu,
-		                    0,
-		                    winuser::MF_STRING,
-		                    MESSAGE_NOTIFICATION_ICON_QUIT as usize,
-		                    quit_string.as_ptr());
+		                     0,
+		                     winuser::MF_STRING,
+		                     MESSAGE_NOTIFICATION_ICON_QUIT as usize,
+		                     quit_string.as_ptr());
 
 		let mut cursor_position = winapi::shared::windef::POINT { x: 0, y: 0 };
 		winuser::GetCursorPos(&mut cursor_position);
 
 		winuser::SetForegroundWindow(window);
-		let flags = winuser::TPM_RIGHTALIGN | winuser::TPM_BOTTOMALIGN |
-		            winuser::TPM_RIGHTBUTTON;
+		let flags = winuser::TPM_RIGHTALIGN | winuser::TPM_BOTTOMALIGN | winuser::TPM_RIGHTBUTTON;
 		winuser::TrackPopupMenu(context_menu,
-		                       flags,
-		                       cursor_position.x,
-		                       cursor_position.y,
-		                       0,
-		                       window,
-		                       std::ptr::null_mut());
+		                        flags,
+		                        cursor_position.x,
+		                        cursor_position.y,
+		                        0,
+		                        window,
+		                        std::ptr::null_mut());
 		winuser::PostMessageW(window, 0, 0, 0);
 
 		info!("Closing notification context menu");
@@ -225,7 +224,8 @@ pub fn run() {
 		unsafe {
 			status = winuser::GetMessageW(&mut message, std::ptr::null_mut(), 0, 0);
 			if status == -1 {
-				panic!("GetMessageW error: {}", winapi::um::errhandlingapi::GetLastError());
+				panic!("GetMessageW error: {}",
+				       winapi::um::errhandlingapi::GetLastError());
 			}
 			if status == 0 {
 				break;
