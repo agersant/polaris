@@ -18,11 +18,11 @@ use typemap;
 use url::percent_encoding::percent_decode;
 
 use config;
-use config::MiscSettings;
 use db::{ConnectionSource, DB};
 use db::misc_settings;
 use errors::*;
 use index;
+use lastfm;
 use playlist;
 use user;
 use serve;
@@ -31,7 +31,7 @@ use utils::*;
 use vfs::VFSSource;
 
 const CURRENT_MAJOR_VERSION: i32 = 2;
-const CURRENT_MINOR_VERSION: i32 = 1;
+const CURRENT_MINOR_VERSION: i32 = 2;
 
 
 #[derive(Deserialize, Serialize)]
@@ -50,7 +50,7 @@ fn get_auth_secret<T>(db: &T) -> Result<String>
 {
 	use self::misc_settings::dsl::*;
 	let connection = db.get_connection();
-	let misc: MiscSettings = misc_settings.get_result(connection.deref())?;
+	let misc: config::MiscSettings = misc_settings.get_result(connection.deref())?;
 	Ok(misc.auth_secret.to_owned())
 }
 
@@ -123,6 +123,22 @@ fn get_endpoints(db: Arc<DB>, index_channel: Arc<Mutex<Sender<index::Command>>>)
 			                     move |request: &mut Request| self::serve(request, db.deref()));
 		}
 		{
+			let mut preferences_router = Router::new();
+			let get_db = db.clone();
+			let put_db = db.clone();
+			preferences_router.get("/",
+			                       move |request: &mut Request| {
+				                       self::get_preferences(request, get_db.deref())
+				                      },
+			                       "get_preferences");
+			preferences_router.put("/",
+			                       move |request: &mut Request| {
+				                       self::put_preferences(request, put_db.deref())
+				                      },
+			                       "put_preferences");
+			auth_api_mount.mount("/preferences/", preferences_router);
+		}
+		{
 			let mut settings_router = Router::new();
 			let get_db = db.clone();
 			let put_db = db.clone();
@@ -187,6 +203,18 @@ fn get_endpoints(db: Arc<DB>, index_channel: Arc<Mutex<Sender<index::Command>>>)
 			                       "delete_playlist");
 
 			auth_api_mount.mount("/playlist/", playlist_router);
+		}
+		{
+			let db = db.clone();
+			auth_api_mount.mount("/lastfm/now_playing/", move |request: &mut Request| {
+				self::lastfm_now_playing(request, db.deref())
+			});
+		}
+		{
+			let db = db.clone();
+			auth_api_mount.mount("/lastfm/scrobble/", move |request: &mut Request| {
+				self::lastfm_scrobble(request, db.deref())
+			});
 		}
 
 		let mut auth_api_chain = Chain::new(auth_api_mount);
@@ -523,6 +551,41 @@ fn put_config(request: &mut Request, db: &DB) -> IronResult<Response> {
 	Ok(Response::with(status::Ok))
 }
 
+fn get_preferences(request: &mut Request, db: &DB) -> IronResult<Response> {
+	let username = match request.extensions.get::<SessionKey>() {
+		Some(s) => s.username.clone(),
+		None => return Err(Error::from(ErrorKind::AuthenticationRequired).into()),
+	};
+
+	let preferences = config::read_preferences(db, &username)?;
+	let result_json = serde_json::to_string(&preferences);
+	let result_json = match result_json {
+		Ok(j) => j,
+		Err(e) => return Err(IronError::new(e, status::InternalServerError)),
+	};
+	Ok(Response::with((status::Ok, result_json)))
+}
+
+fn put_preferences(request: &mut Request, db: &DB) -> IronResult<Response> {
+	let username = match request.extensions.get::<SessionKey>() {
+		Some(s) => s.username.clone(),
+		None => return Err(Error::from(ErrorKind::AuthenticationRequired).into()),
+	};
+
+	let input = request.get_ref::<params::Params>().unwrap();
+	let preferences = match input.find(&["preferences"]) {
+		Some(&params::Value::String(ref preferences)) => preferences,
+		_ => return Err(Error::from(ErrorKind::MissingPreferences).into()),
+	};
+	let preferences = match serde_json::from_str::<config::Preferences>(preferences) {
+		Ok(p) => p,
+		Err(e) => return Err(IronError::new(e, status::InternalServerError)),
+	};
+
+	config::write_preferences(db, &username, &preferences)?;
+	Ok(Response::with(status::Ok))
+}
+
 fn trigger_index(channel: &Mutex<Sender<index::Command>>) -> IronResult<Response> {
 	let channel = channel.lock().unwrap();
 	let channel = channel.deref();
@@ -631,6 +694,40 @@ fn delete_playlist(request: &mut Request, db: &DB) -> IronResult<Response> {
 	};
 
 	playlist::delete_playlist(&playlist_name, &username, db)?;
+
+	Ok(Response::with(status::Ok))
+}
+
+fn lastfm_now_playing(request: &mut Request, db: &DB) -> IronResult<Response> {
+	let username = match request.extensions.get::<SessionKey>() {
+		Some(s) => s.username.clone(),
+		None => return Err(Error::from(ErrorKind::AuthenticationRequired).into()),
+	};
+
+	let virtual_path = path_from_request(request);
+	let virtual_path = match virtual_path {
+		Err(e) => return Err(IronError::new(e, status::BadRequest)),
+		Ok(p) => p,
+	};
+
+	lastfm::now_playing(db, &username, &virtual_path)?;
+
+	Ok(Response::with(status::Ok))
+}
+
+fn lastfm_scrobble(request: &mut Request, db: &DB) -> IronResult<Response> {
+	let username = match request.extensions.get::<SessionKey>() {
+		Some(s) => s.username.clone(),
+		None => return Err(Error::from(ErrorKind::AuthenticationRequired).into()),
+	};
+
+	let virtual_path = path_from_request(request);
+	let virtual_path = match virtual_path {
+		Err(e) => return Err(IronError::new(e, status::BadRequest)),
+		Ok(p) => p,
+	};
+
+	lastfm::scrobble(db, &username, &virtual_path)?;
 
 	Ok(Response::with(status::Ok))
 }

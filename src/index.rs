@@ -630,6 +630,25 @@ pub fn search<T>(db: &T, query: &str) -> Result<Vec<CollectionFile>, errors::Err
 	Ok(output)
 }
 
+pub fn get_song<T>(db: &T, virtual_path: &Path) -> Result<Song, errors::Error>
+	where T: ConnectionSource + VFSSource
+{
+	let vfs = db.get_vfs()?;
+	let connection = db.get_connection();
+	let real_path = vfs.virtual_to_real(virtual_path)?;
+	let real_path_string = real_path.as_path().to_string_lossy();
+
+	use self::songs::dsl::*;
+	let real_song: Song = songs
+		.filter(path.eq(real_path_string))
+		.get_result(connection.deref())?;
+
+	match virtualize_song(&vfs, real_song) {
+		Some(s) => Ok(s),
+		_ => bail!("Missing VFS mapping"),
+	}
+}
+
 #[test]
 fn test_populate() {
 	let db = db::_get_test_db("populate.sqlite");
@@ -745,4 +764,19 @@ fn test_recent() {
 	let results = get_recent_albums(&db, 2).unwrap();
 	assert_eq!(results.len(), 2);
 	assert!(results[0].date_added >= results[1].date_added);
+}
+
+#[test]
+fn test_get_song() {
+	let db = db::_get_test_db("recent.sqlite");
+	update(&db).unwrap();
+
+	let mut song_path = PathBuf::new();
+	song_path.push("root");
+	song_path.push("Khemmis");
+	song_path.push("Hunted");
+	song_path.push("02 - Candlelight.mp3");
+
+	let song = get_song(&db, &song_path).unwrap();
+	assert_eq!(song.title.unwrap(), "Candlelight");
 }

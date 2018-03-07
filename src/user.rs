@@ -23,35 +23,38 @@ const HASH_ITERATIONS: u32 = 10000;
 type PasswordHash = [u8; CREDENTIAL_LEN];
 
 impl User {
-	pub fn new(name: &str, password: &str, admin: bool) -> User {
+	pub fn new(name: &str, password: &str) -> User {
 		let salt = rand::random::<[u8; 16]>().to_vec();
-		let hash = User::hash_password(&salt, password);
+		let hash = hash_password(&salt, password);
 		User {
 			name: name.to_owned(),
 			password_salt: salt,
 			password_hash: hash,
-			admin: admin as i32,
+			admin: 0,
 		}
 	}
+}
 
-	pub fn verify_password(&self, attempted_password: &str) -> bool {
-		pbkdf2::verify(DIGEST_ALG,
-		               HASH_ITERATIONS,
-		               &self.password_salt,
-		               attempted_password.as_bytes(),
-		               &self.password_hash)
-				.is_ok()
-	}
+pub fn hash_password(salt: &Vec<u8>, password: &str) -> Vec<u8> {
+	let mut hash: PasswordHash = [0; CREDENTIAL_LEN];
+	pbkdf2::derive(DIGEST_ALG,
+	               HASH_ITERATIONS,
+	               salt,
+	               password.as_bytes(),
+	               &mut hash);
+	hash.to_vec()
+}
 
-	fn hash_password(salt: &Vec<u8>, password: &str) -> Vec<u8> {
-		let mut hash: PasswordHash = [0; CREDENTIAL_LEN];
-		pbkdf2::derive(DIGEST_ALG,
-		               HASH_ITERATIONS,
-		               salt,
-		               password.as_bytes(),
-		               &mut hash);
-		hash.to_vec()
-	}
+fn verify_password(password_hash: &Vec<u8>,
+                   password_salt: &Vec<u8>,
+                   attempted_password: &str)
+                   -> bool {
+	pbkdf2::verify(DIGEST_ALG,
+	               HASH_ITERATIONS,
+	               password_salt,
+	               attempted_password.as_bytes(),
+	               password_hash)
+			.is_ok()
 }
 
 pub fn auth<T>(db: &T, username: &str, password: &str) -> Result<bool>
@@ -59,13 +62,12 @@ pub fn auth<T>(db: &T, username: &str, password: &str) -> Result<bool>
 {
 	use db::users::dsl::*;
 	let connection = db.get_connection();
-	let user: QueryResult<User> = users
-		.select((name, password_salt, password_hash, admin))
-		.filter(name.eq(username))
-		.get_result(connection.deref());
-	match user {
+	match users
+	          .select((password_hash, password_salt))
+	          .filter(name.eq(username))
+	          .get_result(connection.deref()) {
 		Err(diesel::result::Error::NotFound) => Ok(false),
-		Ok(u) => Ok(u.verify_password(password)),
+		Ok((hash, salt)) => Ok(verify_password(&hash, &salt, password)),
 		Err(e) => Err(e.into()),
 	}
 }
@@ -89,4 +91,19 @@ pub fn is_admin<T>(db: &T, username: &str) -> Result<bool>
 		.select(admin)
 		.get_result(connection.deref())?;
 	Ok(is_admin != 0)
+}
+
+pub fn get_lastfm_credentials<T>(db: &T, username: &str) -> Result<(String, String)>
+	where T: ConnectionSource
+{
+	use db::users::dsl::*;
+	let connection = db.get_connection();
+	let credentials = users
+		.filter(name.eq(username))
+		.select((lastfm_username, lastfm_password))
+		.get_result(connection.deref())?;
+	match credentials {
+		(Some(u), Some(p)) => Ok((u, p)),
+		_ => bail!(ErrorKind::MissingLastFMCredentials),
+	}
 }

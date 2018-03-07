@@ -11,6 +11,7 @@ use iron::status::Status;
 use lewton;
 use metaflac;
 use regex;
+use rustfm_scrobble;
 use serde_json;
 use std;
 use toml;
@@ -32,6 +33,7 @@ error_chain! {
         Time(std::time::SystemTimeError);
         Toml(toml::de::Error);
         Regex(regex::Error);
+        Scrobbler(rustfm_scrobble::ScrobblerError);
         Vorbis(lewton::VorbisError);
     }
 
@@ -40,6 +42,7 @@ error_chain! {
         AuthenticationRequired {}
         AdminPrivilegeRequired {}
         MissingConfig {}
+        MissingPreferences {}
         MissingUsername {}
         MissingPassword {}
         MissingPlaylist {}
@@ -50,6 +53,7 @@ error_chain! {
         MissingIndexVersion {}
         MissingPlaylistName {}
         EncodingError {}
+        MissingLastFMCredentials {}
     }
 }
 
@@ -67,6 +71,9 @@ impl From<Error> for IronError {
 			}
 			e @ Error(ErrorKind::CannotServeDirectory, _) => IronError::new(e, Status::BadRequest),
 			e @ Error(ErrorKind::UnsupportedFileType, _) => IronError::new(e, Status::BadRequest),
+			e @ Error(ErrorKind::MissingLastFMCredentials, _) => {
+				IronError::new(e, Status::Unauthorized)
+			}
 			e => IronError::new(e, Status::InternalServerError),
 		}
 	}

@@ -26,6 +26,12 @@ pub struct MiscSettings {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Preferences {
+	pub lastfm_username: Option<String>,
+	pub lastfm_password: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ConfigUser {
 	pub name: String,
 	pub password: String,
@@ -76,7 +82,6 @@ pub fn read<T>(db: &T) -> Result<Config>
 	where T: ConnectionSource
 {
 	use self::misc_settings::dsl::*;
-	use self::mount_points::dsl::*;
 	use self::ddns_config::dsl::*;
 
 	let connection = db.get_connection();
@@ -97,21 +102,25 @@ pub fn read<T>(db: &T) -> Result<Config>
 	config.reindex_every_n_seconds = Some(sleep_duration);
 	config.prefix_url = if url != "" { Some(url) } else { None };
 
-	let mount_dirs = mount_points
-		.select((source, name))
-		.get_results(connection.deref())?;
-	config.mount_dirs = Some(mount_dirs);
+	let mount_dirs;
+	{
+		use self::mount_points::dsl::*;
+		mount_dirs = mount_points
+			.select((source, name))
+			.get_results(connection.deref())?;
+		config.mount_dirs = Some(mount_dirs);
+	}
 
 	let found_users: Vec<(String, i32)> = users::table
 		.select((users::columns::name, users::columns::admin))
 		.get_results(connection.deref())?;
 	config.users = Some(found_users
 	                        .into_iter()
-	                        .map(|(n, a)| {
+	                        .map(|(name, admin)| {
 		                             ConfigUser {
-		                                 name: n,
+		                                 name: name,
 		                                 password: "".to_owned(),
-		                                 admin: a != 0,
+		                                 admin: admin != 0,
 		                             }
 		                            })
 	                        .collect::<_>());
@@ -166,31 +175,51 @@ pub fn amend<T>(db: &T, new_config: &Config) -> Result<()>
 			.get_results(connection.deref())?;
 
 		// Delete users that are not in new list
-		// Delete users that have a new password
 		let delete_usernames: Vec<String> = old_usernames
-			.into_iter()
-			.filter(|old_name| match config_users.iter().find(|u| &u.name == old_name) {
-			            None => true,
-			            Some(new_user) => !new_user.password.is_empty(),
-			        })
+			.iter()
+			.cloned()
+			.filter(|old_name| {
+				        config_users
+				            .iter()
+				            .find(|u| &u.name == old_name)
+				            .is_none()
+				       })
 			.collect::<_>();
 		diesel::delete(users::table.filter(users::name.eq_any(&delete_usernames)))
 			.execute(connection.deref())?;
 
-		// Insert users that have a new password
+		// Insert new users
 		let insert_users: Vec<&ConfigUser> = config_users
 			.iter()
-			.filter(|u| !u.password.is_empty())
+			.filter(|u| {
+				        old_usernames
+				            .iter()
+				            .find(|old_name| *old_name == &u.name)
+				            .is_none()
+				       })
 			.collect::<_>();
 		for ref config_user in insert_users {
-			let new_user = User::new(&config_user.name, &config_user.password, config_user.admin);
+			let new_user = User::new(&config_user.name, &config_user.password);
 			diesel::insert_into(users::table)
 				.values(&new_user)
 				.execute(connection.deref())?;
 		}
 
-		// Grant admin rights
+		// Update users
 		for ref user in config_users {
+			// Update password if provided
+			if !user.password.is_empty() {
+				let salt: Vec<u8> = users::table
+					.select(users::columns::password_salt)
+					.filter(users::name.eq(&user.name))
+					.get_result(connection.deref())?;
+				let hash = hash_password(&salt, &user.password);
+				diesel::update(users::table.filter(users::name.eq(&user.name)))
+					.set(users::password_hash.eq(hash))
+					.execute(connection.deref())?;
+			}
+
+			// Update admin rights
 			diesel::update(users::table.filter(users::name.eq(&user.name)))
 				.set(users::admin.eq(user.admin as i32))
 				.execute(connection.deref())?;
@@ -224,6 +253,34 @@ pub fn amend<T>(db: &T, new_config: &Config) -> Result<()>
 			.execute(connection.deref())?;
 	}
 
+	Ok(())
+}
+
+pub fn read_preferences<T>(db: &T, username: &str) -> Result<Preferences>
+	where T: ConnectionSource
+{
+	use self::users::dsl::*;
+	let connection = db.get_connection();
+	let (read_lastfm_username, read_lastfm_password) = users
+		.select((lastfm_username, lastfm_password))
+		.filter(name.eq(username))
+		.get_result(connection.deref())?;
+	Ok(Preferences {
+	       lastfm_username: read_lastfm_username,
+	       lastfm_password: read_lastfm_password,
+	   })
+}
+
+pub fn write_preferences<T>(db: &T, username: &str, preferences: &Preferences) -> Result<()>
+	where T: ConnectionSource
+{
+	use self::users::dsl::*;
+	let connection = db.get_connection();
+	diesel::update(users)
+		.set((lastfm_username.eq(&preferences.lastfm_username),
+		      lastfm_password.eq(&preferences.lastfm_password)))
+		.filter(name.eq(username))
+		.execute(connection.deref())?;
 	Ok(())
 }
 
@@ -361,7 +418,6 @@ fn test_amend_preserve_password_hashes() {
 	assert_eq!(new_hash, initial_hash);
 }
 
-
 #[test]
 fn test_toggle_admin() {
 	use self::users::dsl::*;
@@ -413,6 +469,39 @@ fn test_toggle_admin() {
 			.unwrap();
 		assert_eq!(is_admin, 0);
 	}
+}
+
+#[test]
+fn test_preferences_read_write() {
+
+	let db = _get_test_db("preferences_read_write.sqlite");
+
+	let initial_config = Config {
+		album_art_pattern: None,
+		reindex_every_n_seconds: None,
+		prefix_url: None,
+		mount_dirs: None,
+		users: Some(vec![ConfigUser {
+		                     name: "Teddy🐻".into(),
+		                     password: "Tasty🍖".into(),
+		                     admin: false,
+		                 }]),
+		ydns: None,
+	};
+	amend(&db, &initial_config).unwrap();
+
+	let old_preferences = read_preferences(&db, "Teddy🐻").unwrap();
+	assert_eq!(old_preferences.lastfm_username, None);
+	assert_eq!(old_preferences.lastfm_password, None);
+
+	let new_preferences = Preferences {
+		lastfm_username: Some("🐻FM".into()),
+		lastfm_password: Some("Secret🐻Secret".into()),
+	};
+	write_preferences(&db, "Teddy🐻", &new_preferences).unwrap();
+
+	let read_preferences = read_preferences(&db, "Teddy🐻").unwrap();
+	assert_eq!(new_preferences, read_preferences);
 }
 
 #[test]
