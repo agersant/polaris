@@ -43,7 +43,7 @@ If you want to uninstall Polaris, execute `make uninstall` from the extracted ar
 
 To run polaris from a Docker container, please follow instructions from the [docker-polaris](https://github.com/ogarcia/docker-polaris) repository.
 
-### Test Run
+## Test Run
 
 - Start Polaris using the shortcut on your desktop (Windows) or by running the executable in `~/.local/bin/polaris` (Linux)
 - In your Web browser, access http://localhost:5050
@@ -51,11 +51,11 @@ To run polaris from a Docker container, please follow instructions from the [doc
 
 ![Polaris Web UI](res/readme/web_ui.png?raw=true "Polaris Web UI")
 
-### Streaming From Other Devices
+## Streaming From Other Devices
 
 If you're only interested in streaming on your local network, you can skip this section. If you want to stream from school, from work, or on the go, this is for you.
 
-#### Dynamic DNS
+### Dynamic DNS
 
 You can access your Polaris installation from anywhere via your computer's public IP address, but there are two problems with that:
 - IP addresses are difficult to remember
@@ -90,7 +90,7 @@ The steps below will walk you through setting up YDNS and Polaris to give your i
 - Update the username field to the email address you use when creating your YDNS account
 - Update the password field with your YDNS API password. You can find this password on https://ydns.io: click on the "User" icon in the top right and then `Preferences > API`.
 
-#### Port Forwarding
+### Port Forwarding
 Configure port forwarding on your router to redirect port 80 towards port 5050 on the computer where you run Polaris. The exact way to do this depends on your router manufacturer and model.
 
 Don't forget to restart Polaris to apply your configuration changes, and access your music from other computers at http://yourdomain.ydns.eu
