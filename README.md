@@ -94,3 +94,6 @@ The steps below will walk you through setting up YDNS and Polaris to give your i
 Configure port forwarding on your router to redirect port 80 towards port 5050 on the computer where you run Polaris. The exact way to do this depends on your router manufacturer and model.
 
 Don't forget to restart Polaris to apply your configuration changes, and access your music from other computers at http://yourdomain.ydns.eu
+
+## Additional clients
+When you install Polaris, it comes with a web interface which can be accessed using any modern browser. However, it may be more convenient to use a native app on your mobile device. Currently, the only such app is the official [Polaris client for Android](https://github.com/agersant/polaris-android).
