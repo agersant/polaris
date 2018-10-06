@@ -84,10 +84,7 @@ impl PartialFile {
 		Range: Into<PartialFileRange>,
 	{
 		let range = range.into();
-		PartialFile {
-			file,
-			range,
-		}
+		PartialFile { file, range }
 	}
 
 	pub fn from_path<P: AsRef<Path>, Range>(path: P, range: Range) -> Result<PartialFile, io::Error>

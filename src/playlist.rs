@@ -2,20 +2,20 @@ use core::clone::Clone;
 use core::ops::Deref;
 use diesel;
 use diesel::prelude::*;
-use diesel::BelongingToDsl;
 use diesel::types::*;
+use diesel::BelongingToDsl;
 use std::path::Path;
 
 #[cfg(test)]
 use db;
 use db::ConnectionSource;
-use db::{playlists, playlist_songs, users};
+use db::{playlist_songs, playlists, users};
+use errors::*;
 use index::{self, Song};
 use vfs::VFSSource;
-use errors::*;
 
 #[derive(Insertable)]
-#[table_name="playlists"]
+#[table_name = "playlists"]
 struct NewPlaylist {
 	name: String,
 	owner: i32,
@@ -27,21 +27,21 @@ pub struct User {
 }
 
 #[derive(Identifiable, Queryable, Associations)]
-#[belongs_to(User, foreign_key="owner")]
+#[belongs_to(User, foreign_key = "owner")]
 pub struct Playlist {
 	id: i32,
 	owner: i32,
 }
 
 #[derive(Identifiable, Queryable, Associations)]
-#[belongs_to(Playlist, foreign_key="playlist")]
+#[belongs_to(Playlist, foreign_key = "playlist")]
 pub struct PlaylistSong {
 	id: i32,
 	playlist: i32,
 }
 
 #[derive(Insertable)]
-#[table_name="playlist_songs"]
+#[table_name = "playlist_songs"]
 pub struct NewPlaylistSong {
 	playlist: i32,
 	path: String,
@@ -49,7 +49,8 @@ pub struct NewPlaylistSong {
 }
 
 pub fn list_playlists<T>(owner: &str, db: &T) -> Result<Vec<String>>
-	where T: ConnectionSource + VFSSource
+where
+	T: ConnectionSource + VFSSource,
 {
 	let connection = db.get_connection();
 
@@ -71,12 +72,9 @@ pub fn list_playlists<T>(owner: &str, db: &T) -> Result<Vec<String>>
 	}
 }
 
-pub fn save_playlist<T>(playlist_name: &str,
-                        owner: &str,
-                        content: &[String],
-                        db: &T)
-                        -> Result<()>
-	where T: ConnectionSource + VFSSource
+pub fn save_playlist<T>(playlist_name: &str, owner: &str, content: &[String], db: &T) -> Result<()>
+where
+	T: ConnectionSource + VFSSource,
 {
 	let user: User;
 	let new_playlist: NewPlaylist;
@@ -119,14 +117,16 @@ pub fn save_playlist<T>(playlist_name: &str,
 
 	for (i, path) in content.iter().enumerate() {
 		let virtual_path = Path::new(&path);
-		if let Some(real_path) = vfs.virtual_to_real(virtual_path)
-		       .ok()
-		       .and_then(|p| p.to_str().map(|s| s.to_owned())) {
+		if let Some(real_path) = vfs
+			.virtual_to_real(virtual_path)
+			.ok()
+			.and_then(|p| p.to_str().map(|s| s.to_owned()))
+		{
 			new_songs.push(NewPlaylistSong {
-			                   playlist: playlist.id,
-			                   path: real_path,
-			                   ordering: i as i32,
-			               });
+				playlist: playlist.id,
+				path: real_path,
+				ordering: i as i32,
+			});
 		}
 	}
 
@@ -151,7 +151,8 @@ pub fn save_playlist<T>(playlist_name: &str,
 }
 
 pub fn read_playlist<T>(playlist_name: &str, owner: &str, db: &T) -> Result<Vec<Song>>
-	where T: ConnectionSource + VFSSource
+where
+	T: ConnectionSource + VFSSource,
 {
 	let vfs = db.get_vfs()?;
 	let songs: Vec<Song>;
@@ -201,7 +202,8 @@ pub fn read_playlist<T>(playlist_name: &str, owner: &str, db: &T) -> Result<Vec<
 }
 
 pub fn delete_playlist<T>(playlist_name: &str, owner: &str, db: &T) -> Result<()>
-	where T: ConnectionSource + VFSSource
+where
+	T: ConnectionSource + VFSSource,
 {
 	let connection = db.get_connection();
 
