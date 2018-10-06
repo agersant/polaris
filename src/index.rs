@@ -768,7 +768,7 @@ fn test_recent() {
 
 #[test]
 fn test_get_song() {
-	let db = db::_get_test_db("recent.sqlite");
+	let db = db::_get_test_db("get_song.sqlite");
 	update(&db).unwrap();
 
 	let mut song_path = PathBuf::new();

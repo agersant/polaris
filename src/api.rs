@@ -206,6 +206,12 @@ fn get_endpoints(db: Arc<DB>, index_channel: Arc<Mutex<Sender<index::Command>>>)
 		}
 		{
 			let db = db.clone();
+			auth_api_mount.mount("/lastfm/auth/", move |request: &mut Request| {
+				self::lastfm_auth(request, db.deref())
+			});
+		}
+		{
+			let db = db.clone();
 			auth_api_mount.mount("/lastfm/now_playing/", move |request: &mut Request| {
 				self::lastfm_now_playing(request, db.deref())
 			});
@@ -694,6 +700,22 @@ fn delete_playlist(request: &mut Request, db: &DB) -> IronResult<Response> {
 	};
 
 	playlist::delete_playlist(&playlist_name, &username, db)?;
+
+	Ok(Response::with(status::Ok))
+}
+
+fn lastfm_auth(request: &mut Request, db: &DB) -> IronResult<Response> {
+	let input = request.get_ref::<params::Params>().unwrap();
+	let username = match input.find(&["username"]) {
+		Some(&params::Value::String(ref username)) => username.clone(),
+		_ => return Err(Error::from(ErrorKind::MissingUsername).into()),
+	};
+	let token = match input.find(&["token"]) {
+		Some(&params::Value::String(ref token)) => token.clone(),
+		_ => return Err(Error::from(ErrorKind::MissingPassword).into()),
+	};
+
+	lastfm::auth(db, &username, &token)?;
 
 	Ok(Response::with(status::Ok))
 }

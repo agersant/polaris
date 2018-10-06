@@ -93,17 +93,28 @@ pub fn is_admin<T>(db: &T, username: &str) -> Result<bool>
 	Ok(is_admin != 0)
 }
 
-pub fn get_lastfm_credentials<T>(db: &T, username: &str) -> Result<(String, String)>
+pub fn set_lastfm_session_key<T>(db: &T, username: &str, token: &str) -> Result<()>
 	where T: ConnectionSource
 {
 	use db::users::dsl::*;
 	let connection = db.get_connection();
-	let credentials = users
+	diesel::update(users.filter(name.eq(username)))
+		.set(lastfm_session_key.eq(token))
+		.execute(connection.deref())?;
+	Ok(())
+}
+
+pub fn get_lastfm_session_key<T>(db: &T, username: &str) -> Result<String>
+	where T: ConnectionSource
+{
+	use db::users::dsl::*;
+	let connection = db.get_connection();
+	let token = users
 		.filter(name.eq(username))
-		.select((lastfm_username, lastfm_password))
+		.select(lastfm_session_key)
 		.get_result(connection.deref())?;
-	match credentials {
-		(Some(u), Some(p)) => Ok((u, p)),
+	match token {
+		Some(t) => Ok(t),
 		_ => bail!(ErrorKind::MissingLastFMCredentials),
 	}
 }

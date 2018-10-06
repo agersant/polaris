@@ -54,6 +54,8 @@ error_chain! {
         MissingPlaylistName {}
         EncodingError {}
         MissingLastFMCredentials {}
+        LastFMAuthError {}
+        LastFMDeserializationError {}
     }
 }
 

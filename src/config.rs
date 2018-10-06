@@ -26,10 +26,7 @@ pub struct MiscSettings {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct Preferences {
-	pub lastfm_username: Option<String>,
-	pub lastfm_password: Option<String>,
-}
+pub struct Preferences {}
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ConfigUser {
@@ -256,31 +253,15 @@ pub fn amend<T>(db: &T, new_config: &Config) -> Result<()>
 	Ok(())
 }
 
-pub fn read_preferences<T>(db: &T, username: &str) -> Result<Preferences>
+pub fn read_preferences<T>(_: &T, _: &str) -> Result<Preferences>
 	where T: ConnectionSource
 {
-	use self::users::dsl::*;
-	let connection = db.get_connection();
-	let (read_lastfm_username, read_lastfm_password) = users
-		.select((lastfm_username, lastfm_password))
-		.filter(name.eq(username))
-		.get_result(connection.deref())?;
-	Ok(Preferences {
-	       lastfm_username: read_lastfm_username,
-	       lastfm_password: read_lastfm_password,
-	   })
+	Ok(Preferences {})
 }
 
-pub fn write_preferences<T>(db: &T, username: &str, preferences: &Preferences) -> Result<()>
+pub fn write_preferences<T>(_: &T, _: &str, _: &Preferences) -> Result<()>
 	where T: ConnectionSource
 {
-	use self::users::dsl::*;
-	let connection = db.get_connection();
-	diesel::update(users)
-		.set((lastfm_username.eq(&preferences.lastfm_username),
-		      lastfm_password.eq(&preferences.lastfm_password)))
-		.filter(name.eq(username))
-		.execute(connection.deref())?;
 	Ok(())
 }
 
@@ -490,14 +471,7 @@ fn test_preferences_read_write() {
 	};
 	amend(&db, &initial_config).unwrap();
 
-	let old_preferences = read_preferences(&db, "Teddy🐻").unwrap();
-	assert_eq!(old_preferences.lastfm_username, None);
-	assert_eq!(old_preferences.lastfm_password, None);
-
-	let new_preferences = Preferences {
-		lastfm_username: Some("🐻FM".into()),
-		lastfm_password: Some("Secret🐻Secret".into()),
-	};
+	let new_preferences = Preferences {};
 	write_preferences(&db, "Teddy🐻", &new_preferences).unwrap();
 
 	let read_preferences = read_preferences(&db, "Teddy🐻").unwrap();
