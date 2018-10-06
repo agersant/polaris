@@ -218,22 +218,22 @@ fn run() -> Result<()> {
 	let db_ref = db.clone();
 	std::thread::spawn(move || {
 		let db = db_ref.deref();
-		index::update_loop(db, index_receiver);
+		index::update_loop(db, &index_receiver);
 	});
 
 	// Trigger auto-indexing
 	let db_ref = db.clone();
 	let sender_ref = index_sender.clone();
 	std::thread::spawn(move || {
-		index::self_trigger(db_ref.deref(), sender_ref);
+		index::self_trigger(db_ref.deref(), &sender_ref);
 	});
 
 	// Mount API
-	let prefix_url = config.prefix_url.unwrap_or("".to_string());
+	let prefix_url = config.prefix_url.unwrap_or_else(|| "".to_string());
 	let api_url = format!("{}/api", &prefix_url);
 	info!("Mounting API on {}", api_url);
 	let mut mount = Mount::new();
-	let handler = api::get_handler(db.clone(), index_sender)?;
+	let handler = api::get_handler(&db.clone(), &index_sender)?;
 	mount.mount(&api_url, handler);
 
 	// Mount static files
@@ -252,7 +252,7 @@ fn run() -> Result<()> {
 	info!("Starting up server");
 	let port: u16 = matches
 		.opt_str("p")
-		.unwrap_or("5050".to_owned())
+		.unwrap_or_else(|| "5050".to_owned())
 		.parse()
 		.or(Err("invalid port number"))?;
 

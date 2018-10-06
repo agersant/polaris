@@ -48,18 +48,18 @@ fn read_id3(path: &Path) -> Result<SongTags> {
 	let year = tag
 		.year()
 		.map(|y| y as i32)
-		.or(tag.date_released().and_then(|d| Some(d.year)))
-		.or(tag.date_recorded().and_then(|d| Some(d.year)));
+		.or_else(|| tag.date_released().and_then(|d| Some(d.year)))
+		.or_else(|| tag.date_recorded().and_then(|d| Some(d.year)));
 
 	Ok(SongTags {
-		artist: artist,
-		album_artist: album_artist,
-		album: album,
-		title: title,
-		duration: duration,
-		disc_number: disc_number,
-		track_number: track_number,
-		year: year,
+		artist,
+		album_artist,
+		album,
+		title,
+		duration,
+		disc_number,
+		track_number,
+		year,
 	})
 }
 
@@ -101,14 +101,14 @@ fn read_ape(path: &Path) -> Result<SongTags> {
 	let disc_number = tag.item("Disc").and_then(read_ape_x_of_y);
 	let track_number = tag.item("Track").and_then(read_ape_x_of_y);
 	Ok(SongTags {
-		artist: artist,
-		album_artist: album_artist,
-		album: album,
-		title: title,
+		artist,
+		album_artist,
+		album,
+		title,
 		duration: None,
-		disc_number: disc_number,
-		track_number: track_number,
-		year: year,
+		disc_number,
+		track_number,
+		year,
 	})
 }
 
@@ -163,10 +163,10 @@ fn read_flac(path: &Path) -> Result<SongTags> {
 		album_artist: vorbis.album_artist().map(|v| v[0].clone()),
 		album: vorbis.album().map(|v| v[0].clone()),
 		title: vorbis.title().map(|v| v[0].clone()),
-		duration: duration,
-		disc_number: disc_number,
+		duration,
+		disc_number,
 		track_number: vorbis.track(),
-		year: year,
+		year,
 	})
 }
 

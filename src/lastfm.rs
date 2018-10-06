@@ -53,9 +53,9 @@ where
 {
 	let song = index::get_song(db, track)?;
 	Ok(Scrobble::new(
-		song.artist.unwrap_or("".into()),
-		song.title.unwrap_or("".into()),
-		song.album.unwrap_or("".into()),
+		song.artist.unwrap_or_else(|| "".into()),
+		song.title.unwrap_or_else(|| "".into()),
+		song.album.unwrap_or_else(|| "".into()),
 	))
 }
 

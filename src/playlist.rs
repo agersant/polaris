@@ -73,7 +73,7 @@ pub fn list_playlists<T>(owner: &str, db: &T) -> Result<Vec<String>>
 
 pub fn save_playlist<T>(playlist_name: &str,
                         owner: &str,
-                        content: &Vec<String>,
+                        content: &[String],
                         db: &T)
                         -> Result<()>
 	where T: ConnectionSource + VFSSource
@@ -124,7 +124,7 @@ pub fn save_playlist<T>(playlist_name: &str,
 		       .and_then(|p| p.to_str().map(|s| s.to_owned())) {
 			new_songs.push(NewPlaylistSong {
 			                   playlist: playlist.id,
-			                   path: real_path.into(),
+			                   path: real_path,
 			                   ordering: i as i32,
 			               });
 		}

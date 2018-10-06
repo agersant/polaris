@@ -119,7 +119,7 @@ where
 		found_users
 			.into_iter()
 			.map(|(name, admin)| ConfigUser {
-				name: name,
+				name,
 				password: "".to_owned(),
 				admin: admin != 0,
 			}).collect::<_>(),
@@ -193,7 +193,7 @@ where
 					.find(|old_name| *old_name == &u.name)
 					.is_none()
 			}).collect::<_>();
-		for ref config_user in insert_users {
+		for config_user in &insert_users {
 			let new_user = User::new(&config_user.name, &config_user.password);
 			diesel::insert_into(users::table)
 				.values(&new_user)
@@ -201,7 +201,7 @@ where
 		}
 
 		// Update users
-		for ref user in config_users {
+		for user in config_users.iter() {
 			// Update password if provided
 			if !user.password.is_empty() {
 				let salt: Vec<u8> = users::table
@@ -282,8 +282,7 @@ fn _get_test_db(name: &str) -> DB {
 		fs::remove_file(&db_path).unwrap();
 	}
 
-	let db = DB::new(&db_path).unwrap();
-	db
+	DB::new(&db_path).unwrap()
 }
 
 #[test]

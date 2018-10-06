@@ -13,7 +13,7 @@ mod schema;
 pub use self::schema::*;
 
 #[allow(dead_code)]
-const DB_MIGRATIONS_PATH: &'static str = "src/db/migrations";
+const DB_MIGRATIONS_PATH: &str = "src/db/migrations";
 embed_migrations!("src/db/migrations");
 
 pub trait ConnectionSource {

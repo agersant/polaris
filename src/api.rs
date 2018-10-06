@@ -54,8 +54,8 @@ where
 	Ok(misc.auth_secret.to_owned())
 }
 
-pub fn get_handler(db: Arc<DB>, index: Arc<Mutex<Sender<index::Command>>>) -> Result<Chain> {
-	let api_handler = get_endpoints(db.clone(), index);
+pub fn get_handler(db: &Arc<DB>, index: &Arc<Mutex<Sender<index::Command>>>) -> Result<Chain> {
+	let api_handler = get_endpoints(&db.clone(), &index);
 	let mut api_chain = Chain::new(api_handler);
 
 	let auth_secret = get_auth_secret(db.deref())?;
@@ -72,7 +72,7 @@ pub fn get_handler(db: Arc<DB>, index: Arc<Mutex<Sender<index::Command>>>) -> Re
 	Ok(api_chain)
 }
 
-fn get_endpoints(db: Arc<DB>, index_channel: Arc<Mutex<Sender<index::Command>>>) -> Mount {
+fn get_endpoints(db: &Arc<DB>, index_channel: &Arc<Mutex<Sender<index::Command>>>) -> Mount {
 	let mut api_handler = Mount::new();
 
 	{
@@ -259,7 +259,7 @@ impl AroundMiddleware for AuthRequirement {
 	fn around(self, handler: Box<Handler>) -> Box<Handler> {
 		Box::new(AuthHandler {
 			db: self.db,
-			handler: handler,
+			handler,
 		}) as Box<Handler>
 	}
 }
@@ -272,12 +272,8 @@ struct AuthHandler {
 impl Handler for AuthHandler {
 	fn handle(&self, req: &mut Request) -> IronResult<Response> {
 		{
-			let mut auth_success = false;
-
 			// Skip auth for first time setup
-			if user::count(self.db.deref())? == 0 {
-				auth_success = true;
-			}
+			let mut auth_success = user::count(self.db.deref())? == 0;
 
 			// Auth via Authorization header
 			if !auth_success {
@@ -317,7 +313,7 @@ impl AroundMiddleware for AdminRequirement {
 	fn around(self, handler: Box<Handler>) -> Box<Handler> {
 		Box::new(AdminHandler {
 			db: self.db,
-			handler: handler,
+			handler,
 		}) as Box<Handler>
 	}
 }
@@ -330,12 +326,8 @@ struct AdminHandler {
 impl Handler for AdminHandler {
 	fn handle(&self, req: &mut Request) -> IronResult<Response> {
 		{
-			let mut auth_success = false;
-
 			// Skip auth for first time setup
-			if user::count(self.db.deref())? == 0 {
-				auth_success = true;
-			}
+			let mut auth_success = user::count(self.db.deref())? == 0;
 
 			if !auth_success {
 				match req.extensions.get::<SessionKey>() {
@@ -674,10 +666,10 @@ fn read_playlist(request: &mut Request, db: &DB) -> IronResult<Response> {
 	};
 
 	let params = request.extensions.get::<Router>().unwrap();
-	let ref playlist_name = match params.find("playlist_name") {
+	let playlist_name = &(match params.find("playlist_name") {
 		Some(s) => s,
 		_ => return Err(Error::from(ErrorKind::MissingPlaylistName).into()),
-	};
+	});
 
 	let playlist_name = match percent_decode(playlist_name.as_bytes()).decode_utf8() {
 		Ok(s) => s,
@@ -701,10 +693,10 @@ fn delete_playlist(request: &mut Request, db: &DB) -> IronResult<Response> {
 	};
 
 	let params = request.extensions.get::<Router>().unwrap();
-	let ref playlist_name = match params.find("playlist_name") {
+	let playlist_name = &(match params.find("playlist_name") {
 		Some(s) => s,
 		_ => return Err(Error::from(ErrorKind::MissingPlaylistName).into()),
-	};
+	});
 
 	let playlist_name = match percent_decode(playlist_name.as_bytes()).decode_utf8() {
 		Ok(s) => s,

@@ -34,38 +34,38 @@ impl DDNSConfigSource for DB {
 
 #[derive(Debug)]
 enum DDNSError {
-	InternalError(errors::Error),
-	IoError(io::Error),
-	ReqwestError(reqwest::Error),
-	UpdateError(reqwest::StatusCode),
+	Internal(errors::Error),
+	Io(io::Error),
+	Reqwest(reqwest::Error),
+	Update(reqwest::StatusCode),
 }
 
 impl From<io::Error> for DDNSError {
 	fn from(err: io::Error) -> DDNSError {
-		DDNSError::IoError(err)
+		DDNSError::Io(err)
 	}
 }
 
 impl From<errors::Error> for DDNSError {
 	fn from(err: errors::Error) -> DDNSError {
-		DDNSError::InternalError(err)
+		DDNSError::Internal(err)
 	}
 }
 
 impl From<reqwest::Error> for DDNSError {
 	fn from(err: reqwest::Error) -> DDNSError {
-		DDNSError::ReqwestError(err)
+		DDNSError::Reqwest(err)
 	}
 }
 
-const DDNS_UPDATE_URL: &'static str = "https://ydns.io/api/v1/update/";
+const DDNS_UPDATE_URL: &str = "https://ydns.io/api/v1/update/";
 
 fn update_my_ip<T>(config_source: &T) -> Result<(), DDNSError>
 where
 	T: DDNSConfigSource,
 {
 	let config = config_source.get_ddns_config()?;
-	if config.host.len() == 0 || config.username.len() == 0 {
+	if config.host.is_empty() || config.username.is_empty() {
 		info!("Skipping DDNS update because credentials are missing");
 		return Ok(());
 	}
@@ -78,7 +78,7 @@ where
 	let client = reqwest::Client::new()?;
 	let res = client.get(full_url.as_str()).header(auth_header).send()?;
 	if !res.status().is_success() {
-		return Err(DDNSError::UpdateError(*res.status()));
+		return Err(DDNSError::Update(*res.status()));
 	}
 	Ok(())
 }

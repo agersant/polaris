@@ -53,16 +53,13 @@ impl VFS {
 
 	pub fn real_to_virtual(&self, real_path: &Path) -> Result<PathBuf> {
 		for (name, target) in &self.mount_points {
-			match real_path.strip_prefix(target) {
-				Ok(p) => {
-					let mount_path = Path::new(&name);
-					return if p.components().count() == 0 {
-						Ok(mount_path.to_path_buf())
-					} else {
-						Ok(mount_path.join(p))
-					};
-				}
-				Err(_) => (),
+			if let Ok(p) = real_path.strip_prefix(target) {
+				let mount_path = Path::new(&name);
+				return if p.components().count() == 0 {
+					Ok(mount_path.to_path_buf())
+				} else {
+					Ok(mount_path.join(p))
+				};
 			}
 		}
 		bail!("Real path has no match in VFS")
@@ -71,22 +68,19 @@ impl VFS {
 	pub fn virtual_to_real(&self, virtual_path: &Path) -> Result<PathBuf> {
 		for (name, target) in &self.mount_points {
 			let mount_path = Path::new(&name);
-			match virtual_path.strip_prefix(mount_path) {
-				Ok(p) => {
-					return if p.components().count() == 0 {
-						Ok(target.clone())
-					} else {
-						Ok(target.join(p))
-					};
-				}
-				Err(_) => (),
+			if let Ok(p) = virtual_path.strip_prefix(mount_path) {
+				return if p.components().count() == 0 {
+					Ok(target.clone())
+				} else {
+					Ok(target.join(p))
+				};
 			}
 		}
 		bail!("Virtual path has no match in VFS")
 	}
 
 	pub fn get_mount_points(&self) -> &HashMap<String, PathBuf> {
-		return &self.mount_points;
+		&self.mount_points
 	}
 }
 

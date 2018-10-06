@@ -12,7 +12,7 @@ use std::path::*;
 use errors::*;
 use utils;
 
-const THUMBNAILS_PATH: &'static str = "thumbnails";
+const THUMBNAILS_PATH: &str = "thumbnails";
 
 fn hash(path: &Path, dimension: u32) -> u64 {
 	let path_string = path.to_string_lossy();

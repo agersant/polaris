@@ -35,7 +35,7 @@ impl User {
 	}
 }
 
-pub fn hash_password(salt: &Vec<u8>, password: &str) -> Vec<u8> {
+pub fn hash_password(salt: &[u8], password: &str) -> Vec<u8> {
 	let mut hash: PasswordHash = [0; CREDENTIAL_LEN];
 	pbkdf2::derive(
 		DIGEST_ALG,

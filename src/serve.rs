@@ -27,7 +27,7 @@ pub fn deliver(path: &Path, range_header: Option<&Range>) -> IronResult<Response
 	};
 
 	let accept_range_header = Header(AcceptRanges(vec![RangeUnit::Bytes]));
-	let range_header = range_header.map(|h| h.clone());
+	let range_header = range_header.cloned();
 
 	match range_header {
 		None => Ok(Response::with((status::Ok, path, accept_range_header))),
@@ -85,8 +85,8 @@ impl PartialFile {
 	{
 		let range = range.into();
 		PartialFile {
-			file: file,
-			range: range,
+			file,
+			range,
 		}
 	}
 

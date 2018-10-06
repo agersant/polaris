@@ -120,10 +120,10 @@ impl<'conn> IndexBuilder<'conn> {
 		new_songs.reserve_exact(INDEX_BUILDING_INSERT_BUFFER_SIZE);
 		new_directories.reserve_exact(INDEX_BUILDING_INSERT_BUFFER_SIZE);
 		Ok(IndexBuilder {
-			new_songs: new_songs,
-			new_directories: new_directories,
-			connection: connection,
-			album_art_pattern: album_art_pattern,
+			new_songs,
+			new_directories,
+			connection,
+			album_art_pattern,
 		})
 	}
 
@@ -197,7 +197,7 @@ impl<'conn> IndexBuilder<'conn> {
 		let metadata = fs::metadata(path_string)?;
 		let created = metadata
 			.created()
-			.or(metadata.modified())?
+			.or_else(|_| metadata.modified())?
 			.duration_since(time::UNIX_EPOCH)?
 			.as_secs() as i32;
 
@@ -237,17 +237,17 @@ impl<'conn> IndexBuilder<'conn> {
 					if tags.album.is_some() {
 						inconsistent_directory_album |=
 							directory_album.is_some() && directory_album != tags.album;
-						directory_album = tags.album.as_ref().map(|a| a.clone());
+						directory_album = tags.album.as_ref().cloned();
 					}
 
 					if tags.album_artist.is_some() {
 						inconsistent_directory_artist |=
 							directory_artist.is_some() && directory_artist != tags.album_artist;
-						directory_artist = tags.album_artist.as_ref().map(|a| a.clone());
+						directory_artist = tags.album_artist.as_ref().cloned();
 					} else if tags.artist.is_some() {
 						inconsistent_directory_artist |=
 							directory_artist.is_some() && directory_artist != tags.artist;
-						directory_artist = tags.artist.as_ref().map(|a| a.clone());
+						directory_artist = tags.artist.as_ref().cloned();
 					}
 
 					let song = NewSong {
@@ -261,7 +261,7 @@ impl<'conn> IndexBuilder<'conn> {
 						album_artist: tags.album_artist,
 						album: tags.album,
 						year: tags.year,
-						artwork: artwork.as_ref().map(|s| s.to_owned()),
+						artwork: artwork.as_ref().cloned(),
 					};
 
 					self.push_song(song)?;
@@ -283,7 +283,7 @@ impl<'conn> IndexBuilder<'conn> {
 		let directory = NewDirectory {
 			path: path_string.to_owned(),
 			parent: parent_string,
-			artwork: artwork,
+			artwork,
 			album: directory_album,
 			artist: directory_artist,
 			year: directory_year,
@@ -373,7 +373,7 @@ where
 
 	let connection_mutex = db.get_connection_mutex();
 	let mut builder = IndexBuilder::new(connection_mutex.deref(), album_art_pattern)?;
-	for (_, target) in mount_points {
+	for target in mount_points.values() {
 		builder.populate_directory(None, target.as_path())?;
 	}
 	builder.flush_songs()?;
@@ -396,7 +396,7 @@ where
 	Ok(())
 }
 
-pub fn update_loop<T>(db: &T, command_buffer: Receiver<Command>)
+pub fn update_loop<T>(db: &T, command_buffer: &Receiver<Command>)
 where
 	T: ConnectionSource + VFSSource,
 {
@@ -426,7 +426,7 @@ where
 	}
 }
 
-pub fn self_trigger<T>(db: &T, command_buffer: Arc<Mutex<Sender<Command>>>)
+pub fn self_trigger<T>(db: &T, command_buffer: &Arc<Mutex<Sender<Command>>>)
 where
 	T: ConnectionSource,
 {
@@ -503,7 +503,7 @@ where
 		output.extend(
 			virtual_directories
 				.into_iter()
-				.map(|d| CollectionFile::Directory(d)),
+				.map(CollectionFile::Directory),
 		);
 	} else {
 		// Browse sub-directory
@@ -517,7 +517,7 @@ where
 		let virtual_directories = real_directories
 			.into_iter()
 			.filter_map(|s| virtualize_directory(&vfs, s));
-		output.extend(virtual_directories.map(|d| CollectionFile::Directory(d)));
+		output.extend(virtual_directories.map(CollectionFile::Directory));
 
 		let real_songs: Vec<Song> = songs::table
 			.filter(songs::parent.eq(&real_path_string))
@@ -526,7 +526,7 @@ where
 		let virtual_songs = real_songs
 			.into_iter()
 			.filter_map(|s| virtualize_song(&vfs, s));
-		output.extend(virtual_songs.map(|s| CollectionFile::Song(s)));
+		output.extend(virtual_songs.map(CollectionFile::Song));
 	}
 
 	Ok(output)
@@ -614,7 +614,7 @@ where
 			.into_iter()
 			.filter_map(|s| virtualize_directory(&vfs, s));
 
-		output.extend(virtual_directories.map(|d| CollectionFile::Directory(d)));
+		output.extend(virtual_directories.map(CollectionFile::Directory));
 	}
 
 	// Find songs with matching title/album/artist and non-matching parent
@@ -634,7 +634,7 @@ where
 			.into_iter()
 			.filter_map(|s| virtualize_song(&vfs, s));
 
-		output.extend(virtual_songs.map(|s| CollectionFile::Song(s)));
+		output.extend(virtual_songs.map(CollectionFile::Song));
 	}
 
 	Ok(output)
