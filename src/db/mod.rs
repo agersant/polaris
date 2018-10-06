@@ -1,7 +1,7 @@
 use core::ops::Deref;
-use diesel_migrations;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
+use diesel_migrations;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -28,9 +28,12 @@ pub struct DB {
 impl DB {
 	pub fn new(path: &Path) -> Result<DB> {
 		info!("Database file path: {}", path.to_string_lossy());
-		let connection =
-			Arc::new(Mutex::new(SqliteConnection::establish(&path.to_string_lossy())?));
-		let db = DB { connection: connection.clone() };
+		let connection = Arc::new(Mutex::new(SqliteConnection::establish(
+			&path.to_string_lossy(),
+		)?));
+		let db = DB {
+			connection: connection.clone(),
+		};
 		db.init()?;
 		Ok(db)
 	}
@@ -49,9 +52,14 @@ impl DB {
 		let connection = self.connection.lock().unwrap();
 		let connection = connection.deref();
 		loop {
-			match diesel_migrations::revert_latest_migration_in_directory(connection, Path::new(DB_MIGRATIONS_PATH)) {
+			match diesel_migrations::revert_latest_migration_in_directory(
+				connection,
+				Path::new(DB_MIGRATIONS_PATH),
+			) {
 				Ok(_) => (),
-				Err(diesel_migrations::RunMigrationsError::MigrationError(diesel_migrations::MigrationError::NoMigrationRun)) => break,
+				Err(diesel_migrations::RunMigrationsError::MigrationError(
+					diesel_migrations::MigrationError::NoMigrationRun,
+				)) => break,
 				Err(e) => bail!(e),
 			}
 		}

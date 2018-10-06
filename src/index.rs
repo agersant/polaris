@@ -9,8 +9,8 @@ use std::fs;
 use std::path::Path;
 #[cfg(test)]
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
 use std::sync::mpsc::*;
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time;
 
@@ -19,16 +19,18 @@ use config::MiscSettings;
 use db;
 use db::ConnectionSource;
 use db::{directories, misc_settings, songs};
-use vfs::{VFS, VFSSource};
 use errors;
 use metadata;
+use vfs::{VFSSource, VFS};
 
 const INDEX_BUILDING_INSERT_BUFFER_SIZE: usize = 1000; // Insertions in each transaction
 const INDEX_BUILDING_CLEAN_BUFFER_SIZE: usize = 500; // Insertions in each transaction
 
-no_arg_sql_function!(random,
-                     types::Integer,
-                     "Represents the SQL RANDOM() function");
+no_arg_sql_function!(
+	random,
+	types::Integer,
+	"Represents the SQL RANDOM() function"
+);
 
 pub enum Command {
 	REINDEX,
@@ -74,7 +76,7 @@ pub enum CollectionFile {
 }
 
 #[derive(Debug, Insertable)]
-#[table_name="songs"]
+#[table_name = "songs"]
 struct NewSong {
 	path: String,
 	parent: String,
@@ -90,7 +92,7 @@ struct NewSong {
 }
 
 #[derive(Debug, Insertable)]
-#[table_name="directories"]
+#[table_name = "directories"]
 struct NewDirectory {
 	path: String,
 	parent: Option<String>,
@@ -109,31 +111,31 @@ struct IndexBuilder<'conn> {
 }
 
 impl<'conn> IndexBuilder<'conn> {
-	fn new(connection: &Mutex<SqliteConnection>,
-	       album_art_pattern: Regex)
-	       -> Result<IndexBuilder, errors::Error> {
+	fn new(
+		connection: &Mutex<SqliteConnection>,
+		album_art_pattern: Regex,
+	) -> Result<IndexBuilder, errors::Error> {
 		let mut new_songs = Vec::new();
 		let mut new_directories = Vec::new();
 		new_songs.reserve_exact(INDEX_BUILDING_INSERT_BUFFER_SIZE);
 		new_directories.reserve_exact(INDEX_BUILDING_INSERT_BUFFER_SIZE);
 		Ok(IndexBuilder {
-		       new_songs: new_songs,
-		       new_directories: new_directories,
-		       connection: connection,
-		       album_art_pattern: album_art_pattern,
-		   })
+			new_songs: new_songs,
+			new_directories: new_directories,
+			connection: connection,
+			album_art_pattern: album_art_pattern,
+		})
 	}
 
 	fn flush_songs(&mut self) -> Result<(), errors::Error> {
 		let connection = self.connection.lock().unwrap();
 		let connection = connection.deref();
-		connection
-			.transaction::<_, errors::Error, _>(|| {
-				                                    diesel::insert_into(songs::table)
-				                                        .values(&self.new_songs)
-				                                        .execute(connection)?;
-				                                    Ok(())
-				                                   })?;
+		connection.transaction::<_, errors::Error, _>(|| {
+			diesel::insert_into(songs::table)
+				.values(&self.new_songs)
+				.execute(connection)?;
+			Ok(())
+		})?;
 		self.new_songs.clear();
 		Ok(())
 	}
@@ -141,13 +143,12 @@ impl<'conn> IndexBuilder<'conn> {
 	fn flush_directories(&mut self) -> Result<(), errors::Error> {
 		let connection = self.connection.lock().unwrap();
 		let connection = connection.deref();
-		connection
-			.transaction::<_, errors::Error, _>(|| {
-				                                    diesel::insert_into(directories::table)
-				                                        .values(&self.new_directories)
-				                                        .execute(connection)?;
-				                                    Ok(())
-				                                   })?;
+		connection.transaction::<_, errors::Error, _>(|| {
+			diesel::insert_into(directories::table)
+				.values(&self.new_directories)
+				.execute(connection)?;
+			Ok(())
+		})?;
 		self.new_directories.clear();
 		Ok(())
 	}
@@ -180,11 +181,11 @@ impl<'conn> IndexBuilder<'conn> {
 		Ok(None)
 	}
 
-	fn populate_directory(&mut self,
-	                      parent: Option<&Path>,
-	                      path: &Path)
-	                      -> Result<(), errors::Error> {
-
+	fn populate_directory(
+		&mut self,
+		parent: Option<&Path>,
+		path: &Path,
+	) -> Result<(), errors::Error> {
 		// Find artwork
 		let artwork = self.get_artwork(path).unwrap_or(None);
 
@@ -228,24 +229,24 @@ impl<'conn> IndexBuilder<'conn> {
 			if let Some(file_path_string) = file_path.to_str() {
 				if let Ok(tags) = metadata::read(file_path.as_path()) {
 					if tags.year.is_some() {
-						inconsistent_directory_year |= directory_year.is_some() &&
-						                               directory_year != tags.year;
+						inconsistent_directory_year |=
+							directory_year.is_some() && directory_year != tags.year;
 						directory_year = tags.year;
 					}
 
 					if tags.album.is_some() {
-						inconsistent_directory_album |= directory_album.is_some() &&
-						                                directory_album != tags.album;
+						inconsistent_directory_album |=
+							directory_album.is_some() && directory_album != tags.album;
 						directory_album = tags.album.as_ref().map(|a| a.clone());
 					}
 
 					if tags.album_artist.is_some() {
-						inconsistent_directory_artist |= directory_artist.is_some() &&
-						                                 directory_artist != tags.album_artist;
+						inconsistent_directory_artist |=
+							directory_artist.is_some() && directory_artist != tags.album_artist;
 						directory_artist = tags.album_artist.as_ref().map(|a| a.clone());
 					} else if tags.artist.is_some() {
-						inconsistent_directory_artist |= directory_artist.is_some() &&
-						                                 directory_artist != tags.artist;
+						inconsistent_directory_artist |=
+							directory_artist.is_some() && directory_artist != tags.artist;
 						directory_artist = tags.artist.as_ref().map(|a| a.clone());
 					}
 
@@ -300,7 +301,8 @@ impl<'conn> IndexBuilder<'conn> {
 }
 
 fn clean<T>(db: &T) -> Result<(), errors::Error>
-	where T: ConnectionSource + VFSSource
+where
+	T: ConnectionSource + VFSSource,
 {
 	let vfs = db.get_vfs()?;
 
@@ -308,18 +310,15 @@ fn clean<T>(db: &T) -> Result<(), errors::Error>
 		let all_songs: Vec<String>;
 		{
 			let connection = db.get_connection();
-			all_songs = songs::table
-				.select(songs::path)
-				.load(connection.deref())?;
+			all_songs = songs::table.select(songs::path).load(connection.deref())?;
 		}
 
 		let missing_songs = all_songs
 			.into_iter()
 			.filter(|ref song_path| {
-				        let path = Path::new(&song_path);
-				        !path.exists() || vfs.real_to_virtual(path).is_err()
-				       })
-			.collect::<Vec<_>>();
+				let path = Path::new(&song_path);
+				!path.exists() || vfs.real_to_virtual(path).is_err()
+			}).collect::<Vec<_>>();
 
 		{
 			let connection = db.get_connection();
@@ -327,7 +326,6 @@ fn clean<T>(db: &T) -> Result<(), errors::Error>
 				diesel::delete(songs::table.filter(songs::path.eq_any(chunk)))
 					.execute(connection.deref())?;
 			}
-
 		}
 	}
 
@@ -343,10 +341,9 @@ fn clean<T>(db: &T) -> Result<(), errors::Error>
 		let missing_directories = all_directories
 			.into_iter()
 			.filter(|ref directory_path| {
-				        let path = Path::new(&directory_path);
-				        !path.exists() || vfs.real_to_virtual(path).is_err()
-				       })
-			.collect::<Vec<_>>();
+				let path = Path::new(&directory_path);
+				!path.exists() || vfs.real_to_virtual(path).is_err()
+			}).collect::<Vec<_>>();
 
 		{
 			let connection = db.get_connection();
@@ -361,7 +358,8 @@ fn clean<T>(db: &T) -> Result<(), errors::Error>
 }
 
 fn populate<T>(db: &T) -> Result<(), errors::Error>
-	where T: ConnectionSource + VFSSource
+where
+	T: ConnectionSource + VFSSource,
 {
 	let vfs = db.get_vfs()?;
 	let mount_points = vfs.get_mount_points();
@@ -384,19 +382,23 @@ fn populate<T>(db: &T) -> Result<(), errors::Error>
 }
 
 pub fn update<T>(db: &T) -> Result<(), errors::Error>
-	where T: ConnectionSource + VFSSource
+where
+	T: ConnectionSource + VFSSource,
 {
 	let start = time::Instant::now();
 	info!("Beginning library index update");
 	clean(db)?;
 	populate(db)?;
-	info!("Library index update took {} seconds",
-	      start.elapsed().as_secs());
+	info!(
+		"Library index update took {} seconds",
+		start.elapsed().as_secs()
+	);
 	Ok(())
 }
 
 pub fn update_loop<T>(db: &T, command_buffer: Receiver<Command>)
-	where T: ConnectionSource + VFSSource
+where
+	T: ConnectionSource + VFSSource,
 {
 	loop {
 		// Wait for a command
@@ -425,7 +427,8 @@ pub fn update_loop<T>(db: &T, command_buffer: Receiver<Command>)
 }
 
 pub fn self_trigger<T>(db: &T, command_buffer: Arc<Mutex<Sender<Command>>>)
-	where T: ConnectionSource
+where
+	T: ConnectionSource,
 {
 	loop {
 		{
@@ -482,7 +485,8 @@ fn virtualize_directory(vfs: &VFS, mut directory: Directory) -> Option<Directory
 }
 
 pub fn browse<T>(db: &T, virtual_path: &Path) -> Result<Vec<CollectionFile>, errors::Error>
-	where T: ConnectionSource + VFSSource
+where
+	T: ConnectionSource + VFSSource,
 {
 	let mut output = Vec::new();
 	let vfs = db.get_vfs()?;
@@ -496,10 +500,11 @@ pub fn browse<T>(db: &T, virtual_path: &Path) -> Result<Vec<CollectionFile>, err
 		let virtual_directories = real_directories
 			.into_iter()
 			.filter_map(|s| virtualize_directory(&vfs, s));
-		output.extend(virtual_directories
-		                  .into_iter()
-		                  .map(|d| CollectionFile::Directory(d)));
-
+		output.extend(
+			virtual_directories
+				.into_iter()
+				.map(|d| CollectionFile::Directory(d)),
+		);
 	} else {
 		// Browse sub-directory
 		let real_path = vfs.virtual_to_real(virtual_path)?;
@@ -528,7 +533,8 @@ pub fn browse<T>(db: &T, virtual_path: &Path) -> Result<Vec<CollectionFile>, err
 }
 
 pub fn flatten<T>(db: &T, virtual_path: &Path) -> Result<Vec<Song>, errors::Error>
-	where T: ConnectionSource + VFSSource
+where
+	T: ConnectionSource + VFSSource,
 {
 	use self::songs::dsl::*;
 	let vfs = db.get_vfs()?;
@@ -552,7 +558,8 @@ pub fn flatten<T>(db: &T, virtual_path: &Path) -> Result<Vec<Song>, errors::Erro
 }
 
 pub fn get_random_albums<T>(db: &T, count: i64) -> Result<Vec<Directory>, errors::Error>
-	where T: ConnectionSource + VFSSource
+where
+	T: ConnectionSource + VFSSource,
 {
 	use self::directories::dsl::*;
 	let vfs = db.get_vfs()?;
@@ -569,7 +576,8 @@ pub fn get_random_albums<T>(db: &T, count: i64) -> Result<Vec<Directory>, errors
 }
 
 pub fn get_recent_albums<T>(db: &T, count: i64) -> Result<Vec<Directory>, errors::Error>
-	where T: ConnectionSource + VFSSource
+where
+	T: ConnectionSource + VFSSource,
 {
 	use self::directories::dsl::*;
 	let vfs = db.get_vfs()?;
@@ -586,7 +594,8 @@ pub fn get_recent_albums<T>(db: &T, count: i64) -> Result<Vec<Directory>, errors
 }
 
 pub fn search<T>(db: &T, query: &str) -> Result<Vec<CollectionFile>, errors::Error>
-	where T: ConnectionSource + VFSSource
+where
+	T: ConnectionSource + VFSSource,
 {
 	let vfs = db.get_vfs()?;
 	let connection = db.get_connection();
@@ -612,12 +621,13 @@ pub fn search<T>(db: &T, query: &str) -> Result<Vec<CollectionFile>, errors::Err
 	{
 		use self::songs::dsl::*;
 		let real_songs: Vec<Song> = songs
-			.filter(path.like(&like_test)
-			            .or(title.like(&like_test))
-			            .or(album.like(&like_test))
-			            .or(artist.like(&like_test))
-			            .or(album_artist.like(&like_test)))
-			.filter(parent.not_like(&like_test))
+			.filter(
+				path.like(&like_test)
+					.or(title.like(&like_test))
+					.or(album.like(&like_test))
+					.or(artist.like(&like_test))
+					.or(album_artist.like(&like_test)),
+			).filter(parent.not_like(&like_test))
 			.load(connection.deref())?;
 
 		let virtual_songs = real_songs
@@ -631,7 +641,8 @@ pub fn search<T>(db: &T, query: &str) -> Result<Vec<CollectionFile>, errors::Err
 }
 
 pub fn get_song<T>(db: &T, virtual_path: &Path) -> Result<Song, errors::Error>
-	where T: ConnectionSource + VFSSource
+where
+	T: ConnectionSource + VFSSource,
 {
 	let vfs = db.get_vfs()?;
 	let connection = db.get_connection();
@@ -695,8 +706,10 @@ fn test_metadata() {
 	assert_eq!(song.album_artist, None);
 	assert_eq!(song.album, Some("Picnic".to_owned()));
 	assert_eq!(song.year, Some(2016));
-	assert_eq!(song.artwork,
-	           Some(artwork_path.to_string_lossy().into_owned()));
+	assert_eq!(
+		song.artwork,
+		Some(artwork_path.to_string_lossy().into_owned())
+	);
 }
 
 #[test]

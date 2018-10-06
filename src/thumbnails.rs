@@ -1,8 +1,8 @@
 use image;
+use image::FilterType;
 use image::GenericImage;
 use image::ImageBuffer;
 use image::ImageFormat;
-use image::FilterType;
 use std::cmp;
 use std::collections::hash_map::DefaultHasher;
 use std::fs::{DirBuilder, File};
@@ -23,7 +23,6 @@ fn hash(path: &Path, dimension: u32) -> u64 {
 }
 
 pub fn get_thumbnail(real_path: &Path, max_dimension: u32) -> Result<PathBuf> {
-
 	let mut out_path = utils::get_data_root()?;
 	out_path.push(THUMBNAILS_PATH);
 
@@ -46,9 +45,11 @@ pub fn get_thumbnail(real_path: &Path, max_dimension: u32) -> Result<PathBuf> {
 				source_image.resize(out_dimension, out_dimension, FilterType::Lanczos3);
 			let (scaled_width, scaled_height) = scaled_image.dimensions();
 			let mut final_image = ImageBuffer::new(out_dimension, out_dimension);
-			final_image.copy_from(&scaled_image,
-			                      (out_dimension - scaled_width) / 2,
-			                      (out_dimension - scaled_height) / 2);
+			final_image.copy_from(
+				&scaled_image,
+				(out_dimension - scaled_width) / 2,
+				(out_dimension - scaled_height) / 2,
+			);
 			final_image.save(&out_path)?;
 		} else {
 			let mut out_file = File::create(&out_path)?;

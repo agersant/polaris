@@ -2,12 +2,12 @@ use ape;
 use core;
 use diesel;
 use diesel_migrations;
-use id3;
 use getopts;
-use image;
 use hyper;
-use iron::IronError;
+use id3;
+use image;
 use iron::status::Status;
+use iron::IronError;
 use lewton;
 use metaflac;
 use regex;
@@ -17,46 +17,46 @@ use std;
 use toml;
 
 error_chain! {
-    foreign_links {
-        Ape(ape::Error);
-        Diesel(diesel::result::Error);
-        DieselConnection(diesel::ConnectionError);
-        DieselMigration(diesel_migrations::RunMigrationsError);
-        Encoding(core::str::Utf8Error);
-        Flac(metaflac::Error);
-        GetOpts(getopts::Fail);
-        Hyper(hyper::Error);
-        Id3(id3::Error);
-        Image(image::ImageError);
-        Io(std::io::Error);
-        Json(serde_json::Error);
-        Time(std::time::SystemTimeError);
-        Toml(toml::de::Error);
-        Regex(regex::Error);
-        Scrobbler(rustfm_scrobble::ScrobblerError);
-        Vorbis(lewton::VorbisError);
-    }
+	foreign_links {
+		Ape(ape::Error);
+		Diesel(diesel::result::Error);
+		DieselConnection(diesel::ConnectionError);
+		DieselMigration(diesel_migrations::RunMigrationsError);
+		Encoding(core::str::Utf8Error);
+		Flac(metaflac::Error);
+		GetOpts(getopts::Fail);
+		Hyper(hyper::Error);
+		Id3(id3::Error);
+		Image(image::ImageError);
+		Io(std::io::Error);
+		Json(serde_json::Error);
+		Time(std::time::SystemTimeError);
+		Toml(toml::de::Error);
+		Regex(regex::Error);
+		Scrobbler(rustfm_scrobble::ScrobblerError);
+		Vorbis(lewton::VorbisError);
+	}
 
-    errors {
-        DaemonError {}
-        AuthenticationRequired {}
-        AdminPrivilegeRequired {}
-        MissingConfig {}
-        MissingPreferences {}
-        MissingUsername {}
-        MissingPassword {}
-        MissingPlaylist {}
-        IncorrectCredentials {}
-        CannotServeDirectory {}
-        UnsupportedFileType {}
-        FileNotFound {}
-        MissingIndexVersion {}
-        MissingPlaylistName {}
-        EncodingError {}
-        MissingLastFMCredentials {}
-        LastFMAuthError {}
-        LastFMDeserializationError {}
-    }
+	errors {
+		DaemonError {}
+		AuthenticationRequired {}
+		AdminPrivilegeRequired {}
+		MissingConfig {}
+		MissingPreferences {}
+		MissingUsername {}
+		MissingPassword {}
+		MissingPlaylist {}
+		IncorrectCredentials {}
+		CannotServeDirectory {}
+		UnsupportedFileType {}
+		FileNotFound {}
+		MissingIndexVersion {}
+		MissingPlaylistName {}
+		EncodingError {}
+		MissingLastFMCredentials {}
+		LastFMAuthError {}
+		LastFMDeserializationError {}
+	}
 }
 
 impl From<Error> for IronError {

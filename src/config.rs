@@ -8,8 +8,8 @@ use std::io::Read;
 use std::path;
 use toml;
 
-use db::DB;
 use db::ConnectionSource;
+use db::DB;
 use db::{ddns_config, misc_settings, mount_points, users};
 use ddns::DDNSConfig;
 use errors::*;
@@ -76,10 +76,11 @@ pub fn parse_toml_file(path: &path::Path) -> Result<Config> {
 }
 
 pub fn read<T>(db: &T) -> Result<Config>
-	where T: ConnectionSource
+where
+	T: ConnectionSource,
 {
-	use self::misc_settings::dsl::*;
 	use self::ddns_config::dsl::*;
+	use self::misc_settings::dsl::*;
 
 	let connection = db.get_connection();
 
@@ -93,8 +94,11 @@ pub fn read<T>(db: &T) -> Result<Config>
 	};
 
 	let (art_pattern, sleep_duration, url) = misc_settings
-		.select((index_album_art_pattern, index_sleep_duration_seconds, prefix_url))
-		.get_result(connection.deref())?;
+		.select((
+			index_album_art_pattern,
+			index_sleep_duration_seconds,
+			prefix_url,
+		)).get_result(connection.deref())?;
 	config.album_art_pattern = Some(art_pattern);
 	config.reindex_every_n_seconds = Some(sleep_duration);
 	config.prefix_url = if url != "" { Some(url) } else { None };
@@ -111,16 +115,15 @@ pub fn read<T>(db: &T) -> Result<Config>
 	let found_users: Vec<(String, i32)> = users::table
 		.select((users::columns::name, users::columns::admin))
 		.get_results(connection.deref())?;
-	config.users = Some(found_users
-	                        .into_iter()
-	                        .map(|(name, admin)| {
-		                             ConfigUser {
-		                                 name: name,
-		                                 password: "".to_owned(),
-		                                 admin: admin != 0,
-		                             }
-		                            })
-	                        .collect::<_>());
+	config.users = Some(
+		found_users
+			.into_iter()
+			.map(|(name, admin)| ConfigUser {
+				name: name,
+				password: "".to_owned(),
+				admin: admin != 0,
+			}).collect::<_>(),
+	);
 
 	let ydns = ddns_config
 		.select((host, username, password))
@@ -131,13 +134,13 @@ pub fn read<T>(db: &T) -> Result<Config>
 }
 
 fn reset<T>(db: &T) -> Result<()>
-	where T: ConnectionSource
+where
+	T: ConnectionSource,
 {
 	use self::ddns_config::dsl::*;
 	let connection = db.get_connection();
 
-	diesel::delete(mount_points::table)
-		.execute(connection.deref())?;
+	diesel::delete(mount_points::table).execute(connection.deref())?;
 	diesel::delete(users::table).execute(connection.deref())?;
 	diesel::update(ddns_config)
 		.set((host.eq(""), username.eq(""), password.eq("")))
@@ -147,20 +150,21 @@ fn reset<T>(db: &T) -> Result<()>
 }
 
 pub fn overwrite<T>(db: &T, new_config: &Config) -> Result<()>
-	where T: ConnectionSource
+where
+	T: ConnectionSource,
 {
 	reset(db)?;
 	amend(db, new_config)
 }
 
 pub fn amend<T>(db: &T, new_config: &Config) -> Result<()>
-	where T: ConnectionSource
+where
+	T: ConnectionSource,
 {
 	let connection = db.get_connection();
 
 	if let Some(ref mount_dirs) = new_config.mount_dirs {
-		diesel::delete(mount_points::table)
-			.execute(connection.deref())?;
+		diesel::delete(mount_points::table).execute(connection.deref())?;
 		diesel::insert_into(mount_points::table)
 			.values(mount_dirs)
 			.execute(connection.deref())?;
@@ -175,12 +179,7 @@ pub fn amend<T>(db: &T, new_config: &Config) -> Result<()>
 		let delete_usernames: Vec<String> = old_usernames
 			.iter()
 			.cloned()
-			.filter(|old_name| {
-				        config_users
-				            .iter()
-				            .find(|u| &u.name == old_name)
-				            .is_none()
-				       })
+			.filter(|old_name| config_users.iter().find(|u| &u.name == old_name).is_none())
 			.collect::<_>();
 		diesel::delete(users::table.filter(users::name.eq_any(&delete_usernames)))
 			.execute(connection.deref())?;
@@ -189,12 +188,11 @@ pub fn amend<T>(db: &T, new_config: &Config) -> Result<()>
 		let insert_users: Vec<&ConfigUser> = config_users
 			.iter()
 			.filter(|u| {
-				        old_usernames
-				            .iter()
-				            .find(|old_name| *old_name == &u.name)
-				            .is_none()
-				       })
-			.collect::<_>();
+				old_usernames
+					.iter()
+					.find(|old_name| *old_name == &u.name)
+					.is_none()
+			}).collect::<_>();
 		for ref config_user in insert_users {
 			let new_user = User::new(&config_user.name, &config_user.password);
 			diesel::insert_into(users::table)
@@ -238,10 +236,11 @@ pub fn amend<T>(db: &T, new_config: &Config) -> Result<()>
 	if let Some(ref ydns) = new_config.ydns {
 		use self::ddns_config::dsl::*;
 		diesel::update(ddns_config)
-			.set((host.eq(ydns.host.clone()),
-			      username.eq(ydns.username.clone()),
-			      password.eq(ydns.password.clone())))
-			.execute(connection.deref())?;
+			.set((
+				host.eq(ydns.host.clone()),
+				username.eq(ydns.username.clone()),
+				password.eq(ydns.password.clone()),
+			)).execute(connection.deref())?;
 	}
 
 	if let Some(ref prefix_url) = new_config.prefix_url {
@@ -254,13 +253,15 @@ pub fn amend<T>(db: &T, new_config: &Config) -> Result<()>
 }
 
 pub fn read_preferences<T>(_: &T, _: &str) -> Result<Preferences>
-	where T: ConnectionSource
+where
+	T: ConnectionSource,
 {
 	Ok(Preferences {})
 }
 
 pub fn write_preferences<T>(_: &T, _: &str, _: &Preferences) -> Result<()>
-	where T: ConnectionSource
+where
+	T: ConnectionSource,
 {
 	Ok(())
 }
@@ -294,14 +295,14 @@ fn test_amend() {
 		reindex_every_n_seconds: Some(123),
 		prefix_url: None,
 		mount_dirs: Some(vec![MountPoint {
-		                          source: "C:\\Music".into(),
-		                          name: "root".into(),
-		                      }]),
+			source: "C:\\Music".into(),
+			name: "root".into(),
+		}]),
 		users: Some(vec![ConfigUser {
-		                     name: "Teddy🐻".into(),
-		                     password: "Tasty🍖".into(),
-		                     admin: false,
-		                 }]),
+			name: "Teddy🐻".into(),
+			password: "Tasty🍖".into(),
+			admin: false,
+		}]),
 		ydns: None,
 	};
 
@@ -310,19 +311,19 @@ fn test_amend() {
 		reindex_every_n_seconds: None,
 		prefix_url: Some("polaris".into()),
 		mount_dirs: Some(vec![MountPoint {
-		                          source: "/home/music".into(),
-		                          name: "🎵📁".into(),
-		                      }]),
+			source: "/home/music".into(),
+			name: "🎵📁".into(),
+		}]),
 		users: Some(vec![ConfigUser {
-		                     name: "Kermit🐸".into(),
-		                     password: "🐞🐞".into(),
-		                     admin: false,
-		                 }]),
+			name: "Kermit🐸".into(),
+			password: "🐞🐞".into(),
+			admin: false,
+		}]),
 		ydns: Some(DDNSConfig {
-		               host: "🐸🐸🐸.ydns.eu".into(),
-		               username: "kfr🐸g".into(),
-		               password: "tasty🐞".into(),
-		           }),
+			host: "🐸🐸🐸.ydns.eu".into(),
+			username: "kfr🐸g".into(),
+			password: "tasty🐞".into(),
+		}),
 	};
 
 	let mut expected_config = new_config.clone();
@@ -351,10 +352,10 @@ fn test_amend_preserve_password_hashes() {
 		prefix_url: None,
 		mount_dirs: None,
 		users: Some(vec![ConfigUser {
-		                     name: "Teddy🐻".into(),
-		                     password: "Tasty🍖".into(),
-		                     admin: false,
-		                 }]),
+			name: "Teddy🐻".into(),
+			password: "Tasty🍖".into(),
+			admin: false,
+		}]),
 		ydns: None,
 	};
 	amend(&db, &initial_config).unwrap();
@@ -373,16 +374,18 @@ fn test_amend_preserve_password_hashes() {
 		reindex_every_n_seconds: None,
 		prefix_url: None,
 		mount_dirs: None,
-		users: Some(vec![ConfigUser {
-		                     name: "Kermit🐸".into(),
-		                     password: "tasty🐞".into(),
-		                     admin: false,
-		                 },
-		                 ConfigUser {
-		                     name: "Teddy🐻".into(),
-		                     password: "".into(),
-		                     admin: false,
-		                 }]),
+		users: Some(vec![
+			ConfigUser {
+				name: "Kermit🐸".into(),
+				password: "tasty🐞".into(),
+				admin: false,
+			},
+			ConfigUser {
+				name: "Teddy🐻".into(),
+				password: "".into(),
+				admin: false,
+			},
+		]),
 		ydns: None,
 	};
 	amend(&db, &new_config).unwrap();
@@ -411,20 +414,17 @@ fn test_toggle_admin() {
 		prefix_url: None,
 		mount_dirs: None,
 		users: Some(vec![ConfigUser {
-		                     name: "Teddy🐻".into(),
-		                     password: "Tasty🍖".into(),
-		                     admin: true,
-		                 }]),
+			name: "Teddy🐻".into(),
+			password: "Tasty🍖".into(),
+			admin: true,
+		}]),
 		ydns: None,
 	};
 	amend(&db, &initial_config).unwrap();
 
 	{
 		let connection = db.get_connection();
-		let is_admin: i32 = users
-			.select(admin)
-			.get_result(connection.deref())
-			.unwrap();
+		let is_admin: i32 = users.select(admin).get_result(connection.deref()).unwrap();
 		assert_eq!(is_admin, 1);
 	}
 
@@ -434,27 +434,23 @@ fn test_toggle_admin() {
 		prefix_url: None,
 		mount_dirs: None,
 		users: Some(vec![ConfigUser {
-		                     name: "Teddy🐻".into(),
-		                     password: "".into(),
-		                     admin: false,
-		                 }]),
+			name: "Teddy🐻".into(),
+			password: "".into(),
+			admin: false,
+		}]),
 		ydns: None,
 	};
 	amend(&db, &new_config).unwrap();
 
 	{
 		let connection = db.get_connection();
-		let is_admin: i32 = users
-			.select(admin)
-			.get_result(connection.deref())
-			.unwrap();
+		let is_admin: i32 = users.select(admin).get_result(connection.deref()).unwrap();
 		assert_eq!(is_admin, 0);
 	}
 }
 
 #[test]
 fn test_preferences_read_write() {
-
 	let db = _get_test_db("preferences_read_write.sqlite");
 
 	let initial_config = Config {
@@ -463,10 +459,10 @@ fn test_preferences_read_write() {
 		prefix_url: None,
 		mount_dirs: None,
 		users: Some(vec![ConfigUser {
-		                     name: "Teddy🐻".into(),
-		                     password: "Tasty🍖".into(),
-		                     admin: false,
-		                 }]),
+			name: "Teddy🐻".into(),
+			password: "Tasty🍖".into(),
+			admin: false,
+		}]),
 		ydns: None,
 	};
 	amend(&db, &initial_config).unwrap();

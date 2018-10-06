@@ -1,38 +1,37 @@
 use diesel::prelude::*;
-use iron::prelude::*;
 use iron::headers::{Authorization, Basic, Range};
-use iron::{AroundMiddleware, Handler, status};
+use iron::prelude::*;
+use iron::{status, AroundMiddleware, Handler};
 use mount::Mount;
-use router::Router;
 use params;
-use secure_session::middleware::{SessionMiddleware, SessionConfig};
-use secure_session::session::{SessionManager, ChaCha20Poly1305SessionManager};
+use router::Router;
+use secure_session::middleware::{SessionConfig, SessionMiddleware};
+use secure_session::session::{ChaCha20Poly1305SessionManager, SessionManager};
 use serde_json;
 use std::fs;
 use std::io;
-use std::path::*;
 use std::ops::Deref;
-use std::sync::{Arc, Mutex};
+use std::path::*;
 use std::sync::mpsc::Sender;
+use std::sync::{Arc, Mutex};
 use typemap;
 use url::percent_encoding::percent_decode;
 
 use config;
-use db::{ConnectionSource, DB};
 use db::misc_settings;
+use db::{ConnectionSource, DB};
 use errors::*;
 use index;
 use lastfm;
 use playlist;
-use user;
 use serve;
 use thumbnails::*;
+use user;
 use utils::*;
 use vfs::VFSSource;
 
 const CURRENT_MAJOR_VERSION: i32 = 2;
 const CURRENT_MINOR_VERSION: i32 = 2;
-
 
 #[derive(Deserialize, Serialize)]
 struct Session {
@@ -46,7 +45,8 @@ impl typemap::Key for SessionKey {
 }
 
 fn get_auth_secret<T>(db: &T) -> Result<String>
-	where T: ConnectionSource
+where
+	T: ConnectionSource,
 {
 	use self::misc_settings::dsl::*;
 	let connection = db.get_connection();
@@ -62,11 +62,11 @@ pub fn get_handler(db: Arc<DB>, index: Arc<Mutex<Sender<index::Command>>>) -> Re
 	let session_manager =
 		ChaCha20Poly1305SessionManager::<Session>::from_password(auth_secret.as_bytes());
 	let session_config = SessionConfig::default();
-	let session_middleware =
-		SessionMiddleware::<Session,
-		                    SessionKey,
-		                    ChaCha20Poly1305SessionManager<Session>>::new(session_manager,
-		                                                            session_config);
+	let session_middleware = SessionMiddleware::<
+		Session,
+		SessionKey,
+		ChaCha20Poly1305SessionManager<Session>,
+	>::new(session_manager, session_config);
 	api_chain.link_around(session_middleware);
 
 	Ok(api_chain)
@@ -79,8 +79,9 @@ fn get_endpoints(db: Arc<DB>, index_channel: Arc<Mutex<Sender<index::Command>>>)
 		api_handler.mount("/version/", self::version);
 		{
 			let db = db.clone();
-			api_handler.mount("/auth/",
-			                  move |request: &mut Request| self::auth(request, db.deref()));
+			api_handler.mount("/auth/", move |request: &mut Request| {
+				self::auth(request, db.deref())
+			});
 		}
 		{
 			let db = db.clone();
@@ -94,64 +95,70 @@ fn get_endpoints(db: Arc<DB>, index_channel: Arc<Mutex<Sender<index::Command>>>)
 		let mut auth_api_mount = Mount::new();
 		{
 			let db = db.clone();
-			auth_api_mount.mount("/browse/",
-			                     move |request: &mut Request| self::browse(request, db.deref()));
+			auth_api_mount.mount("/browse/", move |request: &mut Request| {
+				self::browse(request, db.deref())
+			});
 		}
 		{
 			let db = db.clone();
-			auth_api_mount.mount("/flatten/",
-			                     move |request: &mut Request| self::flatten(request, db.deref()));
+			auth_api_mount.mount("/flatten/", move |request: &mut Request| {
+				self::flatten(request, db.deref())
+			});
 		}
 		{
 			let db = db.clone();
-			auth_api_mount.mount("/random/",
-			                     move |request: &mut Request| self::random(request, db.deref()));
+			auth_api_mount.mount("/random/", move |request: &mut Request| {
+				self::random(request, db.deref())
+			});
 		}
 		{
 			let db = db.clone();
-			auth_api_mount.mount("/recent/",
-			                     move |request: &mut Request| self::recent(request, db.deref()));
+			auth_api_mount.mount("/recent/", move |request: &mut Request| {
+				self::recent(request, db.deref())
+			});
 		}
 		{
 			let db = db.clone();
-			auth_api_mount.mount("/search/",
-			                     move |request: &mut Request| self::search(request, db.deref()));
+			auth_api_mount.mount("/search/", move |request: &mut Request| {
+				self::search(request, db.deref())
+			});
 		}
 		{
 			let db = db.clone();
-			auth_api_mount.mount("/serve/",
-			                     move |request: &mut Request| self::serve(request, db.deref()));
+			auth_api_mount.mount("/serve/", move |request: &mut Request| {
+				self::serve(request, db.deref())
+			});
 		}
 		{
 			let mut preferences_router = Router::new();
 			let get_db = db.clone();
 			let put_db = db.clone();
-			preferences_router.get("/",
-			                       move |request: &mut Request| {
-				                       self::get_preferences(request, get_db.deref())
-				                      },
-			                       "get_preferences");
-			preferences_router.put("/",
-			                       move |request: &mut Request| {
-				                       self::put_preferences(request, put_db.deref())
-				                      },
-			                       "put_preferences");
+			preferences_router.get(
+				"/",
+				move |request: &mut Request| self::get_preferences(request, get_db.deref()),
+				"get_preferences",
+			);
+			preferences_router.put(
+				"/",
+				move |request: &mut Request| self::put_preferences(request, put_db.deref()),
+				"put_preferences",
+			);
 			auth_api_mount.mount("/preferences/", preferences_router);
 		}
 		{
 			let mut settings_router = Router::new();
 			let get_db = db.clone();
 			let put_db = db.clone();
-			settings_router.get("/",
-			                    move |request: &mut Request| {
-				                    self::get_config(request, get_db.deref())
-				                   },
-			                    "get_config");
-			settings_router.put("/",
-			                    move |request: &mut Request| {
-				                    self::put_config(request, put_db.deref())
-				                   },
-			                    "put_config");
+			settings_router.get(
+				"/",
+				move |request: &mut Request| self::get_config(request, get_db.deref()),
+				"get_config",
+			);
+			settings_router.put(
+				"/",
+				move |request: &mut Request| self::put_config(request, put_db.deref()),
+				"put_config",
+			);
 
 			let mut settings_api_chain = Chain::new(settings_router);
 			let admin_req = AdminRequirement { db: db.clone() };
@@ -162,9 +169,11 @@ fn get_endpoints(db: Arc<DB>, index_channel: Arc<Mutex<Sender<index::Command>>>)
 		{
 			let index_channel = index_channel.clone();
 			let mut reindex_router = Router::new();
-			reindex_router.post("/",
-			                    move |_: &mut Request| self::trigger_index(index_channel.deref()),
-			                    "trigger_index");
+			reindex_router.post(
+				"/",
+				move |_: &mut Request| self::trigger_index(index_channel.deref()),
+				"trigger_index",
+			);
 
 			let mut reindex_api_chain = Chain::new(reindex_router);
 			let admin_req = AdminRequirement { db: db.clone() };
@@ -178,29 +187,29 @@ fn get_endpoints(db: Arc<DB>, index_channel: Arc<Mutex<Sender<index::Command>>>)
 			let list_db = db.clone();
 			let read_db = db.clone();
 			let delete_db = db.clone();
-			playlist_router.put("/",
-			                    move |request: &mut Request| {
-				                    self::save_playlist(request, put_db.deref())
-				                   },
-			                    "save_playlist");
+			playlist_router.put(
+				"/",
+				move |request: &mut Request| self::save_playlist(request, put_db.deref()),
+				"save_playlist",
+			);
 
-			playlist_router.get("/list",
-			                    move |request: &mut Request| {
-				                    self::list_playlists(request, list_db.deref())
-				                   },
-			                    "list_playlists");
+			playlist_router.get(
+				"/list",
+				move |request: &mut Request| self::list_playlists(request, list_db.deref()),
+				"list_playlists",
+			);
 
-			playlist_router.get("/read/:playlist_name",
-			                    move |request: &mut Request| {
-				                    self::read_playlist(request, read_db.deref())
-				                   },
-			                    "read_playlist");
+			playlist_router.get(
+				"/read/:playlist_name",
+				move |request: &mut Request| self::read_playlist(request, read_db.deref()),
+				"read_playlist",
+			);
 
-			playlist_router.delete("/:playlist_name",
-			                       move |request: &mut Request| {
-				                       self::delete_playlist(request, delete_db.deref())
-				                      },
-			                       "delete_playlist");
+			playlist_router.delete(
+				"/:playlist_name",
+				move |request: &mut Request| self::delete_playlist(request, delete_db.deref()),
+				"delete_playlist",
+			);
 
 			auth_api_mount.mount("/playlist/", playlist_router);
 		}
@@ -249,9 +258,9 @@ struct AuthRequirement {
 impl AroundMiddleware for AuthRequirement {
 	fn around(self, handler: Box<Handler>) -> Box<Handler> {
 		Box::new(AuthHandler {
-		             db: self.db,
-		             handler: handler,
-		         }) as Box<Handler>
+			db: self.db,
+			handler: handler,
+		}) as Box<Handler>
 	}
 }
 
@@ -277,8 +286,9 @@ impl Handler for AuthHandler {
 						auth_success =
 							user::auth(self.db.deref(), auth.username.as_str(), password.as_str())?;
 						if auth_success {
-							req.extensions
-								.insert::<SessionKey>(Session { username: auth.username.clone() });
+							req.extensions.insert::<SessionKey>(Session {
+								username: auth.username.clone(),
+							});
 						}
 					}
 				}
@@ -299,7 +309,6 @@ impl Handler for AuthHandler {
 	}
 }
 
-
 struct AdminRequirement {
 	db: Arc<DB>,
 }
@@ -307,9 +316,9 @@ struct AdminRequirement {
 impl AroundMiddleware for AdminRequirement {
 	fn around(self, handler: Box<Handler>) -> Box<Handler> {
 		Box::new(AdminHandler {
-		             db: self.db,
-		             handler: handler,
-		         }) as Box<Handler>
+			db: self.db,
+			handler: handler,
+		}) as Box<Handler>
 	}
 }
 
@@ -368,7 +377,9 @@ fn initial_setup(_: &mut Request, db: &DB) -> IronResult<Response> {
 		has_any_users: bool,
 	};
 
-	let initial_setup = InitialSetup { has_any_users: user::count(db)? > 0 };
+	let initial_setup = InitialSetup {
+		has_any_users: user::count(db)? > 0,
+	};
 
 	match serde_json::to_string(&initial_setup) {
 		Ok(result_json) => Ok(Response::with((status::Ok, result_json))),
@@ -395,16 +406,18 @@ fn auth(request: &mut Request, db: &DB) -> IronResult<Response> {
 		return Err(Error::from(ErrorKind::IncorrectCredentials).into());
 	}
 
-	request
-		.extensions
-		.insert::<SessionKey>(Session { username: username.clone() });
+	request.extensions.insert::<SessionKey>(Session {
+		username: username.clone(),
+	});
 
 	#[derive(Serialize)]
 	struct AuthOutput {
 		admin: bool,
 	}
 
-	let auth_output = AuthOutput { admin: user::is_admin(db.deref(), &username)? };
+	let auth_output = AuthOutput {
+		admin: user::is_admin(db.deref(), &username)?,
+	};
 	let result_json = serde_json::to_string(&auth_output);
 	let result_json = match result_json {
 		Ok(j) => j,
@@ -602,7 +615,6 @@ fn trigger_index(channel: &Mutex<Sender<index::Command>>) -> IronResult<Response
 }
 
 fn save_playlist(request: &mut Request, db: &DB) -> IronResult<Response> {
-
 	let username = match request.extensions.get::<SessionKey>() {
 		Some(s) => s.username.clone(),
 		None => return Err(Error::from(ErrorKind::AuthenticationRequired).into()),

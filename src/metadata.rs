@@ -45,21 +45,22 @@ fn read_id3(path: &Path) -> Result<SongTags> {
 	let title = tag.title().map(|s| s.to_string());
 	let disc_number = tag.disc();
 	let track_number = tag.track();
-	let year = tag.year()
+	let year = tag
+		.year()
 		.map(|y| y as i32)
 		.or(tag.date_released().and_then(|d| Some(d.year)))
 		.or(tag.date_recorded().and_then(|d| Some(d.year)));
 
 	Ok(SongTags {
-	       artist: artist,
-	       album_artist: album_artist,
-	       album: album,
-	       title: title,
-	       duration: duration,
-	       disc_number: disc_number,
-	       track_number: track_number,
-	       year: year,
-	   })
+		artist: artist,
+		album_artist: album_artist,
+		album: album,
+		title: title,
+		duration: duration,
+		disc_number: disc_number,
+		track_number: track_number,
+		year: year,
+	})
 }
 
 fn read_ape_string(item: &ape::Item) -> Option<String> {
@@ -100,19 +101,18 @@ fn read_ape(path: &Path) -> Result<SongTags> {
 	let disc_number = tag.item("Disc").and_then(read_ape_x_of_y);
 	let track_number = tag.item("Track").and_then(read_ape_x_of_y);
 	Ok(SongTags {
-	       artist: artist,
-	       album_artist: album_artist,
-	       album: album,
-	       title: title,
-	       duration: None,
-	       disc_number: disc_number,
-	       track_number: track_number,
-	       year: year,
-	   })
+		artist: artist,
+		album_artist: album_artist,
+		album: album,
+		title: title,
+		duration: None,
+		disc_number: disc_number,
+		track_number: track_number,
+		year: year,
+	})
 }
 
 fn read_vorbis(path: &Path) -> Result<SongTags> {
-
 	let file = fs::File::open(path)?;
 	let source = OggStreamReader::new(file)?;
 
@@ -159,15 +159,15 @@ fn read_flac(path: &Path) -> Result<SongTags> {
 	};
 
 	Ok(SongTags {
-	       artist: vorbis.artist().map(|v| v[0].clone()),
-	       album_artist: vorbis.album_artist().map(|v| v[0].clone()),
-	       album: vorbis.album().map(|v| v[0].clone()),
-	       title: vorbis.title().map(|v| v[0].clone()),
-	       duration: duration,
-	       disc_number: disc_number,
-	       track_number: vorbis.track(),
-	       year: year,
-	   })
+		artist: vorbis.artist().map(|v| v[0].clone()),
+		album_artist: vorbis.album_artist().map(|v| v[0].clone()),
+		album: vorbis.album().map(|v| v[0].clone()),
+		title: vorbis.title().map(|v| v[0].clone()),
+		duration: duration,
+		disc_number: disc_number,
+		track_number: vorbis.track(),
+		year: year,
+	})
 }
 
 #[test]
@@ -192,6 +192,8 @@ fn test_read_metadata() {
 	};
 	assert_eq!(read(Path::new("test/sample.mp3")).unwrap(), mp3_sample_tag);
 	assert_eq!(read(Path::new("test/sample.ogg")).unwrap(), sample_tags);
-	assert_eq!(read(Path::new("test/sample.flac")).unwrap(),
-	           flac_sample_tag);
+	assert_eq!(
+		read(Path::new("test/sample.flac")).unwrap(),
+		flac_sample_tag
+	);
 }

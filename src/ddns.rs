@@ -6,12 +6,12 @@ use std::io;
 use std::thread;
 use std::time;
 
-use db::{ConnectionSource, DB};
 use db::ddns_config;
+use db::{ConnectionSource, DB};
 use errors;
 
 #[derive(Clone, Debug, Deserialize, Insertable, PartialEq, Queryable, Serialize)]
-#[table_name="ddns_config"]
+#[table_name = "ddns_config"]
 pub struct DDNSConfig {
 	pub host: String,
 	pub username: String,
@@ -27,8 +27,8 @@ impl DDNSConfigSource for DB {
 		use self::ddns_config::dsl::*;
 		let connection = self.get_connection();
 		Ok(ddns_config
-		       .select((host, username, password))
-		       .get_result(connection.deref())?)
+			.select((host, username, password))
+			.get_result(connection.deref())?)
 	}
 }
 
@@ -60,9 +60,9 @@ impl From<reqwest::Error> for DDNSError {
 
 const DDNS_UPDATE_URL: &'static str = "https://ydns.io/api/v1/update/";
 
-
 fn update_my_ip<T>(config_source: &T) -> Result<(), DDNSError>
-	where T: DDNSConfigSource
+where
+	T: DDNSConfigSource,
 {
 	let config = config_source.get_ddns_config()?;
 	if config.host.len() == 0 || config.username.len() == 0 {
@@ -72,14 +72,11 @@ fn update_my_ip<T>(config_source: &T) -> Result<(), DDNSError>
 
 	let full_url = format!("{}?host={}", DDNS_UPDATE_URL, &config.host);
 	let auth_header = Authorization(Basic {
-	                                    username: config.username.clone(),
-	                                    password: Some(config.password.to_owned()),
-	                                });
+		username: config.username.clone(),
+		password: Some(config.password.to_owned()),
+	});
 	let client = reqwest::Client::new()?;
-	let res = client
-		.get(full_url.as_str())
-		.header(auth_header)
-		.send()?;
+	let res = client.get(full_url.as_str()).header(auth_header).send()?;
 	if !res.status().is_success() {
 		return Err(DDNSError::UpdateError(*res.status()));
 	}
@@ -87,7 +84,8 @@ fn update_my_ip<T>(config_source: &T) -> Result<(), DDNSError>
 }
 
 pub fn run<T>(config_source: &T)
-	where T: DDNSConfigSource
+where
+	T: DDNSConfigSource,
 {
 	loop {
 		if let Err(e) = update_my_ip(config_source) {

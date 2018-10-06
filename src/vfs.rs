@@ -1,11 +1,11 @@
 use core::ops::Deref;
 use diesel::prelude::*;
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::path::Path;
+use std::path::PathBuf;
 
-use db::{ConnectionSource, DB};
 use db::mount_points;
+use db::{ConnectionSource, DB};
 use errors::*;
 
 pub trait VFSSource {
@@ -28,7 +28,7 @@ impl VFSSource for DB {
 }
 
 #[derive(Clone, Debug, Deserialize, Insertable, PartialEq, Queryable, Serialize)]
-#[table_name="mount_points"]
+#[table_name = "mount_points"]
 pub struct MountPoint {
 	pub source: String,
 	pub name: String,
@@ -40,7 +40,9 @@ pub struct VFS {
 
 impl VFS {
 	pub fn new() -> VFS {
-		VFS { mount_points: HashMap::new() }
+		VFS {
+			mount_points: HashMap::new(),
+		}
 	}
 
 	pub fn mount(&mut self, real_path: &Path, name: &str) -> Result<()> {
@@ -55,10 +57,10 @@ impl VFS {
 				Ok(p) => {
 					let mount_path = Path::new(&name);
 					return if p.components().count() == 0 {
-						       Ok(mount_path.to_path_buf())
-						      } else {
-						       Ok(mount_path.join(p))
-						      };
+						Ok(mount_path.to_path_buf())
+					} else {
+						Ok(mount_path.join(p))
+					};
 				}
 				Err(_) => (),
 			}
@@ -72,10 +74,10 @@ impl VFS {
 			match virtual_path.strip_prefix(mount_path) {
 				Ok(p) => {
 					return if p.components().count() == 0 {
-						       Ok(target.clone())
-						      } else {
-						       Ok(target.join(p))
-						      };
+						Ok(target.clone())
+					} else {
+						Ok(target.join(p))
+					};
 				}
 				Err(_) => (),
 			}

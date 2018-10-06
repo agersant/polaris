@@ -5,6 +5,7 @@ use diesel::prelude::*;
 use diesel::BelongingToDsl;
 use diesel::types::*;
 use std::path::Path;
+
 #[cfg(test)]
 use db;
 use db::ConnectionSource;

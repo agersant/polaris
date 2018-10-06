@@ -1,6 +1,6 @@
-use app_dirs::{AppDataType, AppInfo, app_root};
-use std::path::{Path, PathBuf};
+use app_dirs::{app_root, AppDataType, AppInfo};
 use std::fs;
+use std::path::{Path, PathBuf};
 
 use errors::*;
 
@@ -18,8 +18,7 @@ const APP_INFO: AppInfo = AppInfo {
 
 pub fn get_data_root() -> Result<PathBuf> {
 	if let Ok(root) = app_root(AppDataType::UserData, &APP_INFO) {
-		fs::create_dir_all(&root)
-			.chain_err(|| format!("opening user data: {}", root.display()))?;
+		fs::create_dir_all(&root).chain_err(|| format!("opening user data: {}", root.display()))?;
 		return Ok(root);
 	}
 	bail!("Could not retrieve data directory root");
@@ -55,10 +54,14 @@ pub fn get_audio_format(path: &Path) -> Option<AudioFormat> {
 
 #[test]
 fn test_get_audio_format() {
-	assert_eq!(get_audio_format(Path::new("animals/🐷/my🐖file.jpg")),
-	           None);
-	assert_eq!(get_audio_format(Path::new("animals/🐷/my🐖file.flac")),
-	           Some(AudioFormat::FLAC));
+	assert_eq!(
+		get_audio_format(Path::new("animals/🐷/my🐖file.jpg")),
+		None
+	);
+	assert_eq!(
+		get_audio_format(Path::new("animals/🐷/my🐖file.flac")),
+		Some(AudioFormat::FLAC)
+	);
 }
 
 pub fn is_song(path: &Path) -> bool {

@@ -23,8 +23,8 @@ extern crate mount;
 extern crate mp3_duration;
 extern crate params;
 extern crate rand;
-extern crate reqwest;
 extern crate regex;
+extern crate reqwest;
 extern crate ring;
 extern crate router;
 extern crate rustfm_scrobble;
@@ -51,24 +51,24 @@ extern crate winapi;
 extern crate unix_daemonize;
 
 #[cfg(unix)]
-use unix_daemonize::{daemonize_redirect, ChdirMode};
-#[cfg(unix)]
 use std::fs::File;
 #[cfg(unix)]
 use std::io::prelude::*;
+#[cfg(unix)]
+use unix_daemonize::{daemonize_redirect, ChdirMode};
 
 use core::ops::Deref;
 use errors::*;
 use getopts::Options;
 use iron::prelude::*;
 use mount::Mount;
-use staticfile::Static;
-use std::path::Path;
-use std::sync::{Arc, Mutex};
-use std::sync::mpsc::channel;
-use simplelog::{TermLogger, LogLevelFilter};
 #[cfg(unix)]
 use simplelog::SimpleLogger;
+use simplelog::{LogLevelFilter, TermLogger};
+use staticfile::Static;
+use std::path::Path;
+use std::sync::mpsc::channel;
+use std::sync::{Arc, Mutex};
 
 mod api;
 mod config;
@@ -79,11 +79,11 @@ mod index;
 mod lastfm;
 mod metadata;
 mod playlist;
+mod serve;
+mod thumbnails;
 mod ui;
 mod user;
 mod utils;
-mod serve;
-mod thumbnails;
 mod vfs;
 
 static LOG_CONFIG: simplelog::Config = simplelog::Config {
@@ -148,7 +148,6 @@ fn init_log(log_level: LogLevelFilter, _: &getopts::Matches) -> Result<()> {
 }
 
 fn run() -> Result<()> {
-
 	// Parse CLI options
 	let args: Vec<String> = std::env::args().collect();
 	let mut options = Options::new();
@@ -156,15 +155,19 @@ fn run() -> Result<()> {
 	options.optopt("p", "port", "set polaris to run on a custom port", "PORT");
 	options.optopt("d", "database", "set the path to index database", "FILE");
 	options.optopt("w", "web", "set the path to web client files", "DIRECTORY");
-	options.optopt("l",
-	               "log",
-	               "set the log level to a value between 0 (off) and 3 (debug)",
-	               "LEVEL");
+	options.optopt(
+		"l",
+		"log",
+		"set the log level to a value between 0 (off) and 3 (debug)",
+		"LEVEL",
+	);
 
 	#[cfg(unix)]
-	options.optflag("f",
-	                "foreground",
-	                "run polaris in the foreground instead of daemonizing");
+	options.optflag(
+		"f",
+		"foreground",
+		"run polaris in the foreground instead of daemonizing",
+	);
 
 	options.optflag("h", "help", "print this help menu");
 
@@ -214,14 +217,16 @@ fn run() -> Result<()> {
 	let index_sender = Arc::new(Mutex::new(index_sender));
 	let db_ref = db.clone();
 	std::thread::spawn(move || {
-		                   let db = db_ref.deref();
-		                   index::update_loop(db, index_receiver);
-		                  });
+		let db = db_ref.deref();
+		index::update_loop(db, index_receiver);
+	});
 
 	// Trigger auto-indexing
 	let db_ref = db.clone();
 	let sender_ref = index_sender.clone();
-	std::thread::spawn(move || { index::self_trigger(db_ref.deref(), sender_ref); });
+	std::thread::spawn(move || {
+		index::self_trigger(db_ref.deref(), sender_ref);
+	});
 
 	// Mount API
 	let prefix_url = config.prefix_url.unwrap_or("".to_string());
@@ -258,7 +263,9 @@ fn run() -> Result<()> {
 
 	// Start DDNS updates
 	let db_ref = db.clone();
-	std::thread::spawn(move || { ddns::run(db_ref.deref()); });
+	std::thread::spawn(move || {
+		ddns::run(db_ref.deref());
+	});
 
 	// Run UI
 	ui::run();

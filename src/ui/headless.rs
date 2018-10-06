@@ -1,5 +1,5 @@
-use std::time;
 use std::thread;
+use std::time;
 
 pub fn run() {
 	info!("Starting up UI (headless)");

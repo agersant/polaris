@@ -4,12 +4,12 @@ use diesel::prelude::*;
 use rand;
 use ring::{digest, pbkdf2};
 
-use db::ConnectionSource;
 use db::users;
+use db::ConnectionSource;
 use errors::*;
 
 #[derive(Debug, Insertable, Queryable)]
-#[table_name="users"]
+#[table_name = "users"]
 pub struct User {
 	pub name: String,
 	pub password_salt: Vec<u8>,
@@ -37,35 +37,41 @@ impl User {
 
 pub fn hash_password(salt: &Vec<u8>, password: &str) -> Vec<u8> {
 	let mut hash: PasswordHash = [0; CREDENTIAL_LEN];
-	pbkdf2::derive(DIGEST_ALG,
-	               HASH_ITERATIONS,
-	               salt,
-	               password.as_bytes(),
-	               &mut hash);
+	pbkdf2::derive(
+		DIGEST_ALG,
+		HASH_ITERATIONS,
+		salt,
+		password.as_bytes(),
+		&mut hash,
+	);
 	hash.to_vec()
 }
 
-fn verify_password(password_hash: &Vec<u8>,
-                   password_salt: &Vec<u8>,
-                   attempted_password: &str)
-                   -> bool {
-	pbkdf2::verify(DIGEST_ALG,
-	               HASH_ITERATIONS,
-	               password_salt,
-	               attempted_password.as_bytes(),
-	               password_hash)
-			.is_ok()
+fn verify_password(
+	password_hash: &Vec<u8>,
+	password_salt: &Vec<u8>,
+	attempted_password: &str,
+) -> bool {
+	pbkdf2::verify(
+		DIGEST_ALG,
+		HASH_ITERATIONS,
+		password_salt,
+		attempted_password.as_bytes(),
+		password_hash,
+	).is_ok()
 }
 
 pub fn auth<T>(db: &T, username: &str, password: &str) -> Result<bool>
-	where T: ConnectionSource
+where
+	T: ConnectionSource,
 {
 	use db::users::dsl::*;
 	let connection = db.get_connection();
 	match users
-	          .select((password_hash, password_salt))
-	          .filter(name.eq(username))
-	          .get_result(connection.deref()) {
+		.select((password_hash, password_salt))
+		.filter(name.eq(username))
+		.get_result(connection.deref())
+	{
 		Err(diesel::result::Error::NotFound) => Ok(false),
 		Ok((hash, salt)) => Ok(verify_password(&hash, &salt, password)),
 		Err(e) => Err(e.into()),
@@ -73,7 +79,8 @@ pub fn auth<T>(db: &T, username: &str, password: &str) -> Result<bool>
 }
 
 pub fn count<T>(db: &T) -> Result<i64>
-	where T: ConnectionSource
+where
+	T: ConnectionSource,
 {
 	use db::users::dsl::*;
 	let connection = db.get_connection();
@@ -82,7 +89,8 @@ pub fn count<T>(db: &T) -> Result<i64>
 }
 
 pub fn is_admin<T>(db: &T, username: &str) -> Result<bool>
-	where T: ConnectionSource
+where
+	T: ConnectionSource,
 {
 	use db::users::dsl::*;
 	let connection = db.get_connection();
@@ -94,7 +102,8 @@ pub fn is_admin<T>(db: &T, username: &str) -> Result<bool>
 }
 
 pub fn set_lastfm_session_key<T>(db: &T, username: &str, token: &str) -> Result<()>
-	where T: ConnectionSource
+where
+	T: ConnectionSource,
 {
 	use db::users::dsl::*;
 	let connection = db.get_connection();
@@ -105,7 +114,8 @@ pub fn set_lastfm_session_key<T>(db: &T, username: &str, token: &str) -> Result<
 }
 
 pub fn get_lastfm_session_key<T>(db: &T, username: &str) -> Result<String>
-	where T: ConnectionSource
+where
+	T: ConnectionSource,
 {
 	use db::users::dsl::*;
 	let connection = db.get_connection();

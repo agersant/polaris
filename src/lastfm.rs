@@ -1,6 +1,6 @@
 use md5;
 use reqwest;
-use rustfm_scrobble::{Scrobbler, Scrobble};
+use rustfm_scrobble::{Scrobble, Scrobbler};
 use serde_xml_rs::deserialize;
 use std::collections::HashMap;
 use std::io::Read;
@@ -48,16 +48,20 @@ struct AuthResponse {
 }
 
 fn scrobble_from_path<T>(db: &T, track: &Path) -> Result<Scrobble, errors::Error>
-	where T: ConnectionSource + VFSSource
+where
+	T: ConnectionSource + VFSSource,
 {
 	let song = index::get_song(db, track)?;
-	Ok(Scrobble::new(song.artist.unwrap_or("".into()),
-	                 song.title.unwrap_or("".into()),
-	                 song.album.unwrap_or("".into())))
+	Ok(Scrobble::new(
+		song.artist.unwrap_or("".into()),
+		song.title.unwrap_or("".into()),
+		song.album.unwrap_or("".into()),
+	))
 }
 
 pub fn auth<T>(db: &T, username: &str, token: &str) -> Result<(), errors::Error>
-	where T: ConnectionSource + VFSSource
+where
+	T: ConnectionSource + VFSSource,
 {
 	let mut params = HashMap::new();
 	params.insert("token".to_string(), token.to_string());
@@ -75,14 +79,15 @@ pub fn auth<T>(db: &T, username: &str, token: &str) -> Result<(), errors::Error>
 
 	let auth_response: AuthResponse = match deserialize(body.as_bytes()) {
 		Ok(d) => d,
-		Err(_) => bail!(errors::ErrorKind::LastFMDeserializationError)
+		Err(_) => bail!(errors::ErrorKind::LastFMDeserializationError),
 	};
 
 	user::set_lastfm_session_key(db, username, &auth_response.session.key.body)
 }
 
 pub fn scrobble<T>(db: &T, username: &str, track: &Path) -> Result<(), errors::Error>
-	where T: ConnectionSource + VFSSource
+where
+	T: ConnectionSource + VFSSource,
 {
 	let mut scrobbler = Scrobbler::new(LASTFM_API_KEY.into(), LASTFM_API_SECRET.into());
 	let scrobble = scrobble_from_path(db, track)?;
@@ -93,7 +98,8 @@ pub fn scrobble<T>(db: &T, username: &str, track: &Path) -> Result<(), errors::E
 }
 
 pub fn now_playing<T>(db: &T, username: &str, track: &Path) -> Result<(), errors::Error>
-	where T: ConnectionSource + VFSSource
+where
+	T: ConnectionSource + VFSSource,
 {
 	let mut scrobbler = Scrobbler::new(LASTFM_API_KEY.into(), LASTFM_API_SECRET.into());
 	let scrobble = scrobble_from_path(db, track)?;
@@ -103,14 +109,15 @@ pub fn now_playing<T>(db: &T, username: &str, track: &Path) -> Result<(), errors
 	Ok(())
 }
 
-fn api_request(method: &str, params: &HashMap<String, String>) -> Result<reqwest::Response, reqwest::Error>
-{
+fn api_request(
+	method: &str,
+	params: &HashMap<String, String>,
+) -> Result<reqwest::Response, reqwest::Error> {
 	let mut url = LASTFM_API_ROOT.to_string();
 	url.push_str("?");
 
 	url.push_str(&format!("method={}&", method));
-	for (k, v) in params.iter()
-	{
+	for (k, v) in params.iter() {
 		url.push_str(&format!("{}={}&", k, v));
 	}
 	let api_signature = get_signature(method, params);
@@ -121,21 +128,18 @@ fn api_request(method: &str, params: &HashMap<String, String>) -> Result<reqwest
 	request.send()
 }
 
-fn get_signature(method: &str, params: &HashMap<String, String>) -> String
-{
+fn get_signature(method: &str, params: &HashMap<String, String>) -> String {
 	let mut signature_data = params.clone();
 	signature_data.insert("method".to_string(), method.to_string());
 
 	let mut param_names = Vec::new();
-	for param_name in signature_data.keys()
-	{
+	for param_name in signature_data.keys() {
 		param_names.push(param_name);
 	}
 	param_names.sort();
 
 	let mut signature = String::new();
-	for param_name in param_names
-	{
+	for param_name in param_names {
 		signature.push_str((param_name.to_string() + signature_data[param_name].as_str()).as_str())
 	}
 
