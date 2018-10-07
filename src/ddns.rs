@@ -1,7 +1,6 @@
 use core::ops::Deref;
 use diesel::prelude::*;
 use reqwest;
-use reqwest::header::{Authorization, Basic};
 use std::io;
 use std::thread;
 use std::time;
@@ -71,14 +70,10 @@ where
 	}
 
 	let full_url = format!("{}?host={}", DDNS_UPDATE_URL, &config.host);
-	let auth_header = Authorization(Basic {
-		username: config.username.clone(),
-		password: Some(config.password.to_owned()),
-	});
-	let client = reqwest::Client::new()?;
-	let res = client.get(full_url.as_str()).header(auth_header).send()?;
+	let client = reqwest::ClientBuilder::new().build()?;
+	let res = client.get(full_url.as_str()).basic_auth(config.username, Some(config.password)).send()?;
 	if !res.status().is_success() {
-		return Err(DDNSError::Update(*res.status()));
+		return Err(DDNSError::Update(res.status()));
 	}
 	Ok(())
 }

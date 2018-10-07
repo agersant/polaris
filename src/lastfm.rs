@@ -123,7 +123,7 @@ fn api_request(
 	let api_signature = get_signature(method, params);
 	url.push_str(&format!("api_sig={}", api_signature));
 
-	let client = reqwest::Client::new()?;
+	let client = reqwest::ClientBuilder::new().build()?;
 	let request = client.get(url.as_str());
 	request.send()
 }
