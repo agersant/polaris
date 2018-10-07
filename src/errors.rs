@@ -56,6 +56,7 @@ error_chain! {
 		MissingLastFMCredentials {}
 		LastFMAuthError {}
 		LastFMDeserializationError {}
+		MissingDesiredResponse {}
 	}
 }
 

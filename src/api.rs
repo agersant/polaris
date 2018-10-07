@@ -1,5 +1,7 @@
+use base64;
 use diesel::prelude::*;
 use iron::headers::{Authorization, Basic, Range};
+use iron::mime::Mime;
 use iron::prelude::*;
 use iron::{status, AroundMiddleware, Handler};
 use mount::Mount;
@@ -726,7 +728,24 @@ fn lastfm_auth(request: &mut Request, db: &DB) -> IronResult<Response> {
 
 	lastfm::auth(db, &username, &token)?;
 
-	Ok(Response::with(status::Ok))
+	let url_encoded_content = match input.find(&["content"]) {
+		Some(&params::Value::String(ref content)) => content.clone(),
+		_ => return Err(Error::from(ErrorKind::MissingDesiredResponse).into()),
+	};
+
+	let base64_content = match percent_decode(url_encoded_content.as_bytes()).decode_utf8() {
+		Ok(s) => s,
+		Err(_) => return Err(Error::from(ErrorKind::EncodingError).into()),
+	};
+
+	let popup_content = match base64::decode(base64_content.as_bytes()) {
+		Ok(c) => c,
+		Err(_) => return Err(Error::from(ErrorKind::EncodingError).into()),
+	};
+
+	let mime = "text/html".parse::<Mime>().unwrap();
+
+	Ok(Response::with((mime, status::Ok, popup_content)))
 }
 
 fn lastfm_now_playing(request: &mut Request, db: &DB) -> IronResult<Response> {

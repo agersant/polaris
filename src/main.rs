@@ -2,6 +2,7 @@
 
 extern crate ape;
 extern crate app_dirs;
+extern crate base64;
 extern crate core;
 extern crate crypto;
 #[macro_use]
