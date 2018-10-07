@@ -12,21 +12,22 @@ app_dirs = "1.1.1"
 diesel = { version = "0.99.0", features = ["sqlite"] }
 diesel_infer_schema = { version = "0.99.0", features = ["sqlite"] }
 diesel_migrations = { version = "0.99.0", features = ["sqlite"] }
-error-chain = "0.11.0"
+error-chain = "0.12.0"
 getopts = "0.2.15"
 hyper = "0.11.2"
 id3 = "0.2.3"
-image = "0.15.0"
+image = "0.20.0"
 iron = "0.5.1"
 rustfm-scrobble = "0.9.1"
-lewton = "0.6.2"
+lewton = "0.9.1"
+log = "0.3.8"
 md5 = "0.4.0"
 metaflac = "0.1.8"
 mount = "0.3.0"
 mp3-duration = "0.1.0"
 params = { git = "https://github.com/euclio/params", branch="update" }
-rand = "0.3.15"
-regex = "0.2.2"
+rand = "0.5.5"
+regex = "1.0.5"
 ring = "0.11.0"
 reqwest = "0.6.2"
 router = "0.5.1"
@@ -36,18 +37,17 @@ serde_derive = "1.0"
 serde_json = "1.0"
 serde-xml-rs = "0.2.1"
 staticfile = "0.4.0"
+simplelog = "0.5.2"
 toml = "0.4.5"
 typemap = "0.3"
 url = "1.2.0"
-log = "0.3.8"
-simplelog = "0.4.2"
 
 [dependencies.rusqlite]
 version = "0.12.0"
 features = ["bundled"]
 
 [target.'cfg(windows)'.dependencies]
-uuid = "0.5.0"
+uuid = "0.7.1"
 
 [target.'cfg(windows)'.dependencies.winapi]
 version = "0.3.3"

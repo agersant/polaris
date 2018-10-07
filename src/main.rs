@@ -64,7 +64,7 @@ use iron::prelude::*;
 use mount::Mount;
 #[cfg(unix)]
 use simplelog::SimpleLogger;
-use simplelog::{LogLevelFilter, TermLogger};
+use simplelog::{Level, LevelFilter, TermLogger};
 use staticfile::Static;
 use std::path::Path;
 use std::sync::mpsc::channel;
@@ -87,10 +87,11 @@ mod utils;
 mod vfs;
 
 static LOG_CONFIG: simplelog::Config = simplelog::Config {
-	time: Some(simplelog::LogLevel::Error),
-	level: Some(simplelog::LogLevel::Error),
-	target: Some(simplelog::LogLevel::Error),
-	location: Some(simplelog::LogLevel::Error),
+	time: Some(Level::Error),
+	level: Some(Level::Error),
+	target: Some(Level::Error),
+	location: Some(Level::Error),
+	time_format: None,
 };
 
 fn main() {
@@ -140,7 +141,7 @@ fn init_log(log_level: LogLevelFilter, options: &getopts::Matches) -> Result<()>
 }
 
 #[cfg(windows)]
-fn init_log(log_level: LogLevelFilter, _: &getopts::Matches) -> Result<()> {
+fn init_log(log_level: LevelFilter, _: &getopts::Matches) -> Result<()> {
 	if let Err(e) = TermLogger::init(log_level, LOG_CONFIG) {
 		bail!("Error starting terminal logger: {}", e);
 	};
@@ -181,11 +182,11 @@ fn run() -> Result<()> {
 	}
 
 	let log_level = match matches.opt_str("l").as_ref().map(String::as_ref) {
-		Some("0") => LogLevelFilter::Off,
-		Some("1") => LogLevelFilter::Error,
-		Some("2") => LogLevelFilter::Info,
-		Some("3") => LogLevelFilter::Debug,
-		_ => LogLevelFilter::Info,
+		Some("0") => LevelFilter::Off,
+		Some("1") => LevelFilter::Error,
+		Some("2") => LevelFilter::Info,
+		Some("3") => LevelFilter::Debug,
+		_ => LevelFilter::Info,
 	};
 
 	init_log(log_level, &matches)?;

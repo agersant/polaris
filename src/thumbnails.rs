@@ -1,11 +1,11 @@
 use image;
 use image::FilterType;
 use image::GenericImage;
+use image::GenericImageView;
 use image::ImageBuffer;
-use image::ImageFormat;
 use std::cmp;
 use std::collections::hash_map::DefaultHasher;
-use std::fs::{DirBuilder, File};
+use std::fs::{DirBuilder};
 use std::hash::{Hash, Hasher};
 use std::path::*;
 
@@ -52,10 +52,9 @@ pub fn get_thumbnail(real_path: &Path, max_dimension: u32) -> Result<PathBuf> {
 			);
 			final_image.save(&out_path)?;
 		} else {
-			let mut out_file = File::create(&out_path)?;
 			let final_image =
 				source_image.resize_exact(max_dimension, out_dimension, FilterType::Lanczos3);
-			final_image.save(&mut out_file, ImageFormat::PNG)?;
+			final_image.save(&out_path)?;
 		};
 	}
 
