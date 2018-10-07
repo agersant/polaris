@@ -43,7 +43,7 @@ typemap = "0.3"
 url = "1.2.0"
 
 [dependencies.rusqlite]
-version = "0.13.0"
+version = "0.14.0"
 features = ["bundled"]
 
 [target.'cfg(windows)'.dependencies]
