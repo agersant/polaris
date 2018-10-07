@@ -3,6 +3,7 @@
 extern crate ape;
 extern crate app_dirs;
 extern crate core;
+extern crate crypto;
 #[macro_use]
 extern crate diesel;
 #[macro_use]

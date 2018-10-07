@@ -5,8 +5,9 @@ use iron::{status, AroundMiddleware, Handler};
 use mount::Mount;
 use params;
 use router::Router;
+use crypto::scrypt;
 use secure_session::middleware::{SessionConfig, SessionMiddleware};
-use secure_session::session::{ChaCha20Poly1305SessionManager, SessionManager};
+use secure_session::session::ChaCha20Poly1305SessionManager;
 use serde_json;
 use std::fs;
 use std::io;
@@ -44,14 +45,18 @@ impl typemap::Key for SessionKey {
 	type Value = Session;
 }
 
-fn get_auth_secret<T>(db: &T) -> Result<String>
+fn get_auth_secret<T>(db: &T) -> Result<[u8; 32]>
 where
 	T: ConnectionSource,
 {
 	use self::misc_settings::dsl::*;
 	let connection = db.get_connection();
 	let misc: config::MiscSettings = misc_settings.get_result(connection.deref())?;
-	Ok(misc.auth_secret.to_owned())
+
+	let params = scrypt::ScryptParams::new(12, 8, 1);
+	let mut secret = [0; 32];
+	scrypt::scrypt(misc.auth_secret.as_bytes(), b"polaris-salt-and-pepper-with-cheese", &params, &mut secret);
+	Ok(secret)
 }
 
 pub fn get_handler(db: &Arc<DB>, index: &Arc<Mutex<Sender<index::Command>>>) -> Result<Chain> {
@@ -60,7 +65,7 @@ pub fn get_handler(db: &Arc<DB>, index: &Arc<Mutex<Sender<index::Command>>>) -> 
 
 	let auth_secret = get_auth_secret(db.deref())?;
 	let session_manager =
-		ChaCha20Poly1305SessionManager::<Session>::from_password(auth_secret.as_bytes());
+		ChaCha20Poly1305SessionManager::<Session>::from_key(auth_secret);
 	let session_config = SessionConfig::default();
 	let session_middleware = SessionMiddleware::<
 		Session,
