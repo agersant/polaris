@@ -126,7 +126,7 @@ fn daemonize(options: &getopts::Matches) -> Result<()> {
 }
 
 #[cfg(unix)]
-fn init_log(log_level: LogLevelFilter, options: &getopts::Matches) -> Result<()> {
+fn init_log(log_level: LevelFilter, options: &getopts::Matches) -> Result<()> {
 	if options.opt_present("f") {
 		if let Err(e) = TermLogger::init(log_level, LOG_CONFIG) {
 			bail!("Error starting terminal logger: {}", e);
