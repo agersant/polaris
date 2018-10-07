@@ -3,7 +3,7 @@ use diesel;
 use diesel::dsl::sql;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
-use diesel::types;
+use diesel::sql_types;
 use regex::Regex;
 use std::fs;
 use std::path::Path;
@@ -28,7 +28,7 @@ const INDEX_BUILDING_CLEAN_BUFFER_SIZE: usize = 500; // Insertions in each trans
 
 no_arg_sql_function!(
 	random,
-	types::Integer,
+	sql_types::Integer,
 	"Represents the SQL RANDOM() function"
 );
 
@@ -512,7 +512,7 @@ where
 
 		let real_directories: Vec<Directory> = directories::table
 			.filter(directories::parent.eq(&real_path_string))
-			.order(sql::<types::Bool>("path COLLATE NOCASE ASC"))
+			.order(sql::<sql_types::Bool>("path COLLATE NOCASE ASC"))
 			.load(connection.deref())?;
 		let virtual_directories = real_directories
 			.into_iter()
@@ -521,7 +521,7 @@ where
 
 		let real_songs: Vec<Song> = songs::table
 			.filter(songs::parent.eq(&real_path_string))
-			.order(sql::<types::Bool>("path COLLATE NOCASE ASC"))
+			.order(sql::<sql_types::Bool>("path COLLATE NOCASE ASC"))
 			.load(connection.deref())?;
 		let virtual_songs = real_songs
 			.into_iter()

@@ -2,7 +2,7 @@ use core::clone::Clone;
 use core::ops::Deref;
 use diesel;
 use diesel::prelude::*;
-use diesel::types::*;
+use diesel::sql_types;
 use diesel::BelongingToDsl;
 use std::path::Path;
 
@@ -188,7 +188,7 @@ where
 			WHERE ps.playlist = ?
 			ORDER BY ps.ordering
 		"#);
-		let query = query.clone().bind::<Integer, _>(playlist.id);
+		let query = query.clone().bind::<sql_types::Integer, _>(playlist.id);
 		songs = query.get_results(connection.deref())?;
 	}
 

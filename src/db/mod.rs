@@ -13,8 +13,8 @@ mod schema;
 pub use self::schema::*;
 
 #[allow(dead_code)]
-const DB_MIGRATIONS_PATH: &str = "src/db/migrations";
-embed_migrations!("src/db/migrations");
+const DB_MIGRATIONS_PATH: &str = "migrations";
+embed_migrations!("migrations");
 
 pub trait ConnectionSource {
 	fn get_connection(&self) -> MutexGuard<SqliteConnection>;
