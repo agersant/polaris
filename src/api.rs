@@ -1,4 +1,5 @@
 use base64;
+use crypto::scrypt;
 use diesel::prelude::*;
 use iron::headers::{Authorization, Basic, Range};
 use iron::mime::Mime;
@@ -7,7 +8,6 @@ use iron::{status, AroundMiddleware, Handler};
 use mount::Mount;
 use params;
 use router::Router;
-use crypto::scrypt;
 use secure_session::middleware::{SessionConfig, SessionMiddleware};
 use secure_session::session::ChaCha20Poly1305SessionManager;
 use serde_json;
@@ -57,7 +57,12 @@ where
 
 	let params = scrypt::ScryptParams::new(12, 8, 1);
 	let mut secret = [0; 32];
-	scrypt::scrypt(misc.auth_secret.as_bytes(), b"polaris-salt-and-pepper-with-cheese", &params, &mut secret);
+	scrypt::scrypt(
+		misc.auth_secret.as_bytes(),
+		b"polaris-salt-and-pepper-with-cheese",
+		&params,
+		&mut secret,
+	);
 	Ok(secret)
 }
 
@@ -66,8 +71,7 @@ pub fn get_handler(db: &Arc<DB>, index: &Arc<Mutex<Sender<index::Command>>>) -> 
 	let mut api_chain = Chain::new(api_handler);
 
 	let auth_secret = get_auth_secret(db.deref())?;
-	let session_manager =
-		ChaCha20Poly1305SessionManager::<Session>::from_key(auth_secret);
+	let session_manager = ChaCha20Poly1305SessionManager::<Session>::from_key(auth_secret);
 	let session_config = SessionConfig::default();
 	let session_middleware = SessionMiddleware::<
 		Session,
@@ -221,22 +225,39 @@ fn get_endpoints(db: &Arc<DB>, index_channel: &Arc<Mutex<Sender<index::Command>>
 			auth_api_mount.mount("/playlist/", playlist_router);
 		}
 		{
-			let db = db.clone();
-			auth_api_mount.mount("/lastfm/auth/", move |request: &mut Request| {
-				self::lastfm_auth(request, db.deref())
-			});
-		}
-		{
-			let db = db.clone();
-			auth_api_mount.mount("/lastfm/now_playing/", move |request: &mut Request| {
-				self::lastfm_now_playing(request, db.deref())
-			});
-		}
-		{
-			let db = db.clone();
-			auth_api_mount.mount("/lastfm/scrobble/", move |request: &mut Request| {
-				self::lastfm_scrobble(request, db.deref())
-			});
+			let mut lastfm_router = Router::new();
+			let now_playing_db = db.clone();
+			let link_db = db.clone();
+			let unlink_db = db.clone();
+			let scrobble_db = db.clone();
+
+			lastfm_router.put(
+				"/now_playing",
+				move |request: &mut Request| {
+					self::lastfm_now_playing(request, now_playing_db.deref())
+				},
+				"now_playing",
+			);
+
+			lastfm_router.get(
+				"/link",
+				move |request: &mut Request| self::lastfm_link(request, link_db.deref()),
+				"link",
+			);
+
+			lastfm_router.delete(
+				"/link",
+				move |request: &mut Request| self::lastfm_unlink(request, unlink_db.deref()),
+				"unlink",
+			);
+
+			lastfm_router.get(
+				"/scrobble",
+				move |request: &mut Request| self::lastfm_scrobble(request, scrobble_db.deref()),
+				"auth",
+			);
+
+			auth_api_mount.mount("/lastfm/", lastfm_router);
 		}
 
 		let mut auth_api_chain = Chain::new(auth_api_mount);
@@ -715,7 +736,7 @@ fn delete_playlist(request: &mut Request, db: &DB) -> IronResult<Response> {
 	Ok(Response::with(status::Ok))
 }
 
-fn lastfm_auth(request: &mut Request, db: &DB) -> IronResult<Response> {
+fn lastfm_link(request: &mut Request, db: &DB) -> IronResult<Response> {
 	let input = request.get_ref::<params::Params>().unwrap();
 	let username = match input.find(&["username"]) {
 		Some(&params::Value::String(ref username)) => username.clone(),
@@ -726,7 +747,7 @@ fn lastfm_auth(request: &mut Request, db: &DB) -> IronResult<Response> {
 		_ => return Err(Error::from(ErrorKind::MissingPassword).into()),
 	};
 
-	lastfm::auth(db, &username, &token)?;
+	lastfm::link(db, &username, &token)?;
 
 	let url_encoded_content = match input.find(&["content"]) {
 		Some(&params::Value::String(ref content)) => content.clone(),
@@ -746,6 +767,15 @@ fn lastfm_auth(request: &mut Request, db: &DB) -> IronResult<Response> {
 	let mime = "text/html".parse::<Mime>().unwrap();
 
 	Ok(Response::with((mime, status::Ok, popup_content)))
+}
+
+fn lastfm_unlink(request: &mut Request, db: &DB) -> IronResult<Response> {
+	let username = match request.extensions.get::<SessionKey>() {
+		Some(s) => s.username.clone(),
+		None => return Err(Error::from(ErrorKind::AuthenticationRequired).into()),
+	};
+	lastfm::unlink(db, &username)?;
+	Ok(Response::with(status::Ok))
 }
 
 fn lastfm_now_playing(request: &mut Request, db: &DB) -> IronResult<Response> {

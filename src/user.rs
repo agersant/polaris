@@ -101,15 +101,17 @@ where
 	Ok(is_admin != 0)
 }
 
-pub fn set_lastfm_session_key<T>(db: &T, username: &str, token: &str) -> Result<()>
+pub fn lastfm_link<T>(db: &T, username: &str, lastfm_login: &str, session_key: &str) -> Result<()>
 where
 	T: ConnectionSource,
 {
 	use db::users::dsl::*;
 	let connection = db.get_connection();
 	diesel::update(users.filter(name.eq(username)))
-		.set(lastfm_session_key.eq(token))
-		.execute(connection.deref())?;
+		.set((
+			lastfm_username.eq(lastfm_login),
+			lastfm_session_key.eq(session_key),
+		)).execute(connection.deref())?;
 	Ok(())
 }
 
@@ -127,4 +129,16 @@ where
 		Some(t) => Ok(t),
 		_ => bail!(ErrorKind::MissingLastFMCredentials),
 	}
+}
+
+pub fn lastfm_unlink<T>(db: &T, username: &str) -> Result<()>
+where
+	T: ConnectionSource,
+{
+	use db::users::dsl::*;
+	let connection = db.get_connection();
+	diesel::update(users.filter(name.eq(username)))
+		.set((lastfm_session_key.eq(""), lastfm_username.eq("")))
+		.execute(connection.deref())?;
+	Ok(())
 }

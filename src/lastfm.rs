@@ -59,7 +59,7 @@ where
 	))
 }
 
-pub fn auth<T>(db: &T, username: &str, token: &str) -> Result<(), errors::Error>
+pub fn link<T>(db: &T, username: &str, token: &str) -> Result<(), errors::Error>
 where
 	T: ConnectionSource + VFSSource,
 {
@@ -82,7 +82,19 @@ where
 		Err(_) => bail!(errors::ErrorKind::LastFMDeserializationError),
 	};
 
-	user::set_lastfm_session_key(db, username, &auth_response.session.key.body)
+	user::lastfm_link(
+		db,
+		username,
+		&auth_response.session.name.body,
+		&auth_response.session.key.body,
+	)
+}
+
+pub fn unlink<T>(db: &T, username: &str) -> Result<(), errors::Error>
+where
+	T: ConnectionSource + VFSSource,
+{
+	user::lastfm_unlink(db, username)
 }
 
 pub fn scrobble<T>(db: &T, username: &str, track: &Path) -> Result<(), errors::Error>

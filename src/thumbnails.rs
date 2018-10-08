@@ -5,7 +5,7 @@ use image::GenericImageView;
 use image::ImageBuffer;
 use std::cmp;
 use std::collections::hash_map::DefaultHasher;
-use std::fs::{DirBuilder};
+use std::fs::DirBuilder;
 use std::hash::{Hash, Hasher};
 use std::path::*;
 

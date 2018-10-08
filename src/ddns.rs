@@ -71,7 +71,10 @@ where
 
 	let full_url = format!("{}?host={}", DDNS_UPDATE_URL, &config.host);
 	let client = reqwest::ClientBuilder::new().build()?;
-	let res = client.get(full_url.as_str()).basic_auth(config.username, Some(config.password)).send()?;
+	let res = client
+		.get(full_url.as_str())
+		.basic_auth(config.username, Some(config.password))
+		.send()?;
 	if !res.status().is_success() {
 		return Err(DDNSError::Update(res.status()));
 	}

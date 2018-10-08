@@ -26,7 +26,9 @@ pub struct MiscSettings {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct Preferences {}
+pub struct Preferences {
+	pub lastfm_username: Option<String>,
+}
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ConfigUser {
@@ -252,11 +254,19 @@ where
 	Ok(())
 }
 
-pub fn read_preferences<T>(_: &T, _: &str) -> Result<Preferences>
+pub fn read_preferences<T>(db: &T, username: &str) -> Result<Preferences>
 where
 	T: ConnectionSource,
 {
-	Ok(Preferences {})
+	use self::users::dsl::*;
+	let connection = db.get_connection();
+	let read_lastfm_username = users
+		.select(lastfm_username)
+		.filter(name.eq(username))
+		.get_result(connection.deref())?;
+	Ok(Preferences {
+		lastfm_username: read_lastfm_username,
+	})
 }
 
 pub fn write_preferences<T>(_: &T, _: &str, _: &Preferences) -> Result<()>
