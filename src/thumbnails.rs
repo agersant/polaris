@@ -41,7 +41,7 @@ pub fn get_thumbnail(real_path: &Path, max_dimension: u32) -> Result<PathBuf> {
 	out_path.push(format!("{}.jpg", hash.to_string()));
 
 	if !out_path.exists() {
-		let quality = 95;
+		let quality = 80;
 		let source_aspect_ratio: f32 = source_width as f32 / source_height as f32;
 
 		let mut final_image;
@@ -62,7 +62,6 @@ pub fn get_thumbnail(real_path: &Path, max_dimension: u32) -> Result<PathBuf> {
 				(out_dimension - scaled_width) / 2,
 				(out_dimension - scaled_height) / 2,
 			);
-			final_image.write_to(&mut out_file, ImageOutputFormat::JPEG(quality))?;
 		} else {
 			final_image =
 				source_image.resize_exact(out_dimension, out_dimension, FilterType::Lanczos3);

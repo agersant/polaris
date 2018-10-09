@@ -476,7 +476,9 @@ fn test_preferences_read_write() {
 	};
 	amend(&db, &initial_config).unwrap();
 
-	let new_preferences = Preferences {};
+	let new_preferences = Preferences {
+		lastfm_username: None,
+	};
 	write_preferences(&db, "Teddy🐻", &new_preferences).unwrap();
 
 	let read_preferences = read_preferences(&db, "Teddy🐻").unwrap();
