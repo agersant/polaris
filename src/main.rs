@@ -62,9 +62,7 @@ use errors::*;
 use getopts::Options;
 use iron::prelude::*;
 use mount::Mount;
-#[cfg(unix)]
-use simplelog::SimpleLogger;
-use simplelog::{Level, LevelFilter, TermLogger};
+use simplelog::{Level, LevelFilter, SimpleLogger, TermLogger};
 use staticfile::Static;
 use std::path::Path;
 use std::sync::mpsc::channel;
@@ -142,8 +140,10 @@ fn init_log(log_level: LevelFilter, options: &getopts::Matches) -> Result<()> {
 
 #[cfg(windows)]
 fn init_log(log_level: LevelFilter, _: &getopts::Matches) -> Result<()> {
-	if let Err(e) = TermLogger::init(log_level, LOG_CONFIG) {
-		bail!("Error starting terminal logger: {}", e);
+	if let Err(_) = TermLogger::init(log_level, LOG_CONFIG) {
+		if let Err(e) = SimpleLogger::init(log_level, LOG_CONFIG) {
+			bail!("Error starting simple logger: {}", e);
+		}
 	};
 	Ok(())
 }
