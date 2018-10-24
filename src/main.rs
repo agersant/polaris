@@ -238,16 +238,15 @@ fn run() -> Result<()> {
 	mount.mount(&api_url, handler);
 
 	// Mount static files
-	let static_url = format!("/{}", &prefix_url);
-
-	info!("Mounting static files on {}", static_url);
 	let web_dir_name = matches.opt_str("w");
 	let mut default_web_dir = utils::get_data_root()?;
 	default_web_dir.push("web");
 	let web_dir_path = web_dir_name
 		.map(|n| Path::new(n.as_str()).to_path_buf())
 		.unwrap_or(default_web_dir);
-
+	info!("Static files location is {}", web_dir_path.display());
+	let static_url = format!("/{}", &prefix_url);
+	info!("Mounting static files on {}", static_url);
 	mount.mount(&static_url, Static::new(web_dir_path));
 
 	info!("Starting up server");
