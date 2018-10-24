@@ -10,7 +10,7 @@
 		<Property Id='DiskPrompt' Value='Polaris Installation [1]' />
 
 		<Directory Id='TARGETDIR' Name='SourceDir'>
-			<Directory Id='AppDataFolder'>
+			<Directory Id='LocalAppDataFolder'>
 				<Directory Id='AppDataPermafrost' Name='Permafrost'>
 					<Directory Id='AppDataPolaris' Name='Polaris' FileSource='.'>
 						<Component Id='MainExecutable' Guid='*'>
