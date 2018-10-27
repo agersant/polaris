@@ -269,6 +269,7 @@ fn run() -> Result<()> {
 	};
 
 	rocket::ignite()
+	.manage(db::DB::new(&db_path)?)
 	.mount(&static_url, StaticFiles::from(web_dir_path))
 	.mount(&api_url, rocket_api::get_routes())
 	.launch();
