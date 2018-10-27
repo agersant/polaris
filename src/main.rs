@@ -1,4 +1,5 @@
 #![recursion_limit = "256"]
+#![allow(proc_macro_derive_resolution_fallback)]
 
 extern crate ape;
 extern crate app_dirs;
