@@ -29,6 +29,7 @@ extern crate reqwest;
 extern crate ring;
 #[macro_use]
 extern crate rocket;
+extern crate rocket_contrib;
 extern crate router;
 extern crate rustfm_scrobble;
 extern crate secure_session;
@@ -65,6 +66,7 @@ use errors::*;
 use getopts::Options;
 use iron::prelude::*;
 use mount::Mount;
+use rocket_contrib::serve::StaticFiles;
 use simplelog::{Level, LevelFilter, SimpleLogger, TermLogger};
 use staticfile::Static;
 use std::path::Path;
@@ -149,11 +151,6 @@ fn init_log(log_level: LevelFilter, _: &getopts::Matches) -> Result<()> {
 		}
 	};
 	Ok(())
-}
-
-#[get("/")]
-fn index() -> &'static str {
-    "Hello, world!"
 }
 
 fn run() -> Result<()> {
@@ -255,7 +252,7 @@ fn run() -> Result<()> {
 	info!("Static files location is {}", web_dir_path.display());
 	let static_url = format!("/{}", &prefix_url);
 	info!("Mounting static files on {}", static_url);
-	mount.mount(&static_url, Static::new(web_dir_path));
+	mount.mount(&static_url, Static::new(&web_dir_path));
 
 	info!("Starting up server");
 	let port: u16 = matches
@@ -269,7 +266,9 @@ fn run() -> Result<()> {
 		Err(e) => bail!("Error starting up server: {}", e),
 	};
 
-	rocket::ignite().mount("/", routes![index]).launch();
+	rocket::ignite()
+	.mount(&static_url, StaticFiles::from(web_dir_path))
+	.launch();
 
 	// Start DDNS updates
 	let db_ref = db.clone();
