@@ -1,4 +1,5 @@
 #![recursion_limit = "256"]
+#![feature(proc_macro_hygiene, decl_macro)]
 
 extern crate ape;
 extern crate app_dirs;
@@ -26,6 +27,8 @@ extern crate rand;
 extern crate regex;
 extern crate reqwest;
 extern crate ring;
+#[macro_use]
+extern crate rocket;
 extern crate router;
 extern crate rustfm_scrobble;
 extern crate secure_session;
@@ -148,6 +151,11 @@ fn init_log(log_level: LevelFilter, _: &getopts::Matches) -> Result<()> {
 	Ok(())
 }
 
+#[get("/")]
+fn index() -> &'static str {
+    "Hello, world!"
+}
+
 fn run() -> Result<()> {
 	// Parse CLI options
 	let args: Vec<String> = std::env::args().collect();
@@ -260,6 +268,8 @@ fn run() -> Result<()> {
 		Ok(s) => s,
 		Err(e) => bail!("Error starting up server: {}", e),
 	};
+
+	rocket::ignite().mount("/", routes![index]).launch();
 
 	// Start DDNS updates
 	let db_ref = db.clone();
