@@ -500,10 +500,7 @@ where
 		let virtual_directories = real_directories
 			.into_iter()
 			.filter_map(|s| virtualize_directory(&vfs, s));
-		output.extend(
-			virtual_directories
-				.map(CollectionFile::Directory),
-		);
+		output.extend(virtual_directories.map(CollectionFile::Directory));
 	} else {
 		// Browse sub-directory
 		let real_path = vfs.virtual_to_real(virtual_path)?;
