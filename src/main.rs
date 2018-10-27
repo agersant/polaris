@@ -140,7 +140,7 @@ fn init_log(log_level: LevelFilter, options: &getopts::Matches) -> Result<()> {
 
 #[cfg(windows)]
 fn init_log(log_level: LevelFilter, _: &getopts::Matches) -> Result<()> {
-	if let Err(_) = TermLogger::init(log_level, LOG_CONFIG) {
+	if TermLogger::init(log_level, LOG_CONFIG).is_err() {
 		if let Err(e) = SimpleLogger::init(log_level, LOG_CONFIG) {
 			bail!("Error starting simple logger: {}", e);
 		}

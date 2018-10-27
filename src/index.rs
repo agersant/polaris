@@ -502,7 +502,6 @@ where
 			.filter_map(|s| virtualize_directory(&vfs, s));
 		output.extend(
 			virtual_directories
-				.into_iter()
 				.map(CollectionFile::Directory),
 		);
 	} else {
