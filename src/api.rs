@@ -7,6 +7,7 @@ use iron::prelude::*;
 use iron::{status, AroundMiddleware, Handler};
 use mount::Mount;
 use params;
+use rocket_contrib::json::Json;
 use router::Router;
 use secure_session::middleware::{SessionConfig, SessionMiddleware};
 use secure_session::session::ChaCha20Poly1305SessionManager;
@@ -66,6 +67,10 @@ where
 	Ok(secret)
 }
 
+pub fn get_routes() -> Vec<rocket::Route> {
+	routes![version]
+}
+
 pub fn get_handler(db: &Arc<DB>, index: &Arc<Mutex<Sender<index::Command>>>) -> Result<Chain> {
 	let api_handler = get_endpoints(&db.clone(), &index);
 	let mut api_chain = Chain::new(api_handler);
@@ -87,7 +92,6 @@ fn get_endpoints(db: &Arc<DB>, index_channel: &Arc<Mutex<Sender<index::Command>>
 	let mut api_handler = Mount::new();
 
 	{
-		api_handler.mount("/version/", self::version);
 		{
 			let db = db.clone();
 			api_handler.mount("/auth/", move |request: &mut Request| {
@@ -373,22 +377,19 @@ impl Handler for AdminHandler {
 	}
 }
 
-fn version(_: &mut Request) -> IronResult<Response> {
-	#[derive(Serialize)]
-	struct Version {
-		major: i32,
-		minor: i32,
-	}
+#[derive(Serialize)]
+struct Version {
+	major: i32,
+	minor: i32,
+}
 
+#[get("/version")]
+fn version() -> Json<Version> {
 	let current_version = Version {
 		major: CURRENT_MAJOR_VERSION,
 		minor: CURRENT_MINOR_VERSION,
 	};
-
-	match serde_json::to_string(&current_version) {
-		Ok(result_json) => Ok(Response::with((status::Ok, result_json))),
-		Err(e) => Err(IronError::new(e, status::InternalServerError)),
-	}
+	Json(current_version)
 }
 
 fn initial_setup(_: &mut Request, db: &DB) -> IronResult<Response> {

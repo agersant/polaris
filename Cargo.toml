@@ -55,7 +55,7 @@ rev = "556206e"
 [dependencies.rocket_contrib]
 version = "0.4.0-dev"
 default_features = false
-features = ["serve"]
+features = ["json", "serve"]
 
 [dependencies.rusqlite]
 version = "0.14.0"
