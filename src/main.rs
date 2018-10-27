@@ -75,6 +75,7 @@ use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex};
 
 mod api;
+mod rocket_api;
 mod config;
 mod db;
 mod ddns;
@@ -269,7 +270,7 @@ fn run() -> Result<()> {
 
 	rocket::ignite()
 	.mount(&static_url, StaticFiles::from(web_dir_path))
-	.mount(&api_url, api::get_routes())
+	.mount(&api_url, rocket_api::get_routes())
 	.launch();
 
 	// Start DDNS updates

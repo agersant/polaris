@@ -7,7 +7,6 @@ use iron::prelude::*;
 use iron::{status, AroundMiddleware, Handler};
 use mount::Mount;
 use params;
-use rocket_contrib::json::Json;
 use router::Router;
 use secure_session::middleware::{SessionConfig, SessionMiddleware};
 use secure_session::session::ChaCha20Poly1305SessionManager;
@@ -33,9 +32,6 @@ use thumbnails::*;
 use user;
 use utils::*;
 use vfs::VFSSource;
-
-const CURRENT_MAJOR_VERSION: i32 = 2;
-const CURRENT_MINOR_VERSION: i32 = 2;
 
 #[derive(Deserialize, Serialize)]
 struct Session {
@@ -65,10 +61,6 @@ where
 		&mut secret,
 	);
 	Ok(secret)
-}
-
-pub fn get_routes() -> Vec<rocket::Route> {
-	routes![version]
 }
 
 pub fn get_handler(db: &Arc<DB>, index: &Arc<Mutex<Sender<index::Command>>>) -> Result<Chain> {
@@ -375,21 +367,6 @@ impl Handler for AdminHandler {
 
 		self.handler.handle(req)
 	}
-}
-
-#[derive(Serialize)]
-struct Version {
-	major: i32,
-	minor: i32,
-}
-
-#[get("/version")]
-fn version() -> Json<Version> {
-	let current_version = Version {
-		major: CURRENT_MAJOR_VERSION,
-		minor: CURRENT_MINOR_VERSION,
-	};
-	Json(current_version)
 }
 
 fn initial_setup(_: &mut Request, db: &DB) -> IronResult<Response> {
