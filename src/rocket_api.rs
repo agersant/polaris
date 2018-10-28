@@ -17,8 +17,8 @@ use user;
 use utils;
 use vfs::VFSSource;
 
-const CURRENT_MAJOR_VERSION: i32 = 2;
-const CURRENT_MINOR_VERSION: i32 = 2;
+const CURRENT_MAJOR_VERSION: i32 = 3;
+const CURRENT_MINOR_VERSION: i32 = 0;
 const SESSION_FIELD_USERNAME: &str = "username";
 
 pub fn get_routes() -> Vec<rocket::Route> {
