@@ -51,9 +51,9 @@ impl VFS {
 		Ok(())
 	}
 
-	pub fn real_to_virtual(&self, real_path: &Path) -> Result<PathBuf> {
+	pub fn real_to_virtual<P: AsRef<Path>>(&self, real_path: P) -> Result<PathBuf> {
 		for (name, target) in &self.mount_points {
-			if let Ok(p) = real_path.strip_prefix(target) {
+			if let Ok(p) = real_path.as_ref().strip_prefix(target) {
 				let mount_path = Path::new(&name);
 				return if p.components().count() == 0 {
 					Ok(mount_path.to_path_buf())
@@ -65,10 +65,10 @@ impl VFS {
 		bail!("Real path has no match in VFS")
 	}
 
-	pub fn virtual_to_real(&self, virtual_path: &Path) -> Result<PathBuf> {
+	pub fn virtual_to_real<P: AsRef<Path>>(&self, virtual_path: P) -> Result<PathBuf> {
 		for (name, target) in &self.mount_points {
 			let mount_path = Path::new(&name);
-			if let Ok(p) = virtual_path.strip_prefix(mount_path) {
+			if let Ok(p) = virtual_path.as_ref().strip_prefix(mount_path) {
 				return if p.components().count() == 0 {
 					Ok(target.clone())
 				} else {

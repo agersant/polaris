@@ -537,15 +537,16 @@ fn virtualize_directory(vfs: &VFS, mut directory: Directory) -> Option<Directory
 	Some(directory)
 }
 
-pub fn browse<T>(db: &T, virtual_path: &Path) -> Result<Vec<CollectionFile>, errors::Error>
+pub fn browse<T, P>(db: &T, virtual_path: P) -> Result<Vec<CollectionFile>, errors::Error>
 where
 	T: ConnectionSource + VFSSource,
+	P: AsRef<Path>,
 {
 	let mut output = Vec::new();
 	let vfs = db.get_vfs()?;
 	let connection = db.get_connection();
 
-	if virtual_path.components().count() == 0 {
+	if virtual_path.as_ref().components().count() == 0 {
 		// Browse top-level
 		let real_directories: Vec<Directory> = directories::table
 			.filter(directories::parent.is_null())
@@ -581,15 +582,16 @@ where
 	Ok(output)
 }
 
-pub fn flatten<T>(db: &T, virtual_path: &Path) -> Result<Vec<Song>, errors::Error>
+pub fn flatten<T, P>(db: &T, virtual_path: P) -> Result<Vec<Song>, errors::Error>
 where
 	T: ConnectionSource + VFSSource,
+	P: AsRef<Path>,
 {
 	use self::songs::dsl::*;
 	let vfs = db.get_vfs()?;
 	let connection = db.get_connection();
 
-	let real_songs: Vec<Song> = if virtual_path.parent() != None {
+	let real_songs: Vec<Song> = if virtual_path.as_ref().parent() != None {
 		let real_path = vfs.virtual_to_real(virtual_path)?;
 		let like_path = real_path.as_path().to_string_lossy().into_owned() + "%";
 		songs

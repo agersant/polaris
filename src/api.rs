@@ -430,7 +430,7 @@ fn browse(request: &mut Request, db: &DB) -> IronResult<Response> {
 		Err(e) => return Err(IronError::new(e, status::BadRequest)),
 		Ok(p) => p,
 	};
-	let browse_result = index::browse(db, &path)?;
+	let browse_result = index::browse(db, path)?;
 
 	let result_json = serde_json::to_string(&browse_result);
 	let result_json = match result_json {
@@ -504,7 +504,7 @@ fn serve(request: &mut Request, db: &DB) -> IronResult<Response> {
 	};
 
 	let vfs = db.get_vfs()?;
-	let real_path = vfs.virtual_to_real(&virtual_path);
+	let real_path = vfs.virtual_to_real(virtual_path);
 	let real_path = match real_path {
 		Err(e) => return Err(IronError::new(e, status::NotFound)),
 		Ok(p) => p,
