@@ -11,6 +11,7 @@ use config::{self, Config, Preferences};
 use db::DB;
 use errors;
 use index;
+use playlist;
 use serve;
 use thumbnails;
 use user;
@@ -40,6 +41,10 @@ pub fn get_routes() -> Vec<rocket::Route> {
 		search_root,
 		search,
 		serve,
+		list_playlists,
+		save_playlist,
+		read_playlist,
+		delete_playlist,
 	]
 }
 
@@ -277,4 +282,44 @@ fn serve(db: State<DB>, _auth: Auth, path: VFSPathBuf) -> Result<serve::RangeRes
 
 	let file = File::open(serve_path)?;
 	Ok(serve::RangeResponder::new(file))
+}
+
+#[derive(Serialize)]
+struct ListPlaylistsEntry {
+	name: String,
+}
+
+#[get("/playlists")]
+fn list_playlists(db: State<DB>, auth: Auth) -> Result<Json<Vec<ListPlaylistsEntry>>, errors::Error> {
+
+	let playlist_names = playlist::list_playlists(&auth.username, db.deref())?;
+	let playlists: Vec<ListPlaylistsEntry> = playlist_names
+		.into_iter()
+		.map(|p| ListPlaylistsEntry { name: p })
+		.collect();
+
+	Ok(Json(playlists))
+}
+
+#[derive(Deserialize)]
+struct SavePlaylistInput {
+	tracks: Vec<String>,
+}
+
+#[put("/playlist/<name>", data = "<playlist>")]
+fn save_playlist(db: State<DB>, auth: Auth, name: String, playlist: Json<SavePlaylistInput>) -> Result<(), errors::Error> {
+	playlist::save_playlist(&name, &auth.username, &playlist.tracks, db.deref())?;
+	Ok(())
+}
+
+#[get("/playlist/<name>")]
+fn read_playlist(db: State<DB>, auth: Auth, name: String) -> Result<Json<Vec<index::Song>>, errors::Error> {
+	let songs = playlist::read_playlist(&name, &auth.username, db.deref())?;
+	Ok(Json(songs))
+}
+
+#[delete("/playlist/<name>")]
+fn delete_playlist(db: State<DB>, auth: Auth, name: String) -> Result<(), errors::Error> {
+	playlist::delete_playlist(&name, &auth.username, db.deref())?;
+	Ok(())
 }
