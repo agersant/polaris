@@ -1,8 +1,8 @@
 use rocket::http::{Cookie, Cookies, Status};
 use rocket::request::{self, FromRequest, Request};
-use rocket::response::NamedFile;
 use rocket::{Outcome, State};
 use rocket_contrib::json::Json;
+use std::fs::File;
 use std::path::PathBuf;
 use std::ops::Deref;
 use std::sync::Arc;
@@ -11,6 +11,7 @@ use config::{self, Config};
 use db::DB;
 use errors;
 use index;
+use serve;
 use thumbnails;
 use user;
 use utils;
@@ -227,7 +228,7 @@ fn search(db: State<DB>, _auth: Auth, query: String) -> Result<Json<Vec<index::C
 }
 
 #[get("/serve/<path..>")]
-fn serve(db: State<DB>, _auth: Auth, path: PathBuf) -> Result<NamedFile, errors::Error> {
+fn serve(db: State<DB>, _auth: Auth, path: PathBuf) -> Result<serve::RangeResponder<File>, errors::Error> {
 	let db: &DB = db.deref();
 	let vfs = db.get_vfs()?;
 	let real_path = vfs.virtual_to_real(&path)?;
@@ -238,6 +239,6 @@ fn serve(db: State<DB>, _auth: Auth, path: PathBuf) -> Result<NamedFile, errors:
 		real_path
 	};
 
-	let serving = NamedFile::open(&serve_path)?;
-	Ok(serving)
+	let file = File::open(serve_path)?;
+	Ok(serve::RangeResponder::new(file))
 }
