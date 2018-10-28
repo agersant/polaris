@@ -29,6 +29,8 @@ pub fn get_routes() -> Vec<rocket::Route> {
 		flatten,
 		random,
 		recent,
+		search_root,
+		search,
 	]
 }
 
@@ -200,5 +202,17 @@ fn random(db: State<DB>, _auth: Auth) -> Result<(Json<Vec<index::Directory>>), e
 #[get("/recent")]
 fn recent(db: State<DB>, _auth: Auth) -> Result<(Json<Vec<index::Directory>>), errors::Error> {
 	let result = index::get_recent_albums::<DB>(&db, 20)?;
+	Ok(Json(result))
+}
+
+#[get("/search")]
+fn search_root(db: State<DB>, _auth: Auth) -> Result<(Json<Vec<index::CollectionFile>>), errors::Error> {
+	let result = index::search::<DB>(&db, "")?;
+	Ok(Json(result))
+}
+
+#[get("/search/<query>")]
+fn search(db: State<DB>, _auth: Auth, query: String) -> Result<(Json<Vec<index::CollectionFile>>), errors::Error> {
+	let result = index::search::<DB>(&db, &query)?;
 	Ok(Json(result))
 }
