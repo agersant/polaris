@@ -98,7 +98,7 @@ fn put_settings(db: State<DB>, _admin_rights: AdminRights, config: Json<Config>)
 }
 
 #[post("/trigger_index")]
-fn trigger_index(command_sender: State<Arc<index::CommandSender>>) -> Result<(), errors::Error> {
+fn trigger_index(command_sender: State<Arc<index::CommandSender>>, _admin_rights: AdminRights) -> Result<(), errors::Error> {
 	command_sender.trigger_reindex()?;
 	Ok(())
 }
