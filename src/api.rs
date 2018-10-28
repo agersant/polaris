@@ -15,7 +15,7 @@ use std::fs;
 use std::io;
 use std::ops::Deref;
 use std::path::*;
-use std::sync::{Arc};
+use std::sync::Arc;
 use typemap;
 use url::percent_encoding::percent_decode;
 

@@ -16,7 +16,18 @@ const CURRENT_MINOR_VERSION: i32 = 2;
 const SESSION_FIELD_USERNAME: &str = "username";
 
 pub fn get_routes() -> Vec<rocket::Route> {
-	routes![version, initial_setup, get_settings, put_settings, trigger_index, auth, browse_root, browse, flatten_root, flatten]
+	routes![
+		version,
+		initial_setup,
+		get_settings,
+		put_settings,
+		trigger_index,
+		auth,
+		browse_root,
+		browse,
+		flatten_root,
+		flatten
+	]
 }
 
 struct Auth {
@@ -96,13 +107,20 @@ fn get_settings(db: State<DB>, _admin_rights: AdminRights) -> Result<Json<Config
 }
 
 #[put("/settings", data = "<config>")]
-fn put_settings(db: State<DB>, _admin_rights: AdminRights, config: Json<Config>) -> Result<(), errors::Error> {
+fn put_settings(
+	db: State<DB>,
+	_admin_rights: AdminRights,
+	config: Json<Config>,
+) -> Result<(), errors::Error> {
 	config::amend::<DB>(&db, &config)?;
 	Ok(())
 }
 
 #[post("/trigger_index")]
-fn trigger_index(command_sender: State<Arc<index::CommandSender>>, _admin_rights: AdminRights) -> Result<(), errors::Error> {
+fn trigger_index(
+	command_sender: State<Arc<index::CommandSender>>,
+	_admin_rights: AdminRights,
+) -> Result<(), errors::Error> {
 	command_sender.trigger_reindex()?;
 	Ok(())
 }
@@ -119,9 +137,16 @@ struct AuthOutput {
 }
 
 #[post("/auth", data = "<credentials>")]
-fn auth(db: State<DB>, credentials: Json<AuthCredentials>, mut cookies: Cookies) -> Result<(Json<AuthOutput>), errors::Error> {
+fn auth(
+	db: State<DB>,
+	credentials: Json<AuthCredentials>,
+	mut cookies: Cookies,
+) -> Result<(Json<AuthOutput>), errors::Error> {
 	user::auth::<DB>(&db, &credentials.username, &credentials.password)?;
-	cookies.add_private(Cookie::new(SESSION_FIELD_USERNAME, credentials.username.clone()));
+	cookies.add_private(Cookie::new(
+		SESSION_FIELD_USERNAME,
+		credentials.username.clone(),
+	));
 
 	let auth_output = AuthOutput {
 		admin: user::is_admin::<DB>(&db, &credentials.username)?,
@@ -130,13 +155,20 @@ fn auth(db: State<DB>, credentials: Json<AuthCredentials>, mut cookies: Cookies)
 }
 
 #[get("/browse")]
-fn browse_root(db: State<DB>, _auth: Auth) -> Result<(Json<Vec<index::CollectionFile>>), errors::Error> {
+fn browse_root(
+	db: State<DB>,
+	_auth: Auth,
+) -> Result<(Json<Vec<index::CollectionFile>>), errors::Error> {
 	let result = index::browse::<DB>(&db, &PathBuf::new())?;
 	Ok(Json(result))
 }
 
 #[get("/browse/<path..>")]
-fn browse(db: State<DB>, _auth: Auth, path: PathBuf) -> Result<(Json<Vec<index::CollectionFile>>), errors::Error> {
+fn browse(
+	db: State<DB>,
+	_auth: Auth,
+	path: PathBuf,
+) -> Result<(Json<Vec<index::CollectionFile>>), errors::Error> {
 	let result = index::browse::<DB>(&db, &path)?;
 	Ok(Json(result))
 }
@@ -148,7 +180,11 @@ fn flatten_root(db: State<DB>, _auth: Auth) -> Result<(Json<Vec<index::Song>>), 
 }
 
 #[get("/flatten/<path..>")]
-fn flatten(db: State<DB>, _auth: Auth, path: PathBuf) -> Result<(Json<Vec<index::Song>>), errors::Error> {
+fn flatten(
+	db: State<DB>,
+	_auth: Auth,
+	path: PathBuf,
+) -> Result<(Json<Vec<index::Song>>), errors::Error> {
 	let result = index::flatten::<DB>(&db, &path)?;
 	Ok(Json(result))
 }

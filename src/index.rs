@@ -17,8 +17,8 @@ use std::time;
 use config::MiscSettings;
 #[cfg(test)]
 use db;
-use db::{ConnectionSource, DB};
 use db::{directories, misc_settings, songs};
+use db::{ConnectionSource, DB};
 use errors;
 use metadata;
 use vfs::{VFSSource, VFS};
@@ -42,7 +42,7 @@ struct CommandReceiver {
 
 impl CommandReceiver {
 	fn new(receiver: Receiver<Command>) -> CommandReceiver {
-		CommandReceiver{ receiver }
+		CommandReceiver { receiver }
 	}
 }
 
@@ -52,7 +52,9 @@ pub struct CommandSender {
 
 impl CommandSender {
 	fn new(sender: Sender<Command>) -> CommandSender {
-		CommandSender{ sender: Mutex::new(sender) }
+		CommandSender {
+			sender: Mutex::new(sender),
+		}
 	}
 
 	pub fn trigger_reindex(&self) -> Result<(), errors::Error> {
