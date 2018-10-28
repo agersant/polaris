@@ -1,4 +1,4 @@
-use rocket::http::{Cookies, Status};
+use rocket::http::{Cookie, Cookies, Status};
 use rocket::request::{self, FromRequest, Request};
 use rocket::{Outcome, State};
 use rocket_contrib::json::Json;
@@ -12,9 +12,10 @@ use user;
 
 const CURRENT_MAJOR_VERSION: i32 = 2;
 const CURRENT_MINOR_VERSION: i32 = 2;
+const SESSION_FIELD_USERNAME: &str = "username";
 
 pub fn get_routes() -> Vec<rocket::Route> {
-	routes![version, initial_setup, get_settings, put_settings, trigger_index]
+	routes![version, initial_setup, get_settings, put_settings, trigger_index, auth]
 }
 
 struct Auth {
@@ -26,12 +27,14 @@ impl<'a, 'r> FromRequest<'a, 'r> for Auth {
 
 	fn from_request(request: &'a Request<'r>) -> request::Outcome<Self, ()> {
 		let mut cookies = request.guard::<Cookies>().unwrap();
-		match cookies.get_private("username") {
+		match cookies.get_private(SESSION_FIELD_USERNAME) {
 			Some(u) => Outcome::Success(Auth {
 				username: u.to_string(),
 			}),
 			_ => Outcome::Failure((Status::Forbidden, ())),
 		}
+
+		// TODO allow auth via authorization header
 	}
 }
 
@@ -101,4 +104,26 @@ fn put_settings(db: State<DB>, _admin_rights: AdminRights, config: Json<Config>)
 fn trigger_index(command_sender: State<Arc<index::CommandSender>>, _admin_rights: AdminRights) -> Result<(), errors::Error> {
 	command_sender.trigger_reindex()?;
 	Ok(())
+}
+
+#[derive(Deserialize)]
+struct AuthCredentials {
+	username: String,
+	password: String,
+}
+
+#[derive(Serialize)]
+struct AuthOutput {
+	admin: bool,
+}
+
+#[post("/auth", data = "<credentials>")]
+fn auth(db: State<DB>, credentials: Json<AuthCredentials>, mut cookies: Cookies) -> Result<(Json<AuthOutput>), errors::Error> {
+	user::auth::<DB>(&db, &credentials.username, &credentials.password)?;
+	cookies.add_private(Cookie::new(SESSION_FIELD_USERNAME, credentials.username.clone()));
+
+	let auth_output = AuthOutput {
+		admin: user::is_admin::<DB>(&db, &credentials.username)?,
+	};
+	Ok(Json(auth_output))
 }
