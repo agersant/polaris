@@ -2,6 +2,7 @@ use rocket::http::{Cookie, Cookies, Status};
 use rocket::request::{self, FromRequest, Request};
 use rocket::{Outcome, State};
 use rocket_contrib::json::Json;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use config::{self, Config};
@@ -15,7 +16,7 @@ const CURRENT_MINOR_VERSION: i32 = 2;
 const SESSION_FIELD_USERNAME: &str = "username";
 
 pub fn get_routes() -> Vec<rocket::Route> {
-	routes![version, initial_setup, get_settings, put_settings, trigger_index, auth]
+	routes![version, initial_setup, get_settings, put_settings, trigger_index, auth, browse_root, browse, flatten_root, flatten]
 }
 
 struct Auth {
@@ -126,4 +127,28 @@ fn auth(db: State<DB>, credentials: Json<AuthCredentials>, mut cookies: Cookies)
 		admin: user::is_admin::<DB>(&db, &credentials.username)?,
 	};
 	Ok(Json(auth_output))
+}
+
+#[get("/browse")]
+fn browse_root(db: State<DB>, _auth: Auth) -> Result<(Json<Vec<index::CollectionFile>>), errors::Error> {
+	let result = index::browse::<DB>(&db, &PathBuf::new())?;
+	Ok(Json(result))
+}
+
+#[get("/browse/<path..>")]
+fn browse(db: State<DB>, _auth: Auth, path: PathBuf) -> Result<(Json<Vec<index::CollectionFile>>), errors::Error> {
+	let result = index::browse::<DB>(&db, &path)?;
+	Ok(Json(result))
+}
+
+#[get("/flatten")]
+fn flatten_root(db: State<DB>, _auth: Auth) -> Result<(Json<Vec<index::Song>>), errors::Error> {
+	let result = index::flatten::<DB>(&db, &PathBuf::new())?;
+	Ok(Json(result))
+}
+
+#[get("/flatten/<path..>")]
+fn flatten(db: State<DB>, _auth: Auth, path: PathBuf) -> Result<(Json<Vec<index::Song>>), errors::Error> {
+	let result = index::flatten::<DB>(&db, &path)?;
+	Ok(Json(result))
 }
