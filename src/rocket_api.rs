@@ -1,6 +1,6 @@
-use rocket::{Outcome, State};
 use rocket::http::{Cookies, Status};
-use rocket::request::{self, Request, FromRequest};
+use rocket::request::{self, FromRequest, Request};
+use rocket::{Outcome, State};
 use rocket_contrib::json::Json;
 
 use config::{self, Config};
@@ -12,11 +12,7 @@ const CURRENT_MAJOR_VERSION: i32 = 2;
 const CURRENT_MINOR_VERSION: i32 = 2;
 
 pub fn get_routes() -> Vec<rocket::Route> {
-	routes![
-		version,
-		initial_setup,
-		get_settings,
-	]
+	routes![version, initial_setup, get_settings,]
 }
 
 struct Auth {
@@ -29,10 +25,12 @@ impl<'a, 'r> FromRequest<'a, 'r> for Auth {
 	fn from_request(request: &'a Request<'r>) -> request::Outcome<Self, ()> {
 		let mut cookies = request.guard::<Cookies>().unwrap();
 		match cookies.get_private("username") {
-			Some(u) => Outcome::Success(Auth { username: u.to_string() }),
-			_ => Outcome::Failure((Status::Forbidden, ()))
+			Some(u) => Outcome::Success(Auth {
+				username: u.to_string(),
+			}),
+			_ => Outcome::Failure((Status::Forbidden, ())),
 		}
-    }
+	}
 }
 
 struct AdminRights {}
@@ -45,7 +43,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for AdminRights {
 		match user::count::<DB>(&db) {
 			Err(_) => return Outcome::Failure((Status::InternalServerError, ())),
 			Ok(0) => return Outcome::Success(AdminRights {}),
-			_ => ()
+			_ => (),
 		};
 
 		let auth = request.guard::<Auth>()?;
@@ -54,7 +52,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for AdminRights {
 			Ok(true) => Outcome::Success(AdminRights {}),
 			Ok(false) => Outcome::Failure((Status::Forbidden, ())),
 		}
-    }
+	}
 }
 
 #[derive(Serialize)]

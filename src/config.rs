@@ -100,7 +100,8 @@ where
 			index_album_art_pattern,
 			index_sleep_duration_seconds,
 			prefix_url,
-		)).get_result(connection.deref())?;
+		))
+		.get_result(connection.deref())?;
 	config.album_art_pattern = Some(art_pattern);
 	config.reindex_every_n_seconds = Some(sleep_duration);
 	config.prefix_url = if url != "" { Some(url) } else { None };
@@ -124,7 +125,8 @@ where
 				name,
 				password: "".to_owned(),
 				admin: admin != 0,
-			}).collect::<_>(),
+			})
+			.collect::<_>(),
 	);
 
 	let ydns = ddns_config
@@ -194,7 +196,8 @@ where
 					.iter()
 					.find(|old_name| *old_name == &u.name)
 					.is_none()
-			}).collect::<_>();
+			})
+			.collect::<_>();
 		for config_user in &insert_users {
 			let new_user = User::new(&config_user.name, &config_user.password);
 			diesel::insert_into(users::table)
@@ -242,7 +245,8 @@ where
 				host.eq(ydns.host.clone()),
 				username.eq(ydns.username.clone()),
 				password.eq(ydns.password.clone()),
-			)).execute(connection.deref())?;
+			))
+			.execute(connection.deref())?;
 	}
 
 	if let Some(ref prefix_url) = new_config.prefix_url {

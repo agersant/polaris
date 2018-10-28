@@ -75,7 +75,6 @@ use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex};
 
 mod api;
-mod rocket_api;
 mod config;
 mod db;
 mod ddns;
@@ -84,6 +83,7 @@ mod index;
 mod lastfm;
 mod metadata;
 mod playlist;
+mod rocket_api;
 mod serve;
 mod thumbnails;
 mod ui;
@@ -269,10 +269,10 @@ fn run() -> Result<()> {
 	};
 
 	rocket::ignite()
-	.manage(db::DB::new(&db_path)?)
-	.mount(&static_url, StaticFiles::from(web_dir_path))
-	.mount(&api_url, rocket_api::get_routes())
-	.launch();
+		.manage(db::DB::new(&db_path)?)
+		.mount(&static_url, StaticFiles::from(web_dir_path))
+		.mount(&api_url, rocket_api::get_routes())
+		.launch();
 
 	// Start DDNS updates
 	let db_ref = db.clone();

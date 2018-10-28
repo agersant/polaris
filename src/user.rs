@@ -58,7 +58,8 @@ fn verify_password(
 		password_salt,
 		attempted_password.as_bytes(),
 		password_hash,
-	).is_ok()
+	)
+	.is_ok()
 }
 
 pub fn auth<T>(db: &T, username: &str, password: &str) -> Result<bool>
@@ -111,7 +112,8 @@ where
 		.set((
 			lastfm_username.eq(lastfm_login),
 			lastfm_session_key.eq(session_key),
-		)).execute(connection.deref())?;
+		))
+		.execute(connection.deref())?;
 	Ok(())
 }
 

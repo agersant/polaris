@@ -318,7 +318,8 @@ where
 			.filter(|ref song_path| {
 				let path = Path::new(&song_path);
 				!path.exists() || vfs.real_to_virtual(path).is_err()
-			}).collect::<Vec<_>>();
+			})
+			.collect::<Vec<_>>();
 
 		{
 			let connection = db.get_connection();
@@ -343,7 +344,8 @@ where
 			.filter(|ref directory_path| {
 				let path = Path::new(&directory_path);
 				!path.exists() || vfs.real_to_virtual(path).is_err()
-			}).collect::<Vec<_>>();
+			})
+			.collect::<Vec<_>>();
 
 		{
 			let connection = db.get_connection();
@@ -623,7 +625,8 @@ where
 					.or(album.like(&like_test))
 					.or(artist.like(&like_test))
 					.or(album_artist.like(&like_test)),
-			).filter(parent.not_like(&like_test))
+			)
+			.filter(parent.not_like(&like_test))
 			.load(connection.deref())?;
 
 		let virtual_songs = real_songs
