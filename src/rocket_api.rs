@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use std::ops::Deref;
 use std::sync::Arc;
 
-use config::{self, Config};
+use config::{self, Config, Preferences};
 use db::DB;
 use errors;
 use index;
@@ -27,6 +27,8 @@ pub fn get_routes() -> Vec<rocket::Route> {
 		initial_setup,
 		get_settings,
 		put_settings,
+		get_preferences,
+		put_preferences,
 		trigger_index,
 		auth,
 		browse_root,
@@ -145,6 +147,22 @@ fn put_settings(
 	config: Json<Config>,
 ) -> Result<(), errors::Error> {
 	config::amend::<DB>(&db, &config)?;
+	Ok(())
+}
+
+#[get("/preferences")]
+fn get_preferences(db: State<DB>, auth: Auth) -> Result<Json<Preferences>, errors::Error> {
+	let preferences = config::read_preferences::<DB>(&db, &auth.username)?;
+	Ok(Json(preferences))
+}
+
+#[put("/preferences", data = "<preferences>")]
+fn put_preferences(
+	db: State<DB>,
+	auth: Auth,
+	preferences: Json<Preferences>,
+) -> Result<(), errors::Error> {
+	config::write_preferences::<DB>(&db, &auth.username, &preferences)?;
 	Ok(())
 }
 
