@@ -17,7 +17,7 @@ use std::time;
 use config::MiscSettings;
 #[cfg(test)]
 use db;
-use db::ConnectionSource;
+use db::{ConnectionSource, DB};
 use db::{directories, misc_settings, songs};
 use errors;
 use metadata;
@@ -32,8 +32,58 @@ no_arg_sql_function!(
 	"Represents the SQL RANDOM() function"
 );
 
-pub enum Command {
+enum Command {
 	REINDEX,
+}
+
+struct CommandReceiver {
+	receiver: Receiver<Command>,
+}
+
+impl CommandReceiver {
+	fn new(receiver: Receiver<Command>) -> CommandReceiver {
+		CommandReceiver{ receiver }
+	}
+}
+
+pub struct CommandSender {
+	sender: Mutex<Sender<Command>>,
+}
+
+impl CommandSender {
+	fn new(sender: Sender<Command>) -> CommandSender {
+		CommandSender{ sender: Mutex::new(sender) }
+	}
+
+	pub fn trigger_reindex(&self) -> Result<(), errors::Error> {
+		let sender = self.sender.lock().unwrap();
+		match sender.send(Command::REINDEX) {
+			Ok(_) => Ok(()),
+			Err(_) => bail!("Trigger reindex channel error"),
+		}
+	}
+}
+
+pub fn init(db: Arc<DB>) -> Arc<CommandSender> {
+	let (index_sender, index_receiver) = channel();
+	let command_sender = Arc::new(CommandSender::new(index_sender));
+	let command_receiver = CommandReceiver::new(index_receiver);
+
+	// Start update loop
+	let db_ref = db.clone();
+	std::thread::spawn(move || {
+		let db = db_ref.deref();
+		update_loop(db, &command_receiver);
+	});
+
+	// Trigger auto-indexing
+	let db_ref = db.clone();
+	let command_sender_clone = command_sender.clone();
+	std::thread::spawn(move || {
+		self_trigger(db_ref.deref(), &command_sender_clone);
+	});
+
+	command_sender
 }
 
 #[derive(Debug, Queryable, QueryableByName, Serialize)]
@@ -383,7 +433,7 @@ where
 	Ok(())
 }
 
-pub fn update<T>(db: &T) -> Result<(), errors::Error>
+fn update<T>(db: &T) -> Result<(), errors::Error>
 where
 	T: ConnectionSource + VFSSource,
 {
@@ -398,20 +448,20 @@ where
 	Ok(())
 }
 
-pub fn update_loop<T>(db: &T, command_buffer: &Receiver<Command>)
+fn update_loop<T>(db: &T, command_buffer: &CommandReceiver)
 where
 	T: ConnectionSource + VFSSource,
 {
 	loop {
 		// Wait for a command
-		if let Err(e) = command_buffer.recv() {
+		if let Err(e) = command_buffer.receiver.recv() {
 			error!("Error while waiting on index command buffer: {}", e);
 			return;
 		}
 
 		// Flush the buffer to ignore spammy requests
 		loop {
-			match command_buffer.try_recv() {
+			match command_buffer.receiver.try_recv() {
 				Err(TryRecvError::Disconnected) => {
 					error!("Error while flushing index command buffer");
 					return;
@@ -428,15 +478,14 @@ where
 	}
 }
 
-pub fn self_trigger<T>(db: &T, command_buffer: &Arc<Mutex<Sender<Command>>>)
+pub fn self_trigger<T>(db: &T, command_buffer: &Arc<CommandSender>)
 where
 	T: ConnectionSource,
 {
 	loop {
 		{
-			let command_buffer = command_buffer.lock().unwrap();
 			let command_buffer = command_buffer.deref();
-			if let Err(e) = command_buffer.send(Command::REINDEX) {
+			if let Err(e) = command_buffer.trigger_reindex() {
 				error!("Error while writing to index command buffer: {}", e);
 				return;
 			}

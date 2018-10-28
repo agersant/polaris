@@ -71,8 +71,7 @@ use rocket_contrib::serve::StaticFiles;
 use simplelog::{Level, LevelFilter, SimpleLogger, TermLogger};
 use staticfile::Static;
 use std::path::Path;
-use std::sync::mpsc::channel;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 mod api;
 mod config;
@@ -221,27 +220,14 @@ fn run() -> Result<()> {
 	let config = config::read(db.deref())?;
 
 	// Init index
-	let (index_sender, index_receiver) = channel();
-	let index_sender = Arc::new(Mutex::new(index_sender));
-	let db_ref = db.clone();
-	std::thread::spawn(move || {
-		let db = db_ref.deref();
-		index::update_loop(db, &index_receiver);
-	});
-
-	// Trigger auto-indexing
-	let db_ref = db.clone();
-	let sender_ref = index_sender.clone();
-	std::thread::spawn(move || {
-		index::self_trigger(db_ref.deref(), &sender_ref);
-	});
+	let command_sender = index::init(db.clone());
 
 	// Mount API
 	let prefix_url = config.prefix_url.unwrap_or_else(|| "".to_string());
 	let api_url = format!("{}/api", &prefix_url);
 	info!("Mounting API on {}", api_url);
 	let mut mount = Mount::new();
-	let handler = api::get_handler(&db.clone(), &index_sender)?;
+	let handler = api::get_handler(&db.clone(), &command_sender)?;
 	mount.mount(&api_url, handler);
 
 	// Mount static files
@@ -270,6 +256,7 @@ fn run() -> Result<()> {
 
 	rocket::ignite()
 		.manage(db::DB::new(&db_path)?)
+		.manage(command_sender)
 		.mount(&static_url, StaticFiles::from(web_dir_path))
 		.mount(&api_url, rocket_api::get_routes())
 		.launch();

@@ -15,8 +15,7 @@ use std::fs;
 use std::io;
 use std::ops::Deref;
 use std::path::*;
-use std::sync::mpsc::Sender;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc};
 use typemap;
 use url::percent_encoding::percent_decode;
 
@@ -63,7 +62,7 @@ where
 	Ok(secret)
 }
 
-pub fn get_handler(db: &Arc<DB>, index: &Arc<Mutex<Sender<index::Command>>>) -> Result<Chain> {
+pub fn get_handler(db: &Arc<DB>, index: &Arc<index::CommandSender>) -> Result<Chain> {
 	let api_handler = get_endpoints(&db.clone(), &index);
 	let mut api_chain = Chain::new(api_handler);
 
@@ -80,7 +79,7 @@ pub fn get_handler(db: &Arc<DB>, index: &Arc<Mutex<Sender<index::Command>>>) -> 
 	Ok(api_chain)
 }
 
-fn get_endpoints(db: &Arc<DB>, index_channel: &Arc<Mutex<Sender<index::Command>>>) -> Mount {
+fn get_endpoints(db: &Arc<DB>, index_channel: &Arc<index::CommandSender>) -> Mount {
 	let mut api_handler = Mount::new();
 
 	{
@@ -178,7 +177,7 @@ fn get_endpoints(db: &Arc<DB>, index_channel: &Arc<Mutex<Sender<index::Command>>
 			let mut reindex_router = Router::new();
 			reindex_router.post(
 				"/",
-				move |_: &mut Request| self::trigger_index(index_channel.deref()),
+				move |_: &mut Request| self::trigger_index(index_channel.clone()),
 				"trigger_index",
 			);
 
@@ -603,10 +602,9 @@ fn put_preferences(request: &mut Request, db: &DB) -> IronResult<Response> {
 	Ok(Response::with(status::Ok))
 }
 
-fn trigger_index(channel: &Mutex<Sender<index::Command>>) -> IronResult<Response> {
-	let channel = channel.lock().unwrap();
+fn trigger_index(channel: Arc<index::CommandSender>) -> IronResult<Response> {
 	let channel = channel.deref();
-	if let Err(e) = channel.send(index::Command::REINDEX) {
+	if let Err(e) = channel.trigger_reindex() {
 		return Err(IronError::new(e, status::InternalServerError));
 	};
 	Ok(Response::with(status::Ok))

@@ -2,17 +2,19 @@ use rocket::http::{Cookies, Status};
 use rocket::request::{self, FromRequest, Request};
 use rocket::{Outcome, State};
 use rocket_contrib::json::Json;
+use std::sync::Arc;
 
 use config::{self, Config};
 use db::DB;
 use errors;
+use index;
 use user;
 
 const CURRENT_MAJOR_VERSION: i32 = 2;
 const CURRENT_MINOR_VERSION: i32 = 2;
 
 pub fn get_routes() -> Vec<rocket::Route> {
-	routes![version, initial_setup, get_settings, put_settings]
+	routes![version, initial_setup, get_settings, put_settings, trigger_index]
 }
 
 struct Auth {
@@ -92,5 +94,11 @@ fn get_settings(db: State<DB>, _admin_rights: AdminRights) -> Result<Json<Config
 #[put("/settings", data = "<config>")]
 fn put_settings(db: State<DB>, _admin_rights: AdminRights, config: Json<Config>) -> Result<(), errors::Error> {
 	config::amend::<DB>(&db, &config)?;
+	Ok(())
+}
+
+#[post("/trigger_index")]
+fn trigger_index(command_sender: State<Arc<index::CommandSender>>) -> Result<(), errors::Error> {
+	command_sender.trigger_reindex()?;
 	Ok(())
 }
