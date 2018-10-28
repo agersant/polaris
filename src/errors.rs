@@ -11,6 +11,7 @@ use iron::IronError;
 use lewton;
 use metaflac;
 use regex;
+use rocket;
 use rustfm_scrobble;
 use serde_json;
 use std;
@@ -58,6 +59,16 @@ error_chain! {
 		LastFMDeserializationError {}
 		MissingDesiredResponse {}
 	}
+}
+
+impl<'r> rocket::response::Responder<'r> for Error {
+	fn respond_to(self, _: &rocket::request::Request) -> rocket::response::Result<'r> {
+        let mut build = rocket::response::Response::build();
+        build.status(match self.0 {
+			ErrorKind::FileNotFound => rocket::http::Status::NotFound,
+			_ => rocket::http::Status::InternalServerError,
+		}).ok()
+    }
 }
 
 impl From<Error> for IronError {

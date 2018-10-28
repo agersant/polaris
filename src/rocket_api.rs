@@ -1,19 +1,27 @@
 use rocket::http::{Cookie, Cookies, Status};
 use rocket::request::{self, FromRequest, Request};
+use rocket::response::NamedFile;
 use rocket::{Outcome, State};
 use rocket_contrib::json::Json;
 use std::path::PathBuf;
+use std::ops::Deref;
 use std::sync::Arc;
 
 use config::{self, Config};
 use db::DB;
 use errors;
 use index;
+use thumbnails;
 use user;
+use utils;
+use vfs::VFSSource;
 
 const CURRENT_MAJOR_VERSION: i32 = 2;
 const CURRENT_MINOR_VERSION: i32 = 2;
 const SESSION_FIELD_USERNAME: &str = "username";
+
+// TODO every path.. argument breaks when the path contains square brackets. Needs URLencoding back!!
+// TODO range header not supported
 
 pub fn get_routes() -> Vec<rocket::Route> {
 	routes![
@@ -31,6 +39,7 @@ pub fn get_routes() -> Vec<rocket::Route> {
 		recent,
 		search_root,
 		search,
+		serve,
 	]
 }
 
@@ -145,7 +154,7 @@ fn auth(
 	db: State<DB>,
 	credentials: Json<AuthCredentials>,
 	mut cookies: Cookies,
-) -> Result<(Json<AuthOutput>), errors::Error> {
+) -> Result<Json<AuthOutput>, errors::Error> {
 	user::auth::<DB>(&db, &credentials.username, &credentials.password)?;
 	cookies.add_private(Cookie::new(
 		SESSION_FIELD_USERNAME,
@@ -162,7 +171,7 @@ fn auth(
 fn browse_root(
 	db: State<DB>,
 	_auth: Auth,
-) -> Result<(Json<Vec<index::CollectionFile>>), errors::Error> {
+) -> Result<Json<Vec<index::CollectionFile>>, errors::Error> {
 	let result = index::browse::<DB>(&db, &PathBuf::new())?;
 	Ok(Json(result))
 }
@@ -172,13 +181,13 @@ fn browse(
 	db: State<DB>,
 	_auth: Auth,
 	path: PathBuf,
-) -> Result<(Json<Vec<index::CollectionFile>>), errors::Error> {
+) -> Result<Json<Vec<index::CollectionFile>>, errors::Error> {
 	let result = index::browse::<DB>(&db, &path)?;
 	Ok(Json(result))
 }
 
 #[get("/flatten")]
-fn flatten_root(db: State<DB>, _auth: Auth) -> Result<(Json<Vec<index::Song>>), errors::Error> {
+fn flatten_root(db: State<DB>, _auth: Auth) -> Result<Json<Vec<index::Song>>, errors::Error> {
 	let result = index::flatten::<DB>(&db, &PathBuf::new())?;
 	Ok(Json(result))
 }
@@ -188,31 +197,47 @@ fn flatten(
 	db: State<DB>,
 	_auth: Auth,
 	path: PathBuf,
-) -> Result<(Json<Vec<index::Song>>), errors::Error> {
+) -> Result<Json<Vec<index::Song>>, errors::Error> {
 	let result = index::flatten::<DB>(&db, &path)?;
 	Ok(Json(result))
 }
 
 #[get("/random")]
-fn random(db: State<DB>, _auth: Auth) -> Result<(Json<Vec<index::Directory>>), errors::Error> {
+fn random(db: State<DB>, _auth: Auth) -> Result<Json<Vec<index::Directory>>, errors::Error> {
 	let result = index::get_random_albums::<DB>(&db, 20)?;
 	Ok(Json(result))
 }
 
 #[get("/recent")]
-fn recent(db: State<DB>, _auth: Auth) -> Result<(Json<Vec<index::Directory>>), errors::Error> {
+fn recent(db: State<DB>, _auth: Auth) -> Result<Json<Vec<index::Directory>>, errors::Error> {
 	let result = index::get_recent_albums::<DB>(&db, 20)?;
 	Ok(Json(result))
 }
 
 #[get("/search")]
-fn search_root(db: State<DB>, _auth: Auth) -> Result<(Json<Vec<index::CollectionFile>>), errors::Error> {
+fn search_root(db: State<DB>, _auth: Auth) -> Result<Json<Vec<index::CollectionFile>>, errors::Error> {
 	let result = index::search::<DB>(&db, "")?;
 	Ok(Json(result))
 }
 
 #[get("/search/<query>")]
-fn search(db: State<DB>, _auth: Auth, query: String) -> Result<(Json<Vec<index::CollectionFile>>), errors::Error> {
+fn search(db: State<DB>, _auth: Auth, query: String) -> Result<Json<Vec<index::CollectionFile>>, errors::Error> {
 	let result = index::search::<DB>(&db, &query)?;
 	Ok(Json(result))
+}
+
+#[get("/serve/<path..>")]
+fn serve(db: State<DB>, _auth: Auth, path: PathBuf) -> Result<NamedFile, errors::Error> {
+	let db: &DB = db.deref();
+	let vfs = db.get_vfs()?;
+	let real_path = vfs.virtual_to_real(&path)?;
+
+	let serve_path = if utils::is_image(&real_path) {
+		thumbnails::get_thumbnail(&real_path, 400)?
+	} else {
+		real_path
+	};
+
+	let serving = NamedFile::open(&serve_path)?;
+	Ok(serving)
 }
