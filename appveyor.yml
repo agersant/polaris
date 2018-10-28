@@ -55,7 +55,7 @@ environment:
 # or test failure in the matching channels/targets from failing the entire build.
 matrix:
   allow_failures:
-    - channel: nightly
+    - channel: stable
     - channel: beta
 
 ## Install Script ##
