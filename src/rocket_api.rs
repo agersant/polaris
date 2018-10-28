@@ -22,7 +22,6 @@ const CURRENT_MINOR_VERSION: i32 = 2;
 const SESSION_FIELD_USERNAME: &str = "username";
 
 // TODO every path.. argument breaks when the path contains square brackets. Needs URLencoding back!!
-// TODO range header not supported
 
 pub fn get_routes() -> Vec<rocket::Route> {
 	routes![
