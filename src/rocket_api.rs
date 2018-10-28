@@ -52,7 +52,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for Auth {
 		let mut cookies = request.guard::<Cookies>().unwrap();
 		match cookies.get_private(SESSION_FIELD_USERNAME) {
 			Some(u) => Outcome::Success(Auth {
-				username: u.to_string(),
+				username: u.value().to_string(),
 			}),
 			_ => Outcome::Failure((Status::Forbidden, ())),
 		}
