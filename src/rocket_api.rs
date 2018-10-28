@@ -12,7 +12,7 @@ const CURRENT_MAJOR_VERSION: i32 = 2;
 const CURRENT_MINOR_VERSION: i32 = 2;
 
 pub fn get_routes() -> Vec<rocket::Route> {
-	routes![version, initial_setup, get_settings,]
+	routes![version, initial_setup, get_settings, put_settings]
 }
 
 struct Auth {
@@ -87,4 +87,10 @@ fn initial_setup(db: State<DB>) -> Result<Json<InitialSetup>, errors::Error> {
 fn get_settings(db: State<DB>, _admin_rights: AdminRights) -> Result<Json<Config>, errors::Error> {
 	let config = config::read::<DB>(&db)?;
 	Ok(Json(config))
+}
+
+#[put("/settings", data = "<config>")]
+fn put_settings(db: State<DB>, _admin_rights: AdminRights, config: Json<Config>) -> Result<(), errors::Error> {
+	config::amend::<DB>(&db, &config)?;
+	Ok(())
 }
