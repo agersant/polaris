@@ -235,10 +235,13 @@ fn run() -> Result<()> {
 		.parse()
 		.or(Err("invalid port number"))?;
 
-	// TODO Use port number
+	let config = rocket::Config::build(rocket::config::Environment::Production)
+		.port(port)
+		.finalize()?;
+
 	let db_server = db.clone();
 	std::thread::spawn(move || {
-		rocket::ignite()
+		rocket::custom(config)
 			.manage(db_server)
 			.manage(command_sender)
 			.mount(&static_url, StaticFiles::from(web_dir_path))

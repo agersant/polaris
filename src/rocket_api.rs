@@ -82,11 +82,11 @@ impl<'a, 'r> FromRequest<'a, 'r> for Auth {
 			if let Ok(Basic {
 				username,
 				password: Some(password),
-			}) = Basic::from_str(auth_header_string.trim_start_matches("Basic ")) // Sadness
+			}) = Basic::from_str(auth_header_string.trim_start_matches("Basic "))
 			{
 				let db = match request.guard::<State<Arc<DB>>>() {
 					Outcome::Success(d) => d,
-					_ => return Outcome::Failure((Status::InternalServerError, ()))
+					_ => return Outcome::Failure((Status::InternalServerError, ())),
 				};
 				if user::auth(db.deref().deref(), &username, &password).unwrap_or(false) {
 					cookies.add_private(get_auth_cookie(&username));

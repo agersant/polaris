@@ -30,6 +30,7 @@ error_chain! {
 		Time(std::time::SystemTimeError);
 		Toml(toml::de::Error);
 		Regex(regex::Error);
+		RocketConfig(rocket::config::ConfigError);
 		Scrobbler(rustfm_scrobble::ScrobblerError);
 		Vorbis(lewton::VorbisError);
 	}
