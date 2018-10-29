@@ -27,7 +27,6 @@ extern crate ring;
 #[macro_use]
 extern crate rocket;
 extern crate rocket_contrib;
-extern crate router;
 extern crate rustfm_scrobble;
 extern crate serde;
 #[macro_use]
@@ -35,7 +34,6 @@ extern crate serde_derive;
 extern crate serde_json;
 extern crate serde_xml_rs;
 extern crate toml;
-extern crate typemap;
 #[macro_use]
 extern crate log;
 extern crate simplelog;
