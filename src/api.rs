@@ -249,7 +249,7 @@ fn get_endpoints(db: &Arc<DB>, index_channel: &Arc<index::CommandSender>) -> Mou
 			lastfm_router.get(
 				"/scrobble",
 				move |request: &mut Request| self::lastfm_scrobble(request, scrobble_db.deref()),
-				"auth",
+				"scrobble",
 			);
 
 			auth_api_mount.mount("/lastfm/", lastfm_router);
