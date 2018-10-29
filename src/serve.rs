@@ -152,7 +152,7 @@ pub struct RangeResponder<R> {
 
 impl<'r, R: Responder<'r>> RangeResponder<R> {
 	pub fn new(original: R) -> RangeResponder<R> {
-		RangeResponder{ original }
+		RangeResponder { original }
 	}
 
 	fn ignore_range(self, request: &rocket::request::Request) -> response::Result<'r> {
@@ -192,9 +192,7 @@ fn truncate_range(range: &PartialFileRange, file_length: &Option<u64>) -> Option
 }
 
 impl<'r> Responder<'r> for RangeResponder<File> {
-
 	fn respond_to(mut self, request: &rocket::request::Request) -> response::Result<'r> {
-
 		use rocket::http::hyper::header::*;
 
 		let range_header = request.headers().get_one("Range");
@@ -238,5 +236,5 @@ impl<'r> Responder<'r> for RangeResponder<File> {
 		} else {
 			self.ignore_range(request)
 		}
-    }
+	}
 }
