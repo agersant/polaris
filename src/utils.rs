@@ -64,10 +64,6 @@ fn test_get_audio_format() {
 	);
 }
 
-pub fn is_song(path: &Path) -> bool {
-	get_audio_format(path).is_some()
-}
-
 #[test]
 fn test_is_song() {
 	assert!(is_song(Path::new("animals/🐷/my🐖file.mp3")));

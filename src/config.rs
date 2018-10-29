@@ -2,7 +2,6 @@ use core::ops::Deref;
 use diesel;
 use diesel::prelude::*;
 use regex::Regex;
-use serde_json;
 use std::fs;
 use std::io::Read;
 use std::path;
@@ -59,12 +58,6 @@ impl Config {
 		}
 		Ok(())
 	}
-}
-
-pub fn parse_json(content: &str) -> Result<Config> {
-	let mut config = serde_json::from_str::<Config>(content)?;
-	config.clean_paths()?;
-	Ok(config)
 }
 
 pub fn parse_toml_file(path: &path::Path) -> Result<Config> {

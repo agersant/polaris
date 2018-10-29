@@ -3,11 +3,8 @@ use core;
 use diesel;
 use diesel_migrations;
 use getopts;
-use hyper;
 use id3;
 use image;
-use iron::status::Status;
-use iron::IronError;
 use lewton;
 use metaflac;
 use regex;
@@ -26,7 +23,6 @@ error_chain! {
 		Encoding(core::str::Utf8Error);
 		Flac(metaflac::Error);
 		GetOpts(getopts::Fail);
-		Hyper(hyper::Error);
 		Id3(id3::Error);
 		Image(image::ImageError);
 		Io(std::io::Error);
@@ -70,27 +66,5 @@ impl<'r> rocket::response::Responder<'r> for Error {
 				_ => rocket::http::Status::InternalServerError,
 			})
 			.ok()
-	}
-}
-
-impl From<Error> for IronError {
-	fn from(err: Error) -> IronError {
-		match err {
-			e @ Error(ErrorKind::AuthenticationRequired, _) => {
-				IronError::new(e, Status::Unauthorized)
-			}
-			e @ Error(ErrorKind::AdminPrivilegeRequired, _) => IronError::new(e, Status::Forbidden),
-			e @ Error(ErrorKind::MissingUsername, _) => IronError::new(e, Status::BadRequest),
-			e @ Error(ErrorKind::MissingPassword, _) => IronError::new(e, Status::BadRequest),
-			e @ Error(ErrorKind::IncorrectCredentials, _) => {
-				IronError::new(e, Status::Unauthorized)
-			}
-			e @ Error(ErrorKind::CannotServeDirectory, _) => IronError::new(e, Status::BadRequest),
-			e @ Error(ErrorKind::UnsupportedFileType, _) => IronError::new(e, Status::BadRequest),
-			e @ Error(ErrorKind::MissingLastFMCredentials, _) => {
-				IronError::new(e, Status::Unauthorized)
-			}
-			e => IronError::new(e, Status::InternalServerError),
-		}
 	}
 }

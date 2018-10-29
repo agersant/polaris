@@ -14,16 +14,12 @@ extern crate diesel_migrations;
 #[macro_use]
 extern crate error_chain;
 extern crate getopts;
-extern crate hyper;
 extern crate id3;
 extern crate image;
-extern crate iron;
 extern crate lewton;
 extern crate md5;
 extern crate metaflac;
-extern crate mount;
 extern crate mp3_duration;
-extern crate params;
 extern crate rand;
 extern crate regex;
 extern crate reqwest;
@@ -33,16 +29,13 @@ extern crate rocket;
 extern crate rocket_contrib;
 extern crate router;
 extern crate rustfm_scrobble;
-extern crate secure_session;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
 extern crate serde_xml_rs;
-extern crate staticfile;
 extern crate toml;
 extern crate typemap;
-extern crate url;
 #[macro_use]
 extern crate log;
 extern crate simplelog;
@@ -65,15 +58,11 @@ use unix_daemonize::{daemonize_redirect, ChdirMode};
 use core::ops::Deref;
 use errors::*;
 use getopts::Options;
-use iron::prelude::*;
-use mount::Mount;
 use rocket_contrib::serve::StaticFiles;
 use simplelog::{Level, LevelFilter, SimpleLogger, TermLogger};
-use staticfile::Static;
 use std::path::Path;
 use std::sync::Arc;
 
-mod api;
 mod config;
 mod db;
 mod ddns;
@@ -226,9 +215,6 @@ fn run() -> Result<()> {
 	let prefix_url = config.prefix_url.unwrap_or_else(|| "".to_string());
 	let api_url = format!("{}/api", &prefix_url);
 	info!("Mounting API on {}", api_url);
-	let mut mount = Mount::new();
-	let handler = api::get_handler(&db.clone(), &command_sender)?;
-	mount.mount(&api_url, handler);
 
 	// Mount static files
 	let web_dir_name = matches.opt_str("w");
@@ -240,7 +226,6 @@ fn run() -> Result<()> {
 	info!("Static files location is {}", web_dir_path.display());
 	let static_url = format!("/{}", &prefix_url);
 	info!("Mounting static files on {}", static_url);
-	mount.mount(&static_url, Static::new(&web_dir_path));
 
 	info!("Starting up server");
 	let port: u16 = matches
@@ -249,13 +234,10 @@ fn run() -> Result<()> {
 		.parse()
 		.or(Err("invalid port number"))?;
 
-	let mut server = match Iron::new(mount).http(("0.0.0.0", port)) {
-		Ok(s) => s,
-		Err(e) => bail!("Error starting up server: {}", e),
-	};
+	// TODO Use port number
 
 	rocket::ignite()
-		.manage(db::DB::new(&db_path)?)
+		.manage(db.clone())
 		.manage(command_sender)
 		.mount(&static_url, StaticFiles::from(web_dir_path))
 		.mount(&api_url, rocket_api::get_routes())
@@ -268,12 +250,11 @@ fn run() -> Result<()> {
 	});
 
 	// Run UI
+
+	// TODO do we still reach this?
 	ui::run();
 
 	info!("Shutting down server");
-	if let Err(e) = server.close() {
-		bail!("Error shutting down server: {}", e);
-	}
 
 	Ok(())
 }
