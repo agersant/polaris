@@ -198,6 +198,7 @@ fn run() -> Result<()> {
 	let db = Arc::new(db::DB::new(&db_path)?);
 
 	// Parse config
+	info!("Parsing configuration");
 	let config_file_name = matches.opt_str("c");
 	let config_file_path = config_file_name.map(|p| Path::new(p.as_str()).to_path_buf());
 	if let Some(path) = config_file_path {
@@ -207,14 +208,15 @@ fn run() -> Result<()> {
 	let config = config::read(db.deref())?;
 
 	// Init index
+	info!("Initializing index");
 	let command_sender = index::init(db.clone());
 
-	// Mount API
+	// API mount target
 	let prefix_url = config.prefix_url.unwrap_or_else(|| "".to_string());
 	let api_url = format!("{}/api", &prefix_url);
 	info!("Mounting API on {}", api_url);
 
-	// Mount static files
+	// Static files mount target
 	let web_dir_name = matches.opt_str("w");
 	let mut default_web_dir = utils::get_data_root()?;
 	default_web_dir.push("web");
@@ -225,6 +227,7 @@ fn run() -> Result<()> {
 	let static_url = format!("/{}", &prefix_url);
 	info!("Mounting static files on {}", static_url);
 
+	// Start server
 	info!("Starting up server");
 	let port: u16 = matches
 		.opt_str("p")
@@ -233,26 +236,25 @@ fn run() -> Result<()> {
 		.or(Err("invalid port number"))?;
 
 	// TODO Use port number
-
-	rocket::ignite()
-		.manage(db.clone())
+	let db_server = db.clone();
+	std::thread::spawn(move || {
+		rocket::ignite()
+		.manage(db_server)
 		.manage(command_sender)
 		.mount(&static_url, StaticFiles::from(web_dir_path))
 		.mount(&api_url, rocket_api::get_routes())
 		.launch();
+	});
 
 	// Start DDNS updates
-	let db_ref = db.clone();
+	let db_ddns = db.clone();
 	std::thread::spawn(move || {
-		ddns::run(db_ref.deref());
+		ddns::run(db_ddns.deref());
 	});
 
 	// Run UI
-
-	// TODO do we still reach this?
 	ui::run();
 
 	info!("Shutting down server");
-
 	Ok(())
 }
