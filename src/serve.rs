@@ -3,7 +3,7 @@ use rocket::http::hyper::header::*;
 use rocket::response::{self, Responder};
 use std::cmp;
 use std::convert::From;
-use std::fs::{File};
+use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
 use std::str::FromStr;
 
@@ -79,7 +79,6 @@ fn truncate_range(range: &PartialFileRange, file_length: &Option<u64>) -> Option
 
 impl<'r> Responder<'r> for RangeResponder<File> {
 	fn respond_to(mut self, request: &rocket::request::Request) -> response::Result<'r> {
-
 		let range_header = request.headers().get_one("Range");
 		let range_header = match range_header {
 			None => return Ok(self.original.respond_to(request)?),

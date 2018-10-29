@@ -239,11 +239,11 @@ fn run() -> Result<()> {
 	let db_server = db.clone();
 	std::thread::spawn(move || {
 		rocket::ignite()
-		.manage(db_server)
-		.manage(command_sender)
-		.mount(&static_url, StaticFiles::from(web_dir_path))
-		.mount(&api_url, rocket_api::get_routes())
-		.launch();
+			.manage(db_server)
+			.manage(command_sender)
+			.mount(&static_url, StaticFiles::from(web_dir_path))
+			.mount(&api_url, rocket_api::get_routes())
+			.launch();
 	});
 
 	// Start DDNS updates
