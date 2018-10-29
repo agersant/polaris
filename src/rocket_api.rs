@@ -80,7 +80,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for AdminRights {
 	type Error = ();
 
 	fn from_request(request: &'a Request<'r>) -> request::Outcome<Self, ()> {
-		let db = request.guard::<State<DB>>()?;
+		let db = request.guard::<State<Arc<DB>>>()?;
 
 		match user::count::<DB>(&db) {
 			Err(_) => return Outcome::Failure((Status::InternalServerError, ())),
@@ -139,7 +139,7 @@ struct InitialSetup {
 }
 
 #[get("/initial_setup")]
-fn initial_setup(db: State<DB>) -> Result<Json<InitialSetup>, errors::Error> {
+fn initial_setup(db: State<Arc<DB>>) -> Result<Json<InitialSetup>, errors::Error> {
 	let initial_setup = InitialSetup {
 		has_any_users: user::count::<DB>(&db)? > 0,
 	};
@@ -147,14 +147,14 @@ fn initial_setup(db: State<DB>) -> Result<Json<InitialSetup>, errors::Error> {
 }
 
 #[get("/settings")]
-fn get_settings(db: State<DB>, _admin_rights: AdminRights) -> Result<Json<Config>, errors::Error> {
+fn get_settings(db: State<Arc<DB>>, _admin_rights: AdminRights) -> Result<Json<Config>, errors::Error> {
 	let config = config::read::<DB>(&db)?;
 	Ok(Json(config))
 }
 
 #[put("/settings", data = "<config>")]
 fn put_settings(
-	db: State<DB>,
+	db: State<Arc<DB>>,
 	_admin_rights: AdminRights,
 	config: Json<Config>,
 ) -> Result<(), errors::Error> {
@@ -163,14 +163,14 @@ fn put_settings(
 }
 
 #[get("/preferences")]
-fn get_preferences(db: State<DB>, auth: Auth) -> Result<Json<Preferences>, errors::Error> {
+fn get_preferences(db: State<Arc<DB>>, auth: Auth) -> Result<Json<Preferences>, errors::Error> {
 	let preferences = config::read_preferences::<DB>(&db, &auth.username)?;
 	Ok(Json(preferences))
 }
 
 #[put("/preferences", data = "<preferences>")]
 fn put_preferences(
-	db: State<DB>,
+	db: State<Arc<DB>>,
 	auth: Auth,
 	preferences: Json<Preferences>,
 ) -> Result<(), errors::Error> {
@@ -200,7 +200,7 @@ struct AuthOutput {
 
 #[post("/auth", data = "<credentials>")]
 fn auth(
-	db: State<DB>,
+	db: State<Arc<DB>>,
 	credentials: Json<AuthCredentials>,
 	mut cookies: Cookies,
 ) -> Result<Json<AuthOutput>, errors::Error> {
@@ -219,77 +219,77 @@ fn auth(
 
 #[get("/browse")]
 fn browse_root(
-	db: State<DB>,
+	db: State<Arc<DB>>,
 	_auth: Auth,
 ) -> Result<Json<Vec<index::CollectionFile>>, errors::Error> {
-	let result = index::browse(db.deref(), &PathBuf::new())?;
+	let result = index::browse(db.deref().deref(), &PathBuf::new())?;
 	Ok(Json(result))
 }
 
 #[get("/browse/<path>")]
 fn browse(
-	db: State<DB>,
+	db: State<Arc<DB>>,
 	_auth: Auth,
 	path: VFSPathBuf,
 ) -> Result<Json<Vec<index::CollectionFile>>, errors::Error> {
-	let result = index::browse(db.deref(), &path.into() as &PathBuf)?;
+	let result = index::browse(db.deref().deref(), &path.into() as &PathBuf)?;
 	Ok(Json(result))
 }
 
 #[get("/flatten")]
-fn flatten_root(db: State<DB>, _auth: Auth) -> Result<Json<Vec<index::Song>>, errors::Error> {
-	let result = index::flatten(db.deref(), &PathBuf::new())?;
+fn flatten_root(db: State<Arc<DB>>, _auth: Auth) -> Result<Json<Vec<index::Song>>, errors::Error> {
+	let result = index::flatten(db.deref().deref(), &PathBuf::new())?;
 	Ok(Json(result))
 }
 
 #[get("/flatten/<path>")]
 fn flatten(
-	db: State<DB>,
+	db: State<Arc<DB>>,
 	_auth: Auth,
 	path: VFSPathBuf,
 ) -> Result<Json<Vec<index::Song>>, errors::Error> {
-	let result = index::flatten(db.deref(), &path.into() as &PathBuf)?;
+	let result = index::flatten(db.deref().deref(), &path.into() as &PathBuf)?;
 	Ok(Json(result))
 }
 
 #[get("/random")]
-fn random(db: State<DB>, _auth: Auth) -> Result<Json<Vec<index::Directory>>, errors::Error> {
-	let result = index::get_random_albums(db.deref(), 20)?;
+fn random(db: State<Arc<DB>>, _auth: Auth) -> Result<Json<Vec<index::Directory>>, errors::Error> {
+	let result = index::get_random_albums(db.deref().deref(), 20)?;
 	Ok(Json(result))
 }
 
 #[get("/recent")]
-fn recent(db: State<DB>, _auth: Auth) -> Result<Json<Vec<index::Directory>>, errors::Error> {
-	let result = index::get_recent_albums(db.deref(), 20)?;
+fn recent(db: State<Arc<DB>>, _auth: Auth) -> Result<Json<Vec<index::Directory>>, errors::Error> {
+	let result = index::get_recent_albums(db.deref().deref(), 20)?;
 	Ok(Json(result))
 }
 
 #[get("/search")]
 fn search_root(
-	db: State<DB>,
+	db: State<Arc<DB>>,
 	_auth: Auth,
 ) -> Result<Json<Vec<index::CollectionFile>>, errors::Error> {
-	let result = index::search(db.deref(), "")?;
+	let result = index::search(db.deref().deref(), "")?;
 	Ok(Json(result))
 }
 
 #[get("/search/<query>")]
 fn search(
-	db: State<DB>,
+	db: State<Arc<DB>>,
 	_auth: Auth,
 	query: String,
 ) -> Result<Json<Vec<index::CollectionFile>>, errors::Error> {
-	let result = index::search(db.deref(), &query)?;
+	let result = index::search(db.deref().deref(), &query)?;
 	Ok(Json(result))
 }
 
 #[get("/serve/<path>")]
 fn serve(
-	db: State<DB>,
+	db: State<Arc<DB>>,
 	_auth: Auth,
 	path: VFSPathBuf,
 ) -> Result<serve::RangeResponder<File>, errors::Error> {
-	let db: &DB = db.deref();
+	let db: &DB = db.deref().deref();
 	let vfs = db.get_vfs()?;
 	let real_path = vfs.virtual_to_real(&path.into() as &PathBuf)?;
 
@@ -310,10 +310,10 @@ struct ListPlaylistsEntry {
 
 #[get("/playlists")]
 fn list_playlists(
-	db: State<DB>,
+	db: State<Arc<DB>>,
 	auth: Auth,
 ) -> Result<Json<Vec<ListPlaylistsEntry>>, errors::Error> {
-	let playlist_names = playlist::list_playlists(&auth.username, db.deref())?;
+	let playlist_names = playlist::list_playlists(&auth.username, db.deref().deref())?;
 	let playlists: Vec<ListPlaylistsEntry> = playlist_names
 		.into_iter()
 		.map(|p| ListPlaylistsEntry { name: p })
@@ -329,51 +329,51 @@ struct SavePlaylistInput {
 
 #[put("/playlist/<name>", data = "<playlist>")]
 fn save_playlist(
-	db: State<DB>,
+	db: State<Arc<DB>>,
 	auth: Auth,
 	name: String,
 	playlist: Json<SavePlaylistInput>,
 ) -> Result<(), errors::Error> {
-	playlist::save_playlist(&name, &auth.username, &playlist.tracks, db.deref())?;
+	playlist::save_playlist(&name, &auth.username, &playlist.tracks, db.deref().deref())?;
 	Ok(())
 }
 
 #[get("/playlist/<name>")]
 fn read_playlist(
-	db: State<DB>,
+	db: State<Arc<DB>>,
 	auth: Auth,
 	name: String,
 ) -> Result<Json<Vec<index::Song>>, errors::Error> {
-	let songs = playlist::read_playlist(&name, &auth.username, db.deref())?;
+	let songs = playlist::read_playlist(&name, &auth.username, db.deref().deref())?;
 	Ok(Json(songs))
 }
 
 #[delete("/playlist/<name>")]
-fn delete_playlist(db: State<DB>, auth: Auth, name: String) -> Result<(), errors::Error> {
-	playlist::delete_playlist(&name, &auth.username, db.deref())?;
+fn delete_playlist(db: State<Arc<DB>>, auth: Auth, name: String) -> Result<(), errors::Error> {
+	playlist::delete_playlist(&name, &auth.username, db.deref().deref())?;
 	Ok(())
 }
 
 #[put("/lastfm/now_playing/<path>")]
-fn lastfm_now_playing(db: State<DB>, auth: Auth, path: VFSPathBuf) -> Result<(), errors::Error> {
-	lastfm::now_playing(db.deref(), &auth.username, &path.into() as &PathBuf)?;
+fn lastfm_now_playing(db: State<Arc<DB>>, auth: Auth, path: VFSPathBuf) -> Result<(), errors::Error> {
+	lastfm::now_playing(db.deref().deref(), &auth.username, &path.into() as &PathBuf)?;
 	Ok(())
 }
 
 #[post("/lastfm/scrobble/<path>")]
-fn lastfm_scrobble(db: State<DB>, auth: Auth, path: VFSPathBuf) -> Result<(), errors::Error> {
-	lastfm::scrobble(db.deref(), &auth.username, &path.into() as &PathBuf)?;
+fn lastfm_scrobble(db: State<Arc<DB>>, auth: Auth, path: VFSPathBuf) -> Result<(), errors::Error> {
+	lastfm::scrobble(db.deref().deref(), &auth.username, &path.into() as &PathBuf)?;
 	Ok(())
 }
 
 #[get("/lastfm/link?<token>&<content>")]
 fn lastfm_link(
-	db: State<DB>,
+	db: State<Arc<DB>>,
 	auth: Auth,
 	token: String,
 	content: String,
 ) -> Result<Html<String>, errors::Error> {
-	lastfm::link(db.deref(), &auth.username, &token)?;
+	lastfm::link(db.deref().deref(), &auth.username, &token)?;
 
 	// Percent decode
 	let base64_content = match RawStr::from_str(&content).percent_decode() {
@@ -397,7 +397,7 @@ fn lastfm_link(
 }
 
 #[delete("/lastfm/link")]
-fn lastfm_unlink(db: State<DB>, auth: Auth) -> Result<(), errors::Error> {
-	lastfm::unlink(db.deref(), &auth.username)?;
+fn lastfm_unlink(db: State<Arc<DB>>, auth: Auth) -> Result<(), errors::Error> {
+	lastfm::unlink(db.deref().deref(), &auth.username)?;
 	Ok(())
 }
