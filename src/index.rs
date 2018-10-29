@@ -435,7 +435,7 @@ where
 	Ok(())
 }
 
-fn update<T>(db: &T) -> Result<(), errors::Error>
+pub fn update<T>(db: &T) -> Result<(), errors::Error>
 where
 	T: ConnectionSource + VFSSource,
 {
