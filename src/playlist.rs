@@ -7,12 +7,12 @@ use diesel::BelongingToDsl;
 use std::path::Path;
 
 #[cfg(test)]
-use db;
-use db::ConnectionSource;
-use db::{playlist_songs, playlists, users};
-use errors::*;
-use index::{self, Song};
-use vfs::VFSSource;
+use crate::db;
+use crate::db::ConnectionSource;
+use crate::db::{playlist_songs, playlists, users};
+use crate::errors::*;
+use crate::index::{self, Song};
+use crate::vfs::VFSSource;
 
 #[derive(Insertable)]
 #[table_name = "playlists"]
@@ -262,7 +262,7 @@ fn test_delete_playlist() {
 
 #[test]
 fn test_fill_playlist() {
-	use index;
+	use crate::index;
 
 	let db = db::_get_test_db("fill_playlist.sqlite");
 	index::update(&db).unwrap();

@@ -10,17 +10,17 @@ use std::str;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use config::{self, Config, Preferences};
-use db::DB;
-use errors;
-use index;
-use lastfm;
-use playlist;
-use serve;
-use thumbnails;
-use user;
-use utils;
-use vfs::VFSSource;
+use crate::config::{self, Config, Preferences};
+use crate::db::DB;
+use crate::errors;
+use crate::index;
+use crate::lastfm;
+use crate::playlist;
+use crate::serve;
+use crate::thumbnails;
+use crate::user;
+use crate::utils;
+use crate::vfs::VFSSource;
 
 const CURRENT_MAJOR_VERSION: i32 = 3;
 const CURRENT_MINOR_VERSION: i32 = 0;

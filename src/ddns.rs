@@ -5,9 +5,9 @@ use std::io;
 use std::thread;
 use std::time;
 
-use db::ddns_config;
-use db::{ConnectionSource, DB};
-use errors;
+use crate::db::ddns_config;
+use crate::db::{ConnectionSource, DB};
+use crate::errors;
 
 #[derive(Clone, Debug, Deserialize, Insertable, PartialEq, Queryable, Serialize)]
 #[table_name = "ddns_config"]
