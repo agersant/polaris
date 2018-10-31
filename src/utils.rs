@@ -64,12 +64,6 @@ fn test_get_audio_format() {
 	);
 }
 
-#[test]
-fn test_is_song() {
-	assert!(is_song(Path::new("animals/🐷/my🐖file.mp3")));
-	assert!(!is_song(Path::new("animals/🐷/my🐖file.jpg")));
-}
-
 pub fn is_image(path: &Path) -> bool {
 	let extension = match path.extension() {
 		Some(e) => e,
