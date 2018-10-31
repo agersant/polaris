@@ -6,7 +6,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard};
 
-use errors::*;
+use crate::errors::*;
 
 mod schema;
 
@@ -85,7 +85,7 @@ impl ConnectionSource for DB {
 }
 
 pub fn _get_test_db(name: &str) -> DB {
-	use config;
+	use crate::config;
 	let config_path = Path::new("test/config.toml");
 	let config = config::parse_toml_file(&config_path).unwrap();
 

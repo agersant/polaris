@@ -59,7 +59,7 @@ use std::io::prelude::*;
 use unix_daemonize::{daemonize_redirect, ChdirMode};
 
 use core::ops::Deref;
-use errors::*;
+use crate::errors::*;
 use getopts::Options;
 use iron::prelude::*;
 use mount::Mount;

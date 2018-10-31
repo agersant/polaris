@@ -14,14 +14,14 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time;
 
-use config::MiscSettings;
+use crate::config::MiscSettings;
 #[cfg(test)]
-use db;
-use db::ConnectionSource;
-use db::{directories, misc_settings, songs};
-use errors;
-use metadata;
-use vfs::{VFSSource, VFS};
+use crate::db;
+use crate::db::ConnectionSource;
+use crate::db::{directories, misc_settings, songs};
+use crate::errors;
+use crate::metadata;
+use crate::vfs::{VFSSource, VFS};
 
 const INDEX_BUILDING_INSERT_BUFFER_SIZE: usize = 1000; // Insertions in each transaction
 const INDEX_BUILDING_CLEAN_BUFFER_SIZE: usize = 500; // Insertions in each transaction

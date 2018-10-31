@@ -6,11 +6,11 @@ use std::collections::HashMap;
 use std::io::Read;
 use std::path::Path;
 
-use db::ConnectionSource;
-use errors;
-use index;
-use user;
-use vfs::VFSSource;
+use crate::db::ConnectionSource;
+use crate::errors;
+use crate::index;
+use crate::user;
+use crate::vfs::VFSSource;
 
 const LASTFM_API_KEY: &str = "02b96c939a2b451c31dfd67add1f696e";
 const LASTFM_API_SECRET: &str = "0f25a80ceef4b470b5cb97d99d4b3420";
