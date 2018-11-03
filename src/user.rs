@@ -4,9 +4,9 @@ use diesel::prelude::*;
 use rand;
 use ring::{digest, pbkdf2};
 
-use crate::db::users;
-use crate::db::ConnectionSource;
-use crate::errors::*;
+use db::users;
+use db::ConnectionSource;
+use errors::*;
 
 #[derive(Debug, Insertable, Queryable)]
 #[table_name = "users"]
@@ -65,7 +65,7 @@ pub fn auth<T>(db: &T, username: &str, password: &str) -> Result<bool>
 where
 	T: ConnectionSource,
 {
-	use crate::db::users::dsl::*;
+	use db::users::dsl::*;
 	let connection = db.get_connection();
 	match users
 		.select((password_hash, password_salt))
@@ -82,7 +82,7 @@ pub fn count<T>(db: &T) -> Result<i64>
 where
 	T: ConnectionSource,
 {
-	use crate::db::users::dsl::*;
+	use db::users::dsl::*;
 	let connection = db.get_connection();
 	let count = users.count().get_result(connection.deref())?;
 	Ok(count)
@@ -92,7 +92,7 @@ pub fn is_admin<T>(db: &T, username: &str) -> Result<bool>
 where
 	T: ConnectionSource,
 {
-	use crate::db::users::dsl::*;
+	use db::users::dsl::*;
 	let connection = db.get_connection();
 	let is_admin: i32 = users
 		.filter(name.eq(username))
@@ -105,7 +105,7 @@ pub fn lastfm_link<T>(db: &T, username: &str, lastfm_login: &str, session_key: &
 where
 	T: ConnectionSource,
 {
-	use crate::db::users::dsl::*;
+	use db::users::dsl::*;
 	let connection = db.get_connection();
 	diesel::update(users.filter(name.eq(username)))
 		.set((
@@ -119,7 +119,7 @@ pub fn get_lastfm_session_key<T>(db: &T, username: &str) -> Result<String>
 where
 	T: ConnectionSource,
 {
-	use crate::db::users::dsl::*;
+	use db::users::dsl::*;
 	let connection = db.get_connection();
 	let token = users
 		.filter(name.eq(username))
@@ -135,7 +135,7 @@ pub fn lastfm_unlink<T>(db: &T, username: &str) -> Result<()>
 where
 	T: ConnectionSource,
 {
-	use crate::db::users::dsl::*;
+	use db::users::dsl::*;
 	let connection = db.get_connection();
 	diesel::update(users.filter(name.eq(username)))
 		.set((lastfm_session_key.eq(""), lastfm_username.eq("")))

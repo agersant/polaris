@@ -8,13 +8,13 @@ use std::io::Read;
 use std::path;
 use toml;
 
-use crate::db::ConnectionSource;
-use crate::db::DB;
-use crate::db::{ddns_config, misc_settings, mount_points, users};
-use crate::ddns::DDNSConfig;
-use crate::errors::*;
-use crate::user::*;
-use crate::vfs::MountPoint;
+use db::ConnectionSource;
+use db::DB;
+use db::{ddns_config, misc_settings, mount_points, users};
+use ddns::DDNSConfig;
+use errors::*;
+use user::*;
+use vfs::MountPoint;
 
 #[derive(Debug, Queryable)]
 pub struct MiscSettings {

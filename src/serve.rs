@@ -11,7 +11,7 @@ use std::fs::{self, File};
 use std::io::{self, Read, Seek, SeekFrom, Write};
 use std::path::Path;
 
-use crate::errors::{Error, ErrorKind};
+use errors::{Error, ErrorKind};
 
 pub fn deliver(path: &Path, range_header: Option<&Range>) -> IronResult<Response> {
 	match fs::metadata(path) {

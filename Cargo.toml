@@ -2,7 +2,6 @@
 name = "polaris"
 version = "0.8.0"
 authors = ["Antoine Gersant <antoine.gersant@lesforges.org>"]
-edition = "2018"
 
 [features]
 ui = []

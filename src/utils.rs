@@ -2,7 +2,7 @@ use app_dirs::{app_root, AppDataType, AppInfo};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::errors::*;
+use errors::*;
 
 #[cfg(not(target_os = "linux"))]
 const APP_INFO: AppInfo = AppInfo {

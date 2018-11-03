@@ -11,8 +11,8 @@ use std::fs::{DirBuilder, File};
 use std::hash::{Hash, Hasher};
 use std::path::*;
 
-use crate::errors::*;
-use crate::utils;
+use errors::*;
+use utils;
 
 const THUMBNAILS_PATH: &str = "thumbnails";
 
