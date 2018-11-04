@@ -18,7 +18,6 @@ extern crate id3;
 extern crate image;
 extern crate iron;
 extern crate lewton;
-extern crate md5;
 extern crate metaflac;
 extern crate mount;
 extern crate mp3_duration;
@@ -34,7 +33,6 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
-extern crate serde_xml_rs;
 extern crate staticfile;
 extern crate toml;
 extern crate typemap;
