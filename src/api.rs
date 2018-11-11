@@ -236,7 +236,7 @@ fn auth(
 ) -> Result<Json<AuthOutput>, errors::Error> {
 
 	if !user::auth::<DB>(&db, &credentials.username, &credentials.password)? {
-		return Err(errors::Error::from(errors::ErrorKind::IncorrectCredentials))
+		bail!(errors::ErrorKind::IncorrectCredentials)
 	}
 
 	cookies.add_private(get_session_cookie(&credentials.username));
@@ -412,19 +412,19 @@ fn lastfm_link(
 	// Percent decode
 	let base64_content = match RawStr::from_str(&content).percent_decode() {
 		Ok(s) => s,
-		Err(_) => return Err(errors::Error::from(errors::ErrorKind::EncodingError).into()),
+		Err(_) => bail!(errors::ErrorKind::EncodingError),
 	};
 
 	// Base64 decode
 	let popup_content = match base64::decode(base64_content.as_bytes()) {
 		Ok(c) => c,
-		Err(_) => return Err(errors::Error::from(errors::ErrorKind::EncodingError).into()),
+		Err(_) => bail!(errors::ErrorKind::EncodingError),
 	};
 
 	// UTF-8 decode
 	let popup_content_string = match str::from_utf8(&popup_content) {
 		Ok(s) => s,
-		Err(_) => return Err(errors::Error::from(errors::ErrorKind::EncodingError).into()),
+		Err(_) => bail!(errors::ErrorKind::EncodingError),
 	};
 
 	Ok(Html(popup_content_string.to_string()))
