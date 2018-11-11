@@ -59,6 +59,7 @@ use simplelog::{Level, LevelFilter, SimpleLogger, TermLogger};
 use std::path::Path;
 use std::sync::Arc;
 
+mod api;
 mod config;
 mod db;
 mod ddns;
@@ -67,7 +68,6 @@ mod index;
 mod lastfm;
 mod metadata;
 mod playlist;
-mod rocket_api;
 mod serve;
 mod thumbnails;
 mod ui;
@@ -243,7 +243,7 @@ fn run() -> Result<()> {
 			.manage(db_server)
 			.manage(command_sender)
 			.mount(&static_url, StaticFiles::from(web_dir_path))
-			.mount(&api_url, rocket_api::get_routes())
+			.mount(&api_url, api::get_routes())
 			.launch();
 	});
 
