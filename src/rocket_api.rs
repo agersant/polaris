@@ -24,7 +24,7 @@ use crate::vfs::VFSSource;
 
 const CURRENT_MAJOR_VERSION: i32 = 3;
 const CURRENT_MINOR_VERSION: i32 = 0;
-const SESSION_FIELD_USERNAME: &str = "username";
+const COOKIE_SESSION: &str = "session";
 
 pub fn get_routes() -> Vec<rocket::Route> {
 	routes![
@@ -60,9 +60,10 @@ struct Auth {
 	username: String,
 }
 
-fn get_auth_cookie(username: &str) -> Cookie<'static> {
-	Cookie::build(SESSION_FIELD_USERNAME, username.to_owned())
+fn get_session_cookie(username: &str) -> Cookie<'static> {
+	Cookie::build(COOKIE_SESSION, username.to_owned())
 		.same_site(rocket::http::SameSite::Lax)
+		.http_only(true)
 		.finish()
 }
 
@@ -71,7 +72,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for Auth {
 
 	fn from_request(request: &'a Request<'r>) -> request::Outcome<Self, ()> {
 		let mut cookies = request.guard::<Cookies>().unwrap();
-		if let Some(u) = cookies.get_private(SESSION_FIELD_USERNAME) {
+		if let Some(u) = cookies.get_private(COOKIE_SESSION) {
 			return Outcome::Success(Auth {
 				username: u.value().to_string(),
 			});
@@ -89,7 +90,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for Auth {
 					_ => return Outcome::Failure((Status::InternalServerError, ())),
 				};
 				if user::auth(db.deref().deref(), &username, &password).unwrap_or(false) {
-					cookies.add_private(get_auth_cookie(&username));
+					cookies.add_private(get_session_cookie(&username));
 					return Outcome::Success(Auth {
 						username: username.to_string(),
 					});
@@ -238,7 +239,7 @@ fn auth(
 		return Err(errors::Error::from(errors::ErrorKind::IncorrectCredentials))
 	}
 
-	cookies.add_private(get_auth_cookie(&credentials.username));
+	cookies.add_private(get_session_cookie(&credentials.username));
 
 	let auth_output = AuthOutput {
 		admin: user::is_admin::<DB>(&db, &credentials.username)?,
