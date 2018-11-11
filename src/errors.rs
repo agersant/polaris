@@ -37,24 +37,11 @@ error_chain! {
 
 	errors {
 		DaemonError {}
-		AuthenticationRequired {}
-		AdminPrivilegeRequired {}
-		MissingConfig {}
-		MissingPreferences {}
-		MissingUsername {}
-		MissingPassword {}
-		MissingPlaylist {}
 		IncorrectCredentials {}
-		CannotServeDirectory {}
-		UnsupportedFileType {}
-		FileNotFound {}
-		MissingIndexVersion {}
-		MissingPlaylistName {}
 		EncodingError {}
 		MissingLastFMCredentials {}
 		LastFMAuthError {}
 		LastFMDeserializationError {}
-		MissingDesiredResponse {}
 	}
 }
 
@@ -63,7 +50,6 @@ impl<'r> rocket::response::Responder<'r> for Error {
 		let mut build = rocket::response::Response::build();
 		build
 			.status(match self.0 {
-				ErrorKind::FileNotFound => rocket::http::Status::NotFound,
 				ErrorKind::IncorrectCredentials => rocket::http::Status::Unauthorized,
 				_ => rocket::http::Status::InternalServerError,
 			})
