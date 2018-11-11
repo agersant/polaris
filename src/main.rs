@@ -54,12 +54,13 @@ use unix_daemonize::{daemonize_redirect, ChdirMode};
 use core::ops::Deref;
 use crate::errors::*;
 use getopts::Options;
-use rocket_contrib::serve::StaticFiles;
 use simplelog::{Level, LevelFilter, SimpleLogger, TermLogger};
 use std::path::Path;
 use std::sync::Arc;
 
 mod api;
+#[cfg(test)]
+mod api_tests;
 mod config;
 mod db;
 mod ddns;
@@ -69,6 +70,7 @@ mod lastfm;
 mod metadata;
 mod playlist;
 mod serve;
+mod server;
 mod thumbnails;
 mod ui;
 mod user;
@@ -233,18 +235,16 @@ fn run() -> Result<()> {
 		.parse()
 		.or(Err("invalid port number"))?;
 
-	let config = rocket::Config::build(rocket::config::Environment::Production)
-		.port(port)
-		.finalize()?;
-
-	let db_server = db.clone();
+	let server = server::get_server(
+		port,
+		&static_url,
+		&api_url,
+		&web_dir_path,
+		db.clone(),
+		command_sender,
+	)?;
 	std::thread::spawn(move || {
-		rocket::custom(config)
-			.manage(db_server)
-			.manage(command_sender)
-			.mount(&static_url, StaticFiles::from(web_dir_path))
-			.mount(&api_url, api::get_routes())
-			.launch();
+		server.launch();
 	});
 
 	// Start DDNS updates
