@@ -36,11 +36,11 @@ toml = "0.4.5"
 
 [patch.crates-io.rocket]
 git = "https://github.com/SergioBenitez/Rocket.git"
-rev = "556206e"
+rev = "4224419e63a99b1f21db447f8c4aedab8daec41a"
 
 [patch.crates-io.rocket_contrib]
 git = "https://github.com/SergioBenitez/Rocket.git"
-rev = "556206e"
+rev = "4224419e63a99b1f21db447f8c4aedab8daec41a"
 
 [dependencies.rocket_contrib]
 version = "0.4.0-dev"
