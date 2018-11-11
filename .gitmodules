@@ -1,3 +1,4 @@
 [submodule "web"]
 	path = web
 	url = https://github.com/agersant/polaris-web.git
+	branch = .
