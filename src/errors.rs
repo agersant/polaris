@@ -64,6 +64,7 @@ impl<'r> rocket::response::Responder<'r> for Error {
 		build
 			.status(match self.0 {
 				ErrorKind::FileNotFound => rocket::http::Status::NotFound,
+				ErrorKind::IncorrectCredentials => rocket::http::Status::Unauthorized,
 				_ => rocket::http::Status::InternalServerError,
 			})
 			.ok()

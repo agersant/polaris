@@ -233,7 +233,11 @@ fn auth(
 	credentials: Json<AuthCredentials>,
 	mut cookies: Cookies,
 ) -> Result<Json<AuthOutput>, errors::Error> {
-	user::auth::<DB>(&db, &credentials.username, &credentials.password)?;
+
+	if !user::auth::<DB>(&db, &credentials.username, &credentials.password)? {
+		return Err(errors::Error::from(errors::ErrorKind::IncorrectCredentials))
+	}
+
 	cookies.add_private(get_auth_cookie(&credentials.username));
 
 	let auth_output = AuthOutput {
