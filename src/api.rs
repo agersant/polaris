@@ -234,7 +234,6 @@ fn auth(
 	credentials: Json<AuthCredentials>,
 	mut cookies: Cookies,
 ) -> Result<Json<AuthOutput>, errors::Error> {
-
 	if !user::auth::<DB>(&db, &credentials.username, &credentials.password)? {
 		bail!(errors::ErrorKind::IncorrectCredentials)
 	}

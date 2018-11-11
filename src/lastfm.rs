@@ -60,12 +60,7 @@ where
 	let mut scrobbler = Scrobbler::new(LASTFM_API_KEY.into(), LASTFM_API_SECRET.into());
 	let auth_response = scrobbler.authenticate_with_token(token.to_string())?;
 
-	user::lastfm_link(
-		db,
-		username,
-		&auth_response.name,
-		&auth_response.key,
-	)
+	user::lastfm_link(db, username, &auth_response.name, &auth_response.key)
 }
 
 pub fn unlink<T>(db: &T, username: &str) -> Result<(), errors::Error>
