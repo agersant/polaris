@@ -129,6 +129,12 @@ fn settings() {
 	let env = get_test_environment("api_settings.sqlite");
 	let client = &env.client;
 	complete_initial_setup(client);
+
+	{
+		let response = client.get("/api/settings").dispatch();
+		assert_eq!(response.status(), Status::Unauthorized);
+	}
+
 	do_auth(client);
 
 	{
