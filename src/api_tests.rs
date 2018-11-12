@@ -86,3 +86,63 @@ fn initial_setup() {
 		assert_eq!(response_json, api::InitialSetup{has_any_users: true});
 	}
 }
+
+#[test]
+fn settings() {
+	// TODO
+}
+
+#[test]
+fn preferences() {
+	// TODO
+}
+
+#[test]
+fn trigger_index() {
+	// TODO
+}
+
+#[test]
+fn auth() {
+	// TODO
+}
+
+#[test]
+fn browse() {
+	// TODO
+}
+
+#[test]
+fn flatten() {
+	// TODO
+}
+
+#[test]
+fn random() {
+	// TODO
+}
+
+#[test]
+fn recent() {
+	// TODO
+}
+
+#[test]
+fn search() {
+	// TODO
+}
+
+#[test]
+fn serve() {
+	// TODO
+}
+
+#[test]
+fn playlists() {
+	// TODO
+}
+
+#[test]
+fn last_fm() {
+	// TODO
+}
