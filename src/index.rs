@@ -34,6 +34,7 @@ no_arg_sql_function!(
 
 enum Command {
 	REINDEX,
+	EXIT,
 }
 
 struct CommandReceiver {
@@ -64,6 +65,14 @@ impl CommandSender {
 			Err(_) => bail!("Trigger reindex channel error"),
 		}
 	}
+
+	pub fn exit(&self) -> Result<(), errors::Error> {
+		let sender = self.sender.lock().unwrap();
+		match sender.send(Command::EXIT) {
+			Ok(_) => Ok(()),
+			Err(_) => bail!("Index exit channel error"),
+		}
+	}
 }
 
 pub fn init(db: Arc<DB>) -> Arc<CommandSender> {
@@ -76,13 +85,6 @@ pub fn init(db: Arc<DB>) -> Arc<CommandSender> {
 	std::thread::spawn(move || {
 		let db = db_ref.deref();
 		update_loop(db, &command_receiver);
-	});
-
-	// Trigger auto-indexing
-	let db_ref = db.clone();
-	let command_sender_clone = command_sender.clone();
-	std::thread::spawn(move || {
-		self_trigger(db_ref.deref(), &command_sender_clone);
 	});
 
 	command_sender
@@ -456,18 +458,15 @@ where
 {
 	loop {
 		// Wait for a command
-		if let Err(e) = command_buffer.receiver.recv() {
-			error!("Error while waiting on index command buffer: {}", e);
+		if command_buffer.receiver.recv().is_err() {
 			return;
 		}
 
 		// Flush the buffer to ignore spammy requests
 		loop {
 			match command_buffer.receiver.try_recv() {
-				Err(TryRecvError::Disconnected) => {
-					error!("Error while flushing index command buffer");
-					return;
-				}
+				Err(TryRecvError::Disconnected) => return,
+				Ok(Command::EXIT) => return,
 				Err(TryRecvError::Empty) => break,
 				Ok(_) => (),
 			}

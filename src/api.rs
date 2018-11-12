@@ -145,10 +145,10 @@ impl From<VFSPathBuf> for PathBuf {
 	}
 }
 
-#[derive(Serialize)]
-struct Version {
-	major: i32,
-	minor: i32,
+#[derive(PartialEq, Debug, Serialize, Deserialize)]
+pub struct Version {
+	pub major: i32,
+	pub minor: i32,
 }
 
 #[get("/version")]

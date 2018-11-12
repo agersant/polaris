@@ -211,6 +211,13 @@ fn run() -> Result<()> {
 	info!("Initializing index");
 	let command_sender = index::init(db.clone());
 
+	// Trigger auto-indexing
+	let db_auto_index = db.clone();
+	let command_sender_auto_index = command_sender.clone();
+	std::thread::spawn(move || {
+		index::self_trigger(db_auto_index.deref(), &command_sender_auto_index);
+	});
+
 	// API mount target
 	let prefix_url = config.prefix_url.unwrap_or_else(|| "".to_string());
 	let api_url = format!("{}/api", &prefix_url);
