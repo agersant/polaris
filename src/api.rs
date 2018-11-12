@@ -160,9 +160,9 @@ fn version() -> Json<Version> {
 	Json(current_version)
 }
 
-#[derive(Serialize)]
-struct InitialSetup {
-	has_any_users: bool,
+#[derive(PartialEq, Debug, Serialize, Deserialize)]
+pub struct InitialSetup {
+	pub has_any_users: bool,
 }
 
 #[get("/initial_setup")]

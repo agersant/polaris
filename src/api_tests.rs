@@ -40,6 +40,16 @@ fn get_test_environment(db_name: &str) -> TestEnvironment
 	TestEnvironment { client, command_sender }
 }
 
+fn complete_initial_setup(client: &Client) {
+	client.get("/api/initial_setup").dispatch();
+	client.put("/api/settings")
+	.body(r#"
+	{	"users": [{ "name": "test_user", "password": "test_password", "admin": true }]
+	,	"mount_dirs": [{ "name": "collection", "source": "test/collection" }]
+	}"#)
+	.dispatch();
+}
+
 #[test]
 fn version() {
 	let env = get_test_environment("api_version.sqlite");
@@ -51,4 +61,28 @@ fn version() {
 	let response_body = response.body_string().unwrap();
 	let response_json: api::Version = serde_json::from_str(&response_body).unwrap();
 	assert_eq!(response_json, api::Version{major: 3, minor: 0});
+}
+
+#[test]
+fn initial_setup() {
+	let env = get_test_environment("api_initial_setup.sqlite");
+	let client = &env.client;
+
+	{
+		let mut response = client.get("/api/initial_setup").dispatch();
+		assert_eq!(response.status(), Status::Ok);
+		let response_body = response.body_string().unwrap();
+		let response_json: api::InitialSetup = serde_json::from_str(&response_body).unwrap();
+		assert_eq!(response_json, api::InitialSetup{has_any_users: false});
+	}
+
+	complete_initial_setup(client);
+
+	{
+		let mut response = client.get("/api/initial_setup").dispatch();
+		assert_eq!(response.status(), Status::Ok);
+		let response_body = response.body_string().unwrap();
+		let response_json: api::InitialSetup = serde_json::from_str(&response_body).unwrap();
+		assert_eq!(response_json, api::InitialSetup{has_any_users: true});
+	}
 }
