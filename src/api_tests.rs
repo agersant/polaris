@@ -234,7 +234,38 @@ fn trigger_index() {
 
 #[test]
 fn auth() {
-	// TODO
+	let env = get_test_environment("api_auth.sqlite");
+	let client = &env.client;
+	complete_initial_setup(client);
+
+	{
+		let response = client
+			.post("/api/auth")
+			.body(r#"{"username": "garbage", "password": "garbage"}"#)
+			.dispatch();
+		assert_eq!(response.status(), Status::Unauthorized);
+	}
+	{
+		let response = client
+			.post("/api/auth")
+			.body(format!(
+				r#"{{"username": "{}", "password": "garbage"}}"#,
+				TEST_USERNAME
+			))
+			.dispatch();
+		assert_eq!(response.status(), Status::Unauthorized);
+	}
+	{
+		let response = client
+			.post("/api/auth")
+			.body(format!(
+				r#"{{"username": "{}", "password": "{}"}}"#,
+				TEST_USERNAME, TEST_PASSWORD
+			))
+			.dispatch();
+		assert_eq!(response.status(), Status::Ok);
+		assert_eq!(response.cookies()[0].name(), "session");
+	}
 }
 
 #[test]
