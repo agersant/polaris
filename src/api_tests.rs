@@ -309,7 +309,17 @@ fn random() {
 
 #[test]
 fn recent() {
-	// TODO
+	let env = get_test_environment("api_recent.sqlite");
+	let client = &env.client;
+	complete_initial_setup(client);
+	do_auth(client);
+	env.update_index();
+
+	let mut response = client.get("/api/recent").dispatch();
+	assert_eq!(response.status(), Status::Ok);
+	let response_body = response.body_string().unwrap();
+	let response_json: Vec<index::Directory> = serde_json::from_str(&response_body).unwrap();
+	assert_eq!(response_json.len(), 2);
 }
 
 #[test]
