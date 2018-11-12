@@ -4,6 +4,7 @@ use std::fs;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::{thread, time};
 
 use crate::api;
 use crate::config;
@@ -49,8 +50,15 @@ fn get_test_environment(db_name: &str) -> TestEnvironment {
 	let web_dir_path = PathBuf::from("web");
 	let command_sender = index::init(db.clone());
 
-	let server =
-		server::get_server(5050, "/", "/api", &web_dir_path, db.clone(), command_sender.clone()).unwrap();
+	let server = server::get_server(
+		5050,
+		"/",
+		"/api",
+		&web_dir_path,
+		db.clone(),
+		command_sender.clone(),
+	)
+	.unwrap();
 	let client = Client::new(server).unwrap();
 	TestEnvironment {
 		client,
@@ -243,7 +251,34 @@ fn preferences() {
 
 #[test]
 fn trigger_index() {
-	// TODO
+	let env = get_test_environment("api_trigger_index.sqlite");
+	let client = &env.client;
+	complete_initial_setup(client);
+	do_auth(client);
+
+	{
+		let mut response = client.get("/api/random").dispatch();
+		assert_eq!(response.status(), Status::Ok);
+		let response_body = response.body_string().unwrap();
+		let response_json: Vec<index::Directory> = serde_json::from_str(&response_body).unwrap();
+		assert_eq!(response_json.len(), 0);
+	}
+
+	{
+		let response = client.post("/api/trigger_index").dispatch();
+		assert_eq!(response.status(), Status::Ok);
+	}
+
+	let timeout = time::Duration::from_secs(5);
+	thread::sleep(timeout);
+
+	{
+		let mut response = client.get("/api/random").dispatch();
+		assert_eq!(response.status(), Status::Ok);
+		let response_body = response.body_string().unwrap();
+		let response_json: Vec<index::Directory> = serde_json::from_str(&response_body).unwrap();
+		assert_eq!(response_json.len(), 2);
+	}
 }
 
 #[test]
