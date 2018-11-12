@@ -109,12 +109,12 @@ pub struct Song {
 	pub duration: Option<i32>,
 }
 
-#[derive(Debug, Queryable, Serialize)]
+#[derive(Debug, Queryable, Serialize, Deserialize)]
 pub struct Directory {
-	#[serde(skip_serializing)]
+	#[serde(skip_serializing, skip_deserializing)]
 	id: i32,
 	pub path: String,
-	#[serde(skip_serializing)]
+	#[serde(skip_serializing, skip_deserializing)]
 	pub parent: Option<String>,
 	pub artist: Option<String>,
 	pub year: Option<i32>,

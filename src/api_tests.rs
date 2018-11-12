@@ -21,6 +21,13 @@ const TEST_MOUNT_SOURCE: &str = "test/collection";
 struct TestEnvironment {
 	pub client: Client,
 	command_sender: Arc<index::CommandSender>,
+	db: Arc<db::DB>,
+}
+
+impl TestEnvironment {
+	pub fn update_index(&self) {
+		index::update(self.db.deref()).unwrap();
+	}
 }
 
 impl Drop for TestEnvironment {
@@ -43,11 +50,12 @@ fn get_test_environment(db_name: &str) -> TestEnvironment {
 	let command_sender = index::init(db.clone());
 
 	let server =
-		server::get_server(5050, "/", "/api", &web_dir_path, db, command_sender.clone()).unwrap();
+		server::get_server(5050, "/", "/api", &web_dir_path, db.clone(), command_sender.clone()).unwrap();
 	let client = Client::new(server).unwrap();
 	TestEnvironment {
 		client,
 		command_sender,
+		db,
 	}
 }
 
@@ -286,7 +294,17 @@ fn flatten() {
 
 #[test]
 fn random() {
-	// TODO
+	let env = get_test_environment("api_random.sqlite");
+	let client = &env.client;
+	complete_initial_setup(client);
+	do_auth(client);
+	env.update_index();
+
+	let mut response = client.get("/api/random").dispatch();
+	assert_eq!(response.status(), Status::Ok);
+	let response_body = response.body_string().unwrap();
+	let response_json: Vec<index::Directory> = serde_json::from_str(&response_body).unwrap();
+	assert_eq!(response_json.len(), 2);
 }
 
 #[test]
