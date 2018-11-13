@@ -332,9 +332,9 @@ fn serve(
 	Ok(serve::RangeResponder::new(file))
 }
 
-#[derive(Serialize)]
-struct ListPlaylistsEntry {
-	name: String,
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub struct ListPlaylistsEntry {
+	pub name: String,
 }
 
 #[get("/playlists")]
@@ -351,9 +351,9 @@ fn list_playlists(
 	Ok(Json(playlists))
 }
 
-#[derive(Deserialize)]
-struct SavePlaylistInput {
-	tracks: Vec<String>,
+#[derive(Serialize, Deserialize)]
+pub struct SavePlaylistInput {
+	pub tracks: Vec<String>,
 }
 
 #[put("/playlist/<name>", data = "<playlist>")]

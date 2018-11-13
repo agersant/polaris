@@ -458,7 +458,64 @@ fn serve() {
 
 #[test]
 fn playlists() {
-	// TODO
+	let env = get_test_environment("api_playlists.sqlite");
+	let client = &env.client;
+	complete_initial_setup(client);
+	do_auth(client);
+	env.update_index();
+
+	{
+		let mut response = client.get("/api/playlists").dispatch();
+		assert_eq!(response.status(), Status::Ok);
+		let response_body = response.body_string().unwrap();
+		let response_json: Vec<api::ListPlaylistsEntry> = serde_json::from_str(&response_body).unwrap();
+		assert_eq!(response_json.len(), 0);
+	}
+
+	{
+		let songs: Vec<index::Song>;
+		{
+			let mut response = client.get("/api/flatten").dispatch();
+			let response_body = response.body_string().unwrap();
+			songs = serde_json::from_str(&response_body).unwrap();
+		}
+		let my_playlist = api::SavePlaylistInput{
+			tracks: songs[2..6].into_iter().map(|s| s.path.clone()).collect(),
+		};
+		let response = client.put("/api/playlist/my_playlist")
+		.body(serde_json::to_string(&my_playlist).unwrap())
+		.dispatch();
+		assert_eq!(response.status(), Status::Ok);
+	}
+
+	{
+		let mut response = client.get("/api/playlists").dispatch();
+		assert_eq!(response.status(), Status::Ok);
+		let response_body = response.body_string().unwrap();
+		let response_json: Vec<api::ListPlaylistsEntry> = serde_json::from_str(&response_body).unwrap();
+		assert_eq!(response_json, vec![api::ListPlaylistsEntry{ name: "my_playlist".into() }]);
+	}
+
+	{
+		let mut response = client.get("/api/playlist/my_playlist").dispatch();
+		assert_eq!(response.status(), Status::Ok);
+		let response_body = response.body_string().unwrap();
+		let response_json: Vec<index::Song> = serde_json::from_str(&response_body).unwrap();
+		assert_eq!(response_json.len(), 4);
+	}
+
+	{
+		let response = client.delete("/api/playlist/my_playlist").dispatch();
+		assert_eq!(response.status(), Status::Ok);
+	}
+
+	{
+		let mut response = client.get("/api/playlists").dispatch();
+		assert_eq!(response.status(), Status::Ok);
+		let response_body = response.body_string().unwrap();
+		let response_json: Vec<api::ListPlaylistsEntry> = serde_json::from_str(&response_body).unwrap();
+		assert_eq!(response_json.len(), 0);
+	}
 }
 
 #[test]
