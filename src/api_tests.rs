@@ -69,27 +69,32 @@ fn get_test_environment(db_name: &str) -> TestEnvironment {
 }
 
 fn complete_initial_setup(client: &Client) {
-	let body = format!(
-		r#"
-	{{	"users": [{{ "name": "{}", "password": "{}", "admin": true }}]
-	,	"mount_dirs": [{{ "name": "{}", "source": "{}" }}]
-	}}"#,
-		TEST_USERNAME, TEST_PASSWORD, TEST_MOUNT_NAME, TEST_MOUNT_SOURCE
-	);
-
+	let configuration = config::Config {
+		album_art_pattern: None,
+		prefix_url: None,
+		reindex_every_n_seconds: None,
+		ydns: None,
+		users: Some(vec![config::ConfigUser {
+			name: TEST_USERNAME.into(),
+			password: TEST_PASSWORD.into(),
+			admin: true,
+		}]),
+		mount_dirs: Some(vec![vfs::MountPoint {
+			name: TEST_MOUNT_NAME.into(),
+			source: TEST_MOUNT_SOURCE.into(),
+		}]),
+	};
+	let body = serde_json::to_string(&configuration).unwrap();
 	let response = client.put("/api/settings").body(&body).dispatch();
 	assert_eq!(response.status(), Status::Ok);
 }
 
 fn do_auth(client: &Client) {
-	let body = format!(
-		r#"
-	{{	"username": "{}"
-	,	"password": "{}"
-	}}"#,
-		TEST_USERNAME, TEST_PASSWORD
-	);
-
+	let credentials = api::AuthCredentials {
+		username: TEST_USERNAME.into(),
+		password: TEST_PASSWORD.into(),
+	};
+	let body = serde_json::to_string(&credentials).unwrap();
 	let response = client.post("/api/auth").body(body).dispatch();
 	assert_eq!(response.status(), Status::Ok);
 }
@@ -183,65 +188,62 @@ fn settings() {
 		);
 	}
 
-	client
-		.put("/api/settings")
-		.body(
-			r#"
-		{	"users":	[	{ "name": "test_user", "password": "test_password", "admin": true }
-						,	{ "name": "other_user", "password": "other_password", "admin": false }
-						]
-		,	"mount_dirs":	[	{ "name": "collection", "source": "test/collection" }
-							, 	{ "name": "more_music", "source": "test/collection" }
-							]
-		,	"album_art_pattern": "my_pattern"
-		,	"reindex_every_n_seconds": 3600
-		,	"prefix_url": "my_prefix"
-		,	"ydns": { "host": "my_host", "username": "my_username", "password": "my_password" }
-		}"#,
-		)
-		.dispatch();
+	let mut configuration = config::Config {
+		album_art_pattern: Some("my_pattern".to_owned()),
+		reindex_every_n_seconds: Some(3600),
+		mount_dirs: Some(vec![
+			vfs::MountPoint {
+				name: TEST_MOUNT_NAME.into(),
+				source: TEST_MOUNT_SOURCE.into(),
+			},
+			vfs::MountPoint {
+				name: "more_music".into(),
+				source: "test/collection".into(),
+			},
+		]),
+		prefix_url: Some("my_prefix".to_owned()),
+		users: Some(vec![
+			config::ConfigUser {
+				name: "test_user".into(),
+				password: "some_password".into(),
+				admin: true,
+			},
+			config::ConfigUser {
+				name: "other_user".into(),
+				password: "some_other_password".into(),
+				admin: false,
+			},
+		]),
+		ydns: Some(ddns::DDNSConfig {
+			host: "my_host".into(),
+			username: "my_username".into(),
+			password: "my_password".into(),
+		}),
+	};
+
+	let body = serde_json::to_string(&configuration).unwrap();
+
+	configuration.users = Some(vec![
+		config::ConfigUser {
+			name: "test_user".into(),
+			password: "".into(),
+			admin: true,
+		},
+		config::ConfigUser {
+			name: "other_user".into(),
+			password: "".into(),
+			admin: false,
+		},
+	]);
+
+	client.put("/api/settings").body(body).dispatch();
 
 	{
 		let mut response = client.get("/api/settings").dispatch();
 		assert_eq!(response.status(), Status::Ok);
 		let response_body = response.body_string().unwrap();
 		let response_json: config::Config = serde_json::from_str(&response_body).unwrap();
-
-		assert_eq!(
-			response_json,
-			config::Config {
-				album_art_pattern: Some("my_pattern".to_owned()),
-				reindex_every_n_seconds: Some(3600),
-				mount_dirs: Some(vec![
-					vfs::MountPoint {
-						name: TEST_MOUNT_NAME.into(),
-						source: TEST_MOUNT_SOURCE.into()
-					},
-					vfs::MountPoint {
-						name: "more_music".into(),
-						source: "test/collection".into()
-					}
-				]),
-				prefix_url: Some("my_prefix".to_owned()),
-				users: Some(vec![
-					config::ConfigUser {
-						name: "test_user".into(),
-						password: "".into(),
-						admin: true
-					},
-					config::ConfigUser {
-						name: "other_user".into(),
-						password: "".into(),
-						admin: false
-					}
-				]),
-				ydns: Some(ddns::DDNSConfig {
-					host: "my_host".into(),
-					username: "my_username".into(),
-					password: "my_password".into()
-				}),
-			}
-		);
+		assert_eq!(response_json, configuration);
 	}
 }
 
@@ -289,29 +291,35 @@ fn auth() {
 	complete_initial_setup(client);
 
 	{
+		let credentials = api::AuthCredentials {
+			username: "garbage".into(),
+			password: "garbage".into(),
+		};
 		let response = client
 			.post("/api/auth")
-			.body(r#"{"username": "garbage", "password": "garbage"}"#)
+			.body(serde_json::to_string(&credentials).unwrap())
 			.dispatch();
 		assert_eq!(response.status(), Status::Unauthorized);
 	}
 	{
+		let credentials = api::AuthCredentials {
+			username: TEST_USERNAME.into(),
+			password: "garbage".into(),
+		};
 		let response = client
 			.post("/api/auth")
-			.body(format!(
-				r#"{{"username": "{}", "password": "garbage"}}"#,
-				TEST_USERNAME
-			))
+			.body(serde_json::to_string(&credentials).unwrap())
 			.dispatch();
 		assert_eq!(response.status(), Status::Unauthorized);
 	}
 	{
+		let credentials = api::AuthCredentials {
+			username: TEST_USERNAME.into(),
+			password: TEST_PASSWORD.into(),
+		};
 		let response = client
 			.post("/api/auth")
-			.body(format!(
-				r#"{{"username": "{}", "password": "{}"}}"#,
-				TEST_USERNAME, TEST_PASSWORD
-			))
+			.body(serde_json::to_string(&credentials).unwrap())
 			.dispatch();
 		assert_eq!(response.status(), Status::Ok);
 		assert_eq!(response.cookies()[0].name(), "session");

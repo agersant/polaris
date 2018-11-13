@@ -217,10 +217,10 @@ fn trigger_index(
 	Ok(())
 }
 
-#[derive(Deserialize)]
-struct AuthCredentials {
-	username: String,
-	password: String,
+#[derive(Serialize, Deserialize)]
+pub struct AuthCredentials {
+	pub username: String,
+	pub password: String,
 }
 
 #[derive(Serialize)]
