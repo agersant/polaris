@@ -379,7 +379,27 @@ fn browse() {
 
 #[test]
 fn flatten() {
-	// TODO
+	let env = get_test_environment("api_flatten.sqlite");
+	let client = &env.client;
+	complete_initial_setup(client);
+	do_auth(client);
+	env.update_index();
+
+	{
+		let mut response = client.get("/api/flatten").dispatch();
+		assert_eq!(response.status(), Status::Ok);
+		let response_body = response.body_string().unwrap();
+		let response_json: Vec<index::Song> = serde_json::from_str(&response_body).unwrap();
+		assert_eq!(response_json.len(), 12);
+	}
+
+	{
+		let mut response = client.get("/api/flatten/collection").dispatch();
+		assert_eq!(response.status(), Status::Ok);
+		let response_body = response.body_string().unwrap();
+		let response_json: Vec<index::Song> = serde_json::from_str(&response_body).unwrap();
+		assert_eq!(response_json.len(), 12);
+	}
 }
 
 #[test]
