@@ -1,4 +1,5 @@
 use rocket::http::Status;
+use rocket::http::uri::Uri;
 use rocket::local::Client;
 use std::fs;
 use std::ops::Deref;
@@ -319,7 +320,61 @@ fn auth() {
 
 #[test]
 fn browse() {
-	// TODO
+	let env = get_test_environment("api_browse.sqlite");
+	let client = &env.client;
+	complete_initial_setup(client);
+	do_auth(client);
+	env.update_index();
+
+	{
+		let mut response = client.get("/api/browse").dispatch();
+		assert_eq!(response.status(), Status::Ok);
+		let response_body = response.body_string().unwrap();
+		let response_json: Vec<index::CollectionFile> = serde_json::from_str(&response_body).unwrap();
+		assert_eq!(response_json.len(), 1);
+	}
+
+	let mut next;
+	{
+		let mut response = client.get("/api/browse/collection").dispatch();
+		assert_eq!(response.status(), Status::Ok);
+		let response_body = response.body_string().unwrap();
+		let response_json: Vec<index::CollectionFile> = serde_json::from_str(&response_body).unwrap();
+		assert_eq!(response_json.len(), 2);
+
+		match response_json[0] {
+			index::CollectionFile::Directory(ref d) => {
+				next = d.path.clone();
+			},
+			_ => panic!()
+		}
+	}
+
+	// /api/browse/collection/Khemmis
+	{
+		let url = format!("/api/browse/{}", Uri::percent_encode(&next));
+		let mut response = client.get(url).dispatch();
+		assert_eq!(response.status(), Status::Ok);
+		let response_body = response.body_string().unwrap();
+		let response_json: Vec<index::CollectionFile> = serde_json::from_str(&response_body).unwrap();
+		assert_eq!(response_json.len(), 1);
+		match response_json[0] {
+			index::CollectionFile::Directory(ref d) => {
+				next = d.path.clone();
+			},
+			_ => panic!()
+		}
+	}
+
+	// /api/browse/collection/Khemmis/Hunted
+	{
+		let url = format!("/api/browse/{}", Uri::percent_encode(&next));
+		let mut response = client.get(url).dispatch();
+		assert_eq!(response.status(), Status::Ok);
+		let response_body = response.body_string().unwrap();
+		let response_json: Vec<index::CollectionFile> = serde_json::from_str(&response_body).unwrap();
+		assert_eq!(response_json.len(), 5);
+	}
 }
 
 #[test]
