@@ -538,8 +538,3 @@ fn playlists() {
 		assert_eq!(response_json.len(), 0);
 	}
 }
-
-#[test]
-fn last_fm() {
-	// TODO
-}
