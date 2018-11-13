@@ -1,5 +1,5 @@
-use rocket::http::Status;
 use rocket::http::uri::Uri;
+use rocket::http::Status;
 use rocket::local::Client;
 use std::fs;
 use std::ops::Deref;
@@ -330,7 +330,8 @@ fn browse() {
 		let mut response = client.get("/api/browse").dispatch();
 		assert_eq!(response.status(), Status::Ok);
 		let response_body = response.body_string().unwrap();
-		let response_json: Vec<index::CollectionFile> = serde_json::from_str(&response_body).unwrap();
+		let response_json: Vec<index::CollectionFile> =
+			serde_json::from_str(&response_body).unwrap();
 		assert_eq!(response_json.len(), 1);
 	}
 
@@ -339,14 +340,15 @@ fn browse() {
 		let mut response = client.get("/api/browse/collection").dispatch();
 		assert_eq!(response.status(), Status::Ok);
 		let response_body = response.body_string().unwrap();
-		let response_json: Vec<index::CollectionFile> = serde_json::from_str(&response_body).unwrap();
+		let response_json: Vec<index::CollectionFile> =
+			serde_json::from_str(&response_body).unwrap();
 		assert_eq!(response_json.len(), 2);
 
 		match response_json[0] {
 			index::CollectionFile::Directory(ref d) => {
 				next = d.path.clone();
-			},
-			_ => panic!()
+			}
+			_ => panic!(),
 		}
 	}
 
@@ -356,13 +358,14 @@ fn browse() {
 		let mut response = client.get(url).dispatch();
 		assert_eq!(response.status(), Status::Ok);
 		let response_body = response.body_string().unwrap();
-		let response_json: Vec<index::CollectionFile> = serde_json::from_str(&response_body).unwrap();
+		let response_json: Vec<index::CollectionFile> =
+			serde_json::from_str(&response_body).unwrap();
 		assert_eq!(response_json.len(), 1);
 		match response_json[0] {
 			index::CollectionFile::Directory(ref d) => {
 				next = d.path.clone();
-			},
-			_ => panic!()
+			}
+			_ => panic!(),
 		}
 	}
 
@@ -372,7 +375,8 @@ fn browse() {
 		let mut response = client.get(url).dispatch();
 		assert_eq!(response.status(), Status::Ok);
 		let response_body = response.body_string().unwrap();
-		let response_json: Vec<index::CollectionFile> = serde_json::from_str(&response_body).unwrap();
+		let response_json: Vec<index::CollectionFile> =
+			serde_json::from_str(&response_body).unwrap();
 		assert_eq!(response_json.len(), 5);
 	}
 }
@@ -447,7 +451,7 @@ fn search() {
 	assert_eq!(response_json.len(), 1);
 	match response_json[0] {
 		index::CollectionFile::Song(ref s) => assert_eq!(s.title, Some("Beyond The Door".into())),
-		_ => panic!()
+		_ => panic!(),
 	}
 }
 
@@ -468,7 +472,8 @@ fn playlists() {
 		let mut response = client.get("/api/playlists").dispatch();
 		assert_eq!(response.status(), Status::Ok);
 		let response_body = response.body_string().unwrap();
-		let response_json: Vec<api::ListPlaylistsEntry> = serde_json::from_str(&response_body).unwrap();
+		let response_json: Vec<api::ListPlaylistsEntry> =
+			serde_json::from_str(&response_body).unwrap();
 		assert_eq!(response_json.len(), 0);
 	}
 
@@ -479,12 +484,13 @@ fn playlists() {
 			let response_body = response.body_string().unwrap();
 			songs = serde_json::from_str(&response_body).unwrap();
 		}
-		let my_playlist = api::SavePlaylistInput{
+		let my_playlist = api::SavePlaylistInput {
 			tracks: songs[2..6].into_iter().map(|s| s.path.clone()).collect(),
 		};
-		let response = client.put("/api/playlist/my_playlist")
-		.body(serde_json::to_string(&my_playlist).unwrap())
-		.dispatch();
+		let response = client
+			.put("/api/playlist/my_playlist")
+			.body(serde_json::to_string(&my_playlist).unwrap())
+			.dispatch();
 		assert_eq!(response.status(), Status::Ok);
 	}
 
@@ -492,8 +498,14 @@ fn playlists() {
 		let mut response = client.get("/api/playlists").dispatch();
 		assert_eq!(response.status(), Status::Ok);
 		let response_body = response.body_string().unwrap();
-		let response_json: Vec<api::ListPlaylistsEntry> = serde_json::from_str(&response_body).unwrap();
-		assert_eq!(response_json, vec![api::ListPlaylistsEntry{ name: "my_playlist".into() }]);
+		let response_json: Vec<api::ListPlaylistsEntry> =
+			serde_json::from_str(&response_body).unwrap();
+		assert_eq!(
+			response_json,
+			vec![api::ListPlaylistsEntry {
+				name: "my_playlist".into()
+			}]
+		);
 	}
 
 	{
@@ -513,7 +525,8 @@ fn playlists() {
 		let mut response = client.get("/api/playlists").dispatch();
 		assert_eq!(response.status(), Status::Ok);
 		let response_body = response.body_string().unwrap();
-		let response_json: Vec<api::ListPlaylistsEntry> = serde_json::from_str(&response_body).unwrap();
+		let response_json: Vec<api::ListPlaylistsEntry> =
+			serde_json::from_str(&response_body).unwrap();
 		assert_eq!(response_json.len(), 0);
 	}
 }
