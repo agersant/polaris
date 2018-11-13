@@ -359,7 +359,21 @@ fn recent() {
 
 #[test]
 fn search() {
-	// TODO
+	let env = get_test_environment("api_search.sqlite");
+	let client = &env.client;
+	complete_initial_setup(client);
+	do_auth(client);
+	env.update_index();
+
+	let mut response = client.get("/api/search/door").dispatch();
+	assert_eq!(response.status(), Status::Ok);
+	let response_body = response.body_string().unwrap();
+	let response_json: Vec<index::CollectionFile> = serde_json::from_str(&response_body).unwrap();
+	assert_eq!(response_json.len(), 1);
+	match response_json[0] {
+		index::CollectionFile::Song(ref s) => assert_eq!(s.title, Some("Beyond The Door".into())),
+		_ => panic!()
+	}
 }
 
 #[test]

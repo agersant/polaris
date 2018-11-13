@@ -90,13 +90,13 @@ pub fn init(db: Arc<DB>) -> Arc<CommandSender> {
 	command_sender
 }
 
-#[derive(Debug, Queryable, QueryableByName, Serialize)]
+#[derive(Debug, PartialEq, Queryable, QueryableByName, Serialize, Deserialize)]
 #[table_name = "songs"]
 pub struct Song {
-	#[serde(skip_serializing)]
+	#[serde(skip_serializing, skip_deserializing)]
 	id: i32,
 	pub path: String,
-	#[serde(skip_serializing)]
+	#[serde(skip_serializing, skip_deserializing)]
 	pub parent: String,
 	pub track_number: Option<i32>,
 	pub disc_number: Option<i32>,
@@ -109,7 +109,7 @@ pub struct Song {
 	pub duration: Option<i32>,
 }
 
-#[derive(Debug, Queryable, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Queryable, Serialize, Deserialize)]
 pub struct Directory {
 	#[serde(skip_serializing, skip_deserializing)]
 	id: i32,
@@ -123,7 +123,7 @@ pub struct Directory {
 	pub date_added: i32,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub enum CollectionFile {
 	Directory(Directory),
 	Song(Song),
