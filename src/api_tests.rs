@@ -1,3 +1,4 @@
+use rocket::http::hyper::header::*;
 use rocket::http::uri::Uri;
 use rocket::http::Status;
 use rocket::local::Client;
@@ -465,7 +466,30 @@ fn search() {
 
 #[test]
 fn serve() {
-	// TODO
+	let env = get_test_environment("api_serve.sqlite");
+	let client = &env.client;
+	complete_initial_setup(client);
+	do_auth(client);
+	env.update_index();
+
+	{
+		let mut response = client.get("/api/serve/collection%2FKhemmis%2FHunted%2F02%20-%20Candlelight.mp3").dispatch();
+		assert_eq!(response.status(), Status::Ok);
+		let body = response.body().unwrap();
+		let body = body.into_bytes().unwrap();
+		assert_eq!(body.len(), 24_142);
+	}
+
+	{
+		let mut response = client.get("/api/serve/collection%2FKhemmis%2FHunted%2F02%20-%20Candlelight.mp3")
+							.header(Range::bytes(100, 299))
+							.dispatch();
+		assert_eq!(response.status(), Status::Ok);
+		let body = response.body().unwrap();
+		let body = body.into_bytes().unwrap();
+		assert_eq!(body.len(), 200);
+		assert_eq!(response.headers().get_one("Content-Length").unwrap(), "200");
+	}
 }
 
 #[test]
