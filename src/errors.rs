@@ -40,8 +40,6 @@ error_chain! {
 		IncorrectCredentials {}
 		EncodingError {}
 		MissingLastFMCredentials {}
-		LastFMAuthError {}
-		LastFMDeserializationError {}
 	}
 }
 
