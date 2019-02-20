@@ -1,5 +1,7 @@
 use rocket;
 use rocket::http::hyper::header::*;
+use rocket::http::Status;
+use rocket::Response;
 use rocket::response::{self, Responder};
 use std::cmp;
 use std::convert::From;
@@ -7,6 +9,7 @@ use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
 use std::str::FromStr;
 
+#[derive(Debug)]
 pub enum PartialFileRange {
 	AllFrom(u64),
 	FromTo(u64, u64),
@@ -41,9 +44,27 @@ impl<'r, R: Responder<'r>> RangeResponder<R> {
 		RangeResponder { original }
 	}
 
-	fn ignore_range(self, request: &rocket::request::Request) -> response::Result<'r> {
+	fn ignore_range(self, request: &rocket::request::Request, file_length: Option<u64>) -> response::Result<'r> {
 		let mut response = self.original.respond_to(request)?;
-		response.set_status(rocket::http::Status::RangeNotSatisfiable);
+		if let Some(content_length) = file_length {
+			response.set_header(ContentLength(content_length));
+		}
+		response.set_status(Status::Ok);
+		Ok(response)
+	}
+
+	fn reject_range(self, file_length: Option<u64>) -> response::Result<'r> {
+		let mut response = Response::build()
+						.status(Status::RangeNotSatisfiable)
+						.finalize();
+		if file_length.is_some() {
+			let content_range = ContentRange(ContentRangeSpec::Bytes {
+				range: None,
+				instance_length: file_length,
+			});
+			response.set_header(content_range);
+		}
+		response.set_status(Status::RangeNotSatisfiable);
 		Ok(response)
 	}
 }
@@ -79,15 +100,22 @@ fn truncate_range(range: &PartialFileRange, file_length: &Option<u64>) -> Option
 
 impl<'r> Responder<'r> for RangeResponder<File> {
 	fn respond_to(mut self, request: &rocket::request::Request) -> response::Result<'r> {
+
+		let metadata: Option<_> = self.original.metadata().ok();
+		let file_length: Option<u64> = metadata.map(|m| m.len());
+
 		let range_header = request.headers().get_one("Range");
 		let range_header = match range_header {
-			None => return Ok(self.original.respond_to(request)?),
+			None => return self.ignore_range(request, file_length),
 			Some(h) => h,
 		};
 
 		let vec_range = match Range::from_str(range_header) {
 			Ok(Range::Bytes(v)) => v,
-			_ => return self.ignore_range(request),
+			_ => {
+				warn!("Ignoring range header that could not be parse {:?}, file length is {:?}", range_header, file_length);
+				return self.ignore_range(request, file_length);
+			},
 		};
 
 		let partial_file_range = match vec_range.into_iter().next() {
@@ -95,8 +123,6 @@ impl<'r> Responder<'r> for RangeResponder<File> {
 			Some(byte_range) => PartialFileRange::from(byte_range),
 		};
 
-		let metadata: Option<_> = self.original.metadata().ok();
-		let file_length: Option<u64> = metadata.map(|m| m.len());
 		let range: Option<(u64, u64)> = truncate_range(&partial_file_range, &file_length);
 
 		if let Some((from, to)) = range {
@@ -118,7 +144,8 @@ impl<'r> Responder<'r> for RangeResponder<File> {
 
 			Ok(response)
 		} else {
-			self.ignore_range(request)
+			warn!("Rejecting unsatisfiable range header {:?}, file length is {:?}", &partial_file_range, &file_length);
+			self.reject_range(file_length)
 		}
 	}
 }
