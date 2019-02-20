@@ -66,6 +66,7 @@ impl CommandSender {
 		}
 	}
 
+	#[allow(dead_code)]
 	pub fn exit(&self) -> Result<(), errors::Error> {
 		let sender = self.sender.lock().unwrap();
 		match sender.send(Command::EXIT) {
