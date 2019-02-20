@@ -136,11 +136,13 @@ impl<'r> Responder<'r> for RangeResponder<File> {
 				Ok(_) => (),
 				Err(_) => return Err(rocket::http::Status::InternalServerError),
 			}
-			let partial_original = self.original.take(content_len).into_inner();
-			let mut response = partial_original.respond_to(request)?;
-			response.set_header(ContentLength(content_len));
-			response.set_header(content_range);
-			response.set_status(rocket::http::Status::PartialContent);
+			let partial_original = self.original.take(content_len);
+			let response = Response::build()
+									.status(Status::PartialContent)
+									.header(ContentLength(content_len))
+									.header(content_range)
+									.streamed_body(partial_original)
+									.finalize();
 
 			Ok(response)
 		} else {
