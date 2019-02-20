@@ -484,7 +484,7 @@ fn serve() {
 		let mut response = client.get("/api/serve/collection%2FKhemmis%2FHunted%2F02%20-%20Candlelight.mp3")
 							.header(Range::bytes(100, 299))
 							.dispatch();
-		assert_eq!(response.status(), Status::Ok);
+		assert_eq!(response.status(), Status::PartialContent);
 		let body = response.body().unwrap();
 		let body = body.into_bytes().unwrap();
 		assert_eq!(body.len(), 200);
