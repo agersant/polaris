@@ -1,11 +1,11 @@
 use rustfm_scrobble::{Scrobble, Scrobbler};
 use std::path::Path;
 
-use db::ConnectionSource;
-use errors;
-use index;
-use user;
-use vfs::VFSSource;
+use crate::db::ConnectionSource;
+use crate::errors;
+use crate::index;
+use crate::user;
+use crate::vfs::VFSSource;
 
 const LASTFM_API_KEY: &str = "02b96c939a2b451c31dfd67add1f696e";
 const LASTFM_API_SECRET: &str = "0f25a80ceef4b470b5cb97d99d4b3420";
@@ -60,12 +60,7 @@ where
 	let mut scrobbler = Scrobbler::new(LASTFM_API_KEY.into(), LASTFM_API_SECRET.into());
 	let auth_response = scrobbler.authenticate_with_token(token.to_string())?;
 
-	user::lastfm_link(
-		db,
-		username,
-		&auth_response.name,
-		&auth_response.key,
-	)
+	user::lastfm_link(db, username, &auth_response.name, &auth_response.key)
 }
 
 pub fn unlink<T>(db: &T, username: &str) -> Result<(), errors::Error>

@@ -7,9 +7,9 @@ use regex::Regex;
 use std::fs;
 use std::path::Path;
 
-use errors::*;
-use utils;
-use utils::AudioFormat;
+use crate::errors::*;
+use crate::utils;
+use crate::utils::AudioFormat;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SongTags {

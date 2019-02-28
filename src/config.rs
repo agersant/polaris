@@ -2,19 +2,18 @@ use core::ops::Deref;
 use diesel;
 use diesel::prelude::*;
 use regex::Regex;
-use serde_json;
 use std::fs;
 use std::io::Read;
 use std::path;
 use toml;
 
-use db::ConnectionSource;
-use db::DB;
-use db::{ddns_config, misc_settings, mount_points, users};
-use ddns::DDNSConfig;
-use errors::*;
-use user::*;
-use vfs::MountPoint;
+use crate::db::ConnectionSource;
+use crate::db::DB;
+use crate::db::{ddns_config, misc_settings, mount_points, users};
+use crate::ddns::DDNSConfig;
+use crate::errors::*;
+use crate::user::*;
+use crate::vfs::MountPoint;
 
 #[derive(Debug, Queryable)]
 pub struct MiscSettings {
@@ -61,12 +60,6 @@ impl Config {
 	}
 }
 
-pub fn parse_json(content: &str) -> Result<Config> {
-	let mut config = serde_json::from_str::<Config>(content)?;
-	config.clean_paths()?;
-	Ok(config)
-}
-
 pub fn parse_toml_file(path: &path::Path) -> Result<Config> {
 	info!("Config file path: {}", path.to_string_lossy());
 	let mut config_file = fs::File::open(path)?;
@@ -100,7 +93,8 @@ where
 			index_album_art_pattern,
 			index_sleep_duration_seconds,
 			prefix_url,
-		)).get_result(connection.deref())?;
+		))
+		.get_result(connection.deref())?;
 	config.album_art_pattern = Some(art_pattern);
 	config.reindex_every_n_seconds = Some(sleep_duration);
 	config.prefix_url = if url != "" { Some(url) } else { None };
@@ -124,7 +118,8 @@ where
 				name,
 				password: "".to_owned(),
 				admin: admin != 0,
-			}).collect::<_>(),
+			})
+			.collect::<_>(),
 	);
 
 	let ydns = ddns_config
@@ -194,7 +189,8 @@ where
 					.iter()
 					.find(|old_name| *old_name == &u.name)
 					.is_none()
-			}).collect::<_>();
+			})
+			.collect::<_>();
 		for config_user in &insert_users {
 			let new_user = User::new(&config_user.name, &config_user.password);
 			diesel::insert_into(users::table)
@@ -242,7 +238,8 @@ where
 				host.eq(ydns.host.clone()),
 				username.eq(ydns.username.clone()),
 				password.eq(ydns.password.clone()),
-			)).execute(connection.deref())?;
+			))
+			.execute(connection.deref())?;
 	}
 
 	if let Some(ref prefix_url) = new_config.prefix_url {

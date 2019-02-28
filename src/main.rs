@@ -1,4 +1,5 @@
 #![recursion_limit = "256"]
+#![feature(proc_macro_hygiene, decl_macro)]
 #![allow(proc_macro_derive_resolution_fallback)]
 
 extern crate ape;
@@ -13,30 +14,24 @@ extern crate diesel_migrations;
 #[macro_use]
 extern crate error_chain;
 extern crate getopts;
-extern crate hyper;
 extern crate id3;
 extern crate image;
-extern crate iron;
 extern crate lewton;
 extern crate metaflac;
-extern crate mount;
 extern crate mp3_duration;
-extern crate params;
 extern crate rand;
 extern crate regex;
 extern crate reqwest;
 extern crate ring;
-extern crate router;
+#[macro_use]
+extern crate rocket;
+extern crate rocket_contrib;
 extern crate rustfm_scrobble;
-extern crate secure_session;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
-extern crate staticfile;
 extern crate toml;
-extern crate typemap;
-extern crate url;
 #[macro_use]
 extern crate log;
 extern crate simplelog;
@@ -57,17 +52,15 @@ use std::io::prelude::*;
 use unix_daemonize::{daemonize_redirect, ChdirMode};
 
 use core::ops::Deref;
-use errors::*;
+use crate::errors::*;
 use getopts::Options;
-use iron::prelude::*;
-use mount::Mount;
 use simplelog::{Level, LevelFilter, SimpleLogger, TermLogger};
-use staticfile::Static;
 use std::path::Path;
-use std::sync::mpsc::channel;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 mod api;
+#[cfg(test)]
+mod api_tests;
 mod config;
 mod db;
 mod ddns;
@@ -77,6 +70,7 @@ mod lastfm;
 mod metadata;
 mod playlist;
 mod serve;
+mod server;
 mod thumbnails;
 mod ui;
 mod user;
@@ -204,6 +198,7 @@ fn run() -> Result<()> {
 	let db = Arc::new(db::DB::new(&db_path)?);
 
 	// Parse config
+	info!("Parsing configuration");
 	let config_file_name = matches.opt_str("c");
 	let config_file_path = config_file_name.map(|p| Path::new(p.as_str()).to_path_buf());
 	if let Some(path) = config_file_path {
@@ -213,30 +208,22 @@ fn run() -> Result<()> {
 	let config = config::read(db.deref())?;
 
 	// Init index
-	let (index_sender, index_receiver) = channel();
-	let index_sender = Arc::new(Mutex::new(index_sender));
-	let db_ref = db.clone();
-	std::thread::spawn(move || {
-		let db = db_ref.deref();
-		index::update_loop(db, &index_receiver);
-	});
+	info!("Initializing index");
+	let command_sender = index::init(db.clone());
 
 	// Trigger auto-indexing
-	let db_ref = db.clone();
-	let sender_ref = index_sender.clone();
+	let db_auto_index = db.clone();
+	let command_sender_auto_index = command_sender.clone();
 	std::thread::spawn(move || {
-		index::self_trigger(db_ref.deref(), &sender_ref);
+		index::self_trigger(db_auto_index.deref(), &command_sender_auto_index);
 	});
 
-	// Mount API
+	// API mount target
 	let prefix_url = config.prefix_url.unwrap_or_else(|| "".to_string());
 	let api_url = format!("{}/api", &prefix_url);
 	info!("Mounting API on {}", api_url);
-	let mut mount = Mount::new();
-	let handler = api::get_handler(&db.clone(), &index_sender)?;
-	mount.mount(&api_url, handler);
 
-	// Mount static files
+	// Static files mount target
 	let web_dir_name = matches.opt_str("w");
 	let mut default_web_dir = utils::get_data_root()?;
 	default_web_dir.push("web");
@@ -246,8 +233,8 @@ fn run() -> Result<()> {
 	info!("Static files location is {}", web_dir_path.display());
 	let static_url = format!("/{}", &prefix_url);
 	info!("Mounting static files on {}", static_url);
-	mount.mount(&static_url, Static::new(web_dir_path));
 
+	// Start server
 	info!("Starting up server");
 	let port: u16 = matches
 		.opt_str("p")
@@ -255,24 +242,27 @@ fn run() -> Result<()> {
 		.parse()
 		.or(Err("invalid port number"))?;
 
-	let mut server = match Iron::new(mount).http(("0.0.0.0", port)) {
-		Ok(s) => s,
-		Err(e) => bail!("Error starting up server: {}", e),
-	};
+	let server = server::get_server(
+		port,
+		&static_url,
+		&api_url,
+		&web_dir_path,
+		db.clone(),
+		command_sender,
+	)?;
+	std::thread::spawn(move || {
+		server.launch();
+	});
 
 	// Start DDNS updates
-	let db_ref = db.clone();
+	let db_ddns = db.clone();
 	std::thread::spawn(move || {
-		ddns::run(db_ref.deref());
+		ddns::run(db_ddns.deref());
 	});
 
 	// Run UI
 	ui::run();
 
 	info!("Shutting down server");
-	if let Err(e) = server.close() {
-		bail!("Error shutting down server: {}", e);
-	}
-
 	Ok(())
 }

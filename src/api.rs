@@ -1,813 +1,436 @@
-use base64;
-use crypto::scrypt;
-use diesel::prelude::*;
-use iron::headers::{Authorization, Basic, Range};
-use iron::mime::Mime;
-use iron::prelude::*;
-use iron::{status, AroundMiddleware, Handler};
-use mount::Mount;
-use params;
-use router::Router;
-use secure_session::middleware::{SessionConfig, SessionMiddleware};
-use secure_session::session::ChaCha20Poly1305SessionManager;
-use serde_json;
-use std::fs;
-use std::io;
+use rocket::http::{Cookie, Cookies, RawStr, Status};
+use rocket::request::{self, FromParam, FromRequest, Request};
+use rocket::response::content::Html;
+use rocket::{Outcome, State};
+use rocket_contrib::json::Json;
+use std::fs::File;
 use std::ops::Deref;
-use std::path::*;
-use std::sync::mpsc::Sender;
-use std::sync::{Arc, Mutex};
-use typemap;
-use url::percent_encoding::percent_decode;
+use std::path::PathBuf;
+use std::str;
+use std::str::FromStr;
+use std::sync::Arc;
 
-use config;
-use db::misc_settings;
-use db::{ConnectionSource, DB};
-use errors::*;
-use index;
-use lastfm;
-use playlist;
-use serve;
-use thumbnails::*;
-use user;
-use utils::*;
-use vfs::VFSSource;
+use crate::config::{self, Config, Preferences};
+use crate::db::DB;
+use crate::errors;
+use crate::index;
+use crate::lastfm;
+use crate::playlist;
+use crate::serve;
+use crate::thumbnails;
+use crate::user;
+use crate::utils;
+use crate::vfs::VFSSource;
 
-const CURRENT_MAJOR_VERSION: i32 = 2;
-const CURRENT_MINOR_VERSION: i32 = 2;
+const CURRENT_MAJOR_VERSION: i32 = 3;
+const CURRENT_MINOR_VERSION: i32 = 0;
+const COOKIE_SESSION: &str = "session";
 
-#[derive(Deserialize, Serialize)]
-struct Session {
+pub fn get_routes() -> Vec<rocket::Route> {
+	routes![
+		version,
+		initial_setup,
+		get_settings,
+		put_settings,
+		get_preferences,
+		put_preferences,
+		trigger_index,
+		auth,
+		browse_root,
+		browse,
+		flatten_root,
+		flatten,
+		random,
+		recent,
+		search_root,
+		search,
+		serve,
+		list_playlists,
+		save_playlist,
+		read_playlist,
+		delete_playlist,
+		lastfm_link,
+		lastfm_unlink,
+		lastfm_now_playing,
+		lastfm_scrobble,
+	]
+}
+
+struct Auth {
 	username: String,
 }
 
-struct SessionKey {}
-
-impl typemap::Key for SessionKey {
-	type Value = Session;
+fn get_session_cookie(username: &str) -> Cookie<'static> {
+	Cookie::build(COOKIE_SESSION, username.to_owned())
+		.same_site(rocket::http::SameSite::Lax)
+		.http_only(true)
+		.finish()
 }
 
-fn get_auth_secret<T>(db: &T) -> Result<[u8; 32]>
-where
-	T: ConnectionSource,
-{
-	use self::misc_settings::dsl::*;
-	let connection = db.get_connection();
-	let misc: config::MiscSettings = misc_settings.get_result(connection.deref())?;
+impl<'a, 'r> FromRequest<'a, 'r> for Auth {
+	type Error = ();
 
-	let params = scrypt::ScryptParams::new(12, 8, 1);
-	let mut secret = [0; 32];
-	scrypt::scrypt(
-		misc.auth_secret.as_bytes(),
-		b"polaris-salt-and-pepper-with-cheese",
-		&params,
-		&mut secret,
-	);
-	Ok(secret)
-}
-
-pub fn get_handler(db: &Arc<DB>, index: &Arc<Mutex<Sender<index::Command>>>) -> Result<Chain> {
-	let api_handler = get_endpoints(&db.clone(), &index);
-	let mut api_chain = Chain::new(api_handler);
-
-	let auth_secret = get_auth_secret(db.deref())?;
-	let session_manager = ChaCha20Poly1305SessionManager::<Session>::from_key(auth_secret);
-	let session_config = SessionConfig::default();
-	let session_middleware = SessionMiddleware::<
-		Session,
-		SessionKey,
-		ChaCha20Poly1305SessionManager<Session>,
-	>::new(session_manager, session_config);
-	api_chain.link_around(session_middleware);
-
-	Ok(api_chain)
-}
-
-fn get_endpoints(db: &Arc<DB>, index_channel: &Arc<Mutex<Sender<index::Command>>>) -> Mount {
-	let mut api_handler = Mount::new();
-
-	{
-		api_handler.mount("/version/", self::version);
-		{
-			let db = db.clone();
-			api_handler.mount("/auth/", move |request: &mut Request| {
-				self::auth(request, db.deref())
+	fn from_request(request: &'a Request<'r>) -> request::Outcome<Self, ()> {
+		let mut cookies = request.guard::<Cookies>().unwrap();
+		if let Some(u) = cookies.get_private(COOKIE_SESSION) {
+			return Outcome::Success(Auth {
+				username: u.value().to_string(),
 			});
 		}
-		{
-			let db = db.clone();
-			api_handler.mount("/initial_setup/", move |request: &mut Request| {
-				self::initial_setup(request, db.deref())
-			});
-		}
-	}
 
-	{
-		let mut auth_api_mount = Mount::new();
-		{
-			let db = db.clone();
-			auth_api_mount.mount("/browse/", move |request: &mut Request| {
-				self::browse(request, db.deref())
-			});
-		}
-		{
-			let db = db.clone();
-			auth_api_mount.mount("/flatten/", move |request: &mut Request| {
-				self::flatten(request, db.deref())
-			});
-		}
-		{
-			let db = db.clone();
-			auth_api_mount.mount("/random/", move |request: &mut Request| {
-				self::random(request, db.deref())
-			});
-		}
-		{
-			let db = db.clone();
-			auth_api_mount.mount("/recent/", move |request: &mut Request| {
-				self::recent(request, db.deref())
-			});
-		}
-		{
-			let db = db.clone();
-			auth_api_mount.mount("/search/", move |request: &mut Request| {
-				self::search(request, db.deref())
-			});
-		}
-		{
-			let db = db.clone();
-			auth_api_mount.mount("/serve/", move |request: &mut Request| {
-				self::serve(request, db.deref())
-			});
-		}
-		{
-			let mut preferences_router = Router::new();
-			let get_db = db.clone();
-			let put_db = db.clone();
-			preferences_router.get(
-				"/",
-				move |request: &mut Request| self::get_preferences(request, get_db.deref()),
-				"get_preferences",
-			);
-			preferences_router.put(
-				"/",
-				move |request: &mut Request| self::put_preferences(request, put_db.deref()),
-				"put_preferences",
-			);
-			auth_api_mount.mount("/preferences/", preferences_router);
-		}
-		{
-			let mut settings_router = Router::new();
-			let get_db = db.clone();
-			let put_db = db.clone();
-			settings_router.get(
-				"/",
-				move |request: &mut Request| self::get_config(request, get_db.deref()),
-				"get_config",
-			);
-			settings_router.put(
-				"/",
-				move |request: &mut Request| self::put_config(request, put_db.deref()),
-				"put_config",
-			);
-
-			let mut settings_api_chain = Chain::new(settings_router);
-			let admin_req = AdminRequirement { db: db.clone() };
-			settings_api_chain.link_around(admin_req);
-
-			auth_api_mount.mount("/settings/", settings_api_chain);
-		}
-		{
-			let index_channel = index_channel.clone();
-			let mut reindex_router = Router::new();
-			reindex_router.post(
-				"/",
-				move |_: &mut Request| self::trigger_index(index_channel.deref()),
-				"trigger_index",
-			);
-
-			let mut reindex_api_chain = Chain::new(reindex_router);
-			let admin_req = AdminRequirement { db: db.clone() };
-			reindex_api_chain.link_around(admin_req);
-
-			auth_api_mount.mount("/trigger_index/", reindex_api_chain);
-		}
-		{
-			let mut playlist_router = Router::new();
-			let put_db = db.clone();
-			let list_db = db.clone();
-			let read_db = db.clone();
-			let delete_db = db.clone();
-			playlist_router.put(
-				"/",
-				move |request: &mut Request| self::save_playlist(request, put_db.deref()),
-				"save_playlist",
-			);
-
-			playlist_router.get(
-				"/list",
-				move |request: &mut Request| self::list_playlists(request, list_db.deref()),
-				"list_playlists",
-			);
-
-			playlist_router.get(
-				"/read/:playlist_name",
-				move |request: &mut Request| self::read_playlist(request, read_db.deref()),
-				"read_playlist",
-			);
-
-			playlist_router.delete(
-				"/:playlist_name",
-				move |request: &mut Request| self::delete_playlist(request, delete_db.deref()),
-				"delete_playlist",
-			);
-
-			auth_api_mount.mount("/playlist/", playlist_router);
-		}
-		{
-			let mut lastfm_router = Router::new();
-			let now_playing_db = db.clone();
-			let link_db = db.clone();
-			let unlink_db = db.clone();
-			let scrobble_db = db.clone();
-
-			lastfm_router.put(
-				"/now_playing",
-				move |request: &mut Request| {
-					self::lastfm_now_playing(request, now_playing_db.deref())
-				},
-				"now_playing",
-			);
-
-			lastfm_router.get(
-				"/link",
-				move |request: &mut Request| self::lastfm_link(request, link_db.deref()),
-				"link",
-			);
-
-			lastfm_router.delete(
-				"/link",
-				move |request: &mut Request| self::lastfm_unlink(request, unlink_db.deref()),
-				"unlink",
-			);
-
-			lastfm_router.get(
-				"/scrobble",
-				move |request: &mut Request| self::lastfm_scrobble(request, scrobble_db.deref()),
-				"auth",
-			);
-
-			auth_api_mount.mount("/lastfm/", lastfm_router);
-		}
-
-		let mut auth_api_chain = Chain::new(auth_api_mount);
-		let auth = AuthRequirement { db: db.clone() };
-		auth_api_chain.link_around(auth);
-
-		api_handler.mount("/", auth_api_chain);
-	}
-
-	api_handler
-}
-
-fn path_from_request(request: &Request) -> Result<PathBuf> {
-	let path_string = request
-		.url
-		.path()
-		.join(&::std::path::MAIN_SEPARATOR.to_string());
-	let decoded_path = percent_decode(path_string.as_bytes()).decode_utf8()?;
-	Ok(PathBuf::from(decoded_path.deref()))
-}
-
-struct AuthRequirement {
-	db: Arc<DB>,
-}
-
-impl AroundMiddleware for AuthRequirement {
-	fn around(self, handler: Box<Handler>) -> Box<Handler> {
-		Box::new(AuthHandler {
-			db: self.db,
-			handler,
-		}) as Box<Handler>
-	}
-}
-
-struct AuthHandler {
-	handler: Box<Handler>,
-	db: Arc<DB>,
-}
-
-impl Handler for AuthHandler {
-	fn handle(&self, req: &mut Request) -> IronResult<Response> {
-		{
-			// Skip auth for first time setup
-			let mut auth_success = user::count(self.db.deref())? == 0;
-
-			// Auth via Authorization header
-			if !auth_success {
-				if let Some(auth) = req.headers.get::<Authorization<Basic>>() {
-					if let Some(ref password) = auth.password {
-						auth_success =
-							user::auth(self.db.deref(), auth.username.as_str(), password.as_str())?;
-						if auth_success {
-							req.extensions.insert::<SessionKey>(Session {
-								username: auth.username.clone(),
-							});
-						}
-					}
+		if let Some(auth_header_string) = request.headers().get_one("Authorization") {
+			use rocket::http::hyper::header::*;
+			if let Ok(Basic {
+				username,
+				password: Some(password),
+			}) = Basic::from_str(auth_header_string.trim_start_matches("Basic "))
+			{
+				let db = match request.guard::<State<Arc<DB>>>() {
+					Outcome::Success(d) => d,
+					_ => return Outcome::Failure((Status::InternalServerError, ())),
+				};
+				if user::auth(db.deref().deref(), &username, &password).unwrap_or(false) {
+					cookies.add_private(get_session_cookie(&username));
+					return Outcome::Success(Auth {
+						username: username.to_string(),
+					});
 				}
 			}
-
-			// Auth via Session
-			if !auth_success {
-				auth_success = req.extensions.get::<SessionKey>().is_some();
-			}
-
-			// Reject
-			if !auth_success {
-				return Err(Error::from(ErrorKind::AuthenticationRequired).into());
-			}
 		}
 
-		self.handler.handle(req)
+		Outcome::Failure((Status::Unauthorized, ()))
 	}
 }
 
-struct AdminRequirement {
-	db: Arc<DB>,
-}
+struct AdminRights {}
+impl<'a, 'r> FromRequest<'a, 'r> for AdminRights {
+	type Error = ();
 
-impl AroundMiddleware for AdminRequirement {
-	fn around(self, handler: Box<Handler>) -> Box<Handler> {
-		Box::new(AdminHandler {
-			db: self.db,
-			handler,
-		}) as Box<Handler>
-	}
-}
+	fn from_request(request: &'a Request<'r>) -> request::Outcome<Self, ()> {
+		let db = request.guard::<State<Arc<DB>>>()?;
 
-struct AdminHandler {
-	handler: Box<Handler>,
-	db: Arc<DB>,
-}
+		match user::count::<DB>(&db) {
+			Err(_) => return Outcome::Failure((Status::InternalServerError, ())),
+			Ok(0) => return Outcome::Success(AdminRights {}),
+			_ => (),
+		};
 
-impl Handler for AdminHandler {
-	fn handle(&self, req: &mut Request) -> IronResult<Response> {
-		{
-			// Skip auth for first time setup
-			let mut auth_success = user::count(self.db.deref())? == 0;
-
-			if !auth_success {
-				match req.extensions.get::<SessionKey>() {
-					Some(s) => auth_success = user::is_admin(self.db.deref(), &s.username)?,
-					_ => return Err(Error::from(ErrorKind::AuthenticationRequired).into()),
-				}
-			}
-
-			if !auth_success {
-				return Err(Error::from(ErrorKind::AdminPrivilegeRequired).into());
-			}
+		let auth = request.guard::<Auth>()?;
+		match user::is_admin::<DB>(&db, &auth.username) {
+			Err(_) => Outcome::Failure((Status::InternalServerError, ())),
+			Ok(true) => Outcome::Success(AdminRights {}),
+			Ok(false) => Outcome::Failure((Status::Forbidden, ())),
 		}
-
-		self.handler.handle(req)
 	}
 }
 
-fn version(_: &mut Request) -> IronResult<Response> {
-	#[derive(Serialize)]
-	struct Version {
-		major: i32,
-		minor: i32,
-	}
+struct VFSPathBuf {
+	path_buf: PathBuf,
+}
 
+impl<'r> FromParam<'r> for VFSPathBuf {
+	type Error = &'r RawStr;
+
+	fn from_param(param: &'r RawStr) -> Result<Self, Self::Error> {
+		let decoded_path = param.percent_decode_lossy();
+		Ok(VFSPathBuf {
+			path_buf: PathBuf::from(decoded_path.into_owned()),
+		})
+	}
+}
+
+impl From<VFSPathBuf> for PathBuf {
+	fn from(vfs_path_buf: VFSPathBuf) -> Self {
+		vfs_path_buf.path_buf.clone()
+	}
+}
+
+#[derive(PartialEq, Debug, Serialize, Deserialize)]
+pub struct Version {
+	pub major: i32,
+	pub minor: i32,
+}
+
+#[get("/version")]
+fn version() -> Json<Version> {
 	let current_version = Version {
 		major: CURRENT_MAJOR_VERSION,
 		minor: CURRENT_MINOR_VERSION,
 	};
-
-	match serde_json::to_string(&current_version) {
-		Ok(result_json) => Ok(Response::with((status::Ok, result_json))),
-		Err(e) => Err(IronError::new(e, status::InternalServerError)),
-	}
+	Json(current_version)
 }
 
-fn initial_setup(_: &mut Request, db: &DB) -> IronResult<Response> {
-	#[derive(Serialize)]
-	struct InitialSetup {
-		has_any_users: bool,
-	};
+#[derive(PartialEq, Debug, Serialize, Deserialize)]
+pub struct InitialSetup {
+	pub has_any_users: bool,
+}
 
+#[get("/initial_setup")]
+fn initial_setup(db: State<Arc<DB>>) -> Result<Json<InitialSetup>, errors::Error> {
 	let initial_setup = InitialSetup {
-		has_any_users: user::count(db)? > 0,
+		has_any_users: user::count::<DB>(&db)? > 0,
 	};
-
-	match serde_json::to_string(&initial_setup) {
-		Ok(result_json) => Ok(Response::with((status::Ok, result_json))),
-		Err(e) => Err(IronError::new(e, status::InternalServerError)),
-	}
+	Ok(Json(initial_setup))
 }
 
-fn auth(request: &mut Request, db: &DB) -> IronResult<Response> {
-	let username;
-	let password;
-	{
-		let input = request.get_ref::<params::Params>().unwrap();
-		username = match input.find(&["username"]) {
-			Some(&params::Value::String(ref username)) => username.clone(),
-			_ => return Err(Error::from(ErrorKind::MissingUsername).into()),
-		};
-		password = match input.find(&["password"]) {
-			Some(&params::Value::String(ref password)) => password.clone(),
-			_ => return Err(Error::from(ErrorKind::MissingPassword).into()),
-		};
+#[get("/settings")]
+fn get_settings(
+	db: State<Arc<DB>>,
+	_admin_rights: AdminRights,
+) -> Result<Json<Config>, errors::Error> {
+	let config = config::read::<DB>(&db)?;
+	Ok(Json(config))
+}
+
+#[put("/settings", data = "<config>")]
+fn put_settings(
+	db: State<Arc<DB>>,
+	_admin_rights: AdminRights,
+	config: Json<Config>,
+) -> Result<(), errors::Error> {
+	config::amend::<DB>(&db, &config)?;
+	Ok(())
+}
+
+#[get("/preferences")]
+fn get_preferences(db: State<Arc<DB>>, auth: Auth) -> Result<Json<Preferences>, errors::Error> {
+	let preferences = config::read_preferences::<DB>(&db, &auth.username)?;
+	Ok(Json(preferences))
+}
+
+#[put("/preferences", data = "<preferences>")]
+fn put_preferences(
+	db: State<Arc<DB>>,
+	auth: Auth,
+	preferences: Json<Preferences>,
+) -> Result<(), errors::Error> {
+	config::write_preferences::<DB>(&db, &auth.username, &preferences)?;
+	Ok(())
+}
+
+#[post("/trigger_index")]
+fn trigger_index(
+	command_sender: State<Arc<index::CommandSender>>,
+	_admin_rights: AdminRights,
+) -> Result<(), errors::Error> {
+	command_sender.trigger_reindex()?;
+	Ok(())
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct AuthCredentials {
+	pub username: String,
+	pub password: String,
+}
+
+#[derive(Serialize)]
+struct AuthOutput {
+	admin: bool,
+}
+
+#[post("/auth", data = "<credentials>")]
+fn auth(
+	db: State<Arc<DB>>,
+	credentials: Json<AuthCredentials>,
+	mut cookies: Cookies,
+) -> Result<Json<AuthOutput>, errors::Error> {
+	if !user::auth::<DB>(&db, &credentials.username, &credentials.password)? {
+		bail!(errors::ErrorKind::IncorrectCredentials)
 	}
 
-	if !user::auth(db, username.as_str(), password.as_str())? {
-		return Err(Error::from(ErrorKind::IncorrectCredentials).into());
-	}
-
-	request.extensions.insert::<SessionKey>(Session {
-		username: username.clone(),
-	});
-
-	#[derive(Serialize)]
-	struct AuthOutput {
-		admin: bool,
-	}
+	cookies.add_private(get_session_cookie(&credentials.username));
 
 	let auth_output = AuthOutput {
-		admin: user::is_admin(db.deref(), &username)?,
+		admin: user::is_admin::<DB>(&db, &credentials.username)?,
 	};
-	let result_json = serde_json::to_string(&auth_output);
-	let result_json = match result_json {
-		Ok(j) => j,
-		Err(e) => return Err(IronError::new(e, status::InternalServerError)),
-	};
-
-	Ok(Response::with((status::Ok, result_json)))
+	Ok(Json(auth_output))
 }
 
-fn browse(request: &mut Request, db: &DB) -> IronResult<Response> {
-	let path = path_from_request(request);
-	let path = match path {
-		Err(e) => return Err(IronError::new(e, status::BadRequest)),
-		Ok(p) => p,
-	};
-	let browse_result = index::browse(db, &path)?;
-
-	let result_json = serde_json::to_string(&browse_result);
-	let result_json = match result_json {
-		Ok(j) => j,
-		Err(e) => return Err(IronError::new(e, status::InternalServerError)),
-	};
-
-	Ok(Response::with((status::Ok, result_json)))
+#[get("/browse")]
+fn browse_root(
+	db: State<Arc<DB>>,
+	_auth: Auth,
+) -> Result<Json<Vec<index::CollectionFile>>, errors::Error> {
+	let result = index::browse(db.deref().deref(), &PathBuf::new())?;
+	Ok(Json(result))
 }
 
-fn flatten(request: &mut Request, db: &DB) -> IronResult<Response> {
-	let path = path_from_request(request);
-	let path = match path {
-		Err(e) => return Err(IronError::new(e, status::BadRequest)),
-		Ok(p) => p,
-	};
-	let flatten_result = index::flatten(db, &path)?;
-
-	let result_json = serde_json::to_string(&flatten_result);
-	let result_json = match result_json {
-		Ok(j) => j,
-		Err(e) => return Err(IronError::new(e, status::InternalServerError)),
-	};
-
-	Ok(Response::with((status::Ok, result_json)))
+#[get("/browse/<path>")]
+fn browse(
+	db: State<Arc<DB>>,
+	_auth: Auth,
+	path: VFSPathBuf,
+) -> Result<Json<Vec<index::CollectionFile>>, errors::Error> {
+	let result = index::browse(db.deref().deref(), &path.into() as &PathBuf)?;
+	Ok(Json(result))
 }
 
-fn random(_: &mut Request, db: &DB) -> IronResult<Response> {
-	let random_result = index::get_random_albums(db, 20)?;
-	let result_json = serde_json::to_string(&random_result);
-	let result_json = match result_json {
-		Ok(j) => j,
-		Err(e) => return Err(IronError::new(e, status::InternalServerError)),
-	};
-	Ok(Response::with((status::Ok, result_json)))
+#[get("/flatten")]
+fn flatten_root(db: State<Arc<DB>>, _auth: Auth) -> Result<Json<Vec<index::Song>>, errors::Error> {
+	let result = index::flatten(db.deref().deref(), &PathBuf::new())?;
+	Ok(Json(result))
 }
 
-fn recent(_: &mut Request, db: &DB) -> IronResult<Response> {
-	let recent_result = index::get_recent_albums(db, 20)?;
-	let result_json = serde_json::to_string(&recent_result);
-	let result_json = match result_json {
-		Ok(j) => j,
-		Err(e) => return Err(IronError::new(e, status::InternalServerError)),
-	};
-	Ok(Response::with((status::Ok, result_json)))
+#[get("/flatten/<path>")]
+fn flatten(
+	db: State<Arc<DB>>,
+	_auth: Auth,
+	path: VFSPathBuf,
+) -> Result<Json<Vec<index::Song>>, errors::Error> {
+	let result = index::flatten(db.deref().deref(), &path.into() as &PathBuf)?;
+	Ok(Json(result))
 }
 
-fn search(request: &mut Request, db: &DB) -> IronResult<Response> {
-	let query = request
-		.url
-		.path()
-		.join(&::std::path::MAIN_SEPARATOR.to_string());
-	let query = match percent_decode(query.as_bytes()).decode_utf8() {
-		Ok(s) => s,
-		Err(_) => return Err(Error::from(ErrorKind::EncodingError).into()),
-	};
-	let search_result = index::search(db, &query)?;
-	let result_json = serde_json::to_string(&search_result);
-	let result_json = match result_json {
-		Ok(j) => j,
-		Err(e) => return Err(IronError::new(e, status::InternalServerError)),
-	};
-	Ok(Response::with((status::Ok, result_json)))
+#[get("/random")]
+fn random(db: State<Arc<DB>>, _auth: Auth) -> Result<Json<Vec<index::Directory>>, errors::Error> {
+	let result = index::get_random_albums(db.deref().deref(), 20)?;
+	Ok(Json(result))
 }
 
-fn serve(request: &mut Request, db: &DB) -> IronResult<Response> {
-	let virtual_path = path_from_request(request);
-	let virtual_path = match virtual_path {
-		Err(e) => return Err(IronError::new(e, status::BadRequest)),
-		Ok(p) => p,
-	};
+#[get("/recent")]
+fn recent(db: State<Arc<DB>>, _auth: Auth) -> Result<Json<Vec<index::Directory>>, errors::Error> {
+	let result = index::get_recent_albums(db.deref().deref(), 20)?;
+	Ok(Json(result))
+}
 
+#[get("/search")]
+fn search_root(
+	db: State<Arc<DB>>,
+	_auth: Auth,
+) -> Result<Json<Vec<index::CollectionFile>>, errors::Error> {
+	let result = index::search(db.deref().deref(), "")?;
+	Ok(Json(result))
+}
+
+#[get("/search/<query>")]
+fn search(
+	db: State<Arc<DB>>,
+	_auth: Auth,
+	query: String,
+) -> Result<Json<Vec<index::CollectionFile>>, errors::Error> {
+	let result = index::search(db.deref().deref(), &query)?;
+	Ok(Json(result))
+}
+
+#[get("/serve/<path>")]
+fn serve(
+	db: State<Arc<DB>>,
+	_auth: Auth,
+	path: VFSPathBuf,
+) -> Result<serve::RangeResponder<File>, errors::Error> {
+	let db: &DB = db.deref().deref();
 	let vfs = db.get_vfs()?;
-	let real_path = vfs.virtual_to_real(&virtual_path);
-	let real_path = match real_path {
-		Err(e) => return Err(IronError::new(e, status::NotFound)),
-		Ok(p) => p,
+	let real_path = vfs.virtual_to_real(&path.into() as &PathBuf)?;
+
+	let serve_path = if utils::is_image(&real_path) {
+		thumbnails::get_thumbnail(&real_path, 400)?
+	} else {
+		real_path
 	};
 
-	let metadata = match fs::metadata(real_path.as_path()) {
-		Ok(meta) => meta,
-		Err(e) => {
-			let status = match e.kind() {
-				io::ErrorKind::NotFound => status::NotFound,
-				io::ErrorKind::PermissionDenied => status::Forbidden,
-				_ => status::InternalServerError,
-			};
-			return Err(IronError::new(e, status));
-		}
-	};
-
-	if !metadata.is_file() {
-		return Err(Error::from(ErrorKind::CannotServeDirectory).into());
-	}
-
-	if is_song(real_path.as_path()) {
-		let range_header = request.headers.get::<Range>();
-		return serve::deliver(&real_path, range_header);
-	}
-
-	if is_image(real_path.as_path()) {
-		return art(request, real_path.as_path());
-	}
-
-	Err(Error::from(ErrorKind::UnsupportedFileType).into())
+	let file = File::open(serve_path)?;
+	Ok(serve::RangeResponder::new(file))
 }
 
-fn art(_: &mut Request, real_path: &Path) -> IronResult<Response> {
-	let thumb = get_thumbnail(real_path, 400);
-	match thumb {
-		Ok(path) => Ok(Response::with((status::Ok, path))),
-		Err(e) => Err(IronError::from(e)),
-	}
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub struct ListPlaylistsEntry {
+	pub name: String,
 }
 
-fn get_config(_: &mut Request, db: &DB) -> IronResult<Response> {
-	let c = config::read(db)?;
-	let result_json = serde_json::to_string(&c);
-	let result_json = match result_json {
-		Ok(j) => j,
-		Err(e) => return Err(IronError::new(e, status::InternalServerError)),
-	};
-	Ok(Response::with((status::Ok, result_json)))
-}
-
-fn put_config(request: &mut Request, db: &DB) -> IronResult<Response> {
-	let input = request.get_ref::<params::Params>().unwrap();
-	let config = match input.find(&["config"]) {
-		Some(&params::Value::String(ref config)) => config,
-		_ => return Err(Error::from(ErrorKind::MissingConfig).into()),
-	};
-	let config = config::parse_json(config)?;
-	config::amend(db, &config)?;
-	Ok(Response::with(status::Ok))
-}
-
-fn get_preferences(request: &mut Request, db: &DB) -> IronResult<Response> {
-	let username = match request.extensions.get::<SessionKey>() {
-		Some(s) => s.username.clone(),
-		None => return Err(Error::from(ErrorKind::AuthenticationRequired).into()),
-	};
-
-	let preferences = config::read_preferences(db, &username)?;
-	let result_json = serde_json::to_string(&preferences);
-	let result_json = match result_json {
-		Ok(j) => j,
-		Err(e) => return Err(IronError::new(e, status::InternalServerError)),
-	};
-	Ok(Response::with((status::Ok, result_json)))
-}
-
-fn put_preferences(request: &mut Request, db: &DB) -> IronResult<Response> {
-	let username = match request.extensions.get::<SessionKey>() {
-		Some(s) => s.username.clone(),
-		None => return Err(Error::from(ErrorKind::AuthenticationRequired).into()),
-	};
-
-	let input = request.get_ref::<params::Params>().unwrap();
-	let preferences = match input.find(&["preferences"]) {
-		Some(&params::Value::String(ref preferences)) => preferences,
-		_ => return Err(Error::from(ErrorKind::MissingPreferences).into()),
-	};
-	let preferences = match serde_json::from_str::<config::Preferences>(preferences) {
-		Ok(p) => p,
-		Err(e) => return Err(IronError::new(e, status::InternalServerError)),
-	};
-
-	config::write_preferences(db, &username, &preferences)?;
-	Ok(Response::with(status::Ok))
-}
-
-fn trigger_index(channel: &Mutex<Sender<index::Command>>) -> IronResult<Response> {
-	let channel = channel.lock().unwrap();
-	let channel = channel.deref();
-	if let Err(e) = channel.send(index::Command::REINDEX) {
-		return Err(IronError::new(e, status::InternalServerError));
-	};
-	Ok(Response::with(status::Ok))
-}
-
-fn save_playlist(request: &mut Request, db: &DB) -> IronResult<Response> {
-	let username = match request.extensions.get::<SessionKey>() {
-		Some(s) => s.username.clone(),
-		None => return Err(Error::from(ErrorKind::AuthenticationRequired).into()),
-	};
-
-	let input = request.get_ref::<params::Params>().unwrap();
-	let playlist = match input.find(&["playlist"]) {
-		Some(&params::Value::String(ref playlist)) => playlist,
-		_ => return Err(Error::from(ErrorKind::MissingPlaylist).into()),
-	};
-
-	#[derive(Deserialize)]
-	struct SavePlaylistInput {
-		name: String,
-		tracks: Vec<String>,
-	}
-
-	let playlist = match serde_json::from_str::<SavePlaylistInput>(playlist) {
-		Ok(p) => p,
-		Err(e) => return Err(IronError::new(e, status::BadRequest)),
-	};
-
-	playlist::save_playlist(&playlist.name, &username, &playlist.tracks, db)?;
-
-	Ok(Response::with(status::Ok))
-}
-
-fn list_playlists(request: &mut Request, db: &DB) -> IronResult<Response> {
-	let username = match request.extensions.get::<SessionKey>() {
-		Some(s) => s.username.clone(),
-		None => return Err(Error::from(ErrorKind::AuthenticationRequired).into()),
-	};
-
-	#[derive(Serialize)]
-	struct ListPlaylistsOutput {
-		name: String,
-	}
-
-	let playlist_name = playlist::list_playlists(&username, db)?;
-	let playlists: Vec<ListPlaylistsOutput> = playlist_name
+#[get("/playlists")]
+fn list_playlists(
+	db: State<Arc<DB>>,
+	auth: Auth,
+) -> Result<Json<Vec<ListPlaylistsEntry>>, errors::Error> {
+	let playlist_names = playlist::list_playlists(&auth.username, db.deref().deref())?;
+	let playlists: Vec<ListPlaylistsEntry> = playlist_names
 		.into_iter()
-		.map(|p| ListPlaylistsOutput { name: p })
+		.map(|p| ListPlaylistsEntry { name: p })
 		.collect();
 
-	let result_json = serde_json::to_string(&playlists);
-	let result_json = match result_json {
-		Ok(j) => j,
-		Err(e) => return Err(IronError::new(e, status::InternalServerError)),
-	};
-	Ok(Response::with((status::Ok, result_json)))
+	Ok(Json(playlists))
 }
 
-fn read_playlist(request: &mut Request, db: &DB) -> IronResult<Response> {
-	let username = match request.extensions.get::<SessionKey>() {
-		Some(s) => s.username.clone(),
-		None => return Err(Error::from(ErrorKind::AuthenticationRequired).into()),
-	};
-
-	let params = request.extensions.get::<Router>().unwrap();
-	let playlist_name = &(match params.find("playlist_name") {
-		Some(s) => s,
-		_ => return Err(Error::from(ErrorKind::MissingPlaylistName).into()),
-	});
-
-	let playlist_name = match percent_decode(playlist_name.as_bytes()).decode_utf8() {
-		Ok(s) => s,
-		Err(_) => return Err(Error::from(ErrorKind::EncodingError).into()),
-	};
-
-	let songs = playlist::read_playlist(&playlist_name, &username, db)?;
-	let result_json = serde_json::to_string(&songs);
-	let result_json = match result_json {
-		Ok(j) => j,
-		Err(e) => return Err(IronError::new(e, status::InternalServerError)),
-	};
-
-	Ok(Response::with((status::Ok, result_json)))
+#[derive(Serialize, Deserialize)]
+pub struct SavePlaylistInput {
+	pub tracks: Vec<String>,
 }
 
-fn delete_playlist(request: &mut Request, db: &DB) -> IronResult<Response> {
-	let username = match request.extensions.get::<SessionKey>() {
-		Some(s) => s.username.clone(),
-		None => return Err(Error::from(ErrorKind::AuthenticationRequired).into()),
-	};
-
-	let params = request.extensions.get::<Router>().unwrap();
-	let playlist_name = &(match params.find("playlist_name") {
-		Some(s) => s,
-		_ => return Err(Error::from(ErrorKind::MissingPlaylistName).into()),
-	});
-
-	let playlist_name = match percent_decode(playlist_name.as_bytes()).decode_utf8() {
-		Ok(s) => s,
-		Err(_) => return Err(Error::from(ErrorKind::EncodingError).into()),
-	};
-
-	playlist::delete_playlist(&playlist_name, &username, db)?;
-
-	Ok(Response::with(status::Ok))
+#[put("/playlist/<name>", data = "<playlist>")]
+fn save_playlist(
+	db: State<Arc<DB>>,
+	auth: Auth,
+	name: String,
+	playlist: Json<SavePlaylistInput>,
+) -> Result<(), errors::Error> {
+	playlist::save_playlist(&name, &auth.username, &playlist.tracks, db.deref().deref())?;
+	Ok(())
 }
 
-fn lastfm_link(request: &mut Request, db: &DB) -> IronResult<Response> {
-	let input = request.get_ref::<params::Params>().unwrap();
-	let username = match input.find(&["username"]) {
-		Some(&params::Value::String(ref username)) => username.clone(),
-		_ => return Err(Error::from(ErrorKind::MissingUsername).into()),
-	};
-	let token = match input.find(&["token"]) {
-		Some(&params::Value::String(ref token)) => token.clone(),
-		_ => return Err(Error::from(ErrorKind::MissingPassword).into()),
-	};
+#[get("/playlist/<name>")]
+fn read_playlist(
+	db: State<Arc<DB>>,
+	auth: Auth,
+	name: String,
+) -> Result<Json<Vec<index::Song>>, errors::Error> {
+	let songs = playlist::read_playlist(&name, &auth.username, db.deref().deref())?;
+	Ok(Json(songs))
+}
 
-	lastfm::link(db, &username, &token)?;
+#[delete("/playlist/<name>")]
+fn delete_playlist(db: State<Arc<DB>>, auth: Auth, name: String) -> Result<(), errors::Error> {
+	playlist::delete_playlist(&name, &auth.username, db.deref().deref())?;
+	Ok(())
+}
 
-	let url_encoded_content = match input.find(&["content"]) {
-		Some(&params::Value::String(ref content)) => content.clone(),
-		_ => return Err(Error::from(ErrorKind::MissingDesiredResponse).into()),
-	};
+#[put("/lastfm/now_playing/<path>")]
+fn lastfm_now_playing(
+	db: State<Arc<DB>>,
+	auth: Auth,
+	path: VFSPathBuf,
+) -> Result<(), errors::Error> {
+	lastfm::now_playing(db.deref().deref(), &auth.username, &path.into() as &PathBuf)?;
+	Ok(())
+}
 
-	let base64_content = match percent_decode(url_encoded_content.as_bytes()).decode_utf8() {
+#[post("/lastfm/scrobble/<path>")]
+fn lastfm_scrobble(db: State<Arc<DB>>, auth: Auth, path: VFSPathBuf) -> Result<(), errors::Error> {
+	lastfm::scrobble(db.deref().deref(), &auth.username, &path.into() as &PathBuf)?;
+	Ok(())
+}
+
+#[get("/lastfm/link?<token>&<content>")]
+fn lastfm_link(
+	db: State<Arc<DB>>,
+	auth: Auth,
+	token: String,
+	content: String,
+) -> Result<Html<String>, errors::Error> {
+	lastfm::link(db.deref().deref(), &auth.username, &token)?;
+
+	// Percent decode
+	let base64_content = match RawStr::from_str(&content).percent_decode() {
 		Ok(s) => s,
-		Err(_) => return Err(Error::from(ErrorKind::EncodingError).into()),
+		Err(_) => bail!(errors::ErrorKind::EncodingError),
 	};
 
+	// Base64 decode
 	let popup_content = match base64::decode(base64_content.as_bytes()) {
 		Ok(c) => c,
-		Err(_) => return Err(Error::from(ErrorKind::EncodingError).into()),
+		Err(_) => bail!(errors::ErrorKind::EncodingError),
 	};
 
-	let mime = "text/html".parse::<Mime>().unwrap();
+	// UTF-8 decode
+	let popup_content_string = match str::from_utf8(&popup_content) {
+		Ok(s) => s,
+		Err(_) => bail!(errors::ErrorKind::EncodingError),
+	};
 
-	Ok(Response::with((mime, status::Ok, popup_content)))
+	Ok(Html(popup_content_string.to_string()))
 }
 
-fn lastfm_unlink(request: &mut Request, db: &DB) -> IronResult<Response> {
-	let username = match request.extensions.get::<SessionKey>() {
-		Some(s) => s.username.clone(),
-		None => return Err(Error::from(ErrorKind::AuthenticationRequired).into()),
-	};
-	lastfm::unlink(db, &username)?;
-	Ok(Response::with(status::Ok))
-}
-
-fn lastfm_now_playing(request: &mut Request, db: &DB) -> IronResult<Response> {
-	let username = match request.extensions.get::<SessionKey>() {
-		Some(s) => s.username.clone(),
-		None => return Err(Error::from(ErrorKind::AuthenticationRequired).into()),
-	};
-
-	let virtual_path = path_from_request(request);
-	let virtual_path = match virtual_path {
-		Err(e) => return Err(IronError::new(e, status::BadRequest)),
-		Ok(p) => p,
-	};
-
-	lastfm::now_playing(db, &username, &virtual_path)?;
-
-	Ok(Response::with(status::Ok))
-}
-
-fn lastfm_scrobble(request: &mut Request, db: &DB) -> IronResult<Response> {
-	let username = match request.extensions.get::<SessionKey>() {
-		Some(s) => s.username.clone(),
-		None => return Err(Error::from(ErrorKind::AuthenticationRequired).into()),
-	};
-
-	let virtual_path = path_from_request(request);
-	let virtual_path = match virtual_path {
-		Err(e) => return Err(IronError::new(e, status::BadRequest)),
-		Ok(p) => p,
-	};
-
-	lastfm::scrobble(db, &username, &virtual_path)?;
-
-	Ok(Response::with(status::Ok))
+#[delete("/lastfm/link")]
+fn lastfm_unlink(db: State<Arc<DB>>, auth: Auth) -> Result<(), errors::Error> {
+	lastfm::unlink(db.deref().deref(), &auth.username)?;
+	Ok(())
 }

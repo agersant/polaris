@@ -2,7 +2,7 @@ use app_dirs::{app_root, AppDataType, AppInfo};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use errors::*;
+use crate::errors::*;
 
 #[cfg(not(target_os = "linux"))]
 const APP_INFO: AppInfo = AppInfo {
@@ -62,16 +62,6 @@ fn test_get_audio_format() {
 		get_audio_format(Path::new("animals/🐷/my🐖file.flac")),
 		Some(AudioFormat::FLAC)
 	);
-}
-
-pub fn is_song(path: &Path) -> bool {
-	get_audio_format(path).is_some()
-}
-
-#[test]
-fn test_is_song() {
-	assert!(is_song(Path::new("animals/🐷/my🐖file.mp3")));
-	assert!(!is_song(Path::new("animals/🐷/my🐖file.jpg")));
 }
 
 pub fn is_image(path: &Path) -> bool {

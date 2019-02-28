@@ -14,14 +14,14 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time;
 
-use config::MiscSettings;
+use crate::config::MiscSettings;
 #[cfg(test)]
-use db;
-use db::ConnectionSource;
-use db::{directories, misc_settings, songs};
-use errors;
-use metadata;
-use vfs::{VFSSource, VFS};
+use crate::db;
+use crate::db::{directories, misc_settings, songs};
+use crate::db::{ConnectionSource, DB};
+use crate::errors;
+use crate::metadata;
+use crate::vfs::{VFSSource, VFS};
 
 const INDEX_BUILDING_INSERT_BUFFER_SIZE: usize = 1000; // Insertions in each transaction
 const INDEX_BUILDING_CLEAN_BUFFER_SIZE: usize = 500; // Insertions in each transaction
@@ -32,17 +32,72 @@ no_arg_sql_function!(
 	"Represents the SQL RANDOM() function"
 );
 
-pub enum Command {
+enum Command {
 	REINDEX,
+	EXIT,
 }
 
-#[derive(Debug, Queryable, QueryableByName, Serialize)]
+struct CommandReceiver {
+	receiver: Receiver<Command>,
+}
+
+impl CommandReceiver {
+	fn new(receiver: Receiver<Command>) -> CommandReceiver {
+		CommandReceiver { receiver }
+	}
+}
+
+pub struct CommandSender {
+	sender: Mutex<Sender<Command>>,
+}
+
+impl CommandSender {
+	fn new(sender: Sender<Command>) -> CommandSender {
+		CommandSender {
+			sender: Mutex::new(sender),
+		}
+	}
+
+	pub fn trigger_reindex(&self) -> Result<(), errors::Error> {
+		let sender = self.sender.lock().unwrap();
+		match sender.send(Command::REINDEX) {
+			Ok(_) => Ok(()),
+			Err(_) => bail!("Trigger reindex channel error"),
+		}
+	}
+
+	#[allow(dead_code)]
+	pub fn exit(&self) -> Result<(), errors::Error> {
+		let sender = self.sender.lock().unwrap();
+		match sender.send(Command::EXIT) {
+			Ok(_) => Ok(()),
+			Err(_) => bail!("Index exit channel error"),
+		}
+	}
+}
+
+pub fn init(db: Arc<DB>) -> Arc<CommandSender> {
+	let (index_sender, index_receiver) = channel();
+	let command_sender = Arc::new(CommandSender::new(index_sender));
+	let command_receiver = CommandReceiver::new(index_receiver);
+
+	// Start update loop
+	let db_ref = db.clone();
+	std::thread::spawn(move || {
+		let db = db_ref.deref();
+		update_loop(db, &command_receiver);
+	});
+
+	command_sender
+}
+
+#[derive(Debug, PartialEq, Queryable, QueryableByName, Serialize, Deserialize)]
 #[table_name = "songs"]
 pub struct Song {
-	#[serde(skip_serializing)]
+	#[serde(skip_serializing, skip_deserializing)]
 	id: i32,
 	pub path: String,
-	#[serde(skip_serializing)]
+	#[serde(skip_serializing, skip_deserializing)]
 	pub parent: String,
 	pub track_number: Option<i32>,
 	pub disc_number: Option<i32>,
@@ -55,12 +110,12 @@ pub struct Song {
 	pub duration: Option<i32>,
 }
 
-#[derive(Debug, Queryable, Serialize)]
+#[derive(Debug, PartialEq, Queryable, Serialize, Deserialize)]
 pub struct Directory {
-	#[serde(skip_serializing)]
+	#[serde(skip_serializing, skip_deserializing)]
 	id: i32,
 	pub path: String,
-	#[serde(skip_serializing)]
+	#[serde(skip_serializing, skip_deserializing)]
 	pub parent: Option<String>,
 	pub artist: Option<String>,
 	pub year: Option<i32>,
@@ -69,7 +124,7 @@ pub struct Directory {
 	pub date_added: i32,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub enum CollectionFile {
 	Directory(Directory),
 	Song(Song),
@@ -318,7 +373,8 @@ where
 			.filter(|ref song_path| {
 				let path = Path::new(&song_path);
 				!path.exists() || vfs.real_to_virtual(path).is_err()
-			}).collect::<Vec<_>>();
+			})
+			.collect::<Vec<_>>();
 
 		{
 			let connection = db.get_connection();
@@ -343,7 +399,8 @@ where
 			.filter(|ref directory_path| {
 				let path = Path::new(&directory_path);
 				!path.exists() || vfs.real_to_virtual(path).is_err()
-			}).collect::<Vec<_>>();
+			})
+			.collect::<Vec<_>>();
 
 		{
 			let connection = db.get_connection();
@@ -396,24 +453,21 @@ where
 	Ok(())
 }
 
-pub fn update_loop<T>(db: &T, command_buffer: &Receiver<Command>)
+fn update_loop<T>(db: &T, command_buffer: &CommandReceiver)
 where
 	T: ConnectionSource + VFSSource,
 {
 	loop {
 		// Wait for a command
-		if let Err(e) = command_buffer.recv() {
-			error!("Error while waiting on index command buffer: {}", e);
+		if command_buffer.receiver.recv().is_err() {
 			return;
 		}
 
 		// Flush the buffer to ignore spammy requests
 		loop {
-			match command_buffer.try_recv() {
-				Err(TryRecvError::Disconnected) => {
-					error!("Error while flushing index command buffer");
-					return;
-				}
+			match command_buffer.receiver.try_recv() {
+				Err(TryRecvError::Disconnected) => return,
+				Ok(Command::EXIT) => return,
 				Err(TryRecvError::Empty) => break,
 				Ok(_) => (),
 			}
@@ -426,15 +480,14 @@ where
 	}
 }
 
-pub fn self_trigger<T>(db: &T, command_buffer: &Arc<Mutex<Sender<Command>>>)
+pub fn self_trigger<T>(db: &T, command_buffer: &Arc<CommandSender>)
 where
 	T: ConnectionSource,
 {
 	loop {
 		{
-			let command_buffer = command_buffer.lock().unwrap();
 			let command_buffer = command_buffer.deref();
-			if let Err(e) = command_buffer.send(Command::REINDEX) {
+			if let Err(e) = command_buffer.trigger_reindex() {
 				error!("Error while writing to index command buffer: {}", e);
 				return;
 			}
@@ -484,15 +537,16 @@ fn virtualize_directory(vfs: &VFS, mut directory: Directory) -> Option<Directory
 	Some(directory)
 }
 
-pub fn browse<T>(db: &T, virtual_path: &Path) -> Result<Vec<CollectionFile>, errors::Error>
+pub fn browse<T, P>(db: &T, virtual_path: P) -> Result<Vec<CollectionFile>, errors::Error>
 where
 	T: ConnectionSource + VFSSource,
+	P: AsRef<Path>,
 {
 	let mut output = Vec::new();
 	let vfs = db.get_vfs()?;
 	let connection = db.get_connection();
 
-	if virtual_path.components().count() == 0 {
+	if virtual_path.as_ref().components().count() == 0 {
 		// Browse top-level
 		let real_directories: Vec<Directory> = directories::table
 			.filter(directories::parent.is_null())
@@ -528,15 +582,16 @@ where
 	Ok(output)
 }
 
-pub fn flatten<T>(db: &T, virtual_path: &Path) -> Result<Vec<Song>, errors::Error>
+pub fn flatten<T, P>(db: &T, virtual_path: P) -> Result<Vec<Song>, errors::Error>
 where
 	T: ConnectionSource + VFSSource,
+	P: AsRef<Path>,
 {
 	use self::songs::dsl::*;
 	let vfs = db.get_vfs()?;
 	let connection = db.get_connection();
 
-	let real_songs: Vec<Song> = if virtual_path.parent() != None {
+	let real_songs: Vec<Song> = if virtual_path.as_ref().parent() != None {
 		let real_path = vfs.virtual_to_real(virtual_path)?;
 		let like_path = real_path.as_path().to_string_lossy().into_owned() + "%";
 		songs
@@ -623,7 +678,8 @@ where
 					.or(album.like(&like_test))
 					.or(artist.like(&like_test))
 					.or(album_artist.like(&like_test)),
-			).filter(parent.not_like(&like_test))
+			)
+			.filter(parent.not_like(&like_test))
 			.load(connection.deref())?;
 
 		let virtual_songs = real_songs
