@@ -26,7 +26,7 @@ You can now start Polaris from the start menu or from your desktop, Polaris will
 #### Dependencies
 
 1. Install OpenSSL and its headers. This is most likely available from your distribution's package manager. For instance on Ubuntu, execute `sudo apt-get install libssl-dev`
-2. Install the Rust compiler by executing `curl https://sh.rustup.rs -sSf | sh` or using an [alternative method](https://www.rust-lang.org/en-US/install.html)
+2. Install the nightly Rust compiler by executing `curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain nightly` or using an [alternative method](https://www.rust-lang.org/en-US/install.html)
 
 #### Polaris installation
 1. Download the [latest release]((https://github.com/agersant/polaris/releases/latest)) of Polaris (you want the .tar.gz file)
@@ -63,7 +63,7 @@ You can access your Polaris installation from anywhere via your computer's publi
 
 A solution to these problems is to set up Dynamic DNS, so that your installation can always be reached at a fixed URL.
 
-The steps below will walk you through setting up YDNS and Polaris to give your installation a fixed URL. If you have another solution in mind, or prefer using another Dynamic DNS service, skip to the next section. 
+The steps below will walk you through setting up YDNS and Polaris to give your installation a fixed URL. If you have another solution in mind, or prefer using another Dynamic DNS service, skip to the next section.
 
 1. Register for a free account on https://ydns.io
 2. On the YDNS website, access the "My Hosts" page and press the + sign for "Add Host"
@@ -77,7 +77,7 @@ The steps below will walk you through setting up YDNS and Polaris to give your i
 	- Click on your host name (eg. yourdomain.ydns.eu)
     - You should now see a page which looks like this:
 	![YDNS Records](res/readme/ydns_records.png?raw=true "YDNS Records")
-	- Click on the green "+" icon on the right 
+	- Click on the green "+" icon on the right
 	- Fill out the new form as described:
 		- Make sure the `Type` field is set to `A`
 		- Set content to 0.0.0.0
