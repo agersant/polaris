@@ -329,6 +329,38 @@
                     }
                 }
             }
+        },
+        "/search/{query}": {
+            "get": {
+                "tags": ["Collection"],
+                "summary": "Searches for songs and directories",
+                "operationId": "getSearch",
+                "parameters": [
+                    {
+                        "name": "query",
+                        "in": "path",
+                        "description": "Search query used to filter results",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/CollectionFile"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "components": {
