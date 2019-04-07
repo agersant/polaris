@@ -133,6 +133,26 @@
                 ]
             }
         },
+        "/auth": {
+            "post": {
+                "tags": ["Other"],
+                "summary": "Returns information about user permissions and a session cookie for future authenticated requests.",
+                "operationId": "postAuth",
+                "requestBody": {
+                    "required": true,
+                    "content": { "application/json": { "schema": { "$ref": "#components/schemas/AuthCredentials" } } }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": { "application/json": { "schema": { "$ref":"#components/schemas/AuthOutput" } } }
+                    },
+                    "401": {
+                        "description": "Invalid credentials"
+                    }
+                }
+            }
+        },
         "/pet": {
             "post": {
                 "tags": [
@@ -1011,7 +1031,25 @@
                     }
                 }
             },
-
+            "AuthCredentials": {
+                "type": "object",
+                "properties": {
+                    "username": {
+                        "type": "string"
+                    },
+                    "password": {
+                        "type": "string"
+                    }
+                }
+            },
+            "AuthOutput": {
+                "type": "object",
+                "properties": {
+                    "admin": {
+                        "type": "boolean"
+                    }
+                }
+            },
             "Order": {
                 "type": "object",
                 "properties": {
