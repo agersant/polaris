@@ -232,6 +232,104 @@
                 }
             }
         },
+        "/flatten": {
+            "get": {
+                "tags": ["Collection"],
+                "summary": "Recursively lists all the songs in the music collection",
+                "operationId": "getFlatten",
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Song"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/flatten/{location}": {
+            "get": {
+                "tags": ["Collection"],
+                "summary": "Recursively lists all the songs within a directory of the music collection",
+                "operationId": "getFlattenPath",
+                "parameters": [
+                    {
+                        "name": "location",
+                        "in": "path",
+                        "description": "Path to the collection directory begin explored",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Song"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/random": {
+            "get": {
+                "tags": ["Collection"],
+                "summary": "Returns a list of random albums",
+                "operationId": "getRandom",
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Directory"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/recent": {
+            "get": {
+                "tags": ["Collection"],
+                "summary": "Returns the albums most recently added to the collection",
+                "operationId": "getRecent",
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Directory"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/pet": {
             "post": {
                 "tags": [
