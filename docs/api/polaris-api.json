@@ -26,9 +26,113 @@
         {
             "name": "Playlists",
             "description": "Managing playlists"
+        },
+        {
+            "name": "Other"
         }
     ],
     "paths": {
+        "/version": {
+            "get": {
+                "tags": ["Other"],
+                "summary": "Returns which API version this server implements",
+                "operationId": "getVersion",
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Version"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/initial_setup": {
+            "get": {
+                "tags": ["Other"],
+                "summary": "Returns the current state of the initial setup flow",
+                "operationId": "getInitialSetup",
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/InitialSetup"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/trigger_index": {
+            "post": {
+                "tags": ["Other"],
+                "summary": "Begins or queues a crawl of the music collection",
+                "operationId": "postTriggerIndex",
+                "responses": {
+                    "200": {
+                        "description": "Successful operation"
+                    }
+                },
+                "security": [
+                    {
+                        "admin_http_header": [],
+                        "admin_cookie": []
+                    }
+                ]
+            }
+        },
+        "/settings": {
+            "get": {
+                "tags": ["Settings"],
+                "summary": "Reads the existing server configuration",
+                "operationId": "getSettings",
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#components/schemas/Config"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "admin_http_header": [],
+                        "admin_cookie": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": ["Settings"],
+                "summary": "Overwrites the server configuration",
+                "operationId": "getSettings",
+                "requestBody": {
+                    "required": true,
+                    "content": { "application/json": { "schema": { "$ref": "#components/schemas/Config" } } }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful operation"
+                    }
+                },
+                "security": [
+                    {
+                        "admin_http_header": [],
+                        "admin_cookie": []
+                    }
+                ]
+            }
+        },
         "/pet": {
             "post": {
                 "tags": [
@@ -820,6 +924,94 @@
     },
     "components": {
         "schemas": {
+            "Version": {
+                "type": "object",
+                "properties": {
+                    "major": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "minor": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                }
+            },
+            "InitialSetup": {
+                "type": "object",
+                "properties": {
+                    "has_any_users": {
+                        "type": "boolean"
+                    }
+                }
+            },
+            "Config": {
+                "type": "object",
+                "properties": {
+                    "album_art_pattern": {
+                        "type": "string"
+                    },
+                    "reindex_every_n_seconds": {
+                        "type": "integer"
+                    },
+                    "mount_dirs": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/MountPoint"
+                        }
+                    },
+                    "prefix_url": {
+                        "type": "string"
+                    },
+                    "users": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ConfigUser"
+                        }
+                    },
+                    "ydns": {
+                        "type": "object",
+                        "properties": {
+                            "host": {
+                                "type": "string"
+                            },
+                            "username": {
+                                "type": "string"
+                            },
+                            "password": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "ConfigUser": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "password": {
+                        "type": "string",
+                        "description": "Always blank when this field appear in a server response"
+                    },
+                    "admin": {
+                        "type": "boolean"
+                    }
+                }
+            },
+            "MountPoint": {
+                "type": "object",
+                "properties": {
+                    "source": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
+                }
+            },
+
             "Order": {
                 "type": "object",
                 "properties": {
@@ -1023,9 +1215,26 @@
             }
         },
         "securitySchemes": {
-            "basicAuth": {
+            "auth_http_header": {
                 "type": "http",
                 "scheme": "basic"
+            },
+            "auth_cookie": {
+                "type": "apikey",
+                "in": "cookie",
+                "name": "session",
+                "description": "A session token obtained returned as a server cookie by making a request via the auth_http_header scheme."
+            },
+            "admin_http_header": {
+                "type": "http",
+                "scheme": "basic",
+                "description": "Identical to the auth_http_header scheme but only for users recognized as admin by the Polaris server"
+            },
+            "admin_cookie": {
+                "type": "apikey",
+                "in": "cookie",
+                "name": "session",
+                "description": "Identical to the auth_cookie scheme but only for users recognized as admin by the Polaris server"
             }
         },
         "links": {},
