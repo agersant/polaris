@@ -209,7 +209,10 @@
                     {
                         "name": "location",
                         "in": "path",
-                        "description": "Path to the collection directory begin explored"
+                        "description": "Path to the collection directory begin explored",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 ],
                 "responses": {
@@ -1025,11 +1028,13 @@
                 "properties": {
                     "major": {
                         "type": "integer",
-                        "format": "int64"
+                        "format": "int64",
+                        "example": 3
                     },
                     "minor": {
                         "type": "integer",
-                        "format": "int64"
+                        "format": "int64",
+                        "example": 0
                     }
                 }
             },
@@ -1045,10 +1050,12 @@
                 "type": "object",
                 "properties": {
                     "album_art_pattern": {
-                        "type": "string"
+                        "type": "string",
+                        "example": "^Folder.(png|jpg|jpeg)$"
                     },
                     "reindex_every_n_seconds": {
-                        "type": "integer"
+                        "type": "integer",
+                        "example": 3600
                     },
                     "mount_dirs": {
                         "type": "array",
@@ -1069,13 +1076,16 @@
                         "type": "object",
                         "properties": {
                             "host": {
-                                "type": "string"
+                                "type": "string",
+                                "example": "yourname.ydns.eu"
                             },
                             "username": {
-                                "type": "string"
+                                "type": "string",
+                                "example": "you@host.com"
                             },
                             "password": {
-                                "type": "string"
+                                "type": "string",
+                                "example": "hunter2"
                             }
                         }
                     }
@@ -1100,10 +1110,12 @@
                 "type": "object",
                 "properties": {
                     "source": {
-                        "type": "string"
+                        "type": "string",
+                        "example": "/mnt/some_drive/music"
                     },
                     "name": {
-                        "type": "string"
+                        "type": "string",
+                        "example": "My Music"
                     }
                 }
             },
@@ -1165,23 +1177,28 @@
                 "properties": {
                     "path": {
                         "type": "string",
+                        "example": "My Music/Metal/Stratovarius/Destiny",
                         "required": true
                     },
                     "artist": {
-                        "type": "string"
+                        "type": "string",
+                        "example": "Stratovarius"
                     },
                     "year": {
                         "type": "integer",
-                        "example": 2019
+                        "example": 1998
                     },
                     "album": {
-                        "type": "string"
+                        "type": "string",
+                        "example": "Destiny"
                     },
                     "artwork": {
-                        "type": "string"
+                        "type": "string",
+                        "example": "My Music/Metal/Stratovarius/Destiny/Folder.png"
                     },
                     "date_added": {
                         "type": "integer",
+                        "example": 1453179635,
                         "required": true
                     }
                 }
@@ -1191,34 +1208,44 @@
                 "properties": {
                     "path": {
                         "type": "string",
+                        "example": "My Music/Metal/Stratovarius/Destiny/Anthem of the World.mp3",
                         "required": true
                     },
                     "track_number": {
-                        "type": "integer"
+                        "type": "integer",
+                        "example": 9
                     },
                     "disc_number": {
-                        "type": "integer"
+                        "type": "integer",
+                        "example": 1
                     },
                     "title": {
-                        "type": "string"
+                        "type": "string",
+                        "example": "Anthem of the World"
                     },
                     "artist": {
-                        "type": "string"
+                        "type": "string",
+                        "example": "Stratovarius"
                     },
                     "album_artist": {
-                        "type": "string"
+                        "type": "string",
+                        "example": null
                     },
                     "year": {
-                        "type": "integer"
+                        "type": "integer",
+                        "example": 1998
                     },
                     "album": {
-                        "type": "string"
+                        "type": "string",
+                        "example": "Destiny"
                     },
                     "artwork": {
-                        "type": "string"
+                        "type": "string",
+                        "example": "My Music/Metal/Stratovarius/Destiny/Folder.png"
                     },
                     "duration": {
-                        "type": "integer"
+                        "type": "integer",
+                        "example": 571
                     }
                 }
             },
