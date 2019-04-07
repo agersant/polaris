@@ -133,6 +133,31 @@
                 ]
             }
         },
+        "/preferences": {
+            "get": {
+                "tags": ["Settings"],
+                "summary": "Reads the preferences of the current user",
+                "operationId": "getPreferences",
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#components/schemas/Preferences"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "auth_http_header": [],
+                        "auth_cookie": []
+                    }
+                ]
+            }
+        },
         "/auth": {
             "post": {
                 "tags": ["Other"],
@@ -149,6 +174,57 @@
                     },
                     "401": {
                         "description": "Invalid credentials"
+                    }
+                }
+            }
+        },
+        "/browse": {
+            "get": {
+                "tags": ["Collection"],
+                "summary": "Reads the content of the top-level directory in the music collection",
+                "operationId": "getBrowse",
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/CollectionFile"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/browse/{location}": {
+            "get": {
+                "tags": ["Collection"],
+                "summary": "Reads the content of a directory in the music collection",
+                "operationId": "getBrowsePath",
+                "parameters": [
+                    {
+                        "name": "location",
+                        "in": "path",
+                        "description": "Path to the collection directory begin explored"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/CollectionFile"
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1031,6 +1107,14 @@
                     }
                 }
             },
+            "Preferences": {
+                "type": "object",
+                "properties": {
+                    "lastfm_username": {
+                        "type": "string"
+                    }
+                }
+            },
             "AuthCredentials": {
                 "type": "object",
                 "properties": {
@@ -1050,6 +1134,96 @@
                     }
                 }
             },
+            "CollectionFile": {
+                "oneOf": [
+                    {
+                        "$ref": "#/components/schemas/CollectionFileDirectory"
+                    },
+                    {
+                        "$ref": "#/components/schemas/CollectionFileSong"
+                    }
+                ]
+            },
+            "CollectionFileDirectory": {
+                "type": "object",
+                "properties": {
+                    "Directory": {
+                        "$ref": "#/components/schemas/Directory"
+                    }
+                }
+            },
+            "CollectionFileSong": {
+                "type": "object",
+                "properties": {
+                    "Song": {
+                        "$ref": "#/components/schemas/Song"
+                    }
+                }
+            },
+            "Directory": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "required": true
+                    },
+                    "artist": {
+                        "type": "string"
+                    },
+                    "year": {
+                        "type": "integer",
+                        "example": 2019
+                    },
+                    "album": {
+                        "type": "string"
+                    },
+                    "artwork": {
+                        "type": "string"
+                    },
+                    "date_added": {
+                        "type": "integer",
+                        "required": true
+                    }
+                }
+            },
+            "Song": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "required": true
+                    },
+                    "track_number": {
+                        "type": "integer"
+                    },
+                    "disc_number": {
+                        "type": "integer"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "artist": {
+                        "type": "string"
+                    },
+                    "album_artist": {
+                        "type": "string"
+                    },
+                    "year": {
+                        "type": "integer"
+                    },
+                    "album": {
+                        "type": "string"
+                    },
+                    "artwork": {
+                        "type": "string"
+                    },
+                    "duration": {
+                        "type": "integer"
+                    }
+                }
+            },
+
+
             "Order": {
                 "type": "object",
                 "properties": {
