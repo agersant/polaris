@@ -12,10 +12,6 @@
             "description": "Browsing the music collection"
         },
         {
-            "name": "File Serving",
-            "description": "Accessing raw files"
-        },
-        {
             "name": "Last.fm",
             "description": "Integrating with Last.fm"
         },
@@ -357,6 +353,32 @@
                                     }
                                 }
                             }
+                        }
+                    }
+                }
+            }
+        },
+        "/serve/{file}": {
+            "get": {
+                "tags": ["Collection"],
+                "summary": "Access a media file in the collection",
+                "operationId": "getServe",
+                "parameters": [
+                    {
+                        "name": "file",
+                        "in": "path",
+                        "description": "Path to the desired file",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "image/*": { "schema": { "format": "binary" } },
+                            "audio/*": { "schema": { "format": "binary" } }
                         }
                     }
                 }
