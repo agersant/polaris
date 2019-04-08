@@ -29,6 +29,7 @@ Copy-Item .\web\style								          .\release\tmp\web\style -recurse
 Copy-Item .\web\tags								          .\release\tmp\web\tags  -recurse
 Copy-Item .\web\favicon.png					          .\release\tmp\web\
 Copy-Item .\web\index.html					          .\release\tmp\web\
+Copy-Item .\docs\swagger  					          .\release\tmp\swagger   -recurse
 
 ""
 "Creating installer"

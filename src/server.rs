@@ -10,9 +10,11 @@ use crate::index::CommandSender;
 
 pub fn get_server(
 	port: u16,
-	static_url: &str,
 	api_url: &str,
+	web_url: &str,
 	web_dir_path: &PathBuf,
+	swagger_url: &str,
+	swagger_dir_path: &PathBuf,
 	db: Arc<DB>,
 	command_sender: Arc<CommandSender>,
 ) -> Result<rocket::Rocket, errors::Error> {
@@ -23,6 +25,7 @@ pub fn get_server(
 	Ok(rocket::custom(config)
 		.manage(db)
 		.manage(command_sender)
-		.mount(&static_url, StaticFiles::from(web_dir_path))
+		.mount(&swagger_url, StaticFiles::from(swagger_dir_path))
+		.mount(&web_url, StaticFiles::from(web_dir_path))
 		.mount(&api_url, api::get_routes()))
 }
