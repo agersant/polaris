@@ -71,11 +71,14 @@ mod metadata;
 mod playlist;
 mod serve;
 mod server;
+mod swagger;
+mod test;
 mod thumbnails;
 mod ui;
 mod user;
 mod utils;
 mod vfs;
+mod web;
 
 static LOG_CONFIG: simplelog::Config = simplelog::Config {
 	time: Some(Level::Error),
@@ -221,7 +224,7 @@ fn run() -> Result<()> {
 
 	// API mount target
 	let prefix_url = config.prefix_url.unwrap_or_else(|| "".to_string());
-	let api_url = format!("{}/api", &prefix_url);
+	let api_url = format!("/{}api", &prefix_url);
 	info!("Mounting API on {}", api_url);
 
 	// Web client mount target

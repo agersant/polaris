@@ -1,12 +1,15 @@
 use rocket;
-use rocket_contrib::serve::StaticFiles;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use crate::api;
 use crate::db::DB;
 use crate::errors;
 use crate::index::CommandSender;
+
+pub struct StaticDirs {
+	pub web_dir_path: PathBuf,
+	pub swagger_dir_path: PathBuf,
+}
 
 pub fn get_server(
 	port: u16,
@@ -18,14 +21,21 @@ pub fn get_server(
 	db: Arc<DB>,
 	command_sender: Arc<CommandSender>,
 ) -> Result<rocket::Rocket, errors::Error> {
+
 	let config = rocket::Config::build(rocket::config::Environment::Production)
 		.port(port)
 		.finalize()?;
 
+	let static_dirs = Arc::new(StaticDirs {
+		web_dir_path: web_dir_path.to_path_buf(),
+		swagger_dir_path: swagger_dir_path.to_path_buf(),
+	});
+
 	Ok(rocket::custom(config)
 		.manage(db)
 		.manage(command_sender)
-		.mount(&swagger_url, StaticFiles::from(swagger_dir_path))
-		.mount(&web_url, StaticFiles::from(web_dir_path))
-		.mount(&api_url, api::get_routes()))
+		.manage(static_dirs)
+		.mount(&swagger_url, crate::swagger::get_routes())
+		.mount(&web_url, crate::web::get_routes())
+		.mount(&api_url, crate::api::get_routes()))
 }

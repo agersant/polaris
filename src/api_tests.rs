@@ -2,76 +2,20 @@ use rocket::http::hyper::header::*;
 use rocket::http::uri::Uri;
 use rocket::http::Status;
 use rocket::local::Client;
-use std::fs;
-use std::ops::Deref;
-use std::path::PathBuf;
-use std::sync::Arc;
 use std::{thread, time};
 
 use crate::api;
 use crate::config;
-use crate::db;
 use crate::ddns;
 use crate::index;
-use crate::server;
 use crate::vfs;
+
+use crate::test::get_test_environment;
 
 const TEST_USERNAME: &str = "test_user";
 const TEST_PASSWORD: &str = "test_password";
 const TEST_MOUNT_NAME: &str = "collection";
 const TEST_MOUNT_SOURCE: &str = "test/collection";
-
-struct TestEnvironment {
-	pub client: Client,
-	command_sender: Arc<index::CommandSender>,
-	db: Arc<db::DB>,
-}
-
-impl TestEnvironment {
-	pub fn update_index(&self) {
-		index::update(self.db.deref()).unwrap();
-	}
-}
-
-impl Drop for TestEnvironment {
-	fn drop(&mut self) {
-		self.command_sender.deref().exit().unwrap();
-	}
-}
-
-fn get_test_environment(db_name: &str) -> TestEnvironment {
-	let mut db_path = PathBuf::new();
-	db_path.push("test");
-	db_path.push(db_name);
-	if db_path.exists() {
-		fs::remove_file(&db_path).unwrap();
-	}
-
-	let db = Arc::new(db::DB::new(&db_path).unwrap());
-
-	let web_dir_path = PathBuf::from("web");
-	let mut swagger_dir_path = PathBuf::from("docs");
-	swagger_dir_path.push("swagger");
-	let command_sender = index::init(db.clone());
-
-	let server = server::get_server(
-		5050,
-		"/api",
-		"/",
-		&web_dir_path,
-		"/swagger",
-		&swagger_dir_path,
-		db.clone(),
-		command_sender.clone(),
-	)
-	.unwrap();
-	let client = Client::new(server).unwrap();
-	TestEnvironment {
-		client,
-		command_sender,
-		db,
-	}
-}
 
 fn complete_initial_setup(client: &Client) {
 	let configuration = config::Config {
