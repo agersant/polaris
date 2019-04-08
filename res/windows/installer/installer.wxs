@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='windows-1252'?>
 <Wix xmlns='http://schemas.microsoft.com/wix/2006/wi' xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
-    <Product Name='Polaris' Id='9298DCA7-8FEB-48B2-89F9-8C60BC320D07' UpgradeCode='FF16B075-1D36-47F4-BE37-D95BBC1A412C' Language='1033' Codepage='1252' Version='0.9.0' Manufacturer='Permafrost'>
+    <Product Name='Polaris' Id='7D8EB5AC-6020-40B6-9A53-4E0A0CF7B23A' UpgradeCode='FF16B075-1D36-47F4-BE37-D95BBC1A412C' Language='1033' Codepage='1252' Version='0.10.0' Manufacturer='Permafrost'>
 
 		<Package Id='*' Keywords='Installer' Platform='x64' InstallScope='perUser' Description='Polaris Installer' Manufacturer='Permafrost' Languages='1033' Compressed='yes' SummaryCodepage='1252' />
 
