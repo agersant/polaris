@@ -100,4 +100,4 @@ When you install Polaris, it comes with a web interface which can be accessed us
 
 # Documentation
 
-The Polaris server API is documented [here](https://agersant.github.io/polaris/api/). Feel free to open Github issues (or Pull Requests) if clarifications are needed.
+The Polaris server API is documented [here](https://agersant.github.io/polaris/swagger/). Feel free to open Github issues (or Pull Requests) if clarifications are needed.

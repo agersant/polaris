@@ -1,3 +1,3 @@
 ## Documentation
 
-- [API Documentation](api)
+- [API Documentation](swagger)
