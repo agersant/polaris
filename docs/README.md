@@ -1,3 +1,3 @@
-## Polaris Documentation
+## Documentation
 
 - [API Documentation](api)
