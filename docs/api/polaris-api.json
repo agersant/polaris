@@ -6,6 +6,11 @@
         "title": "Polaris",
         "termsOfService": ""
     },
+    "servers": [
+        {
+            "url": "/api"
+        }
+    ],
     "tags": [
         {
             "name": "Collection",
