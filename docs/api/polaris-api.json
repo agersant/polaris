@@ -559,6 +559,119 @@
                     }
                 ]
             }
+        },
+        "/lastfm/now_playing/{song}": {
+            "put": {
+                "tags": ["Last.fm"],
+                "summary": "Tells Last.fm the song currently being played",
+                "operationId": "putLastFMNowPlaying",
+                "parameters": [
+                    {
+                        "name": "song",
+                        "in": "path",
+                        "description": "Path to the song being played",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation"
+                    }
+                },
+                "security": [
+                    {
+                        "auth_http_header": [],
+                        "auth_cookie": []
+                    }
+                ]
+            }
+        },
+        "/lastfm/scrobble/{song}": {
+            "post": {
+                "tags": ["Last.fm"],
+                "summary": "Tells Last.fm that a song has been playing for long enough to be scrobbled",
+                "operationId": "postLastFMScrobble",
+                "parameters": [
+                    {
+                        "name": "song",
+                        "in": "path",
+                        "description": "Path to the song being played",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation"
+                    }
+                },
+                "security": [
+                    {
+                        "auth_http_header": [],
+                        "auth_cookie": []
+                    }
+                ]
+            }
+        },
+        "/lastfm/link": {
+            "get": {
+                "tags": ["Last.fm"],
+                "summary": "Links a Polaris user with a Last.fm account.",
+                "externalDocs": {
+                    "description": "This endpoint is meant to be used as a Last.fm authentication handler, as described here:",
+                    "url": "https://www.last.fm/api/webauth"
+                },
+                "operationId": "getLastFMLink",
+                "parameters": [
+                    {
+                        "name": "token",
+                        "in": "query",
+                        "required": true,
+                        "description": "Last.fm authentication token",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "content",
+                        "in": "query",
+                        "required": true,
+                        "description": "Base64 encoded HTML content to be returned to the client initiating the link operation",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "text/html": {
+                                "description": "The same content originally present in the 'content' parameter"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": ["Last.fm"],
+                "summary": "Unlinks Polaris user and Last.fm account",
+                "operationId": "deleteLastFMLink",
+                "responses": {
+                    "200": {
+                        "description": "Successful operation"
+                    }
+                },
+                "security": [
+                    {
+                        "auth_http_header": [],
+                        "auth_cookie": []
+                    }
+                ]
+            }
         }
     },
     "components": {
