@@ -11,6 +11,7 @@ install: build
 	install -d $(POLARIS_DATA_DIR)
 	install ./target/release/polaris $(POLARIS_BIN_DIR)
 	cp -r ./web $(POLARIS_DATA_DIR)
+	cp -r ./swagger $(POLARIS_DATA_DIR)
 	@echo "Polaris installation complete!"
 
 clean:
