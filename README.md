@@ -97,3 +97,7 @@ Don't forget to restart Polaris to apply your configuration changes, and access 
 
 ## Additional clients
 When you install Polaris, it comes with a web interface which can be accessed using any modern browser. However, it may be more convenient to use a native app on your mobile device. Currently, the only such app is the official [Polaris client for Android](https://github.com/agersant/polaris-android).
+
+# Documentation
+
+The Polaris server API is documented [here](https://agersant.github.io/polaris/api/). Feel free to open Github issues (or Pull Requests) if clarifications are needed.
