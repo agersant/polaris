@@ -72,6 +72,7 @@ mod playlist;
 mod serve;
 mod server;
 mod swagger;
+#[cfg(test)]
 mod test;
 mod thumbnails;
 mod ui;

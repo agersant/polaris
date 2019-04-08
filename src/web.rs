@@ -1,4 +1,3 @@
-use rocket::http::Status;
 use rocket::response::NamedFile;
 use rocket::State;
 use std::io;
@@ -6,7 +5,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::server::StaticDirs;
-use crate::test::get_test_environment;
 
 pub fn get_routes() -> Vec<rocket::Route> {
 	routes![
@@ -30,6 +28,9 @@ fn files(static_dirs: State<Arc<StaticDirs>>, file: PathBuf) -> Option<NamedFile
 
 #[test]
 fn test_index() {
+	use rocket::http::Status;
+	use crate::test::get_test_environment;
+
 	let env = get_test_environment("web_index.sqlite");
 	let client = &env.client;
 	let response = client.get("/").dispatch();
