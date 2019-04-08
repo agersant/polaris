@@ -34,9 +34,13 @@ Copy-Item .\docs\swagger  					          .\release\tmp\swagger   -recurse
 ""
 "Creating installer"
 heat dir .\release\tmp\web\ -ag -g1 -dr AppDataPolaris -cg WebUI -sfrag -var wix.WebUIDir -out .\release\tmp\web_ui_fragment.wxs
+heat dir .\release\tmp\swagger\ -ag -g1 -dr AppDataPolaris -cg SwaggerUI -sfrag -var wix.SwaggerUIDir -out .\release\tmp\swagger_ui_fragment.wxs
+
 candle -wx -ext WixUtilExtension -arch x64 -out .\release\tmp\web_ui_fragment.wixobj .\release\tmp\web_ui_fragment.wxs
+candle -wx -ext WixUtilExtension -arch x64 -out .\release\tmp\swagger_ui_fragment.wixobj .\release\tmp\swagger_ui_fragment.wxs
 candle -wx -ext WixUtilExtension -arch x64 -out .\release\tmp\installer.wixobj .\res\windows\installer\installer.wxs
-light -dWebUIDir=".\release\tmp\web" -wx -ext WixUtilExtension -ext WixUIExtension -spdb -sw1076 -sice:ICE38 -sice:ICE64 -out .\release\Polaris_$POLARIS_VERSION.msi	.\release\tmp\installer.wixobj .\release\tmp\web_ui_fragment.wixobj
+
+light -dWebUIDir=".\release\tmp\web" -dSwaggerUIDir=".\release\tmp\swagger" -wx -ext WixUtilExtension -ext WixUIExtension -spdb -sw1076 -sice:ICE38 -sice:ICE64 -out .\release\Polaris_$POLARIS_VERSION.msi .\release\tmp\installer.wixobj .\release\tmp\web_ui_fragment.wixobj  .\release\tmp\swagger_ui_fragment.wixobj
 
 "Cleaning up"
 Remove-Item -Recurse .\release\tmp
