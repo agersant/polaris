@@ -193,7 +193,13 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "auth_http_header": [],
+                        "auth_cookie": []
+                    }
+                ]
             }
         },
         "/browse/{location}": {
@@ -225,7 +231,13 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "auth_http_header": [],
+                        "auth_cookie": []
+                    }
+                ]
             }
         },
         "/flatten": {
@@ -247,7 +259,13 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "auth_http_header": [],
+                        "auth_cookie": []
+                    }
+                ]
             }
         },
         "/flatten/{location}": {
@@ -279,7 +297,13 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "auth_http_header": [],
+                        "auth_cookie": []
+                    }
+                ]
             }
         },
         "/random": {
@@ -301,7 +325,13 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "auth_http_header": [],
+                        "auth_cookie": []
+                    }
+                ]
             }
         },
         "/recent": {
@@ -323,7 +353,13 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "auth_http_header": [],
+                        "auth_cookie": []
+                    }
+                ]
             }
         },
         "/search/{query}": {
@@ -355,7 +391,13 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "auth_http_header": [],
+                        "auth_cookie": []
+                    }
+                ]
             }
         },
         "/serve/{file}": {
@@ -381,7 +423,141 @@
                             "audio/*": { "schema": { "format": "binary" } }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "auth_http_header": [],
+                        "auth_cookie": []
+                    }
+                ]
+            }
+        },
+        "/playlists": {
+            "get": {
+                "tags": ["Playlists"],
+                "summary": "Lists the playlists belonging to the current user",
+                "operationId": "getPlaylists",
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ListPlaylistsEntry"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "auth_http_header": [],
+                        "auth_cookie": []
+                    }
+                ]
+            }
+        },
+        "/playlist/{playlistName}": {
+            "get": {
+                "tags": ["Playlists"],
+                "summary": "Reads the content of a playlist",
+                "operationId": "getPlaylist",
+                "parameters": [
+                    {
+                        "name": "playlistName",
+                        "in": "path",
+                        "description": "Name of the playlist to read",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Song"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "auth_http_header": [],
+                        "auth_cookie": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": ["Playlists"],
+                "summary": "Saves a playlist",
+                "operationId": "putPlaylist",
+                "parameters": [
+                    {
+                        "name": "playlistName",
+                        "in": "path",
+                        "description": "Name of the playlist to save",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json":{
+                            "schema": {
+                                "$ref": "#/components/schemas/SavePlaylistInput"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful operation"
+                    }
+                },
+                "security": [
+                    {
+                        "auth_http_header": [],
+                        "auth_cookie": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": ["Playlists"],
+                "summary": "Deletes a playlist",
+                "operationId": "deletePlaylist",
+                "parameters": [
+                    {
+                        "name": "playlistName",
+                        "in": "path",
+                        "description": "Name of the playlist to delete",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation"
+                    }
+                },
+                "security": [
+                    {
+                        "auth_http_header": [],
+                        "auth_cookie": []
+                    }
+                ]
             }
         }
     },
@@ -612,9 +788,28 @@
                         "example": 571
                     }
                 }
+            },
+            "ListPlaylistsEntry": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "example": "Friday Chill"
+                    }
+                }
+            },
+            "SavePlaylistInput": {
+                "type": "object",
+                "properties": {
+                    "tracks": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "example": "My Music/Metal/Stratovarius/Destiny/Anthem of the World.mp3"
+                        }
+                    }
+                }
             }
-        },
-        "requestBodies": {
         },
         "securitySchemes": {
             "auth_http_header": {
