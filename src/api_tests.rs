@@ -50,13 +50,17 @@ fn get_test_environment(db_name: &str) -> TestEnvironment {
 	let db = Arc::new(db::DB::new(&db_path).unwrap());
 
 	let web_dir_path = PathBuf::from("web");
+	let mut swagger_dir_path = PathBuf::from("docs");
+	swagger_dir_path.push("swagger");
 	let command_sender = index::init(db.clone());
 
 	let server = server::get_server(
 		5050,
-		"/",
 		"/api",
+		"/",
 		&web_dir_path,
+		"/swagger",
+		&swagger_dir_path,
 		db.clone(),
 		command_sender.clone(),
 	)
