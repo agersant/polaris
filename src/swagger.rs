@@ -1,4 +1,6 @@
+use rocket::http::uri::Origin;
 use rocket::response::NamedFile;
+use rocket::response::Redirect;
 use rocket::State;
 use std::io;
 use std::path::PathBuf;
@@ -14,10 +16,9 @@ pub fn get_routes() -> Vec<rocket::Route> {
 }
 
 #[get("/", rank = 9)]
-fn index(static_dirs: State<Arc<StaticDirs>>) -> io::Result<NamedFile> {
-	let mut path = static_dirs.swagger_dir_path.clone();
-	path.push("index.html");
-    NamedFile::open(path)
+fn index(origin: &Origin) -> Redirect {
+	let redirect = Redirect::permanent(origin.path().to_owned() + "index.html");
+	return redirect;
 }
 
 #[get("/<file..>", rank = 9)]
@@ -27,12 +28,23 @@ fn files(static_dirs: State<Arc<StaticDirs>>, file: PathBuf) -> Option<NamedFile
 }
 
 #[test]
+fn test_index_redirect() {
+	use rocket::http::Status;
+	use crate::test::get_test_environment;
+
+	let env = get_test_environment("swagger_index_redirect.sqlite");
+	let client = &env.client;
+	let response = client.get("/swagger").dispatch();
+	assert_eq!(response.status(), Status::PermanentRedirect);
+}
+
+#[test]
 fn test_index() {
 	use rocket::http::Status;
 	use crate::test::get_test_environment;
 
 	let env = get_test_environment("swagger_index.sqlite");
 	let client = &env.client;
-	let response = client.get("/swagger").dispatch();
+	let response = client.get("/swagger/index.html").dispatch();
 	assert_eq!(response.status(), Status::Ok);
 }
