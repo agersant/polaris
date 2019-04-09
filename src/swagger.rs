@@ -2,7 +2,6 @@ use rocket::http::uri::Origin;
 use rocket::response::NamedFile;
 use rocket::response::Redirect;
 use rocket::State;
-use std::io;
 use std::path::PathBuf;
 use std::sync::Arc;
 
