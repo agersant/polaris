@@ -71,11 +71,15 @@ mod metadata;
 mod playlist;
 mod serve;
 mod server;
+mod swagger;
+#[cfg(test)]
+mod test;
 mod thumbnails;
 mod ui;
 mod user;
 mod utils;
 mod vfs;
+mod web;
 
 static LOG_CONFIG: simplelog::Config = simplelog::Config {
 	time: Some(Level::Error),
@@ -149,6 +153,7 @@ fn run() -> Result<()> {
 	options.optopt("p", "port", "set polaris to run on a custom port", "PORT");
 	options.optopt("d", "database", "set the path to index database", "FILE");
 	options.optopt("w", "web", "set the path to web client files", "DIRECTORY");
+	options.optopt("s", "swagger", "set the path to swagger files", "DIRECTORY");
 	options.optopt(
 		"l",
 		"log",
@@ -220,10 +225,10 @@ fn run() -> Result<()> {
 
 	// API mount target
 	let prefix_url = config.prefix_url.unwrap_or_else(|| "".to_string());
-	let api_url = format!("{}/api", &prefix_url);
+	let api_url = format!("/{}api", &prefix_url);
 	info!("Mounting API on {}", api_url);
 
-	// Static files mount target
+	// Web client mount target
 	let web_dir_name = matches.opt_str("w");
 	let mut default_web_dir = utils::get_data_root()?;
 	default_web_dir.push("web");
@@ -231,8 +236,19 @@ fn run() -> Result<()> {
 		.map(|n| Path::new(n.as_str()).to_path_buf())
 		.unwrap_or(default_web_dir);
 	info!("Static files location is {}", web_dir_path.display());
-	let static_url = format!("/{}", &prefix_url);
-	info!("Mounting static files on {}", static_url);
+	let web_url = format!("/{}", &prefix_url);
+	info!("Mounting web client files on {}", web_url);
+
+	// Swagger files mount target
+	let swagger_dir_name = matches.opt_str("s");
+	let mut default_swagger_dir = utils::get_data_root()?;
+	default_swagger_dir.push("swagger");
+	let swagger_dir_path = swagger_dir_name
+		.map(|n| Path::new(n.as_str()).to_path_buf())
+		.unwrap_or(default_swagger_dir);
+	info!("Swagger files location is {}", swagger_dir_path.display());
+	let swagger_url = format!("/{}swagger", &prefix_url);
+	info!("Mounting swagger files on {}", swagger_url);
 
 	// Start server
 	info!("Starting up server");
@@ -244,9 +260,11 @@ fn run() -> Result<()> {
 
 	let server = server::get_server(
 		port,
-		&static_url,
 		&api_url,
+		&web_url,
 		&web_dir_path,
+		&swagger_url,
+		&swagger_dir_path,
 		db.clone(),
 		command_sender,
 	)?;
