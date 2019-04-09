@@ -16,7 +16,12 @@ pub fn get_routes() -> Vec<rocket::Route> {
 
 #[get("/", rank = 9)]
 fn index(origin: &Origin) -> Redirect {
-	let redirect = Redirect::permanent(origin.path().to_owned() + "index.html");
+	let mut new_path = origin.path().to_owned();
+	if !new_path.ends_with("/") {
+		new_path.push_str("/");
+	}
+	new_path.push_str("index.html");
+	let redirect = Redirect::permanent(new_path);
 	return redirect;
 }
 
@@ -35,6 +40,7 @@ fn test_index_redirect() {
 	let client = &env.client;
 	let response = client.get("/swagger").dispatch();
 	assert_eq!(response.status(), Status::PermanentRedirect);
+	assert_eq!(response.headers().get_one("Location"), Some("/swagger/index.html"));
 }
 
 #[test]
