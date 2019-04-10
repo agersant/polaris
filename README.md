@@ -100,6 +100,7 @@ When you install Polaris, it comes with a web interface which can be accessed us
 
 # Documentation
 
-The Polaris server API is documented [here](https://agersant.github.io/polaris/swagger/). Please note that this Swagger page does not point to any live Polaris server so the `Try it out` buttons are not expected to work.
+The Polaris server API is documented [here](https://agersant.github.io/polaris/swagger/). Please note that this Swagger page does not point to a live Polaris server so the `Try it out` buttons are not expected to work.
+Every installation of Polaris also distributes this documentation, with the ability to use the `Try it out` buttons. To access it, simply open http://localhost:5050/swagger/ in your browser on the machine running Polaris.
 
 Feel free to open Github issues (or Pull Requests) if clarifications are needed.
