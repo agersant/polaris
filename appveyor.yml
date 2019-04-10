@@ -68,7 +68,7 @@ matrix:
 # default-toolchain and default-host manually here.
 install:
   #Download submodules
-  git submodule update --init --recursive
+  - git submodule update --init --recursive
 
   #Rust install
   - appveyor DownloadFile https://win.rustup.rs/ -FileName rustup-init.exe
