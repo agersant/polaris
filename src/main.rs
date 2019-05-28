@@ -124,15 +124,15 @@ fn daemonize(options: &getopts::Matches) -> Result<()> {
 #[cfg(unix)]
 fn init_log(log_level: LevelFilter, options: &getopts::Matches) -> Result<()> {
 	if options.opt_present("f") {
-		if let Err(_) = TermLogger::init(log_level, LOG_CONFIG) {
-            if let Err(e) = SimpleLogger::init(log_level, LOG_CONFIG) {
-                bail!("Error starting terminal logger: {}", e);
-            };
-		};
-	} else {
-		if let Err(e) = SimpleLogger::init(log_level, LOG_CONFIG) {
-			bail!("Error starting simple logger: {}", e);
+		if let Err(e) = TermLogger::init(log_level, LOG_CONFIG) {
+			println!("Error starting terminal logger: {}", e);
+		} else {
+			return Ok(());
 		}
+	}
+
+	if let Err(e) = SimpleLogger::init(log_level, LOG_CONFIG) {
+		bail!("Error starting simple logger: {}", e);
 	}
 	Ok(())
 }
