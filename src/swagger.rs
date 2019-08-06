@@ -15,7 +15,7 @@ pub fn get_routes() -> Vec<rocket::Route> {
 }
 
 #[get("/", rank = 9)]
-fn index(origin: &Origin) -> Redirect {
+fn index(origin: &Origin<'_>) -> Redirect {
 	let mut new_path = origin.path().to_owned();
 	if !new_path.ends_with("/") {
 		new_path.push_str("/");
@@ -26,7 +26,7 @@ fn index(origin: &Origin) -> Redirect {
 }
 
 #[get("/<file..>", rank = 9)]
-fn files(static_dirs: State<Arc<StaticDirs>>, file: PathBuf) -> Option<NamedFile> {
+fn files(static_dirs: State<'_, Arc<StaticDirs>>, file: PathBuf) -> Option<NamedFile> {
 	let path = static_dirs.swagger_dir_path.clone().join(file.clone());
     NamedFile::open(path).ok()
 }

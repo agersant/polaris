@@ -2,47 +2,18 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 #![allow(proc_macro_derive_resolution_fallback)]
 
-extern crate ape;
-extern crate app_dirs;
-extern crate base64;
-extern crate core;
-extern crate crypto;
 #[macro_use]
 extern crate diesel;
 #[macro_use]
 extern crate diesel_migrations;
 #[macro_use]
 extern crate error_chain;
-extern crate getopts;
-extern crate id3;
-extern crate image;
-extern crate lewton;
-extern crate metaflac;
-extern crate mp3_duration;
-extern crate rand;
-extern crate regex;
-extern crate reqwest;
-extern crate ring;
 #[macro_use]
 extern crate rocket;
-extern crate rocket_contrib;
-extern crate rustfm_scrobble;
-extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate serde_json;
-extern crate toml;
 #[macro_use]
 extern crate log;
-extern crate simplelog;
-
-#[cfg(windows)]
-extern crate uuid;
-#[cfg(windows)]
-extern crate winapi;
-
-#[cfg(unix)]
-extern crate unix_daemonize;
 
 #[cfg(unix)]
 use std::fs::File;

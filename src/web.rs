@@ -14,14 +14,14 @@ pub fn get_routes() -> Vec<rocket::Route> {
 }
 
 #[get("/", rank = 10)]
-fn index(static_dirs: State<Arc<StaticDirs>>) -> io::Result<NamedFile> {
+fn index(static_dirs: State<'_, Arc<StaticDirs>>) -> io::Result<NamedFile> {
 	let mut path = static_dirs.web_dir_path.clone();
 	path.push("index.html");
     NamedFile::open(path)
 }
 
 #[get("/<file..>", rank = 10)]
-fn files(static_dirs: State<Arc<StaticDirs>>, file: PathBuf) -> Option<NamedFile> {
+fn files(static_dirs: State<'_, Arc<StaticDirs>>, file: PathBuf) -> Option<NamedFile> {
 	let path = static_dirs.web_dir_path.clone().join(file.clone());
     NamedFile::open(path).ok()
 }

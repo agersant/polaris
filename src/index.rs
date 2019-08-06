@@ -169,7 +169,7 @@ impl<'conn> IndexBuilder<'conn> {
 	fn new(
 		connection: &Mutex<SqliteConnection>,
 		album_art_pattern: Regex,
-	) -> Result<IndexBuilder, errors::Error> {
+	) -> Result<IndexBuilder<'_>, errors::Error> {
 		let mut new_songs = Vec::new();
 		let mut new_directories = Vec::new();
 		new_songs.reserve_exact(INDEX_BUILDING_INSERT_BUFFER_SIZE);

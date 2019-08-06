@@ -44,7 +44,7 @@ error_chain! {
 }
 
 impl<'r> rocket::response::Responder<'r> for Error {
-	fn respond_to(self, _: &rocket::request::Request) -> rocket::response::Result<'r> {
+	fn respond_to(self, _: &rocket::request::Request<'_>) -> rocket::response::Result<'r> {
 		let mut build = rocket::response::Response::build();
 		build
 			.status(match self.0 {

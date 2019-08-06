@@ -44,7 +44,7 @@ impl<'r, R: Responder<'r>> RangeResponder<R> {
 		RangeResponder { original }
 	}
 
-	fn ignore_range(self, request: &rocket::request::Request, file_length: Option<u64>) -> response::Result<'r> {
+	fn ignore_range(self, request: &rocket::request::Request<'_>, file_length: Option<u64>) -> response::Result<'r> {
 		let mut response = self.original.respond_to(request)?;
 		if let Some(content_length) = file_length {
 			response.set_header(ContentLength(content_length));
@@ -99,7 +99,7 @@ fn truncate_range(range: &PartialFileRange, file_length: &Option<u64>) -> Option
 }
 
 impl<'r> Responder<'r> for RangeResponder<File> {
-	fn respond_to(mut self, request: &rocket::request::Request) -> response::Result<'r> {
+	fn respond_to(mut self, request: &rocket::request::Request<'_>) -> response::Result<'r> {
 
 		let metadata: Option<_> = self.original.metadata().ok();
 		let file_length: Option<u64> = metadata.map(|m| m.len());
