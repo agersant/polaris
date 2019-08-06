@@ -2,6 +2,7 @@ use ape;
 use core;
 use diesel;
 use diesel_migrations;
+use error_chain::error_chain;
 use getopts;
 use id3;
 use image;

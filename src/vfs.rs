@@ -1,5 +1,7 @@
 use core::ops::Deref;
 use diesel::prelude::*;
+use error_chain::bail;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
 use std::path::PathBuf;

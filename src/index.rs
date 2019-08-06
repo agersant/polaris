@@ -4,7 +4,10 @@ use diesel::dsl::sql;
 use diesel::prelude::*;
 use diesel::sql_types;
 use diesel::sqlite::SqliteConnection;
+use error_chain::bail;
+use log::{error, info};
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 #[cfg(test)]

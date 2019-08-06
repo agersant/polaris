@@ -1,4 +1,5 @@
 use rustfm_scrobble::{Scrobble, Scrobbler};
+use serde::Deserialize;
 use std::path::Path;
 
 use crate::db::ConnectionSource;

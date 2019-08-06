@@ -1,4 +1,5 @@
 use app_dirs::{app_root, AppDataType, AppInfo};
+use error_chain::bail;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -54,10 +55,7 @@ pub fn get_audio_format(path: &Path) -> Option<AudioFormat> {
 
 #[test]
 fn test_get_audio_format() {
-	assert_eq!(
-		get_audio_format(Path::new("animals/🐷/my🐖file.jpg")),
-		None
-	);
+	assert_eq!(get_audio_format(Path::new("animals/🐷/my🐖file.jpg")), None);
 	assert_eq!(
 		get_audio_format(Path::new("animals/🐷/my🐖file.flac")),
 		Some(AudioFormat::FLAC)

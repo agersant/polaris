@@ -2,6 +2,8 @@ use core::ops::Deref;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use diesel_migrations;
+use error_chain::bail;
+use log::info;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard};

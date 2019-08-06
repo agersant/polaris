@@ -1,4 +1,5 @@
 use ape;
+use error_chain::bail;
 use id3;
 use lewton::inside_ogg::OggStreamReader;
 use metaflac;

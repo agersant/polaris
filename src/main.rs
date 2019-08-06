@@ -6,14 +6,6 @@
 extern crate diesel;
 #[macro_use]
 extern crate diesel_migrations;
-#[macro_use]
-extern crate error_chain;
-#[macro_use]
-extern crate rocket;
-#[macro_use]
-extern crate serde_derive;
-#[macro_use]
-extern crate log;
 
 #[cfg(unix)]
 use std::fs::File;
@@ -24,7 +16,9 @@ use unix_daemonize::{daemonize_redirect, ChdirMode};
 
 use crate::errors::*;
 use core::ops::Deref;
+use error_chain::bail;
 use getopts::Options;
+use log::info;
 use simplelog::{Level, LevelFilter, SimpleLogger, TermLogger, TerminalMode};
 use std::path::Path;
 use std::sync::Arc;

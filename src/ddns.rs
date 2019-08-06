@@ -1,6 +1,8 @@
 use core::ops::Deref;
 use diesel::prelude::*;
+use log::{error, info};
 use reqwest;
+use serde::{Deserialize, Serialize};
 use std::io;
 use std::thread;
 use std::time;

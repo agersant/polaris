@@ -1,7 +1,10 @@
 use core::ops::Deref;
 use diesel;
 use diesel::prelude::*;
+use error_chain::bail;
+use log::info;
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::Read;
 use std::path;

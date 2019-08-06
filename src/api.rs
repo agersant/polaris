@@ -1,8 +1,10 @@
+use error_chain::bail;
 use rocket::http::{Cookie, Cookies, RawStr, Status};
 use rocket::request::{self, FromParam, FromRequest, Request};
 use rocket::response::content::Html;
-use rocket::{Outcome, State};
+use rocket::{delete, get, post, put, routes, Outcome, State};
 use rocket_contrib::json::Json;
+use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::ops::Deref;
 use std::path::PathBuf;
@@ -266,7 +268,10 @@ fn browse(
 }
 
 #[get("/flatten")]
-fn flatten_root(db: State<'_, Arc<DB>>, _auth: Auth) -> Result<Json<Vec<index::Song>>, errors::Error> {
+fn flatten_root(
+	db: State<'_, Arc<DB>>,
+	_auth: Auth,
+) -> Result<Json<Vec<index::Song>>, errors::Error> {
 	let result = index::flatten(db.deref().deref(), &PathBuf::new())?;
 	Ok(Json(result))
 }
@@ -282,13 +287,19 @@ fn flatten(
 }
 
 #[get("/random")]
-fn random(db: State<'_, Arc<DB>>, _auth: Auth) -> Result<Json<Vec<index::Directory>>, errors::Error> {
+fn random(
+	db: State<'_, Arc<DB>>,
+	_auth: Auth,
+) -> Result<Json<Vec<index::Directory>>, errors::Error> {
 	let result = index::get_random_albums(db.deref().deref(), 20)?;
 	Ok(Json(result))
 }
 
 #[get("/recent")]
-fn recent(db: State<'_, Arc<DB>>, _auth: Auth) -> Result<Json<Vec<index::Directory>>, errors::Error> {
+fn recent(
+	db: State<'_, Arc<DB>>,
+	_auth: Auth,
+) -> Result<Json<Vec<index::Directory>>, errors::Error> {
 	let result = index::get_recent_albums(db.deref().deref(), 20)?;
 	Ok(Json(result))
 }
@@ -394,7 +405,11 @@ fn lastfm_now_playing(
 }
 
 #[post("/lastfm/scrobble/<path>")]
-fn lastfm_scrobble(db: State<'_, Arc<DB>>, auth: Auth, path: VFSPathBuf) -> Result<(), errors::Error> {
+fn lastfm_scrobble(
+	db: State<'_, Arc<DB>>,
+	auth: Auth,
+	path: VFSPathBuf,
+) -> Result<(), errors::Error> {
 	lastfm::scrobble(db.deref().deref(), &auth.username, &path.into() as &PathBuf)?;
 	Ok(())
 }
