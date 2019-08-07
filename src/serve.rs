@@ -118,7 +118,7 @@ impl<'r> Responder<'r> for RangeResponder<File> {
 			Ok(Range::Bytes(v)) => v,
 			_ => {
 				warn!(
-					"Ignoring range header that could not be parse {:?}, file length is {:?}",
+					"Ignoring range header that could not be parsed {:?}, file length is {:?}",
 					range_header, file_length
 				);
 				return self.ignore_range(request, file_length);

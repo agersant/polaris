@@ -9,7 +9,7 @@ ui = []
 
 [dependencies]
 ape = "0.2.0"
-app_dirs = "1.2"
+app_dirs = "1.1.1"
 base64 = "0.10.0"
 diesel = { version = "1.4", features = ["sqlite"] }
 diesel_migrations = { version = "1.4", features = ["sqlite"] }
