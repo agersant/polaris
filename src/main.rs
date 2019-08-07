@@ -196,6 +196,7 @@ fn run() -> Result<()> {
 		config::overwrite(db.deref(), &config)?;
 	}
 	let config = config::read(db.deref())?;
+	let auth_secret = config::get_auth_secret(db.deref())?;
 
 	// Init index
 	info!("Initializing index");
@@ -245,6 +246,7 @@ fn run() -> Result<()> {
 
 	let server = server::get_server(
 		port,
+		Some(auth_secret.as_slice()),
 		&api_url,
 		&web_url,
 		&web_dir_path,
