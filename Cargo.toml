@@ -51,4 +51,5 @@ version = "0.3.3"
 features = ["winuser", "libloaderapi", "shellapi", "errhandlingapi"]
 
 [target.'cfg(unix)'.dependencies]
+libsystemd = "0.1"
 unix-daemonize = "0.1.2"
