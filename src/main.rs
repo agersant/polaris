@@ -2,47 +2,10 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 #![allow(proc_macro_derive_resolution_fallback)]
 
-extern crate ape;
-extern crate app_dirs;
-extern crate base64;
-extern crate core;
-extern crate crypto;
 #[macro_use]
 extern crate diesel;
 #[macro_use]
 extern crate diesel_migrations;
-#[macro_use]
-extern crate error_chain;
-extern crate getopts;
-extern crate id3;
-extern crate image;
-extern crate lewton;
-extern crate metaflac;
-extern crate mp3_duration;
-extern crate rand;
-extern crate regex;
-extern crate reqwest;
-extern crate ring;
-#[macro_use]
-extern crate rocket;
-extern crate rocket_contrib;
-extern crate rustfm_scrobble;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-extern crate serde_json;
-extern crate toml;
-#[macro_use]
-extern crate log;
-extern crate simplelog;
-
-#[cfg(windows)]
-extern crate uuid;
-#[cfg(windows)]
-extern crate winapi;
-
-#[cfg(unix)]
-extern crate unix_daemonize;
 
 #[cfg(unix)]
 use std::fs::File;
@@ -51,10 +14,12 @@ use std::io::prelude::*;
 #[cfg(unix)]
 use unix_daemonize::{daemonize_redirect, ChdirMode};
 
-use core::ops::Deref;
 use crate::errors::*;
+use core::ops::Deref;
+use error_chain::bail;
 use getopts::Options;
-use simplelog::{Level, LevelFilter, SimpleLogger, TermLogger};
+use log::info;
+use simplelog::{Level, LevelFilter, SimpleLogger, TermLogger, TerminalMode};
 use std::path::Path;
 use std::sync::Arc;
 
@@ -81,13 +46,15 @@ mod utils;
 mod vfs;
 mod web;
 
-static LOG_CONFIG: simplelog::Config = simplelog::Config {
-	time: Some(Level::Error),
-	level: Some(Level::Error),
-	target: Some(Level::Error),
-	location: Some(Level::Error),
-	time_format: None,
-};
+fn log_config() -> simplelog::Config {
+	simplelog::Config {
+		time: Some(Level::Error),
+		level: Some(Level::Error),
+		target: Some(Level::Error),
+		location: Some(Level::Error),
+		..Default::default()
+	}
+}
 
 fn main() {
 	if let Err(ref e) = run() {
@@ -123,15 +90,16 @@ fn daemonize(options: &getopts::Matches) -> Result<()> {
 
 #[cfg(unix)]
 fn init_log(log_level: LevelFilter, options: &getopts::Matches) -> Result<()> {
+	let config = log_config();
 	if options.opt_present("f") {
-		if let Err(e) = TermLogger::init(log_level, LOG_CONFIG) {
+		if let Err(e) = TermLogger::init(log_level, config, TerminalMode::Stdout) {
 			println!("Error starting terminal logger: {}", e);
 		} else {
 			return Ok(());
 		}
 	}
 
-	if let Err(e) = SimpleLogger::init(log_level, LOG_CONFIG) {
+	if let Err(e) = SimpleLogger::init(log_level, config) {
 		bail!("Error starting simple logger: {}", e);
 	}
 	Ok(())
@@ -139,8 +107,9 @@ fn init_log(log_level: LevelFilter, options: &getopts::Matches) -> Result<()> {
 
 #[cfg(windows)]
 fn init_log(log_level: LevelFilter, _: &getopts::Matches) -> Result<()> {
-	if TermLogger::init(log_level, LOG_CONFIG).is_err() {
-		if let Err(e) = SimpleLogger::init(log_level, LOG_CONFIG) {
+	let config = log_config();
+	if TermLogger::init(log_level, config, TerminalMode::Stdout).is_err() {
+		if let Err(e) = SimpleLogger::init(log_level, config) {
 			bail!("Error starting simple logger: {}", e);
 		}
 	};

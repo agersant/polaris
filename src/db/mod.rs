@@ -2,6 +2,8 @@ use core::ops::Deref;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use diesel_migrations;
+use error_chain::bail;
+use log::info;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -17,7 +19,7 @@ const DB_MIGRATIONS_PATH: &str = "migrations";
 embed_migrations!("migrations");
 
 pub trait ConnectionSource {
-	fn get_connection(&self) -> MutexGuard<SqliteConnection>;
+	fn get_connection(&self) -> MutexGuard<'_, SqliteConnection>;
 	fn get_connection_mutex(&self) -> Arc<Mutex<SqliteConnection>>;
 }
 
@@ -75,7 +77,7 @@ impl DB {
 }
 
 impl ConnectionSource for DB {
-	fn get_connection(&self) -> MutexGuard<SqliteConnection> {
+	fn get_connection(&self) -> MutexGuard<'_, SqliteConnection> {
 		self.connection.lock().unwrap()
 	}
 

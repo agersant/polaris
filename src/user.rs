@@ -1,6 +1,7 @@
 use core::ops::Deref;
 use diesel;
 use diesel::prelude::*;
+use error_chain::bail;
 use rand;
 use ring::{digest, pbkdf2};
 

@@ -49,9 +49,7 @@ pub fn get_thumbnail(real_path: &Path, max_dimension: u32) -> Result<PathBuf> {
 			let scaled_image =
 				source_image.resize(out_dimension, out_dimension, FilterType::Lanczos3);
 			let (scaled_width, scaled_height) = scaled_image.dimensions();
-			let background = image::Rgb {
-				data: [255 as u8, 255 as u8, 255 as u8],
-			};
+			let background = image::Rgb([255, 255 as u8, 255 as u8]);
 			final_image = DynamicImage::ImageRgb8(ImageBuffer::from_pixel(
 				out_dimension,
 				out_dimension,
