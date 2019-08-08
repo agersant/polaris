@@ -8,6 +8,8 @@ extern crate diesel;
 extern crate diesel_migrations;
 
 #[cfg(unix)]
+use libsystemd::daemon::{self, NotifyState};
+#[cfg(unix)]
 use std::fs::File;
 #[cfg(unix)]
 use std::io::prelude::*;
@@ -18,7 +20,7 @@ use crate::errors::*;
 use core::ops::Deref;
 use error_chain::bail;
 use getopts::Options;
-use log::info;
+use log::{error, info};
 use simplelog::{Level, LevelFilter, SimpleLogger, TermLogger, TerminalMode};
 use std::path::Path;
 use std::sync::Arc;
@@ -115,6 +117,18 @@ fn init_log(log_level: LevelFilter, _: &getopts::Matches) -> Result<()> {
 	};
 	Ok(())
 }
+
+#[cfg(unix)]
+fn notify_ready() {
+	if daemon::booted() {
+		if let Err(e) = daemon::notify(true, &[NotifyState::Ready]) {
+			error!("Unable to send ready notification: {}", e);
+		}
+	}
+}
+
+#[cfg(windows)]
+fn notify_ready() {}
 
 fn run() -> Result<()> {
 	// Parse CLI options
@@ -248,6 +262,9 @@ fn run() -> Result<()> {
 	std::thread::spawn(move || {
 		ddns::run(db_ddns.deref());
 	});
+
+	// Send readiness notification
+	notify_ready();
 
 	// Run UI
 	ui::run();
