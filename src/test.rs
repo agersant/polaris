@@ -44,6 +44,7 @@ pub fn get_test_environment(db_name: &str) -> TestEnvironment {
 
 	let server = server::get_server(
 		5050,
+		None,
 		"/api",
 		"/",
 		&web_dir_path,

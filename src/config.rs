@@ -21,7 +21,7 @@ use crate::vfs::MountPoint;
 #[derive(Debug, Queryable)]
 pub struct MiscSettings {
 	id: i32,
-	pub auth_secret: String,
+	pub auth_secret: Vec<u8>,
 	pub index_sleep_duration_seconds: i32,
 	pub index_album_art_pattern: String,
 	pub prefix_url: String,
@@ -98,6 +98,7 @@ where
 			prefix_url,
 		))
 		.get_result(connection.deref())?;
+
 	config.album_art_pattern = Some(art_pattern);
 	config.reindex_every_n_seconds = Some(sleep_duration);
 	config.prefix_url = if url != "" { Some(url) } else { None };
@@ -274,6 +275,24 @@ where
 	T: ConnectionSource,
 {
 	Ok(())
+}
+
+pub fn get_auth_secret<T>(db: &T) -> Result<Vec<u8>>
+where
+	T: ConnectionSource,
+{
+	use self::misc_settings::dsl::*;
+
+	let connection = db.get_connection();
+
+	match misc_settings
+		.select(auth_secret)
+		.get_result(connection.deref())
+	{
+		Err(diesel::result::Error::NotFound) => bail!("Cannot find authentication secret"),
+		Ok(secret) => Ok(secret),
+		Err(e) => Err(e.into()),
+	}
 }
 
 fn clean_path_string(path_string: &str) -> path::PathBuf {
