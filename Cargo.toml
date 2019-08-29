@@ -18,7 +18,7 @@ getopts = "0.2.15"
 hex = "0.3"
 id3 = "0.3"
 image = "0.22"
-rustfm-scrobble = { git = "https://github.com/agersant/rustfm-scrobble" }
+rustfm-scrobble = "0.9.2"
 lewton = "0.9.1"
 log = "0.4.5"
 metaflac = "0.1.8"
