@@ -10,6 +10,8 @@ extern crate diesel_migrations;
 #[cfg(unix)]
 use libsystemd::daemon::{self, NotifyState};
 #[cfg(unix)]
+use log::error;
+#[cfg(unix)]
 use std::fs::File;
 #[cfg(unix)]
 use std::io::prelude::*;
@@ -20,7 +22,7 @@ use crate::errors::*;
 use core::ops::Deref;
 use error_chain::bail;
 use getopts::Options;
-use log::{error, info};
+use log::info;
 use simplelog::{Level, LevelFilter, SimpleLogger, TermLogger, TerminalMode};
 use std::path::Path;
 use std::sync::Arc;
