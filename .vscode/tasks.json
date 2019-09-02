@@ -4,7 +4,6 @@
 		"reveal": "always"
 	},
 	"tasks": [
-		// Run test environment
 		{
 			"label": "Run",
 			"options": {
@@ -20,9 +19,9 @@
 				"test/db.sqlite",
 				"-w",
 				"../polaris-web"
-			]
+			],
+			"problemMatcher": []
 		},
-		// Run unit tests
 		{
 			"group": "test",
 			"label": "Test",
@@ -34,7 +33,6 @@
 				"test"
 			]
 		},
-		// Compile
 		{
 			"label": "Compile",
 			"options": {
