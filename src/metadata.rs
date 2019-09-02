@@ -24,6 +24,7 @@ pub struct SongTags {
 	pub year: Option<i32>,
 }
 
+#[cfg_attr(feature = "profile-index", flame)]
 pub fn read(path: &Path) -> Result<SongTags> {
 	match utils::get_audio_format(path) {
 		Some(AudioFormat::FLAC) => read_flac(path),
@@ -34,6 +35,7 @@ pub fn read(path: &Path) -> Result<SongTags> {
 	}
 }
 
+#[cfg_attr(feature = "profile-index", flame)]
 fn read_id3(path: &Path) -> Result<SongTags> {
 	let tag = id3::Tag::read_from_path(&path)?;
 	let duration = mp3_duration::from_path(&path)
@@ -92,6 +94,7 @@ fn read_ape_x_of_y(item: &ape::Item) -> Option<u32> {
 	}
 }
 
+#[cfg_attr(feature = "profile-index", flame)]
 fn read_ape(path: &Path) -> Result<SongTags> {
 	let tag = ape::read(path)?;
 	let artist = tag.item("Artist").and_then(read_ape_string);
@@ -113,6 +116,7 @@ fn read_ape(path: &Path) -> Result<SongTags> {
 	})
 }
 
+#[cfg_attr(feature = "profile-index", flame)]
 fn read_vorbis(path: &Path) -> Result<SongTags> {
 	let file = fs::File::open(path)?;
 	let source = OggStreamReader::new(file)?;
@@ -144,6 +148,7 @@ fn read_vorbis(path: &Path) -> Result<SongTags> {
 	Ok(tags)
 }
 
+#[cfg_attr(feature = "profile-index", flame)]
 fn read_flac(path: &Path) -> Result<SongTags> {
 	let tag = metaflac::Tag::read_from_path(path)?;
 	let vorbis = tag.vorbis_comments().ok_or("Missing Vorbis comments")?;

@@ -8,3 +8,4 @@ test/*.sqlite
 tmp
 TestConfigLinux.toml
 TestConfigWindows.toml
+index-flame-graph.html

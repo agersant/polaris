@@ -1,32 +1,47 @@
 {
-	"version": "0.1.0",
-	"showOutput": "always",
-	
-    "tasks": [
-
-		// Run test environment
+	"version": "2.0.0",
+	"presentation": {
+		"reveal": "always"
+	},
+	"tasks": [
 		{
-			"taskName": "Run",
-			"options": { "cwd": "${workspaceRoot}" },
+			"label": "Run",
+			"options": {
+				"cwd": "${workspaceRoot}"
+			},
 			"command": "cargo",
-			"args": ["run", "--", "-c", "./TestConfigWindows.toml", "-d", "test/db.sqlite", "-w", "../polaris-web"]
+			"args": [
+				"run",
+				"--",
+				"-c",
+				"./TestConfigWindows.toml",
+				"-d",
+				"test/db.sqlite",
+				"-w",
+				"../polaris-web"
+			],
+			"problemMatcher": []
 		},
-
-		// Run unit tests
-        {
-			"isTestCommand": true,
-			"taskName": "Test",
-			"options": { "cwd": "${workspaceRoot}" },
-			"command": "cargo",
-			"args": ["test"]
-        },
-
-		// Compile
 		{
-			"taskName": "Compile",
-			"options": { "cwd": "${workspaceRoot}" },
+			"group": "test",
+			"label": "Test",
+			"options": {
+				"cwd": "${workspaceRoot}"
+			},
 			"command": "cargo",
-			"args": ["check"]
+			"args": [
+				"test"
+			]
+		},
+		{
+			"label": "Compile",
+			"options": {
+				"cwd": "${workspaceRoot}"
+			},
+			"command": "cargo",
+			"args": [
+				"check"
+			]
 		}
-    ]
+	]
 }
