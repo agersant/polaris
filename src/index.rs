@@ -5,6 +5,7 @@ use diesel::prelude::*;
 use diesel::sql_types;
 use diesel::sqlite::SqliteConnection;
 use error_chain::bail;
+use flame;
 use log::{error, info};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -169,6 +170,7 @@ struct IndexBuilder<'conn> {
 }
 
 impl<'conn> IndexBuilder<'conn> {
+	#[cfg_attr(feature = "profile-index", flame)]
 	fn new(
 		connection: &Mutex<SqliteConnection>,
 		album_art_pattern: Regex,
@@ -185,6 +187,7 @@ impl<'conn> IndexBuilder<'conn> {
 		})
 	}
 
+	#[cfg_attr(feature = "profile-index", flame)]
 	fn flush_songs(&mut self) -> Result<(), errors::Error> {
 		let connection = self.connection.lock().unwrap();
 		let connection = connection.deref();
@@ -198,6 +201,7 @@ impl<'conn> IndexBuilder<'conn> {
 		Ok(())
 	}
 
+	#[cfg_attr(feature = "profile-index", flame)]
 	fn flush_directories(&mut self) -> Result<(), errors::Error> {
 		let connection = self.connection.lock().unwrap();
 		let connection = connection.deref();
@@ -211,6 +215,7 @@ impl<'conn> IndexBuilder<'conn> {
 		Ok(())
 	}
 
+	#[cfg_attr(feature = "profile-index", flame)]
 	fn push_song(&mut self, song: NewSong) -> Result<(), errors::Error> {
 		if self.new_songs.len() >= self.new_songs.capacity() {
 			self.flush_songs()?;
@@ -219,6 +224,7 @@ impl<'conn> IndexBuilder<'conn> {
 		Ok(())
 	}
 
+	#[cfg_attr(feature = "profile-index", flame)]
 	fn push_directory(&mut self, directory: NewDirectory) -> Result<(), errors::Error> {
 		if self.new_directories.len() >= self.new_directories.capacity() {
 			self.flush_directories()?;
@@ -239,6 +245,7 @@ impl<'conn> IndexBuilder<'conn> {
 		Ok(None)
 	}
 
+	#[cfg_attr(feature = "profile-index", flame)]
 	fn populate_directory(
 		&mut self,
 		parent: Option<&Path>,
@@ -271,8 +278,9 @@ impl<'conn> IndexBuilder<'conn> {
 
 		// Insert content
 		for file in fs::read_dir(path)? {
+			let _guard = flame::start_guard("directory-entry");
 			let file_path = match file {
-				Ok(f) => f.path(),
+				Ok(ref f) => f.path(),
 				_ => {
 					error!("File read error within {}", path_string);
 					break;
@@ -358,6 +366,7 @@ impl<'conn> IndexBuilder<'conn> {
 	}
 }
 
+#[cfg_attr(feature = "profile-index", flame)]
 fn clean<T>(db: &T) -> Result<(), errors::Error>
 where
 	T: ConnectionSource + VFSSource,
@@ -417,6 +426,7 @@ where
 	Ok(())
 }
 
+#[cfg_attr(feature = "profile-index", flame)]
 fn populate<T>(db: &T) -> Result<(), errors::Error>
 where
 	T: ConnectionSource + VFSSource,
@@ -453,6 +463,8 @@ where
 		"Library index update took {} seconds",
 		start.elapsed().as_secs()
 	);
+	#[cfg(feature = "profile-index")]
+	flame::dump_html(&mut fs::File::create("index-flame-graph.html").unwrap()).unwrap();
 	Ok(())
 }
 
@@ -512,6 +524,7 @@ where
 	}
 }
 
+#[cfg_attr(feature = "profile-index", flame)]
 pub fn virtualize_song(vfs: &VFS, mut song: Song) -> Option<Song> {
 	song.path = match vfs.real_to_virtual(Path::new(&song.path)) {
 		Ok(p) => p.to_string_lossy().into_owned(),
@@ -526,6 +539,7 @@ pub fn virtualize_song(vfs: &VFS, mut song: Song) -> Option<Song> {
 	Some(song)
 }
 
+#[cfg_attr(feature = "profile-index", flame)]
 fn virtualize_directory(vfs: &VFS, mut directory: Directory) -> Option<Directory> {
 	directory.path = match vfs.real_to_virtual(Path::new(&directory.path)) {
 		Ok(p) => p.to_string_lossy().into_owned(),

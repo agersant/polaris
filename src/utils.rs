@@ -34,6 +34,7 @@ pub enum AudioFormat {
 	OGG,
 }
 
+#[cfg_attr(feature = "profile-index", flame)]
 pub fn get_audio_format(path: &Path) -> Option<AudioFormat> {
 	let extension = match path.extension() {
 		Some(e) => e,

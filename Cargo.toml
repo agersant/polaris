@@ -6,6 +6,7 @@ edition = "2018"
 
 [features]
 ui = []
+profile-index = ["flame", "flamer"]
 
 [dependencies]
 ape = "0.2.0"
@@ -14,6 +15,8 @@ base64 = "0.10.0"
 diesel = { version = "1.4", features = ["sqlite"] }
 diesel_migrations = { version = "1.4", features = ["sqlite"] }
 error-chain = "0.12.0"
+flame = { version = "0.2.2", optional = true }
+flamer = { version = "0.3", optional = true }
 getopts = "0.2.15"
 hex = "0.3"
 id3 = "0.3"
