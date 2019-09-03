@@ -5,6 +5,7 @@ use diesel::prelude::*;
 use diesel::sql_types;
 use diesel::sqlite::SqliteConnection;
 use error_chain::bail;
+#[cfg(feature = "profile-index")]
 use flame;
 use log::{error, info};
 use regex::Regex;
@@ -278,6 +279,7 @@ impl<'conn> IndexBuilder<'conn> {
 
 		// Insert content
 		for file in fs::read_dir(path)? {
+			#[cfg(feature = "profile-index")]
 			let _guard = flame::start_guard("directory-entry");
 			let file_path = match file {
 				Ok(ref f) => f.path(),
