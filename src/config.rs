@@ -196,7 +196,7 @@ where
 			})
 			.collect::<_>();
 		for config_user in &insert_users {
-			let new_user = User::new(&config_user.name, &config_user.password);
+			let new_user = User::new(&config_user.name, &config_user.password)?;
 			diesel::insert_into(users::table)
 				.values(&new_user)
 				.execute(connection.deref())?;
@@ -206,11 +206,7 @@ where
 		for user in config_users.iter() {
 			// Update password if provided
 			if !user.password.is_empty() {
-				let salt: Vec<u8> = users::table
-					.select(users::columns::password_salt)
-					.filter(users::name.eq(&user.name))
-					.get_result(connection.deref())?;
-				let hash = hash_password(&salt, &user.password);
+				let hash = hash_password(&user.password)?;
 				diesel::update(users::table.filter(users::name.eq(&user.name)))
 					.set(users::password_hash.eq(hash))
 					.execute(connection.deref())?;
@@ -371,8 +367,8 @@ fn test_amend_preserve_password_hashes() {
 	use self::users::dsl::*;
 
 	let db = _get_test_db("amend_preserve_password_hashes.sqlite");
-	let initial_hash: Vec<u8>;
-	let new_hash: Vec<u8>;
+	let initial_hash: String;
+	let new_hash: String;
 
 	let initial_config = Config {
 		album_art_pattern: None,
