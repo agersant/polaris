@@ -39,7 +39,7 @@ simplelog = "0.6"
 toml = "0.5"
 
 [dependencies.rocket_contrib]
-version = "0.4.0"
+version = "0.4.2"
 default_features = false
 features = ["json", "serve"]
 
