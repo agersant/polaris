@@ -7,7 +7,8 @@ extern crate diesel;
 #[macro_use]
 extern crate diesel_migrations;
 #[cfg(feature = "profile-index")]
-#[macro_use] extern crate flamer;
+#[macro_use]
+extern crate flamer;
 
 #[cfg(unix)]
 use libsystemd::daemon::{self, NotifyState};
@@ -25,7 +26,7 @@ use core::ops::Deref;
 use error_chain::bail;
 use getopts::Options;
 use log::info;
-use simplelog::{Level, LevelFilter, SimpleLogger, TermLogger, TerminalMode};
+use simplelog::{LevelFilter, SimpleLogger, TermLogger, TerminalMode};
 use std::path::Path;
 use std::sync::Arc;
 
@@ -53,13 +54,9 @@ mod vfs;
 mod web;
 
 fn log_config() -> simplelog::Config {
-	simplelog::Config {
-		time: Some(Level::Error),
-		level: Some(Level::Error),
-		target: Some(Level::Error),
-		location: Some(Level::Error),
-		..Default::default()
-	}
+	simplelog::ConfigBuilder::new()
+		.set_location_level(LevelFilter::Error)
+		.build()
 }
 
 fn main() {
@@ -96,16 +93,15 @@ fn daemonize(options: &getopts::Matches) -> Result<()> {
 
 #[cfg(unix)]
 fn init_log(log_level: LevelFilter, options: &getopts::Matches) -> Result<()> {
-	let config = log_config();
 	if options.opt_present("f") {
-		if let Err(e) = TermLogger::init(log_level, config, TerminalMode::Stdout) {
+		if let Err(e) = TermLogger::init(log_level, log_config(), TerminalMode::Stdout) {
 			println!("Error starting terminal logger: {}", e);
 		} else {
 			return Ok(());
 		}
 	}
 
-	if let Err(e) = SimpleLogger::init(log_level, config) {
+	if let Err(e) = SimpleLogger::init(log_level, log_config()) {
 		bail!("Error starting simple logger: {}", e);
 	}
 	Ok(())
@@ -113,9 +109,8 @@ fn init_log(log_level: LevelFilter, options: &getopts::Matches) -> Result<()> {
 
 #[cfg(windows)]
 fn init_log(log_level: LevelFilter, _: &getopts::Matches) -> Result<()> {
-	let config = log_config();
-	if TermLogger::init(log_level, config, TerminalMode::Stdout).is_err() {
-		if let Err(e) = SimpleLogger::init(log_level, config) {
+	if TermLogger::init(log_level, log_config(), TerminalMode::Stdout).is_err() {
+		if let Err(e) = SimpleLogger::init(log_level, log_config()) {
 			bail!("Error starting simple logger: {}", e);
 		}
 	};
