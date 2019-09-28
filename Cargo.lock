@@ -724,11 +724,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "hex"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
 name = "hmac"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1492,7 +1487,6 @@ dependencies = [
  "flame 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "flamer 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "getopts 0.2.21 (registry+https://github.com/rust-lang/crates.io-index)",
- "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "id3 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "image 0.22.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "lewton 0.9.4 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2745,7 +2739,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum getrandom 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)" = "473a1265acc8ff1e808cd0a1af8cee3c2ee5200916058a2ca113c29f2d903571"
 "checksum gif 0.10.3 (registry+https://github.com/rust-lang/crates.io-index)" = "471d90201b3b223f3451cd4ad53e34295f16a1df17b1edf3736d47761c3981af"
 "checksum h2 0.1.26 (registry+https://github.com/rust-lang/crates.io-index)" = "a5b34c246847f938a410a03c5458c7fee2274436675e76d8b903c08efc29c462"
-"checksum hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "805026a5d0141ffc30abb3be3173848ad46a1b1664fe632428479619a3644d77"
 "checksum hmac 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)" = "5dcb5e64cda4c23119ab41ba960d1e170a774c8e4b9d9e6a9bc18aabf5e59695"
 "checksum http 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)" = "372bcb56f939e449117fb0869c2e8fd8753a8223d92a172c6e808cf123a5b6e4"
 "checksum http-body 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "6741c859c1b2463a423a1dbce98d418e6c3c3fc720fb0d45528657320920292d"
