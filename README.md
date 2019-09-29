@@ -1,5 +1,3 @@
-[![Linux Build Status](https://travis-ci.org/agersant/polaris.svg?branch=master)](https://travis-ci.org/agersant/polaris)
-[![Windows Build Status](https://ci.appveyor.com/api/projects/status/w0gsnq7mo4bu0wne/branch/master?svg=true)](https://ci.appveyor.com/project/agersant/polaris)
 [![Actions Status](https://github.com/agersant/polaris/workflows/Build/badge.svg)](https://github.com/agersant/polaris/actions)
 
 <img src="res/readme/logo.png?raw=true"/>
