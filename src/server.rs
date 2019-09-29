@@ -34,7 +34,12 @@ pub fn get_server(
 		.manage(db)
 		.manage(command_sender)
 		.mount(&api_url, crate::api::get_routes())
-		.mount(&swagger_url, StaticFiles::from(swagger_dir_path).rank(swagger_routes_rank))
-		.mount(&web_url, StaticFiles::from(web_dir_path).rank(web_routes_rank))
-	)
+		.mount(
+			&swagger_url,
+			StaticFiles::from(swagger_dir_path).rank(swagger_routes_rank),
+		)
+		.mount(
+			&web_url,
+			StaticFiles::from(web_dir_path).rank(web_routes_rank),
+		))
 }
