@@ -1,6 +1,6 @@
 [![Linux Build Status](https://travis-ci.org/agersant/polaris.svg?branch=master)](https://travis-ci.org/agersant/polaris)
 [![Windows Build Status](https://ci.appveyor.com/api/projects/status/w0gsnq7mo4bu0wne/branch/master?svg=true)](https://ci.appveyor.com/project/agersant/polaris)
-[![Actions Status](https://github.com/agersant/polaris/workflows/Build/badge.svg)](https://github.com/polaris/agersant/actions)
+[![Actions Status](https://github.com/agersant/polaris/workflows/Build/badge.svg)](https://github.com/agersant/polaris/actions)
 
 <img src="res/readme/logo.png?raw=true"/>
 Polaris is a music streaming application, designed to let you enjoy your music collection from any computer or mobile device. Polaris works by streaming your music directly from your own computer, without uploading it to a third-party. It is free and open-source software, without any kind of premium version. The only requirement is that your computer stays on while it streams music!
