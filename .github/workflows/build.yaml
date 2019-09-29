@@ -1,4 +1,4 @@
-name: Validate Pull Request
+name: Build
 on: push
 
 jobs:
