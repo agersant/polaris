@@ -4,7 +4,12 @@ on: push
 jobs:
   test:
     name: Run Tests
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        features: [--all-features, --no-default-features]
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+
     steps:
     - uses: actions/checkout@master
     - uses: textbook/git-checkout-submodule-action@master
@@ -16,4 +21,4 @@ jobs:
       with:
         command: test
         toolchain: nightly
-        args: --release --all-features
+        args: --release ${{ matrix.features }}
