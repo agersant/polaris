@@ -11,9 +11,9 @@ extern crate diesel_migrations;
 extern crate flamer;
 
 #[cfg(unix)]
-use libsystemd::daemon::{self, NotifyState};
-#[cfg(unix)]
 use log::error;
+#[cfg(unix)]
+use sd_notify::{self, NotifyState};
 #[cfg(unix)]
 use std::fs::File;
 #[cfg(unix)]
@@ -119,14 +119,14 @@ fn init_log(log_level: LevelFilter, _: &getopts::Matches) -> Result<()> {
 
 #[cfg(unix)]
 fn notify_ready() {
-	if daemon::booted() {
-		if let Err(e) = daemon::notify(true, &[NotifyState::Ready]) {
+	if let Ok(true) = sd_notify::booted() {
+		if let Err(e) = sd_notify::notify(true, &[NotifyState::Ready]) {
 			error!("Unable to send ready notification: {}", e);
 		}
 	}
 }
 
-#[cfg(windows)]
+#[cfg(not(unix))]
 fn notify_ready() {}
 
 fn run() -> Result<()> {
