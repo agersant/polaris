@@ -1,5 +1,10 @@
 name: Build
-on: push
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
 
 jobs:
   test:
@@ -11,6 +16,9 @@ jobs:
         os: [ubuntu-latest, windows-latest, macOS-latest]
 
     steps:
+    - name: Install libsqlite3-dev
+      if: matrix.os == 'ubuntu-latest'
+      run: sudo apt-get install libsqlite3-dev
     - uses: actions/checkout@master
       with:
         submodules: true

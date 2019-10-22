@@ -156,9 +156,9 @@ fn read_flac(path: &Path) -> Result<SongTags> {
 		.get("DISCNUMBER")
 		.and_then(|d| d[0].parse::<u32>().ok());
 	let year = vorbis.get("DATE").and_then(|d| d[0].parse::<i32>().ok());
-	let streaminfo = tag.get_blocks(metaflac::BlockType::StreamInfo);
-	let duration = match streaminfo.first() {
-		Some(&&metaflac::Block::StreamInfo(ref s)) => {
+	let mut streaminfo = tag.get_blocks(metaflac::BlockType::StreamInfo);
+	let duration = match streaminfo.next() {
+		Some(&metaflac::Block::StreamInfo(ref s)) => {
 			Some((s.total_samples as u32 / s.sample_rate) as u32)
 		}
 		_ => None,
