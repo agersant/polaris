@@ -20,6 +20,7 @@ pub fn get_server(
 ) -> Result<rocket::Rocket, errors::Error> {
 	let mut config = rocket::Config::build(rocket::config::Environment::Production)
 		.port(port)
+		.keep_alive(0)
 		.finalize()?;
 
 	if let Some(secret) = auth_secret {
