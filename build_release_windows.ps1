@@ -1,7 +1,7 @@
-Get-ChildItem "Cargo.toml" | % {
+Get-ChildItem "Cargo.toml" | ForEach-Object {
   $conf = $_ | Get-Content -raw
   $conf -match 'version\s+=\s+"(.*)"' | out-null
-  $POLARIS_VERSION = $matches[1]
+  $script:POLARIS_VERSION = $matches[1]
 }
 
 "Compiling resource file"
