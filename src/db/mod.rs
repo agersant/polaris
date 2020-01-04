@@ -4,8 +4,7 @@ use diesel::sqlite::SqliteConnection;
 use diesel_migrations;
 use error_chain::bail;
 use log::info;
-use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use crate::errors::*;
@@ -86,20 +85,22 @@ impl ConnectionSource for DB {
 	}
 }
 
+#[cfg(test)]
 pub fn _get_test_db(name: &str) -> DB {
 	use crate::config;
 	let config_path = Path::new("test/config.toml");
 	let config = config::parse_toml_file(&config_path).unwrap();
 
-	let mut db_path = PathBuf::new();
+	let mut db_path = std::path::PathBuf::new();
 	db_path.push("test");
 	db_path.push(name);
 	if db_path.exists() {
-		fs::remove_file(&db_path).unwrap();
+		std::fs::remove_file(&db_path).unwrap();
 	}
 
 	let db = DB::new(&db_path).unwrap();
-	config::overwrite(&db, &config).unwrap();
+	config::reset(&db).unwrap();
+	config::amend(&db, &config).unwrap();
 	db
 }
 

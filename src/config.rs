@@ -134,7 +134,8 @@ where
 	Ok(config)
 }
 
-fn reset<T>(db: &T) -> Result<()>
+#[cfg(test)]
+pub fn reset<T>(db: &T) -> Result<()>
 where
 	T: ConnectionSource,
 {
@@ -148,14 +149,6 @@ where
 		.execute(connection.deref())?;
 
 	Ok(())
-}
-
-pub fn overwrite<T>(db: &T, new_config: &Config) -> Result<()>
-where
-	T: ConnectionSource,
-{
-	reset(db)?;
-	amend(db, new_config)
 }
 
 pub fn amend<T>(db: &T, new_config: &Config) -> Result<()>
