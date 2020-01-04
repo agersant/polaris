@@ -189,10 +189,12 @@ where
 		let insert_users: Vec<&ConfigUser> = config_users
 			.iter()
 			.filter(|u| {
-				old_usernames
-					.iter()
-					.find(|old_name| *old_name == &u.name)
-					.is_none()
+				!u.name.is_empty()
+					&& !u.password.is_empty()
+					&& old_usernames
+						.iter()
+						.find(|old_name| *old_name == &u.name)
+						.is_none()
 			})
 			.collect::<_>();
 		for config_user in &insert_users {
@@ -424,6 +426,53 @@ fn test_amend_preserve_password_hashes() {
 	}
 
 	assert_eq!(new_hash, initial_hash);
+}
+
+#[test]
+fn test_amend_ignore_blank_users() {
+	use self::users::dsl::*;
+
+	let db = _get_test_db("amend_ignore_blank_users.sqlite");
+
+	{
+		let config = Config {
+			album_art_pattern: None,
+			reindex_every_n_seconds: None,
+			prefix_url: None,
+			mount_dirs: None,
+			users: Some(vec![ConfigUser {
+				name: "".into(),
+				password: "Tasty🍖".into(),
+				admin: false,
+			}]),
+			ydns: None,
+		};
+		amend(&db, &config).unwrap();
+
+		let connection = db.get_connection();
+		let user_count: i64 = users.count().get_result(connection.deref()).unwrap();
+		assert_eq!(user_count, 0);
+	}
+
+	{
+		let config = Config {
+			album_art_pattern: None,
+			reindex_every_n_seconds: None,
+			prefix_url: None,
+			mount_dirs: None,
+			users: Some(vec![ConfigUser {
+				name: "Teddy🐻".into(),
+				password: "".into(),
+				admin: false,
+			}]),
+			ydns: None,
+		};
+		amend(&db, &config).unwrap();
+
+		let connection = db.get_connection();
+		let user_count: i64 = users.count().get_result(connection.deref()).unwrap();
+		assert_eq!(user_count, 0);
+	}
 }
 
 #[test]
