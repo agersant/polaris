@@ -1,6 +1,5 @@
 #![recursion_limit = "256"]
 #![feature(proc_macro_hygiene, decl_macro)]
-#![allow(proc_macro_derive_resolution_fallback)]
 
 #[macro_use]
 extern crate diesel;
