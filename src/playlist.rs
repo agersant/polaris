@@ -181,13 +181,15 @@ where
 		}
 
 		// Select songs. Not using Diesel because we need to LEFT JOIN using a custom column
-		let query = diesel::sql_query(r#"
+		let query = diesel::sql_query(
+			r#"
 			SELECT s.id, s.path, s.parent, s.track_number, s.disc_number, s.title, s.artist, s.album_artist, s.year, s.album, s.artwork, s.duration
 			FROM playlist_songs ps
 			LEFT JOIN songs s ON ps.path = s.path
 			WHERE ps.playlist = ?
 			ORDER BY ps.ordering
-		"#);
+		"#,
+		);
 		let query = query.clone().bind::<sql_types::Integer, _>(playlist.id);
 		songs = query.get_results(connection.deref())?;
 	}
@@ -227,7 +229,7 @@ where
 
 #[test]
 fn test_create_playlist() {
-	let db = db::_get_test_db("create_playlist.sqlite");
+	let db = db::get_test_db("create_playlist.sqlite");
 
 	let found_playlists = list_playlists("test_user", &db).unwrap();
 	assert!(found_playlists.is_empty());
@@ -243,7 +245,7 @@ fn test_create_playlist() {
 
 #[test]
 fn test_delete_playlist() {
-	let db = db::_get_test_db("delete_playlist.sqlite");
+	let db = db::get_test_db("delete_playlist.sqlite");
 	let playlist_content = Vec::new();
 
 	save_playlist("chill_and_grill", "test_user", &playlist_content, &db).unwrap();
@@ -264,7 +266,7 @@ fn test_delete_playlist() {
 fn test_fill_playlist() {
 	use crate::index;
 
-	let db = db::_get_test_db("fill_playlist.sqlite");
+	let db = db::get_test_db("fill_playlist.sqlite");
 	index::update(&db).unwrap();
 
 	let mut playlist_content: Vec<String> = index::flatten(&db, Path::new("root"))

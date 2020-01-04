@@ -86,7 +86,7 @@ impl ConnectionSource for DB {
 }
 
 #[cfg(test)]
-pub fn _get_test_db(name: &str) -> DB {
+pub fn get_test_db(name: &str) -> DB {
 	use crate::config;
 	let config_path = Path::new("test/config.toml");
 	let config = config::parse_toml_file(&config_path).unwrap();
@@ -106,12 +106,12 @@ pub fn _get_test_db(name: &str) -> DB {
 
 #[test]
 fn test_migrations_up() {
-	_get_test_db("migrations_up.sqlite");
+	get_test_db("migrations_up.sqlite");
 }
 
 #[test]
 fn test_migrations_down() {
-	let db = _get_test_db("migrations_down.sqlite");
+	let db = get_test_db("migrations_down.sqlite");
 	db.migrate_down().unwrap();
 	db.migrate_up().unwrap();
 }

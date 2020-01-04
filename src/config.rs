@@ -11,7 +11,6 @@ use std::path;
 use toml;
 
 use crate::db::ConnectionSource;
-use crate::db::DB;
 use crate::db::{ddns_config, misc_settings, mount_points, users};
 use crate::ddns::DDNSConfig;
 use crate::errors::*;
@@ -294,7 +293,8 @@ fn clean_path_string(path_string: &str) -> path::PathBuf {
 	path::Path::new(path_string.deref()).iter().collect()
 }
 
-fn _get_test_db(name: &str) -> DB {
+#[cfg(test)]
+fn get_test_db(name: &str) -> crate::db::DB {
 	let mut db_path = path::PathBuf::new();
 	db_path.push("test");
 	db_path.push(name);
@@ -302,12 +302,12 @@ fn _get_test_db(name: &str) -> DB {
 		fs::remove_file(&db_path).unwrap();
 	}
 
-	DB::new(&db_path).unwrap()
+	crate::db::DB::new(&db_path).unwrap()
 }
 
 #[test]
 fn test_amend() {
-	let db = _get_test_db("amend.sqlite");
+	let db = get_test_db("amend.sqlite");
 
 	let initial_config = Config {
 		album_art_pattern: Some("file\\.png".into()),
@@ -361,7 +361,7 @@ fn test_amend() {
 fn test_amend_preserve_password_hashes() {
 	use self::users::dsl::*;
 
-	let db = _get_test_db("amend_preserve_password_hashes.sqlite");
+	let db = get_test_db("amend_preserve_password_hashes.sqlite");
 	let initial_hash: String;
 	let new_hash: String;
 
@@ -425,7 +425,7 @@ fn test_amend_preserve_password_hashes() {
 fn test_amend_ignore_blank_users() {
 	use self::users::dsl::*;
 
-	let db = _get_test_db("amend_ignore_blank_users.sqlite");
+	let db = get_test_db("amend_ignore_blank_users.sqlite");
 
 	{
 		let config = Config {
@@ -472,7 +472,7 @@ fn test_amend_ignore_blank_users() {
 fn test_toggle_admin() {
 	use self::users::dsl::*;
 
-	let db = _get_test_db("amend_toggle_admin.sqlite");
+	let db = get_test_db("amend_toggle_admin.sqlite");
 
 	let initial_config = Config {
 		album_art_pattern: None,
@@ -517,7 +517,7 @@ fn test_toggle_admin() {
 
 #[test]
 fn test_preferences_read_write() {
-	let db = _get_test_db("preferences_read_write.sqlite");
+	let db = get_test_db("preferences_read_write.sqlite");
 
 	let initial_config = Config {
 		album_art_pattern: None,
