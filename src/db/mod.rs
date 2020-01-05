@@ -1,13 +1,11 @@
+use anyhow::*;
 use core::ops::Deref;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use diesel_migrations;
-use error_chain::bail;
 use log::info;
 use std::path::Path;
 use std::sync::{Arc, Mutex, MutexGuard};
-
-use crate::errors::*;
 
 mod schema;
 

@@ -1,15 +1,14 @@
+use anyhow::*;
 use core::ops::Deref;
 use diesel::prelude::*;
 use log::{error, info};
 use reqwest;
 use serde::{Deserialize, Serialize};
-use std::io;
 use std::thread;
 use std::time;
 
 use crate::db::ddns_config;
 use crate::db::{ConnectionSource, DB};
-use crate::errors;
 
 #[derive(Clone, Debug, Deserialize, Insertable, PartialEq, Queryable, Serialize)]
 #[table_name = "ddns_config"]
@@ -20,11 +19,11 @@ pub struct DDNSConfig {
 }
 
 pub trait DDNSConfigSource {
-	fn get_ddns_config(&self) -> errors::Result<DDNSConfig>;
+	fn get_ddns_config(&self) -> Result<DDNSConfig>;
 }
 
 impl DDNSConfigSource for DB {
-	fn get_ddns_config(&self) -> errors::Result<DDNSConfig> {
+	fn get_ddns_config(&self) -> Result<DDNSConfig> {
 		use self::ddns_config::dsl::*;
 		let connection = self.get_connection();
 		Ok(ddns_config
@@ -33,35 +32,9 @@ impl DDNSConfigSource for DB {
 	}
 }
 
-#[derive(Debug)]
-enum DDNSError {
-	Internal(errors::Error),
-	Io(io::Error),
-	Reqwest(reqwest::Error),
-	Update(reqwest::StatusCode),
-}
-
-impl From<io::Error> for DDNSError {
-	fn from(err: io::Error) -> DDNSError {
-		DDNSError::Io(err)
-	}
-}
-
-impl From<errors::Error> for DDNSError {
-	fn from(err: errors::Error) -> DDNSError {
-		DDNSError::Internal(err)
-	}
-}
-
-impl From<reqwest::Error> for DDNSError {
-	fn from(err: reqwest::Error) -> DDNSError {
-		DDNSError::Reqwest(err)
-	}
-}
-
 const DDNS_UPDATE_URL: &str = "https://ydns.io/api/v1/update/";
 
-fn update_my_ip<T>(config_source: &T) -> Result<(), DDNSError>
+fn update_my_ip<T>(config_source: &T) -> Result<()>
 where
 	T: DDNSConfigSource,
 {
@@ -78,7 +51,10 @@ where
 		.basic_auth(config.username, Some(config.password))
 		.send()?;
 	if !res.status().is_success() {
-		return Err(DDNSError::Update(res.status()));
+		bail!(
+			"DDNS update query failed with status code: {}",
+			res.status()
+		);
 	}
 	Ok(())
 }

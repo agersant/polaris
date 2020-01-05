@@ -1,4 +1,4 @@
-use error_chain::bail;
+use anyhow::*;
 use rocket::http::{Cookie, Cookies, RawStr, Status};
 use rocket::request::{self, FromParam, FromRequest, Request};
 use rocket::response::content::Html;
@@ -11,10 +11,10 @@ use std::path::PathBuf;
 use std::str;
 use std::str::FromStr;
 use std::sync::Arc;
+use thiserror::Error;
 
 use crate::config::{self, Config, Preferences};
 use crate::db::DB;
-use crate::errors;
 use crate::index;
 use crate::lastfm;
 use crate::playlist;
@@ -56,6 +56,30 @@ pub fn get_routes() -> Vec<rocket::Route> {
 		lastfm_now_playing,
 		lastfm_scrobble,
 	]
+}
+
+#[derive(Error, Debug)]
+enum APIError {
+	#[error("Incorrect Credentials")]
+	IncorrectCredentials,
+	#[error("Unspecified")]
+	Unspecified,
+}
+
+impl<'r> rocket::response::Responder<'r> for APIError {
+	fn respond_to(self, _: &rocket::request::Request<'_>) -> rocket::response::Result<'r> {
+		let status = match self {
+			APIError::IncorrectCredentials => rocket::http::Status::Unauthorized,
+			_ => rocket::http::Status::InternalServerError,
+		};
+		rocket::response::Response::build().status(status).ok()
+	}
+}
+
+impl From<anyhow::Error> for APIError {
+	fn from(_: anyhow::Error) -> Self {
+		APIError::Unspecified
+	}
 }
 
 struct Auth {
@@ -168,7 +192,7 @@ pub struct InitialSetup {
 }
 
 #[get("/initial_setup")]
-fn initial_setup(db: State<'_, Arc<DB>>) -> Result<Json<InitialSetup>, errors::Error> {
+fn initial_setup(db: State<'_, Arc<DB>>) -> Result<Json<InitialSetup>> {
 	let initial_setup = InitialSetup {
 		has_any_users: user::count::<DB>(&db)? > 0,
 	};
@@ -176,10 +200,7 @@ fn initial_setup(db: State<'_, Arc<DB>>) -> Result<Json<InitialSetup>, errors::E
 }
 
 #[get("/settings")]
-fn get_settings(
-	db: State<'_, Arc<DB>>,
-	_admin_rights: AdminRights,
-) -> Result<Json<Config>, errors::Error> {
+fn get_settings(db: State<'_, Arc<DB>>, _admin_rights: AdminRights) -> Result<Json<Config>> {
 	let config = config::read::<DB>(&db)?;
 	Ok(Json(config))
 }
@@ -189,13 +210,13 @@ fn put_settings(
 	db: State<'_, Arc<DB>>,
 	_admin_rights: AdminRights,
 	config: Json<Config>,
-) -> Result<(), errors::Error> {
+) -> Result<()> {
 	config::amend::<DB>(&db, &config)?;
 	Ok(())
 }
 
 #[get("/preferences")]
-fn get_preferences(db: State<'_, Arc<DB>>, auth: Auth) -> Result<Json<Preferences>, errors::Error> {
+fn get_preferences(db: State<'_, Arc<DB>>, auth: Auth) -> Result<Json<Preferences>> {
 	let preferences = config::read_preferences::<DB>(&db, &auth.username)?;
 	Ok(Json(preferences))
 }
@@ -205,7 +226,7 @@ fn put_preferences(
 	db: State<'_, Arc<DB>>,
 	auth: Auth,
 	preferences: Json<Preferences>,
-) -> Result<(), errors::Error> {
+) -> Result<()> {
 	config::write_preferences::<DB>(&db, &auth.username, &preferences)?;
 	Ok(())
 }
@@ -214,7 +235,7 @@ fn put_preferences(
 fn trigger_index(
 	command_sender: State<'_, Arc<index::CommandSender>>,
 	_admin_rights: AdminRights,
-) -> Result<(), errors::Error> {
+) -> Result<()> {
 	command_sender.trigger_reindex()?;
 	Ok(())
 }
@@ -235,9 +256,9 @@ fn auth(
 	db: State<'_, Arc<DB>>,
 	credentials: Json<AuthCredentials>,
 	mut cookies: Cookies<'_>,
-) -> Result<Json<AuthOutput>, errors::Error> {
+) -> std::result::Result<Json<AuthOutput>, APIError> {
 	if !user::auth::<DB>(&db, &credentials.username, &credentials.password)? {
-		bail!(errors::ErrorKind::IncorrectCredentials)
+		return Err(APIError::IncorrectCredentials);
 	}
 
 	cookies.add_private(get_session_cookie(&credentials.username));
@@ -249,10 +270,7 @@ fn auth(
 }
 
 #[get("/browse")]
-fn browse_root(
-	db: State<'_, Arc<DB>>,
-	_auth: Auth,
-) -> Result<Json<Vec<index::CollectionFile>>, errors::Error> {
+fn browse_root(db: State<'_, Arc<DB>>, _auth: Auth) -> Result<Json<Vec<index::CollectionFile>>> {
 	let result = index::browse(db.deref().deref(), &PathBuf::new())?;
 	Ok(Json(result))
 }
@@ -262,16 +280,13 @@ fn browse(
 	db: State<'_, Arc<DB>>,
 	_auth: Auth,
 	path: VFSPathBuf,
-) -> Result<Json<Vec<index::CollectionFile>>, errors::Error> {
+) -> Result<Json<Vec<index::CollectionFile>>> {
 	let result = index::browse(db.deref().deref(), &path.into() as &PathBuf)?;
 	Ok(Json(result))
 }
 
 #[get("/flatten")]
-fn flatten_root(
-	db: State<'_, Arc<DB>>,
-	_auth: Auth,
-) -> Result<Json<Vec<index::Song>>, errors::Error> {
+fn flatten_root(db: State<'_, Arc<DB>>, _auth: Auth) -> Result<Json<Vec<index::Song>>> {
 	let result = index::flatten(db.deref().deref(), &PathBuf::new())?;
 	Ok(Json(result))
 }
@@ -281,34 +296,25 @@ fn flatten(
 	db: State<'_, Arc<DB>>,
 	_auth: Auth,
 	path: VFSPathBuf,
-) -> Result<Json<Vec<index::Song>>, errors::Error> {
+) -> Result<Json<Vec<index::Song>>> {
 	let result = index::flatten(db.deref().deref(), &path.into() as &PathBuf)?;
 	Ok(Json(result))
 }
 
 #[get("/random")]
-fn random(
-	db: State<'_, Arc<DB>>,
-	_auth: Auth,
-) -> Result<Json<Vec<index::Directory>>, errors::Error> {
+fn random(db: State<'_, Arc<DB>>, _auth: Auth) -> Result<Json<Vec<index::Directory>>> {
 	let result = index::get_random_albums(db.deref().deref(), 20)?;
 	Ok(Json(result))
 }
 
 #[get("/recent")]
-fn recent(
-	db: State<'_, Arc<DB>>,
-	_auth: Auth,
-) -> Result<Json<Vec<index::Directory>>, errors::Error> {
+fn recent(db: State<'_, Arc<DB>>, _auth: Auth) -> Result<Json<Vec<index::Directory>>> {
 	let result = index::get_recent_albums(db.deref().deref(), 20)?;
 	Ok(Json(result))
 }
 
 #[get("/search")]
-fn search_root(
-	db: State<'_, Arc<DB>>,
-	_auth: Auth,
-) -> Result<Json<Vec<index::CollectionFile>>, errors::Error> {
+fn search_root(db: State<'_, Arc<DB>>, _auth: Auth) -> Result<Json<Vec<index::CollectionFile>>> {
 	let result = index::search(db.deref().deref(), "")?;
 	Ok(Json(result))
 }
@@ -318,7 +324,7 @@ fn search(
 	db: State<'_, Arc<DB>>,
 	_auth: Auth,
 	query: String,
-) -> Result<Json<Vec<index::CollectionFile>>, errors::Error> {
+) -> Result<Json<Vec<index::CollectionFile>>> {
 	let result = index::search(db.deref().deref(), &query)?;
 	Ok(Json(result))
 }
@@ -328,7 +334,7 @@ fn serve(
 	db: State<'_, Arc<DB>>,
 	_auth: Auth,
 	path: VFSPathBuf,
-) -> Result<serve::RangeResponder<File>, errors::Error> {
+) -> Result<serve::RangeResponder<File>> {
 	let db: &DB = db.deref().deref();
 	let vfs = db.get_vfs()?;
 	let real_path = vfs.virtual_to_real(&path.into() as &PathBuf)?;
@@ -349,10 +355,7 @@ pub struct ListPlaylistsEntry {
 }
 
 #[get("/playlists")]
-fn list_playlists(
-	db: State<'_, Arc<DB>>,
-	auth: Auth,
-) -> Result<Json<Vec<ListPlaylistsEntry>>, errors::Error> {
+fn list_playlists(db: State<'_, Arc<DB>>, auth: Auth) -> Result<Json<Vec<ListPlaylistsEntry>>> {
 	let playlist_names = playlist::list_playlists(&auth.username, db.deref().deref())?;
 	let playlists: Vec<ListPlaylistsEntry> = playlist_names
 		.into_iter()
@@ -373,7 +376,7 @@ fn save_playlist(
 	auth: Auth,
 	name: String,
 	playlist: Json<SavePlaylistInput>,
-) -> Result<(), errors::Error> {
+) -> Result<()> {
 	playlist::save_playlist(&name, &auth.username, &playlist.tracks, db.deref().deref())?;
 	Ok(())
 }
@@ -383,33 +386,25 @@ fn read_playlist(
 	db: State<'_, Arc<DB>>,
 	auth: Auth,
 	name: String,
-) -> Result<Json<Vec<index::Song>>, errors::Error> {
+) -> Result<Json<Vec<index::Song>>> {
 	let songs = playlist::read_playlist(&name, &auth.username, db.deref().deref())?;
 	Ok(Json(songs))
 }
 
 #[delete("/playlist/<name>")]
-fn delete_playlist(db: State<'_, Arc<DB>>, auth: Auth, name: String) -> Result<(), errors::Error> {
+fn delete_playlist(db: State<'_, Arc<DB>>, auth: Auth, name: String) -> Result<()> {
 	playlist::delete_playlist(&name, &auth.username, db.deref().deref())?;
 	Ok(())
 }
 
 #[put("/lastfm/now_playing/<path>")]
-fn lastfm_now_playing(
-	db: State<'_, Arc<DB>>,
-	auth: Auth,
-	path: VFSPathBuf,
-) -> Result<(), errors::Error> {
+fn lastfm_now_playing(db: State<'_, Arc<DB>>, auth: Auth, path: VFSPathBuf) -> Result<()> {
 	lastfm::now_playing(db.deref().deref(), &auth.username, &path.into() as &PathBuf)?;
 	Ok(())
 }
 
 #[post("/lastfm/scrobble/<path>")]
-fn lastfm_scrobble(
-	db: State<'_, Arc<DB>>,
-	auth: Auth,
-	path: VFSPathBuf,
-) -> Result<(), errors::Error> {
+fn lastfm_scrobble(db: State<'_, Arc<DB>>, auth: Auth, path: VFSPathBuf) -> Result<()> {
 	lastfm::scrobble(db.deref().deref(), &auth.username, &path.into() as &PathBuf)?;
 	Ok(())
 }
@@ -420,32 +415,23 @@ fn lastfm_link(
 	auth: Auth,
 	token: String,
 	content: String,
-) -> Result<Html<String>, errors::Error> {
+) -> Result<Html<String>> {
 	lastfm::link(db.deref().deref(), &auth.username, &token)?;
 
 	// Percent decode
-	let base64_content = match RawStr::from_str(&content).percent_decode() {
-		Ok(s) => s,
-		Err(_) => bail!(errors::ErrorKind::EncodingError),
-	};
+	let base64_content = RawStr::from_str(&content).percent_decode()?;
 
 	// Base64 decode
-	let popup_content = match base64::decode(base64_content.as_bytes()) {
-		Ok(c) => c,
-		Err(_) => bail!(errors::ErrorKind::EncodingError),
-	};
+	let popup_content = base64::decode(base64_content.as_bytes())?;
 
 	// UTF-8 decode
-	let popup_content_string = match str::from_utf8(&popup_content) {
-		Ok(s) => s,
-		Err(_) => bail!(errors::ErrorKind::EncodingError),
-	};
+	let popup_content_string = str::from_utf8(&popup_content)?;
 
 	Ok(Html(popup_content_string.to_string()))
 }
 
 #[delete("/lastfm/link")]
-fn lastfm_unlink(db: State<'_, Arc<DB>>, auth: Auth) -> Result<(), errors::Error> {
+fn lastfm_unlink(db: State<'_, Arc<DB>>, auth: Auth) -> Result<()> {
 	lastfm::unlink(db.deref().deref(), &auth.username)?;
 	Ok(())
 }

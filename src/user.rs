@@ -1,11 +1,10 @@
+use anyhow::*;
 use core::ops::Deref;
 use diesel;
 use diesel::prelude::*;
-use error_chain::bail;
 
 use crate::db::users;
 use crate::db::ConnectionSource;
-use crate::errors::*;
 
 #[derive(Debug, Insertable, Queryable)]
 #[table_name = "users"]
@@ -109,7 +108,7 @@ where
 		.get_result(connection.deref())?;
 	match token {
 		Some(t) => Ok(t),
-		_ => bail!(ErrorKind::MissingLastFMCredentials),
+		_ => Err(anyhow!("Missing LastFM credentials")),
 	}
 }
 

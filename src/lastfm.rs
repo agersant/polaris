@@ -1,9 +1,9 @@
+use anyhow::*;
 use rustfm_scrobble::{Scrobble, Scrobbler};
 use serde::Deserialize;
 use std::path::Path;
 
 use crate::db::ConnectionSource;
-use crate::errors;
 use crate::index;
 use crate::user;
 use crate::vfs::VFSSource;
@@ -42,7 +42,7 @@ struct AuthResponse {
 	pub session: AuthResponseSession,
 }
 
-fn scrobble_from_path<T>(db: &T, track: &Path) -> Result<Scrobble, errors::Error>
+fn scrobble_from_path<T>(db: &T, track: &Path) -> Result<Scrobble>
 where
 	T: ConnectionSource + VFSSource,
 {
@@ -54,7 +54,7 @@ where
 	))
 }
 
-pub fn link<T>(db: &T, username: &str, token: &str) -> Result<(), errors::Error>
+pub fn link<T>(db: &T, username: &str, token: &str) -> Result<()>
 where
 	T: ConnectionSource + VFSSource,
 {
@@ -64,14 +64,14 @@ where
 	user::lastfm_link(db, username, &auth_response.name, &auth_response.key)
 }
 
-pub fn unlink<T>(db: &T, username: &str) -> Result<(), errors::Error>
+pub fn unlink<T>(db: &T, username: &str) -> Result<()>
 where
 	T: ConnectionSource + VFSSource,
 {
 	user::lastfm_unlink(db, username)
 }
 
-pub fn scrobble<T>(db: &T, username: &str, track: &Path) -> Result<(), errors::Error>
+pub fn scrobble<T>(db: &T, username: &str, track: &Path) -> Result<()>
 where
 	T: ConnectionSource + VFSSource,
 {
@@ -83,7 +83,7 @@ where
 	Ok(())
 }
 
-pub fn now_playing<T>(db: &T, username: &str, track: &Path) -> Result<(), errors::Error>
+pub fn now_playing<T>(db: &T, username: &str, track: &Path) -> Result<()>
 where
 	T: ConnectionSource + VFSSource,
 {

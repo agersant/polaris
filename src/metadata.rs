@@ -1,5 +1,5 @@
+use anyhow::*;
 use ape;
-use error_chain::bail;
 use id3;
 use lewton::inside_ogg::OggStreamReader;
 use metaflac;
@@ -8,7 +8,6 @@ use regex::Regex;
 use std::fs;
 use std::path::Path;
 
-use crate::errors::*;
 use crate::utils;
 use crate::utils::AudioFormat;
 
@@ -151,7 +150,9 @@ fn read_vorbis(path: &Path) -> Result<SongTags> {
 #[cfg_attr(feature = "profile-index", flame)]
 fn read_flac(path: &Path) -> Result<SongTags> {
 	let tag = metaflac::Tag::read_from_path(path)?;
-	let vorbis = tag.vorbis_comments().ok_or("Missing Vorbis comments")?;
+	let vorbis = tag
+		.vorbis_comments()
+		.ok_or(anyhow!("Missing Vorbis comments"))?;
 	let disc_number = vorbis
 		.get("DISCNUMBER")
 		.and_then(|d| d[0].parse::<u32>().ok());

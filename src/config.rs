@@ -1,7 +1,7 @@
+use anyhow::*;
 use core::ops::Deref;
 use diesel;
 use diesel::prelude::*;
-use error_chain::bail;
 use log::info;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -13,7 +13,6 @@ use toml;
 use crate::db::ConnectionSource;
 use crate::db::{ddns_config, misc_settings, mount_points, users};
 use crate::ddns::DDNSConfig;
-use crate::errors::*;
 use crate::user::*;
 use crate::vfs::MountPoint;
 

@@ -1,9 +1,7 @@
+use anyhow::*;
 use app_dirs::{app_root, AppDataType, AppInfo};
-use error_chain::bail;
 use std::fs;
 use std::path::{Path, PathBuf};
-
-use crate::errors::*;
 
 #[cfg(not(target_os = "linux"))]
 const APP_INFO: AppInfo = AppInfo {
@@ -19,7 +17,7 @@ const APP_INFO: AppInfo = AppInfo {
 
 pub fn get_data_root() -> Result<PathBuf> {
 	if let Ok(root) = app_root(AppDataType::UserData, &APP_INFO) {
-		fs::create_dir_all(&root).chain_err(|| format!("opening user data: {}", root.display()))?;
+		fs::create_dir_all(&root)?;
 		return Ok(root);
 	}
 	bail!("Could not retrieve data directory root");

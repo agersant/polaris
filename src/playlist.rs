@@ -1,3 +1,4 @@
+use anyhow::*;
 use core::clone::Clone;
 use core::ops::Deref;
 use diesel;
@@ -10,7 +11,6 @@ use std::path::Path;
 use crate::db;
 use crate::db::ConnectionSource;
 use crate::db::{playlist_songs, playlists, users};
-use crate::errors::*;
 use crate::index::{self, Song};
 use crate::vfs::VFSSource;
 

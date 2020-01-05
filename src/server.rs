@@ -1,10 +1,10 @@
+use anyhow::*;
 use rocket;
 use rocket_contrib::serve::StaticFiles;
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::db::DB;
-use crate::errors;
 use crate::index::CommandSender;
 
 pub fn get_server(
@@ -17,7 +17,7 @@ pub fn get_server(
 	swagger_dir_path: &PathBuf,
 	db: Arc<DB>,
 	command_sender: Arc<CommandSender>,
-) -> Result<rocket::Rocket, errors::Error> {
+) -> Result<rocket::Rocket> {
 	let mut config = rocket::Config::build(rocket::config::Environment::Production)
 		.port(port)
 		.keep_alive(0)

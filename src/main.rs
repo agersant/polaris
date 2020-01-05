@@ -20,9 +20,8 @@ use std::io::prelude::*;
 #[cfg(unix)]
 use unix_daemonize::{daemonize_redirect, ChdirMode};
 
-use crate::errors::*;
+use anyhow::*;
 use core::ops::Deref;
-use error_chain::bail;
 use getopts::Options;
 use log::info;
 use simplelog::{LevelFilter, SimpleLogger, TermLogger, TerminalMode};
@@ -35,7 +34,6 @@ mod api_tests;
 mod config;
 mod db;
 mod ddns;
-mod errors;
 mod index;
 mod lastfm;
 mod metadata;
@@ -56,20 +54,6 @@ fn log_config() -> simplelog::Config {
 	simplelog::ConfigBuilder::new()
 		.set_location_level(LevelFilter::Error)
 		.build()
-}
-
-fn main() {
-	if let Err(ref e) = run() {
-		println!("Error: {}", e);
-
-		for e in e.iter().skip(1) {
-			println!("caused by: {}", e);
-		}
-		if let Some(backtrace) = e.backtrace() {
-			println!("backtrace: {:?}", backtrace);
-		}
-		::std::process::exit(1);
-	}
 }
 
 #[cfg(unix)]
@@ -128,7 +112,7 @@ fn notify_ready() {
 #[cfg(not(unix))]
 fn notify_ready() {}
 
-fn run() -> Result<()> {
+fn main() -> Result<()> {
 	// Parse CLI options
 	let args: Vec<String> = std::env::args().collect();
 	let mut options = Options::new();
@@ -241,7 +225,7 @@ fn run() -> Result<()> {
 		.opt_str("p")
 		.unwrap_or_else(|| "5050".to_owned())
 		.parse()
-		.or(Err("invalid port number"))?;
+		.with_context(|| "Invalid port number")?;
 
 	let server = server::get_server(
 		port,

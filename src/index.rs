@@ -1,10 +1,10 @@
+use anyhow::*;
 use core::ops::Deref;
 use diesel;
 use diesel::dsl::sql;
 use diesel::prelude::*;
 use diesel::sql_types;
 use diesel::sqlite::SqliteConnection;
-use error_chain::bail;
 #[cfg(feature = "profile-index")]
 use flame;
 use log::{error, info};
@@ -24,7 +24,6 @@ use crate::config::MiscSettings;
 use crate::db;
 use crate::db::{directories, misc_settings, songs};
 use crate::db::{ConnectionSource, DB};
-use crate::errors;
 use crate::metadata;
 use crate::vfs::{VFSSource, VFS};
 
@@ -63,7 +62,7 @@ impl CommandSender {
 		}
 	}
 
-	pub fn trigger_reindex(&self) -> Result<(), errors::Error> {
+	pub fn trigger_reindex(&self) -> Result<()> {
 		let sender = self.sender.lock().unwrap();
 		match sender.send(Command::REINDEX) {
 			Ok(_) => Ok(()),
@@ -72,7 +71,7 @@ impl CommandSender {
 	}
 
 	#[allow(dead_code)]
-	pub fn exit(&self) -> Result<(), errors::Error> {
+	pub fn exit(&self) -> Result<()> {
 		let sender = self.sender.lock().unwrap();
 		match sender.send(Command::EXIT) {
 			Ok(_) => Ok(()),
@@ -175,7 +174,7 @@ impl<'conn> IndexBuilder<'conn> {
 	fn new(
 		connection: &Mutex<SqliteConnection>,
 		album_art_pattern: Regex,
-	) -> Result<IndexBuilder<'_>, errors::Error> {
+	) -> Result<IndexBuilder<'_>> {
 		let mut new_songs = Vec::new();
 		let mut new_directories = Vec::new();
 		new_songs.reserve_exact(INDEX_BUILDING_INSERT_BUFFER_SIZE);
@@ -189,10 +188,10 @@ impl<'conn> IndexBuilder<'conn> {
 	}
 
 	#[cfg_attr(feature = "profile-index", flame)]
-	fn flush_songs(&mut self) -> Result<(), errors::Error> {
+	fn flush_songs(&mut self) -> Result<()> {
 		let connection = self.connection.lock().unwrap();
 		let connection = connection.deref();
-		connection.transaction::<_, errors::Error, _>(|| {
+		connection.transaction::<_, anyhow::Error, _>(|| {
 			diesel::insert_into(songs::table)
 				.values(&self.new_songs)
 				.execute(connection)?;
@@ -203,10 +202,10 @@ impl<'conn> IndexBuilder<'conn> {
 	}
 
 	#[cfg_attr(feature = "profile-index", flame)]
-	fn flush_directories(&mut self) -> Result<(), errors::Error> {
+	fn flush_directories(&mut self) -> Result<()> {
 		let connection = self.connection.lock().unwrap();
 		let connection = connection.deref();
-		connection.transaction::<_, errors::Error, _>(|| {
+		connection.transaction::<_, anyhow::Error, _>(|| {
 			diesel::insert_into(directories::table)
 				.values(&self.new_directories)
 				.execute(connection)?;
@@ -217,7 +216,7 @@ impl<'conn> IndexBuilder<'conn> {
 	}
 
 	#[cfg_attr(feature = "profile-index", flame)]
-	fn push_song(&mut self, song: NewSong) -> Result<(), errors::Error> {
+	fn push_song(&mut self, song: NewSong) -> Result<()> {
 		if self.new_songs.len() >= self.new_songs.capacity() {
 			self.flush_songs()?;
 		}
@@ -226,7 +225,7 @@ impl<'conn> IndexBuilder<'conn> {
 	}
 
 	#[cfg_attr(feature = "profile-index", flame)]
-	fn push_directory(&mut self, directory: NewDirectory) -> Result<(), errors::Error> {
+	fn push_directory(&mut self, directory: NewDirectory) -> Result<()> {
 		if self.new_directories.len() >= self.new_directories.capacity() {
 			self.flush_directories()?;
 		}
@@ -234,7 +233,7 @@ impl<'conn> IndexBuilder<'conn> {
 		Ok(())
 	}
 
-	fn get_artwork(&self, dir: &Path) -> Result<Option<String>, errors::Error> {
+	fn get_artwork(&self, dir: &Path) -> Result<Option<String>> {
 		for file in fs::read_dir(dir)? {
 			let file = file?;
 			if let Some(name_string) = file.file_name().to_str() {
@@ -247,17 +246,13 @@ impl<'conn> IndexBuilder<'conn> {
 	}
 
 	#[cfg_attr(feature = "profile-index", flame)]
-	fn populate_directory(
-		&mut self,
-		parent: Option<&Path>,
-		path: &Path,
-	) -> Result<(), errors::Error> {
+	fn populate_directory(&mut self, parent: Option<&Path>, path: &Path) -> Result<()> {
 		// Find artwork
 		let artwork = self.get_artwork(path).unwrap_or(None);
 
 		// Extract path and parent path
 		let parent_string = parent.and_then(|p| p.to_str()).map(|s| s.to_owned());
-		let path_string = path.to_str().ok_or("Invalid directory path")?;
+		let path_string = path.to_str().ok_or(anyhow!("Invalid directory path"))?;
 
 		// Find date added
 		let metadata = fs::metadata(path_string)?;
@@ -369,7 +364,7 @@ impl<'conn> IndexBuilder<'conn> {
 }
 
 #[cfg_attr(feature = "profile-index", flame)]
-fn clean<T>(db: &T) -> Result<(), errors::Error>
+fn clean<T>(db: &T) -> Result<()>
 where
 	T: ConnectionSource + VFSSource,
 {
@@ -429,7 +424,7 @@ where
 }
 
 #[cfg_attr(feature = "profile-index", flame)]
-fn populate<T>(db: &T) -> Result<(), errors::Error>
+fn populate<T>(db: &T) -> Result<()>
 where
 	T: ConnectionSource + VFSSource,
 {
@@ -453,7 +448,7 @@ where
 	Ok(())
 }
 
-pub fn update<T>(db: &T) -> Result<(), errors::Error>
+pub fn update<T>(db: &T) -> Result<()>
 where
 	T: ConnectionSource + VFSSource,
 {
@@ -512,7 +507,7 @@ where
 		let sleep_duration;
 		{
 			let connection = db.get_connection();
-			let settings: Result<MiscSettings, errors::Error> = misc_settings::table
+			let settings: Result<MiscSettings> = misc_settings::table
 				.get_result(connection.deref())
 				.map_err(|e| e.into());
 			if let Err(ref e) = settings {
@@ -556,7 +551,7 @@ fn virtualize_directory(vfs: &VFS, mut directory: Directory) -> Option<Directory
 	Some(directory)
 }
 
-pub fn browse<T, P>(db: &T, virtual_path: P) -> Result<Vec<CollectionFile>, errors::Error>
+pub fn browse<T, P>(db: &T, virtual_path: P) -> Result<Vec<CollectionFile>>
 where
 	T: ConnectionSource + VFSSource,
 	P: AsRef<Path>,
@@ -601,7 +596,7 @@ where
 	Ok(output)
 }
 
-pub fn flatten<T, P>(db: &T, virtual_path: P) -> Result<Vec<Song>, errors::Error>
+pub fn flatten<T, P>(db: &T, virtual_path: P) -> Result<Vec<Song>>
 where
 	T: ConnectionSource + VFSSource,
 	P: AsRef<Path>,
@@ -627,7 +622,7 @@ where
 	Ok(virtual_songs.collect::<Vec<_>>())
 }
 
-pub fn get_random_albums<T>(db: &T, count: i64) -> Result<Vec<Directory>, errors::Error>
+pub fn get_random_albums<T>(db: &T, count: i64) -> Result<Vec<Directory>>
 where
 	T: ConnectionSource + VFSSource,
 {
@@ -645,7 +640,7 @@ where
 	Ok(virtual_directories.collect::<Vec<_>>())
 }
 
-pub fn get_recent_albums<T>(db: &T, count: i64) -> Result<Vec<Directory>, errors::Error>
+pub fn get_recent_albums<T>(db: &T, count: i64) -> Result<Vec<Directory>>
 where
 	T: ConnectionSource + VFSSource,
 {
@@ -663,7 +658,7 @@ where
 	Ok(virtual_directories.collect::<Vec<_>>())
 }
 
-pub fn search<T>(db: &T, query: &str) -> Result<Vec<CollectionFile>, errors::Error>
+pub fn search<T>(db: &T, query: &str) -> Result<Vec<CollectionFile>>
 where
 	T: ConnectionSource + VFSSource,
 {
@@ -711,7 +706,7 @@ where
 	Ok(output)
 }
 
-pub fn get_song<T>(db: &T, virtual_path: &Path) -> Result<Song, errors::Error>
+pub fn get_song<T>(db: &T, virtual_path: &Path) -> Result<Song>
 where
 	T: ConnectionSource + VFSSource,
 {
