@@ -63,7 +63,10 @@ fn daemonize(options: &getopts::Matches) -> Result<()> {
 	}
 	let mut log_file = utils::get_data_root()?;
 	log_file.push("polaris.log");
-	let pid = daemonize_redirect(Some(&log_file), Some(&log_file), ChdirMode::NoChdir)?;
+	let pid = match daemonize_redirect(Some(&log_file), Some(&log_file), ChdirMode::NoChdir) {
+		Ok(p) => p,
+		Err(e) => bail!("Daemonize error: {#?}", e),
+	};
 	let mut pid_path = utils::get_data_root()?;
 	pid_path.push("polaris.pid");
 	let mut file = File::create(pid_path)?;
