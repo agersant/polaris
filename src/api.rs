@@ -399,13 +399,17 @@ fn delete_playlist(db: State<'_, Arc<DB>>, auth: Auth, name: String) -> Result<(
 
 #[put("/lastfm/now_playing/<path>")]
 fn lastfm_now_playing(db: State<'_, Arc<DB>>, auth: Auth, path: VFSPathBuf) -> Result<()> {
-	lastfm::now_playing(db.deref().deref(), &auth.username, &path.into() as &PathBuf)?;
+	if user::is_lastfm_linked(db.deref().deref(), &auth.username) {
+		lastfm::now_playing(db.deref().deref(), &auth.username, &path.into() as &PathBuf)?;
+	}
 	Ok(())
 }
 
 #[post("/lastfm/scrobble/<path>")]
 fn lastfm_scrobble(db: State<'_, Arc<DB>>, auth: Auth, path: VFSPathBuf) -> Result<()> {
-	lastfm::scrobble(db.deref().deref(), &auth.username, &path.into() as &PathBuf)?;
+	if user::is_lastfm_linked(db.deref().deref(), &auth.username) {
+		lastfm::scrobble(db.deref().deref(), &auth.username, &path.into() as &PathBuf)?;
+	}
 	Ok(())
 }
 

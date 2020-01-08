@@ -112,6 +112,13 @@ where
 	}
 }
 
+pub fn is_lastfm_linked<T>(db: &T, username: &str) -> bool
+where
+	T: ConnectionSource,
+{
+	get_lastfm_session_key(db, username).is_ok()
+}
+
 pub fn lastfm_unlink<T>(db: &T, username: &str) -> Result<()>
 where
 	T: ConnectionSource,
