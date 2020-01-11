@@ -28,6 +28,8 @@ pub struct MiscSettings {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Preferences {
 	pub lastfm_username: Option<String>,
+	pub web_theme_base: Option<String>,
+	pub web_theme_accent: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -250,19 +252,29 @@ where
 {
 	use self::users::dsl::*;
 	let connection = db.get_connection();
-	let read_lastfm_username = users
-		.select(lastfm_username)
+	let (theme_base, theme_accent, read_lastfm_username) = users
+		.select((web_theme_base, web_theme_accent, lastfm_username))
 		.filter(name.eq(username))
 		.get_result(connection.deref())?;
 	Ok(Preferences {
+		web_theme_base: theme_base,
+		web_theme_accent: theme_accent,
 		lastfm_username: read_lastfm_username,
 	})
 }
 
-pub fn write_preferences<T>(_: &T, _: &str, _: &Preferences) -> Result<()>
+pub fn write_preferences<T>(db: &T, username: &str, preferences: &Preferences) -> Result<()>
 where
 	T: ConnectionSource,
 {
+	use crate::db::users::dsl::*;
+	let connection = db.get_connection();
+	diesel::update(users.filter(name.eq(username)))
+		.set((
+			web_theme_base.eq(&preferences.web_theme_base),
+			web_theme_accent.eq(&preferences.web_theme_accent),
+		))
+		.execute(connection.deref())?;
 	Ok(())
 }
 
@@ -533,6 +545,8 @@ fn test_preferences_read_write() {
 	amend(&db, &initial_config).unwrap();
 
 	let new_preferences = Preferences {
+		web_theme_base: Some("very-dark-theme".to_owned()),
+		web_theme_accent: Some("#FF0000".to_owned()),
 		lastfm_username: None,
 	};
 	write_preferences(&db, "Teddy🐻", &new_preferences).unwrap();

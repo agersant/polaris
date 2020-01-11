@@ -25,7 +25,7 @@ use crate::utils;
 use crate::vfs::VFSSource;
 
 const CURRENT_MAJOR_VERSION: i32 = 3;
-const CURRENT_MINOR_VERSION: i32 = 0;
+const CURRENT_MINOR_VERSION: i32 = 1;
 const COOKIE_SESSION: &str = "session";
 
 pub fn get_routes() -> Vec<rocket::Route> {

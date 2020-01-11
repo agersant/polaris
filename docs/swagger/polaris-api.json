@@ -854,6 +854,12 @@
                 "properties": {
                     "lastfm_username": {
                         "type": "string"
+                    },
+                    "web_theme_base": {
+                        "type": "string"
+                    },
+                    "web_theme_accent": {
+                        "type": "string"
                     }
                 }
             },
