@@ -35,7 +35,9 @@
     "paths": {
         "/version": {
             "get": {
-                "tags": ["Other"],
+                "tags": [
+                    "Other"
+                ],
                 "summary": "Returns which API version this server implements",
                 "operationId": "getVersion",
                 "responses": {
@@ -54,7 +56,9 @@
         },
         "/initial_setup": {
             "get": {
-                "tags": ["Other"],
+                "tags": [
+                    "Other"
+                ],
                 "summary": "Returns the current state of the initial setup flow",
                 "operationId": "getInitialSetup",
                 "responses": {
@@ -73,7 +77,9 @@
         },
         "/trigger_index": {
             "post": {
-                "tags": ["Other"],
+                "tags": [
+                    "Other"
+                ],
                 "summary": "Begins or queues a crawl of the music collection",
                 "operationId": "postTriggerIndex",
                 "responses": {
@@ -91,7 +97,9 @@
         },
         "/settings": {
             "get": {
-                "tags": ["Settings"],
+                "tags": [
+                    "Settings"
+                ],
                 "summary": "Reads the existing server configuration",
                 "operationId": "getSettings",
                 "responses": {
@@ -114,12 +122,20 @@
                 ]
             },
             "put": {
-                "tags": ["Settings"],
+                "tags": [
+                    "Settings"
+                ],
                 "summary": "Overwrites the server configuration",
                 "operationId": "getSettings",
                 "requestBody": {
                     "required": true,
-                    "content": { "application/json": { "schema": { "$ref": "#components/schemas/Config" } } }
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#components/schemas/Config"
+                            }
+                        }
+                    }
                 },
                 "responses": {
                     "200": {
@@ -136,7 +152,9 @@
         },
         "/preferences": {
             "get": {
-                "tags": ["Settings"],
+                "tags": [
+                    "Settings"
+                ],
                 "summary": "Reads the preferences of the current user",
                 "operationId": "getPreferences",
                 "responses": {
@@ -161,17 +179,31 @@
         },
         "/auth": {
             "post": {
-                "tags": ["Other"],
+                "tags": [
+                    "Other"
+                ],
                 "summary": "Returns information about user permissions and a session cookie for future authenticated requests.",
                 "operationId": "postAuth",
                 "requestBody": {
                     "required": true,
-                    "content": { "application/json": { "schema": { "$ref": "#components/schemas/AuthCredentials" } } }
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#components/schemas/AuthCredentials"
+                            }
+                        }
+                    }
                 },
                 "responses": {
                     "200": {
                         "description": "Successful operation",
-                        "content": { "application/json": { "schema": { "$ref":"#components/schemas/AuthOutput" } } }
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#components/schemas/AuthOutput"
+                                }
+                            }
+                        }
                     },
                     "401": {
                         "description": "Invalid credentials"
@@ -181,7 +213,9 @@
         },
         "/browse": {
             "get": {
-                "tags": ["Collection"],
+                "tags": [
+                    "Collection"
+                ],
                 "summary": "Reads the content of the top-level directory in the music collection",
                 "operationId": "getBrowse",
                 "responses": {
@@ -209,7 +243,9 @@
         },
         "/browse/{location}": {
             "get": {
-                "tags": ["Collection"],
+                "tags": [
+                    "Collection"
+                ],
                 "summary": "Reads the content of a directory in the music collection",
                 "operationId": "getBrowsePath",
                 "parameters": [
@@ -247,7 +283,9 @@
         },
         "/flatten": {
             "get": {
-                "tags": ["Collection"],
+                "tags": [
+                    "Collection"
+                ],
                 "summary": "Recursively lists all the songs in the music collection",
                 "operationId": "getFlatten",
                 "responses": {
@@ -275,7 +313,9 @@
         },
         "/flatten/{location}": {
             "get": {
-                "tags": ["Collection"],
+                "tags": [
+                    "Collection"
+                ],
                 "summary": "Recursively lists all the songs within a directory of the music collection",
                 "operationId": "getFlattenPath",
                 "parameters": [
@@ -313,7 +353,9 @@
         },
         "/random": {
             "get": {
-                "tags": ["Collection"],
+                "tags": [
+                    "Collection"
+                ],
                 "summary": "Returns a list of random albums",
                 "operationId": "getRandom",
                 "responses": {
@@ -341,7 +383,9 @@
         },
         "/recent": {
             "get": {
-                "tags": ["Collection"],
+                "tags": [
+                    "Collection"
+                ],
                 "summary": "Returns the albums most recently added to the collection",
                 "operationId": "getRecent",
                 "responses": {
@@ -369,7 +413,9 @@
         },
         "/search/{query}": {
             "get": {
-                "tags": ["Collection"],
+                "tags": [
+                    "Collection"
+                ],
                 "summary": "Searches for songs and directories",
                 "operationId": "getSearch",
                 "parameters": [
@@ -407,7 +453,9 @@
         },
         "/serve/{file}": {
             "get": {
-                "tags": ["Collection"],
+                "tags": [
+                    "Collection"
+                ],
                 "summary": "Access a media file in the collection",
                 "operationId": "getServe",
                 "parameters": [
@@ -424,8 +472,16 @@
                     "200": {
                         "description": "Successful operation",
                         "content": {
-                            "image/*": { "schema": { "format": "binary" } },
-                            "audio/*": { "schema": { "format": "binary" } }
+                            "image/*": {
+                                "schema": {
+                                    "format": "binary"
+                                }
+                            },
+                            "audio/*": {
+                                "schema": {
+                                    "format": "binary"
+                                }
+                            }
                         }
                     }
                 },
@@ -439,7 +495,9 @@
         },
         "/playlists": {
             "get": {
-                "tags": ["Playlists"],
+                "tags": [
+                    "Playlists"
+                ],
                 "summary": "Lists the playlists belonging to the current user",
                 "operationId": "getPlaylists",
                 "responses": {
@@ -467,7 +525,9 @@
         },
         "/playlist/{playlistName}": {
             "get": {
-                "tags": ["Playlists"],
+                "tags": [
+                    "Playlists"
+                ],
                 "summary": "Reads the content of a playlist",
                 "operationId": "getPlaylist",
                 "parameters": [
@@ -503,7 +563,9 @@
                 ]
             },
             "put": {
-                "tags": ["Playlists"],
+                "tags": [
+                    "Playlists"
+                ],
                 "summary": "Saves a playlist",
                 "operationId": "putPlaylist",
                 "parameters": [
@@ -519,7 +581,7 @@
                 "requestBody": {
                     "required": true,
                     "content": {
-                        "application/json":{
+                        "application/json": {
                             "schema": {
                                 "$ref": "#/components/schemas/SavePlaylistInput"
                             }
@@ -539,7 +601,9 @@
                 ]
             },
             "delete": {
-                "tags": ["Playlists"],
+                "tags": [
+                    "Playlists"
+                ],
                 "summary": "Deletes a playlist",
                 "operationId": "deletePlaylist",
                 "parameters": [
@@ -567,7 +631,9 @@
         },
         "/lastfm/now_playing/{song}": {
             "put": {
-                "tags": ["Last.fm"],
+                "tags": [
+                    "Last.fm"
+                ],
                 "summary": "Tells Last.fm the song currently being played",
                 "operationId": "putLastFMNowPlaying",
                 "parameters": [
@@ -595,7 +661,9 @@
         },
         "/lastfm/scrobble/{song}": {
             "post": {
-                "tags": ["Last.fm"],
+                "tags": [
+                    "Last.fm"
+                ],
                 "summary": "Tells Last.fm that a song has been playing for long enough to be scrobbled",
                 "operationId": "postLastFMScrobble",
                 "parameters": [
@@ -623,7 +691,9 @@
         },
         "/lastfm/link": {
             "get": {
-                "tags": ["Last.fm"],
+                "tags": [
+                    "Last.fm"
+                ],
                 "summary": "Links a Polaris user with a Last.fm account.",
                 "externalDocs": {
                     "description": "This endpoint is meant to be used as a Last.fm authentication handler, as described here:",
@@ -662,7 +732,9 @@
                 }
             },
             "delete": {
-                "tags": ["Last.fm"],
+                "tags": [
+                    "Last.fm"
+                ],
                 "summary": "Unlinks Polaris user and Last.fm account",
                 "operationId": "deleteLastFMLink",
                 "responses": {
