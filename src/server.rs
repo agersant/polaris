@@ -1,5 +1,6 @@
 use anyhow::*;
 use rocket;
+use rocket::config::{Environment, LoggingLevel};
 use rocket_contrib::serve::StaticFiles;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -18,7 +19,8 @@ pub fn get_server(
 	db: Arc<DB>,
 	command_sender: Arc<CommandSender>,
 ) -> Result<rocket::Rocket> {
-	let mut config = rocket::Config::build(rocket::config::Environment::Production)
+	let mut config = rocket::Config::build(Environment::Production)
+		.log_level(LoggingLevel::Normal)
 		.port(port)
 		.keep_alive(0)
 		.finalize()?;
