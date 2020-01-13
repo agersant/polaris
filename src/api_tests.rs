@@ -58,7 +58,7 @@ fn version() {
 
 	let response_body = response.body_string().unwrap();
 	let response_json: api::Version = serde_json::from_str(&response_body).unwrap();
-	assert_eq!(response_json, api::Version { major: 3, minor: 1 });
+	assert_eq!(response_json, api::Version { major: 4, minor: 0 });
 }
 
 #[test]
@@ -271,7 +271,18 @@ fn auth() {
 			.body(serde_json::to_string(&credentials).unwrap())
 			.dispatch();
 		assert_eq!(response.status(), Status::Ok);
-		assert_eq!(response.cookies()[0].name(), "session");
+		assert!(response
+			.cookies()
+			.iter()
+			.any(|cookie| cookie.name() == "username"));
+		assert!(response
+			.cookies()
+			.iter()
+			.any(|cookie| cookie.name() == "admin"));
+		assert!(response
+			.cookies()
+			.iter()
+			.any(|cookie| cookie.name() == "session"));
 	}
 }
 

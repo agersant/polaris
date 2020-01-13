@@ -2,7 +2,7 @@
     "openapi": "3.0.0",
     "info": {
         "description": "",
-        "version": "3.0",
+        "version": "4.0",
         "title": "Polaris",
         "termsOfService": ""
     },
@@ -182,7 +182,7 @@
                 "tags": [
                     "Other"
                 ],
-                "summary": "Returns information about user permissions and a session cookie for future authenticated requests.",
+                "summary": "Signs in a user. Response has Set-Cookie headers for the session, username and admin permission of the user.",
                 "operationId": "postAuth",
                 "requestBody": {
                     "required": true,
@@ -196,14 +196,7 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Successful operation",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#components/schemas/AuthOutput"
-                                }
-                            }
-                        }
+                        "description": "Successful operation"
                     },
                     "401": {
                         "description": "Invalid credentials"
@@ -871,14 +864,6 @@
                     },
                     "password": {
                         "type": "string"
-                    }
-                }
-            },
-            "AuthOutput": {
-                "type": "object",
-                "properties": {
-                    "admin": {
-                        "type": "boolean"
                     }
                 }
             },

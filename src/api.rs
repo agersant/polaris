@@ -12,6 +12,7 @@ use std::str;
 use std::str::FromStr;
 use std::sync::Arc;
 use thiserror::Error;
+use time::Duration;
 
 use crate::config::{self, Config, Preferences};
 use crate::db::DB;
@@ -24,9 +25,11 @@ use crate::user;
 use crate::utils;
 use crate::vfs::VFSSource;
 
-const CURRENT_MAJOR_VERSION: i32 = 3;
-const CURRENT_MINOR_VERSION: i32 = 1;
+const CURRENT_MAJOR_VERSION: i32 = 4;
+const CURRENT_MINOR_VERSION: i32 = 0;
 const COOKIE_SESSION: &str = "session";
+const COOKIE_USERNAME: &str = "username";
+const COOKIE_ADMIN: &str = "admin";
 
 pub fn get_routes() -> Vec<rocket::Route> {
 	routes![
@@ -86,11 +89,32 @@ struct Auth {
 	username: String,
 }
 
-fn get_session_cookie(username: &str) -> Cookie<'static> {
-	Cookie::build(COOKIE_SESSION, username.to_owned())
+fn add_session_cookies(cookies: &mut Cookies, username: &str, is_admin: bool) -> () {
+	let duration = Duration::days(1);
+
+	let session_cookie = Cookie::build(COOKIE_SESSION, username.to_owned())
 		.same_site(rocket::http::SameSite::Lax)
 		.http_only(true)
-		.finish()
+		.max_age(duration)
+		.finish();
+
+	let username_cookie = Cookie::build(COOKIE_USERNAME, username.to_owned())
+		.same_site(rocket::http::SameSite::Lax)
+		.http_only(false)
+		.max_age(duration)
+		.path("/")
+		.finish();
+
+	let is_admin_cookie = Cookie::build(COOKIE_ADMIN, format!("{}", is_admin))
+		.same_site(rocket::http::SameSite::Lax)
+		.http_only(false)
+		.max_age(duration)
+		.path("/")
+		.finish();
+
+	cookies.add_private(session_cookie);
+	cookies.add(username_cookie);
+	cookies.add(is_admin_cookie);
 }
 
 impl<'a, 'r> FromRequest<'a, 'r> for Auth {
@@ -116,7 +140,11 @@ impl<'a, 'r> FromRequest<'a, 'r> for Auth {
 					_ => return Outcome::Failure((Status::InternalServerError, ())),
 				};
 				if user::auth(db.deref().deref(), &username, &password).unwrap_or(false) {
-					cookies.add_private(get_session_cookie(&username));
+					let is_admin = match user::is_admin(db.deref().deref(), &username) {
+						Ok(a) => a,
+						Err(_) => return Outcome::Failure((Status::InternalServerError, ())),
+					};
+					add_session_cookies(&mut cookies, &username, is_admin);
 					return Outcome::Success(Auth {
 						username: username.to_string(),
 					});
@@ -256,17 +284,13 @@ fn auth(
 	db: State<'_, Arc<DB>>,
 	credentials: Json<AuthCredentials>,
 	mut cookies: Cookies<'_>,
-) -> std::result::Result<Json<AuthOutput>, APIError> {
+) -> std::result::Result<(), APIError> {
 	if !user::auth::<DB>(&db, &credentials.username, &credentials.password)? {
 		return Err(APIError::IncorrectCredentials);
 	}
-
-	cookies.add_private(get_session_cookie(&credentials.username));
-
-	let auth_output = AuthOutput {
-		admin: user::is_admin::<DB>(&db, &credentials.username)?,
-	};
-	Ok(Json(auth_output))
+	let is_admin = user::is_admin::<DB>(&db, &credentials.username)?;
+	add_session_cookies(&mut cookies, &credentials.username, is_admin);
+	Ok(())
 }
 
 #[get("/browse")]
