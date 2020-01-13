@@ -68,6 +68,19 @@ where
 	Ok(count)
 }
 
+pub fn exists<T>(db: &T, username: &str) -> Result<bool>
+where
+	T: ConnectionSource,
+{
+	use crate::db::users::dsl::*;
+	let connection = db.get_connection();
+	let results: Vec<String> = users
+		.select(name)
+		.filter(name.eq(username))
+		.get_results(connection.deref())?;
+	Ok(results.len() > 0)
+}
+
 pub fn is_admin<T>(db: &T, username: &str) -> Result<bool>
 where
 	T: ConnectionSource,

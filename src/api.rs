@@ -122,7 +122,19 @@ impl<'a, 'r> FromRequest<'a, 'r> for Auth {
 
 	fn from_request(request: &'a Request<'r>) -> request::Outcome<Self, ()> {
 		let mut cookies = request.guard::<Cookies<'_>>().unwrap();
+		let db = match request.guard::<State<'_, Arc<DB>>>() {
+			Outcome::Success(d) => d,
+			_ => return Outcome::Failure((Status::InternalServerError, ())),
+		};
+
 		if let Some(u) = cookies.get_private(COOKIE_SESSION) {
+			let exists = match user::exists(db.deref().deref(), u.value()) {
+				Ok(e) => e,
+				Err(_) => return Outcome::Failure((Status::InternalServerError, ())),
+			};
+			if !exists {
+				return Outcome::Failure((Status::Unauthorized, ()));
+			}
 			return Outcome::Success(Auth {
 				username: u.value().to_string(),
 			});
@@ -135,10 +147,6 @@ impl<'a, 'r> FromRequest<'a, 'r> for Auth {
 				password: Some(password),
 			}) = Basic::from_str(auth_header_string.trim_start_matches("Basic "))
 			{
-				let db = match request.guard::<State<'_, Arc<DB>>>() {
-					Outcome::Success(d) => d,
-					_ => return Outcome::Failure((Status::InternalServerError, ())),
-				};
 				if user::auth(db.deref().deref(), &username, &password).unwrap_or(false) {
 					let is_admin = match user::is_admin(db.deref().deref(), &username) {
 						Ok(a) => a,
