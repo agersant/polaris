@@ -14,12 +14,12 @@ use std::sync::Arc;
 use thiserror::Error;
 use time::Duration;
 
+use super::serve;
 use crate::config::{self, Config, Preferences};
 use crate::db::DB;
 use crate::index;
 use crate::lastfm;
 use crate::playlist;
-use crate::serve;
 use crate::thumbnails;
 use crate::user;
 use crate::utils;

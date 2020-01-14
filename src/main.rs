@@ -28,9 +28,6 @@ use simplelog::{LevelFilter, SimpleLogger, TermLogger, TerminalMode};
 use std::path::Path;
 use std::sync::Arc;
 
-mod api;
-#[cfg(test)]
-mod api_tests;
 mod config;
 mod db;
 mod ddns;
@@ -38,17 +35,13 @@ mod index;
 mod lastfm;
 mod metadata;
 mod playlist;
-mod serve;
-mod server;
-mod swagger;
-#[cfg(test)]
-mod test;
+mod service;
+
 mod thumbnails;
 mod ui;
 mod user;
 mod utils;
 mod vfs;
-mod web;
 
 fn log_config() -> simplelog::Config {
 	simplelog::ConfigBuilder::new()
@@ -227,7 +220,7 @@ fn main() -> Result<()> {
 		.parse()
 		.with_context(|| "Invalid port number")?;
 
-	let server = server::get_server(
+	let server = service::server::get_server(
 		port,
 		Some(auth_secret.as_slice()),
 		&api_url,

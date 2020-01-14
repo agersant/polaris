@@ -5,9 +5,9 @@ use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use super::server;
 use crate::db::DB;
 use crate::index;
-use crate::server;
 
 pub struct TestEnvironment {
 	pub client: Client,

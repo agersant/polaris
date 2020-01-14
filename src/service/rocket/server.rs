@@ -5,6 +5,7 @@ use rocket_contrib::serve::StaticFiles;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use super::api;
 use crate::db::DB;
 use crate::index::CommandSender;
 
@@ -36,7 +37,7 @@ pub fn get_server(
 	Ok(rocket::custom(config)
 		.manage(db)
 		.manage(command_sender)
-		.mount(&api_url, crate::api::get_routes())
+		.mount(&api_url, api::get_routes())
 		.mount(
 			&swagger_url,
 			StaticFiles::from(swagger_dir_path).rank(swagger_routes_rank),

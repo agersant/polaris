@@ -4,13 +4,13 @@ use rocket::http::Status;
 use rocket::local::Client;
 use std::{thread, time};
 
-use crate::api;
+use super::api;
 use crate::config;
 use crate::ddns;
 use crate::index;
 use crate::vfs;
 
-use crate::test::get_test_environment;
+use super::test::get_test_environment;
 
 const TEST_USERNAME: &str = "test_user";
 const TEST_PASSWORD: &str = "test_password";
