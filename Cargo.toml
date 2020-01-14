@@ -5,13 +5,15 @@ authors = ["Antoine Gersant <antoine.gersant@lesforges.org>"]
 edition = "2018"
 
 [features]
-default = ["service-rocket"]
+default = ["service-actix"]
 ui = []
 profile-index = ["flame", "flamer"]
-service-actix = []
+service-actix = ["actix-rt", "actix-web"]
 service-rocket = ["rocket", "rocket_contrib"]
 
 [dependencies]
+actix-web = { version = "2.0", optional = true }
+actix-rt = { version = "1.0", optional = true }
 anyhow = "1.0"
 ape = "0.2.0"
 app_dirs = "1.1.1"

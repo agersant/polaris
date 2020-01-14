@@ -47,3 +47,31 @@ pub fn get_server(
 			StaticFiles::from(web_dir_path).rank(web_routes_rank),
 		))
 }
+
+pub fn run(
+	port: u16,
+	auth_secret: Option<&[u8]>,
+	api_url: &str,
+	web_url: &str,
+	web_dir_path: &PathBuf,
+	swagger_url: &str,
+	swagger_dir_path: &PathBuf,
+	db: Arc<DB>,
+	command_sender: Arc<CommandSender>,
+) -> Result<()> {
+	let server = get_server(
+		port,
+		auth_secret,
+		api_url,
+		web_url,
+		web_dir_path,
+		swagger_url,
+		swagger_dir_path,
+		db,
+		command_sender,
+	)?;
+	std::thread::spawn(move || {
+		server.launch();
+	});
+	Ok(())
+}

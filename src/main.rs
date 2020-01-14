@@ -220,7 +220,7 @@ fn main() -> Result<()> {
 		.parse()
 		.with_context(|| "Invalid port number")?;
 
-	let server = service::server::get_server(
+	service::server::run(
 		port,
 		Some(auth_secret.as_slice()),
 		&api_url,
@@ -231,9 +231,6 @@ fn main() -> Result<()> {
 		db.clone(),
 		command_sender,
 	)?;
-	std::thread::spawn(move || {
-		server.launch();
-	});
 
 	// Start DDNS updates
 	let db_ddns = db.clone();
