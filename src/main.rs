@@ -223,11 +223,11 @@ fn main() -> Result<()> {
 	service::server::run(
 		port,
 		Some(auth_secret.as_slice()),
-		&api_url,
-		&web_url,
-		&web_dir_path,
-		&swagger_url,
-		&swagger_dir_path,
+		api_url,
+		web_url,
+		web_dir_path,
+		swagger_url,
+		swagger_dir_path,
 		db.clone(),
 		command_sender,
 	)?;

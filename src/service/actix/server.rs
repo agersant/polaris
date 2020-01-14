@@ -1,4 +1,4 @@
-use actix_web::{web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{App, HttpServer};
 use anyhow::*;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -6,27 +6,31 @@ use std::sync::Arc;
 use crate::db::DB;
 use crate::index::CommandSender;
 
-async fn index() -> impl Responder {
-	HttpResponse::Ok().body("hello world!")
-}
-
 #[actix_rt::main]
 pub async fn run(
 	port: u16,
 	auth_secret: Option<&[u8]>,
-	api_url: &str,
-	web_url: &str,
-	web_dir_path: &PathBuf,
-	swagger_url: &str,
-	swagger_dir_path: &PathBuf,
+	api_url: String,
+	web_url: String,
+	web_dir_path: PathBuf,
+	swagger_url: String,
+	swagger_dir_path: PathBuf,
 	db: Arc<DB>,
 	command_sender: Arc<CommandSender>,
 ) -> Result<()> {
-	let app = App::new();
-
-	HttpServer::new(|| App::new().route("/", web::get().to(index)))
-		.bind(format!("127.0.0.1:{}", port))?
-		.run();
+	HttpServer::new(move || {
+		App::new().configure(|cfg| {
+			super::configure_app(
+				cfg,
+				&web_url,
+				web_dir_path.as_path(),
+				&swagger_url,
+				swagger_dir_path.as_path(),
+			)
+		})
+	})
+	.bind(format!("127.0.0.1:{}", port))?
+	.run();
 
 	Ok(())
 }
