@@ -8,6 +8,7 @@ use super::api;
 use crate::config;
 use crate::ddns;
 use crate::index;
+use crate::service::dto;
 use crate::vfs;
 
 use super::test::get_test_environment;
@@ -57,8 +58,8 @@ fn version() {
 	assert_eq!(response.status(), Status::Ok);
 
 	let response_body = response.body_string().unwrap();
-	let response_json: api::Version = serde_json::from_str(&response_body).unwrap();
-	assert_eq!(response_json, api::Version { major: 4, minor: 0 });
+	let response_json: dto::Version = serde_json::from_str(&response_body).unwrap();
+	assert_eq!(response_json, dto::Version { major: 4, minor: 0 });
 }
 
 #[test]

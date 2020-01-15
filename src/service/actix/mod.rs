@@ -4,6 +4,7 @@ use std::path::Path;
 
 pub mod server;
 
+mod api;
 #[cfg(test)]
 mod tests;
 
@@ -15,6 +16,7 @@ fn configure_app(
 	swagger_dir_path: &Path,
 ) {
 	// TODO logging
-	cfg.service(fs::Files::new(swagger_url, swagger_dir_path).index_file("index.html"))
+	cfg.service(web::scope("/api").service(api::get_version))
+		.service(fs::Files::new(swagger_url, swagger_dir_path).index_file("index.html"))
 		.service(fs::Files::new(web_url, web_dir_path).index_file("index.html"));
 }

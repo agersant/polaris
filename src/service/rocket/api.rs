@@ -20,16 +20,12 @@ use crate::db::DB;
 use crate::index;
 use crate::lastfm;
 use crate::playlist;
+use crate::service::constants::*;
+use crate::service::dto;
 use crate::thumbnails;
 use crate::user;
 use crate::utils;
 use crate::vfs::VFSSource;
-
-const CURRENT_MAJOR_VERSION: i32 = 4;
-const CURRENT_MINOR_VERSION: i32 = 0;
-const COOKIE_SESSION: &str = "session";
-const COOKIE_USERNAME: &str = "username";
-const COOKIE_ADMIN: &str = "admin";
 
 pub fn get_routes() -> Vec<rocket::Route> {
 	routes![
@@ -207,15 +203,9 @@ impl From<VFSPathBuf> for PathBuf {
 	}
 }
 
-#[derive(PartialEq, Debug, Serialize, Deserialize)]
-pub struct Version {
-	pub major: i32,
-	pub minor: i32,
-}
-
 #[get("/version")]
-fn version() -> Json<Version> {
-	let current_version = Version {
+fn version() -> Json<dto::Version> {
+	let current_version = dto::Version {
 		major: CURRENT_MAJOR_VERSION,
 		minor: CURRENT_MINOR_VERSION,
 	};

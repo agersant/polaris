@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+mod api;
 mod swagger;
 mod web;
 
