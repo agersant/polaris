@@ -44,9 +44,11 @@ pub fn get_test_environment(db_name: &str) -> TestEnvironment {
 	swagger_dir_path.push("swagger");
 	let command_sender = index::init(db.clone());
 
+	let auth_secret: [u8; 32] = [0; 32];
+
 	let server = server::get_server(
 		5050,
-		None,
+		&auth_secret,
 		"/api",
 		"/",
 		&web_dir_path,

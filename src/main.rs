@@ -221,7 +221,7 @@ fn main() -> Result<()> {
 	std::thread::spawn(move || {
 		let _ = service::server::run(
 			port,
-			Some(auth_secret.as_slice()),
+			&auth_secret,
 			api_url,
 			web_url,
 			web_dir_path,

@@ -8,7 +8,7 @@ use crate::index::CommandSender;
 
 pub fn run(
 	port: u16,
-	auth_secret: Option<&[u8]>,
+	auth_secret: &[u8],
 	api_url: String,
 	web_url: String,
 	web_dir_path: PathBuf,

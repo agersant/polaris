@@ -11,7 +11,7 @@ use crate::index::CommandSender;
 
 pub fn get_server(
 	port: u16,
-	auth_secret: Option<&[u8]>,
+	auth_secret: &[u8],
 	api_url: &str,
 	web_url: &str,
 	web_dir_path: &PathBuf,
@@ -26,10 +26,8 @@ pub fn get_server(
 		.keep_alive(0)
 		.finalize()?;
 
-	if let Some(secret) = auth_secret {
-		let encoded = base64::encode(secret);
-		config.set_secret_key(encoded)?;
-	}
+	let encoded = base64::encode(auth_secret);
+	config.set_secret_key(encoded)?;
 
 	let swagger_routes_rank = 0;
 	let web_routes_rank = swagger_routes_rank + 1;
@@ -50,7 +48,7 @@ pub fn get_server(
 
 pub fn run(
 	port: u16,
-	auth_secret: Option<&[u8]>,
+	auth_secret: &[u8],
 	api_url: String,
 	web_url: String,
 	web_dir_path: PathBuf,
