@@ -46,7 +46,7 @@ pub async fn get_initial_setup(db: web::Data<DB>) -> Result<HttpResponse, APIErr
 #[put("/settings")]
 pub async fn put_settings(
 	db: web::Data<DB>,
-	// _admin_rights: AdminRights, // TODO.important
+	// _admin_rights: AdminRights, // TODO.important https://docs.rs/actix-web/2.0.0/actix_web/trait.FromRequest.html
 	config: web::Json<Config>,
 ) -> Result<HttpResponse, APIError> {
 	web::block(move || config::amend(&db, &config))
