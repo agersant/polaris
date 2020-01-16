@@ -1,3 +1,4 @@
+use actix_rt::System;
 use actix_web::{App, HttpServer};
 use anyhow::*;
 use std::path::PathBuf;
@@ -6,8 +7,7 @@ use std::sync::Arc;
 use crate::db::DB;
 use crate::index::CommandSender;
 
-#[actix_rt::main]
-pub async fn run(
+pub fn run(
 	port: u16,
 	auth_secret: Option<&[u8]>,
 	api_url: String,
@@ -18,7 +18,9 @@ pub async fn run(
 	db: DB,
 	command_sender: Arc<CommandSender>,
 ) -> Result<()> {
-	HttpServer::new(move || {
+	let mut sys = System::new("polaris_service_executor");
+
+	let server = HttpServer::new(move || {
 		App::new().configure(|cfg| {
 			super::configure_app(
 				cfg,
@@ -30,8 +32,8 @@ pub async fn run(
 			)
 		})
 	})
-	.bind(format!("127.0.0.1:{}", port))?
+	.bind(format!("0.0.0.0:{}", port))?
 	.run();
 
-	Ok(())
+	sys.block_on(server).map_err(Error::new)
 }
