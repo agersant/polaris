@@ -1,4 +1,3 @@
-use actix_rt::System;
 use actix_web::{App, HttpServer};
 use anyhow::*;
 use std::path::PathBuf;
@@ -18,7 +17,9 @@ pub fn run(
 	db: DB,
 	command_sender: Arc<CommandSender>,
 ) -> Result<()> {
-	let mut sys = System::new("polaris_service_executor");
+	let mut runtime = tokio::runtime::Runtime::new()?;
+	let local_set = tokio::task::LocalSet::new();
+	let _ = actix_rt::System::run_in_tokio("polaris_service_executor", &local_set);
 
 	let server = HttpServer::new(move || {
 		App::new().configure(|cfg| {
@@ -35,5 +36,5 @@ pub fn run(
 	.bind(format!("0.0.0.0:{}", port))?
 	.run();
 
-	sys.block_on(server).map_err(Error::new)
+	runtime.block_on(server).map_err(Error::new)
 }

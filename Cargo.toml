@@ -8,18 +8,17 @@ edition = "2018"
 default = ["service-actix"]
 ui = []
 profile-index = ["flame", "flamer"]
-service-actix = ["actix-files", "actix-http", "actix-web"]
+service-actix = ["actix-files", "actix-http", "actix-rt", "actix-web"]
 service-rocket = ["rocket", "rocket_contrib"]
 
 [dependencies]
 actix-files = { version = "0.2", optional = true }
 actix-http = { version = "1.0", optional = true }
 actix-web = { version = "2.0", optional = true }
-actix-rt = { version = "1.0"}
+actix-rt = { version = "1.0", optional = true}
 anyhow = "1.0"
 ape = "0.2.0"
 app_dirs = "1.1.1"
-async-trait = "0.1.22"
 base64 = "0.11.0"
 diesel = { version = "1.4", features = ["sqlite", "r2d2"] }
 diesel_migrations = { version = "1.4", features = ["sqlite"] }
@@ -54,6 +53,10 @@ version = "0.4.2"
 default_features = false
 features = ["json", "serve"]
 optional = true
+
+[dependencies.tokio]
+version = "0.2"
+features = ["macros", "rt-threaded"]
 
 [target.'cfg(windows)'.dependencies]
 uuid = "0.8"

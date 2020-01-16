@@ -16,21 +16,21 @@ const TEST_MOUNT_NAME: &str = "collection";
 const TEST_MOUNT_SOURCE: &str = "test/collection";
 
 #[named]
-#[actix_rt::test]
+#[tokio::test]
 async fn test_index() {
 	let mut service = make_service(function_name!()).await;
 	get(&mut service, "/").await;
 }
 
 #[named]
-#[actix_rt::test]
+#[tokio::test]
 async fn test_swagger_index() {
 	let mut service = make_service(function_name!()).await;
 	get(&mut service, "/swagger").await;
 }
 
 #[named]
-#[actix_rt::test]
+#[tokio::test]
 async fn test_swagger_index_with_trailing_slash() {
 	let mut service = make_service(function_name!()).await;
 	get(&mut service, "/swagger/").await;
@@ -56,7 +56,7 @@ async fn complete_initial_setup(service: &mut ServiceType) {
 }
 
 #[named]
-#[actix_rt::test]
+#[tokio::test]
 async fn test_version() {
 	let mut service = make_service(function_name!()).await;
 	let version: dto::Version = get_json(&mut service, "/api/version").await;
@@ -64,7 +64,7 @@ async fn test_version() {
 }
 
 #[named]
-#[actix_rt::test]
+#[tokio::test]
 async fn test_initial_setup() {
 	let mut service = make_service(function_name!()).await;
 
