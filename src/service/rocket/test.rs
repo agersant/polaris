@@ -1,5 +1,8 @@
 use rocket;
+use rocket::http::Status;
 use rocket::local::Client;
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 use std::fs;
 use std::ops::Deref;
 use std::path::PathBuf;
@@ -59,4 +62,31 @@ pub fn get_test_environment(db_name: &str) -> TestEnvironment {
 		command_sender,
 		db,
 	}
+}
+
+pub type ServiceType = TestEnvironment;
+
+pub async fn make_service(test_name: &str) -> TestEnvironment {
+	get_test_environment(&format!("{}.sqlite", test_name))
+}
+
+pub async fn get(service: &mut TestEnvironment, url: &str) {
+	let client = &service.client;
+	let response = client.get(url).dispatch();
+	assert_eq!(response.status(), Status::Ok);
+}
+
+pub async fn get_json<T: DeserializeOwned>(service: &mut TestEnvironment, url: &str) -> T {
+	let client = &service.client;
+	let mut response = client.get(url).dispatch();
+	assert_eq!(response.status(), Status::Ok);
+	let response_body = response.body_string().unwrap();
+	serde_json::from_str(&response_body).unwrap()
+}
+
+pub async fn put_json<T: Serialize>(service: &mut TestEnvironment, url: &str, payload: &T) {
+	let client = &service.client;
+	let body = serde_json::to_string(payload).unwrap();
+	let response = client.put(url).body(&body).dispatch();
+	assert_eq!(response.status(), Status::Ok);
 }

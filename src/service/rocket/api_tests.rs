@@ -8,7 +8,6 @@ use super::api;
 use crate::config;
 use crate::ddns;
 use crate::index;
-use crate::service::dto;
 use crate::vfs;
 
 use super::test::get_test_environment;
@@ -47,53 +46,6 @@ fn do_auth(client: &Client) {
 	let body = serde_json::to_string(&credentials).unwrap();
 	let response = client.post("/api/auth").body(body).dispatch();
 	assert_eq!(response.status(), Status::Ok);
-}
-
-#[test]
-fn version() {
-	let env = get_test_environment("api_version.sqlite");
-	let client = &env.client;
-	let mut response = client.get("/api/version").dispatch();
-
-	assert_eq!(response.status(), Status::Ok);
-
-	let response_body = response.body_string().unwrap();
-	let response_json: dto::Version = serde_json::from_str(&response_body).unwrap();
-	assert_eq!(response_json, dto::Version { major: 4, minor: 0 });
-}
-
-#[test]
-fn initial_setup() {
-	let env = get_test_environment("api_initial_setup.sqlite");
-	let client = &env.client;
-
-	{
-		let mut response = client.get("/api/initial_setup").dispatch();
-		assert_eq!(response.status(), Status::Ok);
-		let response_body = response.body_string().unwrap();
-		let response_json: dto::InitialSetup = serde_json::from_str(&response_body).unwrap();
-		assert_eq!(
-			response_json,
-			dto::InitialSetup {
-				has_any_users: false
-			}
-		);
-	}
-
-	complete_initial_setup(client);
-
-	{
-		let mut response = client.get("/api/initial_setup").dispatch();
-		assert_eq!(response.status(), Status::Ok);
-		let response_body = response.body_string().unwrap();
-		let response_json: dto::InitialSetup = serde_json::from_str(&response_body).unwrap();
-		assert_eq!(
-			response_json,
-			dto::InitialSetup {
-				has_any_users: true
-			}
-		);
-	}
 }
 
 #[test]

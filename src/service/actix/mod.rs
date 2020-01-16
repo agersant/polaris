@@ -8,7 +8,7 @@ pub mod server;
 
 mod api;
 #[cfg(test)]
-mod tests;
+pub mod test;
 
 fn configure_app(
 	cfg: &mut web::ServiceConfig,

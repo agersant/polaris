@@ -2,7 +2,7 @@ use actix_http::ResponseBuilder;
 use actix_web::{error, get, http::header, http::StatusCode, put, web, HttpResponse};
 use anyhow::*;
 
-use crate::config::{self, Config, Preferences};
+use crate::config::{self, Config};
 use crate::db::DB;
 use crate::service::constants::*;
 use crate::service::dto;
@@ -46,7 +46,7 @@ pub async fn get_initial_setup(db: web::Data<DB>) -> Result<HttpResponse, APIErr
 #[put("/settings")]
 pub async fn put_settings(
 	db: web::Data<DB>,
-	// _admin_rights: AdminRights, // TODO
+	// _admin_rights: AdminRights, // TODO.important
 	config: web::Json<Config>,
 ) -> Result<HttpResponse, APIError> {
 	web::block(move || config::amend(&db, &config))

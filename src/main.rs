@@ -1,5 +1,5 @@
 #![recursion_limit = "256"]
-#![feature(proc_macro_hygiene, decl_macro)]
+#![feature(proc_macro_hygiene, decl_macro, type_alias_impl_trait)]
 
 #[macro_use]
 extern crate diesel;
