@@ -8,7 +8,7 @@ use std::thread;
 use std::time;
 
 use crate::db::ddns_config;
-use crate::db::{ConnectionSource, DB};
+use crate::db::DB;
 
 #[derive(Clone, Debug, Deserialize, Insertable, PartialEq, Queryable, Serialize)]
 #[table_name = "ddns_config"]
@@ -25,7 +25,7 @@ pub trait DDNSConfigSource {
 impl DDNSConfigSource for DB {
 	fn get_ddns_config(&self) -> Result<DDNSConfig> {
 		use self::ddns_config::dsl::*;
-		let connection = self.get_connection();
+		let connection = self.connect()?;
 		Ok(ddns_config
 			.select((host, username, password))
 			.get_result(connection.deref())?)
@@ -34,10 +34,7 @@ impl DDNSConfigSource for DB {
 
 const DDNS_UPDATE_URL: &str = "https://ydns.io/api/v1/update/";
 
-fn update_my_ip<T>(config_source: &T) -> Result<()>
-where
-	T: DDNSConfigSource,
-{
+fn update_my_ip(config_source: &DB) -> Result<()> {
 	let config = config_source.get_ddns_config()?;
 	if config.host.is_empty() || config.username.is_empty() {
 		info!("Skipping DDNS update because credentials are missing");
@@ -59,10 +56,7 @@ where
 	Ok(())
 }
 
-pub fn run<T>(config_source: &T)
-where
-	T: DDNSConfigSource,
-{
+pub fn run(config_source: &DB) {
 	loop {
 		if let Err(e) = update_my_ip(config_source) {
 			error!("Dynamic DNS update error: {:?}", e);

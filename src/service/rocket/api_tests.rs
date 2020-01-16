@@ -71,10 +71,10 @@ fn initial_setup() {
 		let mut response = client.get("/api/initial_setup").dispatch();
 		assert_eq!(response.status(), Status::Ok);
 		let response_body = response.body_string().unwrap();
-		let response_json: api::InitialSetup = serde_json::from_str(&response_body).unwrap();
+		let response_json: dto::InitialSetup = serde_json::from_str(&response_body).unwrap();
 		assert_eq!(
 			response_json,
-			api::InitialSetup {
+			dto::InitialSetup {
 				has_any_users: false
 			}
 		);
@@ -86,10 +86,10 @@ fn initial_setup() {
 		let mut response = client.get("/api/initial_setup").dispatch();
 		assert_eq!(response.status(), Status::Ok);
 		let response_body = response.body_string().unwrap();
-		let response_json: api::InitialSetup = serde_json::from_str(&response_body).unwrap();
+		let response_json: dto::InitialSetup = serde_json::from_str(&response_body).unwrap();
 		assert_eq!(
 			response_json,
-			api::InitialSetup {
+			dto::InitialSetup {
 				has_any_users: true
 			}
 		);

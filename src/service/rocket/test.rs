@@ -12,12 +12,12 @@ use crate::index;
 pub struct TestEnvironment {
 	pub client: Client,
 	command_sender: Arc<index::CommandSender>,
-	db: Arc<DB>,
+	db: DB,
 }
 
 impl TestEnvironment {
 	pub fn update_index(&self) {
-		index::update(self.db.deref()).unwrap();
+		index::update(&self.db).unwrap();
 	}
 }
 
@@ -34,8 +34,7 @@ pub fn get_test_environment(db_name: &str) -> TestEnvironment {
 	if db_path.exists() {
 		fs::remove_file(&db_path).unwrap();
 	}
-
-	let db = Arc::new(DB::new(&db_path).unwrap());
+	let db = DB::new(&db_path).unwrap();
 
 	let web_dir_path = PathBuf::from("web");
 	let mut swagger_dir_path = PathBuf::from("docs");

@@ -10,8 +10,7 @@ use std::io::Read;
 use std::path;
 use toml;
 
-use crate::db::ConnectionSource;
-use crate::db::{ddns_config, misc_settings, mount_points, users};
+use crate::db::{ddns_config, misc_settings, mount_points, users, DB};
 use crate::ddns::DDNSConfig;
 use crate::user::*;
 use crate::vfs::MountPoint;
@@ -73,14 +72,11 @@ pub fn parse_toml_file(path: &path::Path) -> Result<Config> {
 	Ok(config)
 }
 
-pub fn read<T>(db: &T) -> Result<Config>
-where
-	T: ConnectionSource,
-{
+pub fn read(db: &DB) -> Result<Config> {
 	use self::ddns_config::dsl::*;
 	use self::misc_settings::dsl::*;
 
-	let connection = db.get_connection();
+	let connection = db.connect()?;
 
 	let mut config = Config {
 		album_art_pattern: None,
@@ -97,7 +93,7 @@ where
 			index_sleep_duration_seconds,
 			prefix_url,
 		))
-		.get_result(connection.deref())?;
+		.get_result(&connection)?;
 
 	config.album_art_pattern = Some(art_pattern);
 	config.reindex_every_n_seconds = Some(sleep_duration);
@@ -108,13 +104,13 @@ where
 		use self::mount_points::dsl::*;
 		mount_dirs = mount_points
 			.select((source, name))
-			.get_results(connection.deref())?;
+			.get_results(&connection)?;
 		config.mount_dirs = Some(mount_dirs);
 	}
 
 	let found_users: Vec<(String, i32)> = users::table
 		.select((users::columns::name, users::columns::admin))
-		.get_results(connection.deref())?;
+		.get_results(&connection)?;
 	config.users = Some(
 		found_users
 			.into_iter()
@@ -128,46 +124,39 @@ where
 
 	let ydns = ddns_config
 		.select((host, username, password))
-		.get_result(connection.deref())?;
+		.get_result(&connection)?;
 	config.ydns = Some(ydns);
 
 	Ok(config)
 }
 
 #[cfg(test)]
-pub fn reset<T>(db: &T) -> Result<()>
-where
-	T: ConnectionSource,
-{
+pub fn reset(db: &DB) -> Result<()> {
 	use self::ddns_config::dsl::*;
-	let connection = db.get_connection();
+	let connection = db.connect()?;
 
-	diesel::delete(mount_points::table).execute(connection.deref())?;
-	diesel::delete(users::table).execute(connection.deref())?;
+	diesel::delete(mount_points::table).execute(&connection)?;
+	diesel::delete(users::table).execute(&connection)?;
 	diesel::update(ddns_config)
 		.set((host.eq(""), username.eq(""), password.eq("")))
-		.execute(connection.deref())?;
+		.execute(&connection)?;
 
 	Ok(())
 }
 
-pub fn amend<T>(db: &T, new_config: &Config) -> Result<()>
-where
-	T: ConnectionSource,
-{
-	let connection = db.get_connection();
+pub fn amend(db: &DB, new_config: &Config) -> Result<()> {
+	let connection = db.connect()?;
 
 	if let Some(ref mount_dirs) = new_config.mount_dirs {
-		diesel::delete(mount_points::table).execute(connection.deref())?;
+		diesel::delete(mount_points::table).execute(&connection)?;
 		diesel::insert_into(mount_points::table)
 			.values(mount_dirs)
-			.execute(connection.deref())?;
+			.execute(&*connection)?; // TODO https://github.com/diesel-rs/diesel/issues/1822
 	}
 
 	if let Some(ref config_users) = new_config.users {
-		let old_usernames: Vec<String> = users::table
-			.select(users::name)
-			.get_results(connection.deref())?;
+		let old_usernames: Vec<String> =
+			users::table.select(users::name).get_results(&connection)?;
 
 		// Delete users that are not in new list
 		let delete_usernames: Vec<String> = old_usernames
@@ -176,7 +165,7 @@ where
 			.filter(|old_name| config_users.iter().find(|u| &u.name == old_name).is_none())
 			.collect::<_>();
 		diesel::delete(users::table.filter(users::name.eq_any(&delete_usernames)))
-			.execute(connection.deref())?;
+			.execute(&connection)?;
 
 		// Insert new users
 		let insert_users: Vec<&ConfigUser> = config_users
@@ -194,7 +183,7 @@ where
 			let new_user = User::new(&config_user.name, &config_user.password)?;
 			diesel::insert_into(users::table)
 				.values(&new_user)
-				.execute(connection.deref())?;
+				.execute(&connection)?;
 		}
 
 		// Update users
@@ -204,26 +193,26 @@ where
 				let hash = hash_password(&user.password)?;
 				diesel::update(users::table.filter(users::name.eq(&user.name)))
 					.set(users::password_hash.eq(hash))
-					.execute(connection.deref())?;
+					.execute(&connection)?;
 			}
 
 			// Update admin rights
 			diesel::update(users::table.filter(users::name.eq(&user.name)))
 				.set(users::admin.eq(user.admin as i32))
-				.execute(connection.deref())?;
+				.execute(&connection)?;
 		}
 	}
 
 	if let Some(sleep_duration) = new_config.reindex_every_n_seconds {
 		diesel::update(misc_settings::table)
 			.set(misc_settings::index_sleep_duration_seconds.eq(sleep_duration as i32))
-			.execute(connection.deref())?;
+			.execute(&connection)?;
 	}
 
 	if let Some(ref album_art_pattern) = new_config.album_art_pattern {
 		diesel::update(misc_settings::table)
 			.set(misc_settings::index_album_art_pattern.eq(album_art_pattern))
-			.execute(connection.deref())?;
+			.execute(&connection)?;
 	}
 
 	if let Some(ref ydns) = new_config.ydns {
@@ -234,28 +223,25 @@ where
 				username.eq(ydns.username.clone()),
 				password.eq(ydns.password.clone()),
 			))
-			.execute(connection.deref())?;
+			.execute(&connection)?;
 	}
 
 	if let Some(ref prefix_url) = new_config.prefix_url {
 		diesel::update(misc_settings::table)
 			.set(misc_settings::prefix_url.eq(prefix_url))
-			.execute(connection.deref())?;
+			.execute(&connection)?;
 	}
 
 	Ok(())
 }
 
-pub fn read_preferences<T>(db: &T, username: &str) -> Result<Preferences>
-where
-	T: ConnectionSource,
-{
+pub fn read_preferences(db: &DB, username: &str) -> Result<Preferences> {
 	use self::users::dsl::*;
-	let connection = db.get_connection();
+	let connection = db.connect()?;
 	let (theme_base, theme_accent, read_lastfm_username) = users
 		.select((web_theme_base, web_theme_accent, lastfm_username))
 		.filter(name.eq(username))
-		.get_result(connection.deref())?;
+		.get_result(&connection)?;
 	Ok(Preferences {
 		web_theme_base: theme_base,
 		web_theme_accent: theme_accent,
@@ -263,33 +249,24 @@ where
 	})
 }
 
-pub fn write_preferences<T>(db: &T, username: &str, preferences: &Preferences) -> Result<()>
-where
-	T: ConnectionSource,
-{
+pub fn write_preferences(db: &DB, username: &str, preferences: &Preferences) -> Result<()> {
 	use crate::db::users::dsl::*;
-	let connection = db.get_connection();
+	let connection = db.connect()?;
 	diesel::update(users.filter(name.eq(username)))
 		.set((
 			web_theme_base.eq(&preferences.web_theme_base),
 			web_theme_accent.eq(&preferences.web_theme_accent),
 		))
-		.execute(connection.deref())?;
+		.execute(&connection)?;
 	Ok(())
 }
 
-pub fn get_auth_secret<T>(db: &T) -> Result<Vec<u8>>
-where
-	T: ConnectionSource,
-{
+pub fn get_auth_secret(db: &DB) -> Result<Vec<u8>> {
 	use self::misc_settings::dsl::*;
 
-	let connection = db.get_connection();
+	let connection = db.connect()?;
 
-	match misc_settings
-		.select(auth_secret)
-		.get_result(connection.deref())
-	{
+	match misc_settings.select(auth_secret).get_result(&connection) {
 		Err(diesel::result::Error::NotFound) => bail!("Cannot find authentication secret"),
 		Ok(secret) => Ok(secret),
 		Err(e) => Err(e.into()),
@@ -391,11 +368,11 @@ fn test_amend_preserve_password_hashes() {
 	amend(&db, &initial_config).unwrap();
 
 	{
-		let connection = db.get_connection();
+		let connection = db.connect().unwrap();
 		initial_hash = users
 			.select(password_hash)
 			.filter(name.eq("Teddy🐻"))
-			.get_result(connection.deref())
+			.get_result(&connection)
 			.unwrap();
 	}
 
@@ -421,11 +398,11 @@ fn test_amend_preserve_password_hashes() {
 	amend(&db, &new_config).unwrap();
 
 	{
-		let connection = db.get_connection();
+		let connection = db.connect().unwrap();
 		new_hash = users
 			.select(password_hash)
 			.filter(name.eq("Teddy🐻"))
-			.get_result(connection.deref())
+			.get_result(&connection)
 			.unwrap();
 	}
 
@@ -453,8 +430,8 @@ fn test_amend_ignore_blank_users() {
 		};
 		amend(&db, &config).unwrap();
 
-		let connection = db.get_connection();
-		let user_count: i64 = users.count().get_result(connection.deref()).unwrap();
+		let connection = db.connect().unwrap();
+		let user_count: i64 = users.count().get_result(&connection).unwrap();
 		assert_eq!(user_count, 0);
 	}
 
@@ -473,8 +450,8 @@ fn test_amend_ignore_blank_users() {
 		};
 		amend(&db, &config).unwrap();
 
-		let connection = db.get_connection();
-		let user_count: i64 = users.count().get_result(connection.deref()).unwrap();
+		let connection = db.connect().unwrap();
+		let user_count: i64 = users.count().get_result(&connection).unwrap();
 		assert_eq!(user_count, 0);
 	}
 }
@@ -500,8 +477,8 @@ fn test_toggle_admin() {
 	amend(&db, &initial_config).unwrap();
 
 	{
-		let connection = db.get_connection();
-		let is_admin: i32 = users.select(admin).get_result(connection.deref()).unwrap();
+		let connection = db.connect().unwrap();
+		let is_admin: i32 = users.select(admin).get_result(&connection).unwrap();
 		assert_eq!(is_admin, 1);
 	}
 
@@ -520,8 +497,8 @@ fn test_toggle_admin() {
 	amend(&db, &new_config).unwrap();
 
 	{
-		let connection = db.get_connection();
-		let is_admin: i32 = users.select(admin).get_result(connection.deref()).unwrap();
+		let connection = db.connect().unwrap();
+		let is_admin: i32 = users.select(admin).get_result(&connection).unwrap();
 		assert_eq!(is_admin, 0);
 	}
 }

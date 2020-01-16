@@ -15,7 +15,7 @@ pub async fn run(
 	web_dir_path: PathBuf,
 	swagger_url: String,
 	swagger_dir_path: PathBuf,
-	db: Arc<DB>,
+	db: DB,
 	command_sender: Arc<CommandSender>,
 ) -> Result<()> {
 	HttpServer::new(move || {
@@ -26,6 +26,7 @@ pub async fn run(
 				web_dir_path.as_path(),
 				&swagger_url,
 				swagger_dir_path.as_path(),
+				&db,
 			)
 		})
 	})

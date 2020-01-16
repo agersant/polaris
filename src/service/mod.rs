@@ -1,5 +1,6 @@
 mod constants;
 mod dto;
+mod error;
 
 #[cfg(feature = "service-actix")]
 mod actix;

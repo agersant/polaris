@@ -1,11 +1,9 @@
 use anyhow::*;
-use core::ops::Deref;
-use diesel::prelude::*;
+use diesel::r2d2::{self, ConnectionManager, PooledConnection};
 use diesel::sqlite::SqliteConnection;
 use diesel_migrations;
 use log::info;
 use std::path::Path;
-use std::sync::{Arc, Mutex, MutexGuard};
 
 mod schema;
 
@@ -15,44 +13,34 @@ pub use self::schema::*;
 const DB_MIGRATIONS_PATH: &str = "migrations";
 embed_migrations!("migrations");
 
-pub trait ConnectionSource {
-	fn get_connection(&self) -> MutexGuard<'_, SqliteConnection>;
-	fn get_connection_mutex(&self) -> Arc<Mutex<SqliteConnection>>;
-}
-
+#[derive(Clone)]
 pub struct DB {
-	connection: Arc<Mutex<SqliteConnection>>,
+	pool: r2d2::Pool<ConnectionManager<SqliteConnection>>,
 }
 
 impl DB {
 	pub fn new(path: &Path) -> Result<DB> {
 		info!("Database file path: {}", path.to_string_lossy());
-		let connection = Arc::new(Mutex::new(SqliteConnection::establish(
-			&path.to_string_lossy(),
-		)?));
-		let db = DB {
-			connection: connection.clone(),
-		};
-		db.init()?;
+		let manager = ConnectionManager::<SqliteConnection>::new(path.to_string_lossy());
+		let pool = r2d2::Pool::builder()
+			.build(manager)
+			.expect("Failed to create pool."); // TODO handle error
+
+		let db = DB { pool: pool };
+		db.migrate_up()?;
 		Ok(db)
 	}
 
-	fn init(&self) -> Result<()> {
-		{
-			let connection = self.connection.lock().unwrap();
-			connection.execute("PRAGMA synchronous = NORMAL")?;
-		}
-		self.migrate_up()?;
-		Ok(())
+	pub fn connect(&self) -> Result<PooledConnection<ConnectionManager<SqliteConnection>>> {
+		self.pool.get().map_err(Error::new)
 	}
 
 	#[allow(dead_code)]
 	fn migrate_down(&self) -> Result<()> {
-		let connection = self.connection.lock().unwrap();
-		let connection = connection.deref();
+		let connection = self.connect().unwrap();
 		loop {
 			match diesel_migrations::revert_latest_migration_in_directory(
-				connection,
+				&connection,
 				Path::new(DB_MIGRATIONS_PATH),
 			) {
 				Ok(_) => (),
@@ -66,20 +54,9 @@ impl DB {
 	}
 
 	fn migrate_up(&self) -> Result<()> {
-		let connection = self.connection.lock().unwrap();
-		let connection = connection.deref();
-		embedded_migrations::run(connection)?;
+		let connection = self.connect().unwrap();
+		embedded_migrations::run(&connection)?;
 		Ok(())
-	}
-}
-
-impl ConnectionSource for DB {
-	fn get_connection(&self) -> MutexGuard<'_, SqliteConnection> {
-		self.connection.lock().unwrap()
-	}
-
-	fn get_connection_mutex(&self) -> Arc<Mutex<SqliteConnection>> {
-		self.connection.clone()
 	}
 }
 

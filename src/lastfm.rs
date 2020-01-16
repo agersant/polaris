@@ -3,10 +3,9 @@ use rustfm_scrobble::{Scrobble, Scrobbler};
 use serde::Deserialize;
 use std::path::Path;
 
-use crate::db::ConnectionSource;
+use crate::db::DB;
 use crate::index;
 use crate::user;
-use crate::vfs::VFSSource;
 
 const LASTFM_API_KEY: &str = "02b96c939a2b451c31dfd67add1f696e";
 const LASTFM_API_SECRET: &str = "0f25a80ceef4b470b5cb97d99d4b3420";
@@ -42,10 +41,7 @@ struct AuthResponse {
 	pub session: AuthResponseSession,
 }
 
-fn scrobble_from_path<T>(db: &T, track: &Path) -> Result<Scrobble>
-where
-	T: ConnectionSource + VFSSource,
-{
+fn scrobble_from_path(db: &DB, track: &Path) -> Result<Scrobble> {
 	let song = index::get_song(db, track)?;
 	Ok(Scrobble::new(
 		song.artist.unwrap_or_else(|| "".into()),
@@ -54,27 +50,18 @@ where
 	))
 }
 
-pub fn link<T>(db: &T, username: &str, token: &str) -> Result<()>
-where
-	T: ConnectionSource + VFSSource,
-{
+pub fn link(db: &DB, username: &str, token: &str) -> Result<()> {
 	let mut scrobbler = Scrobbler::new(LASTFM_API_KEY.into(), LASTFM_API_SECRET.into());
 	let auth_response = scrobbler.authenticate_with_token(token.to_string())?;
 
 	user::lastfm_link(db, username, &auth_response.name, &auth_response.key)
 }
 
-pub fn unlink<T>(db: &T, username: &str) -> Result<()>
-where
-	T: ConnectionSource + VFSSource,
-{
+pub fn unlink(db: &DB, username: &str) -> Result<()> {
 	user::lastfm_unlink(db, username)
 }
 
-pub fn scrobble<T>(db: &T, username: &str, track: &Path) -> Result<()>
-where
-	T: ConnectionSource + VFSSource,
-{
+pub fn scrobble(db: &DB, username: &str, track: &Path) -> Result<()> {
 	let mut scrobbler = Scrobbler::new(LASTFM_API_KEY.into(), LASTFM_API_SECRET.into());
 	let scrobble = scrobble_from_path(db, track)?;
 	let auth_token = user::get_lastfm_session_key(db, username)?;
@@ -83,10 +70,7 @@ where
 	Ok(())
 }
 
-pub fn now_playing<T>(db: &T, username: &str, track: &Path) -> Result<()>
-where
-	T: ConnectionSource + VFSSource,
-{
+pub fn now_playing(db: &DB, username: &str, track: &Path) -> Result<()> {
 	let mut scrobbler = Scrobbler::new(LASTFM_API_KEY.into(), LASTFM_API_SECRET.into());
 	let scrobble = scrobble_from_path(db, track)?;
 	let auth_token = user::get_lastfm_session_key(db, username)?;

@@ -17,7 +17,7 @@ pub fn get_server(
 	web_dir_path: &PathBuf,
 	swagger_url: &str,
 	swagger_dir_path: &PathBuf,
-	db: Arc<DB>,
+	db: DB,
 	command_sender: Arc<CommandSender>,
 ) -> Result<rocket::Rocket> {
 	let mut config = rocket::Config::build(Environment::Production)
@@ -56,7 +56,7 @@ pub fn run(
 	web_dir_path: PathBuf,
 	swagger_url: String,
 	swagger_dir_path: PathBuf,
-	db: Arc<DB>,
+	db: DB,
 	command_sender: Arc<CommandSender>,
 ) -> Result<()> {
 	let server = get_server(

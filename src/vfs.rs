@@ -7,7 +7,7 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use crate::db::mount_points;
-use crate::db::{ConnectionSource, DB};
+use crate::db::DB;
 
 pub trait VFSSource {
 	fn get_vfs(&self) -> Result<VFS>;
@@ -17,7 +17,7 @@ impl VFSSource for DB {
 	fn get_vfs(&self) -> Result<VFS> {
 		use self::mount_points::dsl::*;
 		let mut vfs = VFS::new();
-		let connection = self.get_connection();
+		let connection = self.connect()?;
 		let points: Vec<MountPoint> = mount_points
 			.select((source, name))
 			.get_results(connection.deref())?;

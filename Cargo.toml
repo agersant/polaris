@@ -20,7 +20,7 @@ anyhow = "1.0"
 ape = "0.2.0"
 app_dirs = "1.1.1"
 base64 = "0.11.0"
-diesel = { version = "1.4", features = ["sqlite"] }
+diesel = { version = "1.4", features = ["sqlite", "r2d2"] }
 diesel_migrations = { version = "1.4", features = ["sqlite"] }
 flame = { version = "0.2.2", optional = true }
 flamer = { version = "0.4", optional = true }

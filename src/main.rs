@@ -21,12 +21,10 @@ use std::io::prelude::*;
 use unix_daemonize::{daemonize_redirect, ChdirMode};
 
 use anyhow::*;
-use core::ops::Deref;
 use getopts::Options;
 use log::info;
 use simplelog::{LevelFilter, SimpleLogger, TermLogger, TerminalMode};
 use std::path::Path;
-use std::sync::Arc;
 
 mod config;
 mod db;
@@ -160,7 +158,7 @@ fn main() -> Result<()> {
 	let db_path = db_path
 		.map(|n| Path::new(n.as_str()).to_path_buf())
 		.unwrap_or(default_db_path);
-	let db = Arc::new(db::DB::new(&db_path)?);
+	let db = db::DB::new(&db_path)?;
 
 	// Parse config
 	info!("Parsing configuration");
@@ -169,10 +167,10 @@ fn main() -> Result<()> {
 	if let Some(path) = config_file_path {
 		let config = config::parse_toml_file(&path)?;
 		info!("Applying configuration");
-		config::amend(db.deref(), &config)?;
+		config::amend(&db, &config)?;
 	}
-	let config = config::read(db.deref())?;
-	let auth_secret = config::get_auth_secret(db.deref())?;
+	let config = config::read(&db)?;
+	let auth_secret = config::get_auth_secret(&db)?;
 
 	// Init index
 	info!("Initializing index");
@@ -182,7 +180,7 @@ fn main() -> Result<()> {
 	let db_auto_index = db.clone();
 	let command_sender_auto_index = command_sender.clone();
 	std::thread::spawn(move || {
-		index::self_trigger(db_auto_index.deref(), &command_sender_auto_index);
+		index::self_trigger(&db_auto_index, &command_sender_auto_index);
 	});
 
 	// API mount target
@@ -235,7 +233,7 @@ fn main() -> Result<()> {
 	// Start DDNS updates
 	let db_ddns = db.clone();
 	std::thread::spawn(move || {
-		ddns::run(db_ddns.deref());
+		ddns::run(&db_ddns);
 	});
 
 	// Send readiness notification
