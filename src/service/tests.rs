@@ -1,8 +1,5 @@
 use function_name::named;
 
-mod api;
-mod static_files;
-
 use crate::config;
 use crate::service::dto;
 use crate::vfs;
