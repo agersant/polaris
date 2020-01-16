@@ -2,6 +2,7 @@ use actix_http::Request;
 use actix_web::dev::*;
 use actix_web::test::TestRequest;
 use actix_web::{test, App};
+use function_name::named;
 
 use super::configure_test_app;
 use crate::config;
@@ -55,9 +56,10 @@ fn initial_setup() -> Request {
 		.to_request()
 }
 
+#[named]
 #[actix_rt::test]
 async fn test_version() {
-	let app = App::new().configure(|cfg| configure_test_app(cfg, "test_version"));
+	let app = App::new().configure(|cfg| configure_test_app(cfg, function_name!()));
 	let mut service = test::init_service(app).await;
 	let req = TestRequest::get().uri("/api/version").to_request();
 	let resp = service.call(req).await.unwrap();
@@ -68,9 +70,10 @@ async fn test_version() {
 	assert_eq!(response_json, dto::Version { major: 4, minor: 0 });
 }
 
+#[named]
 #[actix_rt::test]
 async fn test_initial_setup() {
-	let app = App::new().configure(|cfg| configure_test_app(cfg, "test_initial_setup"));
+	let app = App::new().configure(|cfg| configure_test_app(cfg, function_name!()));
 	let mut service = test::init_service(app).await;
 
 	{
