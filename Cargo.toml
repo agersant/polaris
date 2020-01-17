@@ -51,10 +51,6 @@ default_features = false
 features = ["json", "serve"]
 optional = true
 
-[dependencies.tokio]
-version = "0.2"
-features = ["macros", "rt-threaded"]
-
 [target.'cfg(windows)'.dependencies]
 uuid = "0.8"
 
@@ -65,3 +61,6 @@ features = ["winuser", "libloaderapi", "shellapi", "errhandlingapi"]
 [target.'cfg(unix)'.dependencies]
 sd-notify = "0.1.0"
 unix-daemonize = "0.1.2"
+
+[dev-dependencies]
+percent-encoding = "2.1"

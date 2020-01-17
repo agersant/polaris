@@ -1,10 +1,10 @@
 use function_name::named;
 use http::{Response, StatusCode};
+use percent_encoding::{percent_encode, NON_ALPHANUMERIC};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::path::PathBuf;
 use std::time::Duration;
-use url::form_urlencoded::byte_serialize;
 
 use crate::service::dto;
 use crate::{config, ddns, index, vfs};
@@ -20,6 +20,7 @@ const TEST_MOUNT_SOURCE: &str = "test/collection";
 pub trait TestService {
 	fn new(db_name: &str) -> Self;
 	fn get(&mut self, url: &str) -> Response<()>;
+	fn get_bytes(&mut self, url: &str) -> Response<Vec<u8>>;
 	fn post(&mut self, url: &str) -> Response<()>;
 	fn delete(&mut self, url: &str) -> Response<()>;
 	fn get_json<T: DeserializeOwned>(&mut self, url: &str) -> T;
@@ -274,8 +275,10 @@ fn test_service_browse() {
 	path.push("collection");
 	path.push("Khemmis");
 	path.push("Hunted");
-	let encoded_path: String = byte_serialize(path.to_string_lossy().as_ref().as_bytes()).collect();
-	let uri = format!("/api/browse/{}", encoded_path);
+	let uri = format!(
+		"/api/browse/{}",
+		percent_encode(path.to_string_lossy().as_ref().as_bytes(), NON_ALPHANUMERIC)
+	);
 
 	let entries: Vec<index::CollectionFile> = service.get_json(&uri);
 	assert_eq!(entries.len(), 5);
@@ -336,7 +339,6 @@ fn test_service_search() {
 	}
 }
 
-/* TODO
 #[named]
 #[test]
 fn test_service_serve() {
@@ -345,29 +347,33 @@ fn test_service_serve() {
 	service.login();
 	service.index();
 
-	{
-		let mut response = client
-			.get("/api/serve/collection%2FKhemmis%2FHunted%2F02%20-%20Candlelight.mp3")
-			.dispatch();
-		assert_eq!(response.status(), Status::Ok);
-		let body = response.body().unwrap();
-		let body = body.into_bytes().unwrap();
-		assert_eq!(body.len(), 24_142);
-	}
+	let mut path = PathBuf::new();
+	path.push("collection");
+	path.push("Khemmis");
+	path.push("Hunted");
+	path.push("02 - Candlelight.mp3");
+	let uri = format!(
+		"/api/serve/{}",
+		percent_encode(path.to_string_lossy().as_ref().as_bytes(), NON_ALPHANUMERIC)
+	);
 
-	{
-		let mut response = client
-			.get("/api/serve/collection%2FKhemmis%2FHunted%2F02%20-%20Candlelight.mp3")
-			.header(Range::bytes(100, 299))
-			.dispatch();
-		assert_eq!(response.status(), Status::PartialContent);
-		let body = response.body().unwrap();
-		let body = body.into_bytes().unwrap();
-		assert_eq!(body.len(), 200);
-		assert_eq!(response.headers().get_one("Content-Length").unwrap(), "200");
-	}
+	let response = service.get_bytes(&uri);
+	assert_eq!(response.status(), StatusCode::OK);
+	assert_eq!(response.body().len(), 24_142);
+
+	// TODO
+	// {
+	// 	let mut response = client
+	// 		.get("/api/serve/collection%2FKhemmis%2FHunted%2F02%20-%20Candlelight.mp3")
+	// 		.header(Range::bytes(100, 299))
+	// 		.dispatch();
+	// 	assert_eq!(response.status(), Status::PartialContent);
+	// 	let body = response.body().unwrap();
+	// 	let body = body.into_bytes().unwrap();
+	// 	assert_eq!(body.len(), 200);
+	// 	assert_eq!(response.headers().get_one("Content-Length").unwrap(), "200");
+	// }
 }
-*/
 
 #[named]
 #[test]
