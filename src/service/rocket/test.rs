@@ -1,3 +1,4 @@
+use http::Response;
 use rocket;
 use rocket::http::Status;
 use rocket::local::Client;
@@ -11,7 +12,17 @@ use std::sync::Arc;
 use super::server;
 use crate::db::DB;
 use crate::index;
-use crate::service::test::{HttpStatus, TestService};
+use crate::service::test::TestService;
+
+pub struct RocketResponse<'r>(&'r rocket::Response<'r>);
+impl<'r> Into<Response<()>> for RocketResponse<'r> {
+	fn into(self) -> Response<()> {
+		Response::builder()
+			.status(self.0.status().code)
+			.body(())
+			.unwrap()
+	}
+}
 
 pub struct RocketTestService {
 	client: Client,
@@ -20,19 +31,7 @@ pub struct RocketTestService {
 
 pub type ServiceType = RocketTestService;
 
-impl HttpStatus for Status {
-	fn is_ok(&self) -> bool {
-		*self == Status::Ok
-	}
-
-	fn is_unauthorized(&self) -> bool {
-		*self == Status::Unauthorized
-	}
-}
-
 impl TestService for RocketTestService {
-	type Status = Status;
-
 	fn new(db_name: &str) -> Self {
 		let mut db_path = PathBuf::new();
 		db_path.push("test");
@@ -68,22 +67,19 @@ impl TestService for RocketTestService {
 		}
 	}
 
-	fn get(&mut self, url: &str) -> Status {
-		let client = &self.client;
-		let response = client.get(url).dispatch();
-		response.status()
+	fn get(&mut self, url: &str) -> Response<()> {
+		let response = self.client.get(url).dispatch();
+		RocketResponse(response.deref()).into()
 	}
 
-	fn post(&mut self, url: &str) -> Status {
-		let client = &self.client;
-		let response = client.post(url).dispatch();
-		response.status()
+	fn post(&mut self, url: &str) -> Response<()> {
+		let response = self.client.post(url).dispatch();
+		RocketResponse(response.deref()).into()
 	}
 
-	fn delete(&mut self, url: &str) -> Status {
-		let client = &self.client;
-		let response = client.delete(url).dispatch();
-		response.status()
+	fn delete(&mut self, url: &str) -> Response<()> {
+		let response = self.client.delete(url).dispatch();
+		RocketResponse(response.deref()).into()
 	}
 
 	fn get_json<T: DeserializeOwned>(&mut self, url: &str) -> T {
@@ -102,11 +98,10 @@ impl TestService for RocketTestService {
 		assert_eq!(response.status(), Status::Ok);
 	}
 
-	fn post_json<T: Serialize>(&mut self, url: &str, payload: &T) -> Status {
-		let client = &self.client;
+	fn post_json<T: Serialize>(&mut self, url: &str, payload: &T) -> Response<()> {
 		let body = serde_json::to_string(payload).unwrap();
-		let response = client.post(url).body(&body).dispatch();
-		response.status()
+		let response = self.client.post(url).body(&body).dispatch();
+		RocketResponse(response.deref()).into()
 	}
 }
 

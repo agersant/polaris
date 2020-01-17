@@ -1,4 +1,5 @@
 use function_name::named;
+use http::{Response, StatusCode};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::path::PathBuf;
@@ -16,21 +17,14 @@ const TEST_PASSWORD: &str = "test_password";
 const TEST_MOUNT_NAME: &str = "collection";
 const TEST_MOUNT_SOURCE: &str = "test/collection";
 
-pub trait HttpStatus {
-	fn is_ok(&self) -> bool;
-	fn is_unauthorized(&self) -> bool;
-}
-
 pub trait TestService {
-	type Status: HttpStatus;
-
 	fn new(db_name: &str) -> Self;
-	fn get(&mut self, url: &str) -> Self::Status;
-	fn post(&mut self, url: &str) -> Self::Status;
-	fn delete(&mut self, url: &str) -> Self::Status;
+	fn get(&mut self, url: &str) -> Response<()>;
+	fn post(&mut self, url: &str) -> Response<()>;
+	fn delete(&mut self, url: &str) -> Response<()>;
 	fn get_json<T: DeserializeOwned>(&mut self, url: &str) -> T;
 	fn put_json<T: Serialize>(&mut self, url: &str, payload: &T);
-	fn post_json<T: Serialize>(&mut self, url: &str, payload: &T) -> Self::Status;
+	fn post_json<T: Serialize>(&mut self, url: &str, payload: &T) -> Response<()>;
 
 	fn complete_initial_setup(&mut self) {
 		let configuration = config::Config {
@@ -60,7 +54,7 @@ pub trait TestService {
 	}
 
 	fn index(&mut self) {
-		assert!(self.post("/api/trigger_index").is_ok());
+		assert!(self.post("/api/trigger_index").status() == StatusCode::OK);
 		for _ in 1..20 {
 			let entries: Vec<index::CollectionFile> = self.get_json("/api/browse");
 			if entries.len() > 0 {
@@ -83,14 +77,14 @@ fn test_service_index() {
 #[test]
 fn test_service_swagger_index() {
 	let mut service = ServiceType::new(function_name!());
-	assert!(service.get("/swagger").is_ok());
+	assert!(service.get("/swagger").status() == StatusCode::OK);
 }
 
 #[named]
 #[test]
 fn test_service_swagger_index_with_trailing_slash() {
 	let mut service = ServiceType::new(function_name!());
-	assert!(service.get("/swagger/").is_ok());
+	assert!(service.get("/swagger/").status() == StatusCode::OK);
 }
 
 #[named]
@@ -132,7 +126,7 @@ fn test_service_settings() {
 	let mut service = ServiceType::new(function_name!());
 	service.complete_initial_setup();
 
-	assert!(service.get("/api/settings").is_unauthorized());
+	assert!(service.get("/api/settings").status() == StatusCode::UNAUTHORIZED);
 	service.login();
 
 	{
@@ -246,25 +240,21 @@ fn test_service_auth() {
 			username: "garbage".into(),
 			password: "garbage".into(),
 		};
-		assert!(service
-			.post_json("/api/auth", &credentials)
-			.is_unauthorized());
+		assert!(service.post_json("/api/auth", &credentials).status() == StatusCode::UNAUTHORIZED);
 	}
 	{
 		let credentials = dto::AuthCredentials {
 			username: TEST_USERNAME.into(),
 			password: "garbage".into(),
 		};
-		assert!(service
-			.post_json("/api/auth", &credentials)
-			.is_unauthorized());
+		assert!(service.post_json("/api/auth", &credentials).status() == StatusCode::UNAUTHORIZED);
 	}
 	{
 		let credentials = dto::AuthCredentials {
 			username: TEST_USERNAME.into(),
 			password: TEST_PASSWORD.into(),
 		};
-		assert!(service.post_json("/api/auth", &credentials).is_ok());
+		assert!(service.post_json("/api/auth", &credentials).status() == StatusCode::OK);
 		// TODO validate cookies
 	}
 }

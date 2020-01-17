@@ -21,6 +21,7 @@ flame = { version = "0.2.2", optional = true }
 flamer = { version = "0.4", optional = true }
 function_name = "0.2.0"
 getopts = "0.2.15"
+http = "0.2"
 id3 = "0.3"
 image = "0.22"
 libsqlite3-sys = { version = "0.16", features = ["bundled-windows"] }
