@@ -192,8 +192,8 @@ impl From<VFSPathBuf> for PathBuf {
 #[get("/version")]
 fn version() -> Json<dto::Version> {
 	let current_version = dto::Version {
-		major: CURRENT_MAJOR_VERSION,
-		minor: CURRENT_MINOR_VERSION,
+		major: API_MAJOR_VERSION,
+		minor: API_MINOR_VERSION,
 	};
 	Json(current_version)
 }
