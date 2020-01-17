@@ -42,6 +42,7 @@ simplelog = "0.7"
 thiserror = "1.0"
 time = "0.1"
 toml = "0.5"
+url = "2.1"
 
 [dependencies.rocket_contrib]
 version = "0.4.2"

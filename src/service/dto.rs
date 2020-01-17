@@ -10,3 +10,19 @@ pub struct Version {
 pub struct InitialSetup {
 	pub has_any_users: bool,
 }
+
+#[derive(Serialize, Deserialize)]
+pub struct AuthCredentials {
+	pub username: String,
+	pub password: String,
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub struct ListPlaylistsEntry {
+	pub name: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct SavePlaylistInput {
+	pub tracks: Vec<String>,
+}

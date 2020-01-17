@@ -4,7 +4,6 @@ use rocket::request::{self, FromParam, FromRequest, Request};
 use rocket::response::content::Html;
 use rocket::{delete, get, post, put, routes, Outcome, State};
 use rocket_contrib::json::Json;
-use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::ops::Deref;
 use std::path::PathBuf;
@@ -239,21 +238,10 @@ fn trigger_index(
 	Ok(())
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct AuthCredentials {
-	pub username: String,
-	pub password: String,
-}
-
-#[derive(Serialize)]
-struct AuthOutput {
-	admin: bool,
-}
-
 #[post("/auth", data = "<credentials>")]
 fn auth(
 	db: State<'_, DB>,
-	credentials: Json<AuthCredentials>,
+	credentials: Json<dto::AuthCredentials>,
 	mut cookies: Cookies<'_>,
 ) -> std::result::Result<(), APIError> {
 	if !user::auth(&db, &credentials.username, &credentials.password)? {
@@ -335,25 +323,15 @@ fn serve(db: State<'_, DB>, _auth: Auth, path: VFSPathBuf) -> Result<serve::Rang
 	Ok(serve::RangeResponder::new(file))
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
-pub struct ListPlaylistsEntry {
-	pub name: String,
-}
-
 #[get("/playlists")]
-fn list_playlists(db: State<'_, DB>, auth: Auth) -> Result<Json<Vec<ListPlaylistsEntry>>> {
+fn list_playlists(db: State<'_, DB>, auth: Auth) -> Result<Json<Vec<dto::ListPlaylistsEntry>>> {
 	let playlist_names = playlist::list_playlists(&auth.username, db.deref().deref())?;
-	let playlists: Vec<ListPlaylistsEntry> = playlist_names
+	let playlists: Vec<dto::ListPlaylistsEntry> = playlist_names
 		.into_iter()
-		.map(|p| ListPlaylistsEntry { name: p })
+		.map(|p| dto::ListPlaylistsEntry { name: p })
 		.collect();
 
 	Ok(Json(playlists))
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct SavePlaylistInput {
-	pub tracks: Vec<String>,
 }
 
 #[put("/playlist/<name>", data = "<playlist>")]
@@ -361,7 +339,7 @@ fn save_playlist(
 	db: State<'_, DB>,
 	auth: Auth,
 	name: String,
-	playlist: Json<SavePlaylistInput>,
+	playlist: Json<dto::SavePlaylistInput>,
 ) -> Result<()> {
 	playlist::save_playlist(&name, &auth.username, &playlist.tracks, db.deref().deref())?;
 	Ok(())

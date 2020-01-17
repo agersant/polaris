@@ -3,7 +3,7 @@ mod dto;
 mod error;
 
 #[cfg(test)]
-mod tests;
+mod test;
 
 #[cfg(feature = "service-rocket")]
 mod rocket;
