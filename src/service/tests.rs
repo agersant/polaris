@@ -5,7 +5,7 @@ use crate::service::dto;
 use crate::vfs;
 
 #[cfg(feature = "service-rocket")]
-pub use crate::service::rocket::test::*;
+pub use crate::service::rocket::test;
 
 const TEST_USERNAME: &str = "test_user";
 const TEST_PASSWORD: &str = "test_password";
@@ -15,25 +15,25 @@ const TEST_MOUNT_SOURCE: &str = "test/collection";
 #[named]
 #[tokio::test]
 async fn test_index() {
-	let mut service = make_service(function_name!()).await;
-	get(&mut service, "/").await;
+	let mut service = test::make_service(function_name!()).await;
+	test::get(&mut service, "/").await;
 }
 
 #[named]
 #[tokio::test]
 async fn test_swagger_index() {
-	let mut service = make_service(function_name!()).await;
-	get(&mut service, "/swagger").await;
+	let mut service = test::make_service(function_name!()).await;
+	test::get(&mut service, "/swagger").await;
 }
 
 #[named]
 #[tokio::test]
 async fn test_swagger_index_with_trailing_slash() {
-	let mut service = make_service(function_name!()).await;
-	get(&mut service, "/swagger/").await;
+	let mut service = test::make_service(function_name!()).await;
+	test::get(&mut service, "/swagger/").await;
 }
 
-async fn complete_initial_setup(service: &mut ServiceType) {
+async fn complete_initial_setup(service: &mut test::ServiceType) {
 	let configuration = config::Config {
 		album_art_pattern: None,
 		prefix_url: None,
@@ -49,24 +49,25 @@ async fn complete_initial_setup(service: &mut ServiceType) {
 			source: TEST_MOUNT_SOURCE.into(),
 		}]),
 	};
-	put_json(service, "/api/settings", &configuration).await;
+	test::put_json(service, "/api/settings", &configuration).await;
 }
 
 #[named]
 #[tokio::test]
 async fn test_version() {
-	let mut service = make_service(function_name!()).await;
-	let version: dto::Version = get_json(&mut service, "/api/version").await;
+	let mut service = test::make_service(function_name!()).await;
+	let version: dto::Version = test::get_json(&mut service, "/api/version").await;
 	assert_eq!(version, dto::Version { major: 4, minor: 0 });
 }
 
 #[named]
 #[tokio::test]
 async fn test_initial_setup() {
-	let mut service = make_service(function_name!()).await;
+	let mut service = test::make_service(function_name!()).await;
 
 	{
-		let initial_setup: dto::InitialSetup = get_json(&mut service, "/api/initial_setup").await;
+		let initial_setup: dto::InitialSetup =
+			test::get_json(&mut service, "/api/initial_setup").await;
 		assert_eq!(
 			initial_setup,
 			dto::InitialSetup {
@@ -78,7 +79,8 @@ async fn test_initial_setup() {
 	complete_initial_setup(&mut service).await;
 
 	{
-		let initial_setup: dto::InitialSetup = get_json(&mut service, "/api/initial_setup").await;
+		let initial_setup: dto::InitialSetup =
+			test::get_json(&mut service, "/api/initial_setup").await;
 		assert_eq!(
 			initial_setup,
 			dto::InitialSetup {
