@@ -4,9 +4,6 @@ use crate::config;
 use crate::service::dto;
 use crate::vfs;
 
-#[cfg(feature = "service-actix")]
-pub use crate::service::actix::test::*;
-
 #[cfg(feature = "service-rocket")]
 pub use crate::service::rocket::test::*;
 
