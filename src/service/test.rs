@@ -1,3 +1,4 @@
+use cookie::Cookie;
 use function_name::named;
 use http::header::*;
 use http::{HeaderMap, HeaderValue, Response, StatusCode};
@@ -7,6 +8,7 @@ use serde::Serialize;
 use std::path::PathBuf;
 use std::time::Duration;
 
+use crate::service::constants::*;
 use crate::service::dto;
 use crate::{config, ddns, index, vfs};
 
@@ -264,8 +266,17 @@ fn test_service_auth() {
 			username: TEST_USERNAME.into(),
 			password: TEST_PASSWORD.into(),
 		};
-		assert!(service.post_json("/api/auth", &credentials).status() == StatusCode::OK);
-		// TODO validate cookies
+		let response = service.post_json("/api/auth", &credentials);
+		assert!(response.status() == StatusCode::OK);
+		let cookies: Vec<Cookie> = response
+			.headers()
+			.get_all(SET_COOKIE)
+			.iter()
+			.map(|c| Cookie::parse(c.to_str().unwrap()).unwrap())
+			.collect();
+		assert!(cookies.iter().any(|c| c.name() == COOKIE_SESSION));
+		assert!(cookies.iter().any(|c| c.name() == COOKIE_USERNAME));
+		assert!(cookies.iter().any(|c| c.name() == COOKIE_ADMIN));
 	}
 }
 
