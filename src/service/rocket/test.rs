@@ -1,6 +1,5 @@
 use http::response::{Builder, Response};
 use rocket;
-use rocket::http::Status;
 use rocket::local::Client;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -14,26 +13,31 @@ use crate::db::DB;
 use crate::index;
 use crate::service::test::TestService;
 
-pub struct RocketResponse<'r, 's>(&'r mut rocket::Response<'s>);
-
-impl<'r, 's> Into<Builder> for RocketResponse<'r, 's> {
-	fn into(self) -> Builder {
-		Response::builder().status(self.0.status().code)
-	}
+pub struct RocketResponse<'r, 's> {
+	response: &'s mut rocket::Response<'r>,
 }
 
-impl<'r, 's> Into<Response<()>> for RocketResponse<'r, 's> {
-	fn into(self) -> Response<()> {
-		let builder: Builder = self.into();
+impl<'r, 's> RocketResponse<'r, 's> {
+	fn builder(&self) -> Builder {
+		Response::builder().status(self.response.status().code)
+	}
+
+	fn to_void(&self) -> Response<()> {
+		let builder = self.builder();
 		builder.body(()).unwrap()
 	}
-}
 
-impl<'r, 's> Into<Response<Vec<u8>>> for RocketResponse<'r, 's> {
-	fn into(self) -> Response<Vec<u8>> {
-		let body = self.0.body().unwrap();
+	fn to_bytes(&mut self) -> Response<Vec<u8>> {
+		let body = self.response.body().unwrap();
 		let body = body.into_bytes().unwrap();
-		let builder: Builder = self.into();
+		let builder = self.builder();
+		builder.body(body).unwrap()
+	}
+
+	fn to_object<T: DeserializeOwned>(&mut self) -> Response<T> {
+		let body = self.response.body_string().unwrap();
+		let body = serde_json::from_str(&body).unwrap();
+		let builder = self.builder();
 		builder.body(body).unwrap()
 	}
 }
@@ -83,43 +87,61 @@ impl TestService for RocketTestService {
 
 	fn get(&mut self, url: &str) -> Response<()> {
 		let mut response = self.client.get(url).dispatch();
-		RocketResponse(response.deref_mut()).into()
+		RocketResponse {
+			response: response.deref_mut(),
+		}
+		.to_void()
 	}
 
 	fn get_bytes(&mut self, url: &str) -> Response<Vec<u8>> {
 		let mut response = self.client.get(url).dispatch();
-		RocketResponse(response.deref_mut()).into()
+		RocketResponse {
+			response: response.deref_mut(),
+		}
+		.to_bytes()
 	}
 
 	fn post(&mut self, url: &str) -> Response<()> {
 		let mut response = self.client.post(url).dispatch();
-		RocketResponse(response.deref_mut()).into()
+		RocketResponse {
+			response: response.deref_mut(),
+		}
+		.to_void()
 	}
 
 	fn delete(&mut self, url: &str) -> Response<()> {
 		let mut response = self.client.delete(url).dispatch();
-		RocketResponse(response.deref_mut()).into()
+		RocketResponse {
+			response: response.deref_mut(),
+		}
+		.to_void()
 	}
 
-	fn get_json<T: DeserializeOwned>(&mut self, url: &str) -> T {
-		let client = &self.client;
-		let mut response = client.get(url).dispatch();
-		assert_eq!(response.status(), Status::Ok);
-		let response_body = response.body_string().unwrap();
-		serde_json::from_str(&response_body).unwrap()
+	fn get_json<T: DeserializeOwned>(&mut self, url: &str) -> Response<T> {
+		let mut response = self.client.get(url).dispatch();
+		RocketResponse {
+			response: response.deref_mut(),
+		}
+		.to_object()
 	}
 
-	fn put_json<T: Serialize>(&mut self, url: &str, payload: &T) {
+	fn put_json<T: Serialize>(&mut self, url: &str, payload: &T) -> Response<()> {
 		let client = &self.client;
 		let body = serde_json::to_string(payload).unwrap();
-		let response = client.put(url).body(&body).dispatch();
-		assert_eq!(response.status(), Status::Ok);
+		let mut response = client.put(url).body(&body).dispatch();
+		RocketResponse {
+			response: response.deref_mut(),
+		}
+		.to_void()
 	}
 
 	fn post_json<T: Serialize>(&mut self, url: &str, payload: &T) -> Response<()> {
 		let body = serde_json::to_string(payload).unwrap();
 		let mut response = self.client.post(url).body(&body).dispatch();
-		RocketResponse(response.deref_mut()).into()
+		RocketResponse {
+			response: response.deref_mut(),
+		}
+		.to_void()
 	}
 }
 

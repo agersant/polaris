@@ -23,8 +23,8 @@ pub trait TestService {
 	fn get_bytes(&mut self, url: &str) -> Response<Vec<u8>>;
 	fn post(&mut self, url: &str) -> Response<()>;
 	fn delete(&mut self, url: &str) -> Response<()>;
-	fn get_json<T: DeserializeOwned>(&mut self, url: &str) -> T;
-	fn put_json<T: Serialize>(&mut self, url: &str, payload: &T);
+	fn get_json<T: DeserializeOwned>(&mut self, url: &str) -> Response<T>;
+	fn put_json<T: Serialize>(&mut self, url: &str, payload: &T) -> Response<()>;
 	fn post_json<T: Serialize>(&mut self, url: &str, payload: &T) -> Response<()>;
 
 	fn complete_initial_setup(&mut self) {
@@ -57,7 +57,8 @@ pub trait TestService {
 	fn index(&mut self) {
 		assert!(self.post("/api/trigger_index").status() == StatusCode::OK);
 		for _ in 1..20 {
-			let entries: Vec<index::CollectionFile> = self.get_json("/api/browse");
+			let response = self.get_json::<Vec<index::CollectionFile>>("/api/browse");
+			let entries = response.body();
 			if entries.len() > 0 {
 				return;
 			}
@@ -92,8 +93,9 @@ fn test_service_swagger_index_with_trailing_slash() {
 #[test]
 fn test_service_version() {
 	let mut service = ServiceType::new(function_name!());
-	let version: dto::Version = service.get_json("/api/version");
-	assert_eq!(version, dto::Version { major: 4, minor: 0 });
+	let response = service.get_json::<dto::Version>("/api/version");
+	let version = response.body();
+	assert_eq!(version, &dto::Version { major: 4, minor: 0 });
 }
 
 #[named]
@@ -101,20 +103,22 @@ fn test_service_version() {
 fn test_service_initial_setup() {
 	let mut service = ServiceType::new(function_name!());
 	{
-		let initial_setup: dto::InitialSetup = service.get_json("/api/initial_setup");
+		let response = service.get_json::<dto::InitialSetup>("/api/initial_setup");
+		let initial_setup = response.body();
 		assert_eq!(
 			initial_setup,
-			dto::InitialSetup {
+			&dto::InitialSetup {
 				has_any_users: false
 			}
 		);
 	}
 	service.complete_initial_setup();
 	{
-		let initial_setup: dto::InitialSetup = service.get_json("/api/initial_setup");
+		let response = service.get_json::<dto::InitialSetup>("/api/initial_setup");
+		let initial_setup = response.body();
 		assert_eq!(
 			initial_setup,
-			dto::InitialSetup {
+			&dto::InitialSetup {
 				has_any_users: true
 			}
 		);
@@ -131,10 +135,11 @@ fn test_service_settings() {
 	service.login();
 
 	{
-		let configuration: config::Config = service.get_json("/api/settings");
+		let response = service.get_json::<config::Config>("/api/settings");
+		let configuration = response.body();
 		assert_eq!(
 			configuration,
-			config::Config {
+			&config::Config {
 				album_art_pattern: Some("Folder.(jpg|png)".to_string()),
 				reindex_every_n_seconds: Some(1800),
 				mount_dirs: Some(vec![vfs::MountPoint {
@@ -204,8 +209,9 @@ fn test_service_settings() {
 		},
 	]);
 
-	let received: config::Config = service.get_json("/api/settings");
-	assert_eq!(received, configuration);
+	let response = service.get_json::<config::Config>("/api/settings");
+	let received = response.body();
+	assert_eq!(received, &configuration);
 }
 
 #[named]
@@ -221,12 +227,14 @@ fn test_service_trigger_index() {
 	service.complete_initial_setup();
 	service.login();
 
-	let entries: Vec<index::Directory> = service.get_json("/api/random");
+	let response = service.get_json::<Vec<index::Directory>>("/api/random");
+	let entries = response.body();
 	assert_eq!(entries.len(), 0);
 
 	service.index();
 
-	let entries: Vec<index::Directory> = service.get_json("/api/random");
+	let response = service.get_json::<Vec<index::Directory>>("/api/random");
+	let entries = response.body();
 	assert_eq!(entries.len(), 2);
 }
 
@@ -268,7 +276,8 @@ fn test_service_browse() {
 	service.login();
 	service.index();
 
-	let entries: Vec<index::CollectionFile> = service.get_json("/api/browse");
+	let response = service.get_json::<Vec<index::CollectionFile>>("/api/browse");
+	let entries = response.body();
 	assert_eq!(entries.len(), 1);
 
 	let mut path = PathBuf::new();
@@ -280,7 +289,8 @@ fn test_service_browse() {
 		percent_encode(path.to_string_lossy().as_ref().as_bytes(), NON_ALPHANUMERIC)
 	);
 
-	let entries: Vec<index::CollectionFile> = service.get_json(&uri);
+	let response = service.get_json::<Vec<index::CollectionFile>>(&uri);
+	let entries = response.body();
 	assert_eq!(entries.len(), 5);
 }
 
@@ -292,10 +302,12 @@ fn test_service_flatten() {
 	service.login();
 	service.index();
 
-	let entries: Vec<index::Song> = service.get_json("/api/flatten");
+	let response = service.get_json::<Vec<index::Song>>("/api/flatten");
+	let entries = response.body();
 	assert_eq!(entries.len(), 12);
 
-	let entries: Vec<index::Song> = service.get_json("/api/flatten/collection");
+	let response = service.get_json::<Vec<index::Song>>("/api/flatten/collection");
+	let entries = response.body();
 	assert_eq!(entries.len(), 12);
 }
 
@@ -307,7 +319,8 @@ fn test_service_random() {
 	service.login();
 	service.index();
 
-	let entries: Vec<index::Directory> = service.get_json("/api/random");
+	let response = service.get_json::<Vec<index::Directory>>("/api/random");
+	let entries = response.body();
 	assert_eq!(entries.len(), 2);
 }
 
@@ -319,7 +332,8 @@ fn test_service_recent() {
 	service.login();
 	service.index();
 
-	let entries: Vec<index::Directory> = service.get_json("/api/recent");
+	let response = service.get_json::<Vec<index::Directory>>("/api/recent");
+	let entries = response.body();
 	assert_eq!(entries.len(), 2);
 }
 
@@ -331,7 +345,8 @@ fn test_service_search() {
 	service.login();
 	service.index();
 
-	let results: Vec<index::CollectionFile> = service.get_json("/api/search/door");
+	let response = service.get_json::<Vec<index::CollectionFile>>("/api/search/door");
+	let results = response.body();
 	assert_eq!(results.len(), 1);
 	match results[0] {
 		index::CollectionFile::Song(ref s) => assert_eq!(s.title, Some("Beyond The Door".into())),
@@ -383,10 +398,12 @@ fn test_service_playlists() {
 	service.login();
 	service.index();
 
-	let playlists: Vec<dto::ListPlaylistsEntry> = service.get_json("/api/playlists");
+	let response = service.get_json::<Vec<dto::ListPlaylistsEntry>>("/api/playlists");
+	let playlists = response.body();
 	assert_eq!(playlists.len(), 0);
 
-	let mut my_songs: Vec<index::Song> = service.get_json("/api/flatten");
+	let response = service.get_json::<Vec<index::Song>>("/api/flatten");
+	let mut my_songs = response.into_body();
 	my_songs.pop();
 	my_songs.pop();
 	let my_playlist = dto::SavePlaylistInput {
@@ -394,19 +411,22 @@ fn test_service_playlists() {
 	};
 	service.put_json("/api/playlist/my_playlist", &my_playlist);
 
-	let playlists: Vec<dto::ListPlaylistsEntry> = service.get_json("/api/playlists");
+	let response = service.get_json::<Vec<dto::ListPlaylistsEntry>>("/api/playlists");
+	let playlists = response.body();
 	assert_eq!(
 		playlists,
-		vec![dto::ListPlaylistsEntry {
+		&vec![dto::ListPlaylistsEntry {
 			name: "my_playlist".into()
 		}]
 	);
 
-	let songs: Vec<index::Song> = service.get_json("/api/playlist/my_playlist");
-	assert_eq!(songs, my_songs);
+	let response = service.get_json::<Vec<index::Song>>("/api/playlist/my_playlist");
+	let songs = response.body();
+	assert_eq!(songs, &my_songs);
 
 	service.delete("/api/playlist/my_playlist");
 
-	let playlists: Vec<dto::ListPlaylistsEntry> = service.get_json("/api/playlists");
+	let response = service.get_json::<Vec<dto::ListPlaylistsEntry>>("/api/playlists");
+	let playlists = response.body();
 	assert_eq!(playlists.len(), 0);
 }
