@@ -1,4 +1,5 @@
 use http::response::{Builder, Response};
+use http::{HeaderMap, HeaderValue};
 use rocket;
 use rocket::local::Client;
 use serde::de::DeserializeOwned;
@@ -19,7 +20,11 @@ pub struct RocketResponse<'r, 's> {
 
 impl<'r, 's> RocketResponse<'r, 's> {
 	fn builder(&self) -> Builder {
-		Response::builder().status(self.response.status().code)
+		let mut builder = Response::builder().status(self.response.status().code);
+		for header in self.response.headers().iter() {
+			builder = builder.header(header.name(), header.value());
+		}
+		builder
 	}
 
 	fn to_void(&self) -> Response<()> {
@@ -93,8 +98,15 @@ impl TestService for RocketTestService {
 		.to_void()
 	}
 
-	fn get_bytes(&mut self, url: &str) -> Response<Vec<u8>> {
-		let mut response = self.client.get(url).dispatch();
+	fn get_bytes(&mut self, url: &str, headers: &HeaderMap<HeaderValue>) -> Response<Vec<u8>> {
+		let mut request = self.client.get(url);
+		for (name, value) in headers.iter() {
+			request.add_header(rocket::http::Header::new(
+				name.as_str().to_owned(),
+				value.to_str().unwrap().to_owned(),
+			))
+		}
+		let mut response = request.dispatch();
 		RocketResponse {
 			response: response.deref_mut(),
 		}

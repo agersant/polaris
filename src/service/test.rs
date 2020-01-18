@@ -1,5 +1,6 @@
 use function_name::named;
-use http::{Response, StatusCode};
+use http::header::*;
+use http::{HeaderMap, HeaderValue, Response, StatusCode};
 use percent_encoding::{percent_encode, NON_ALPHANUMERIC};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -20,7 +21,7 @@ const TEST_MOUNT_SOURCE: &str = "test/collection";
 pub trait TestService {
 	fn new(db_name: &str) -> Self;
 	fn get(&mut self, url: &str) -> Response<()>;
-	fn get_bytes(&mut self, url: &str) -> Response<Vec<u8>>;
+	fn get_bytes(&mut self, url: &str, headers: &HeaderMap<HeaderValue>) -> Response<Vec<u8>>;
 	fn post(&mut self, url: &str) -> Response<()>;
 	fn delete(&mut self, url: &str) -> Response<()>;
 	fn get_json<T: DeserializeOwned>(&mut self, url: &str) -> Response<T>;
@@ -372,22 +373,18 @@ fn test_service_serve() {
 		percent_encode(path.to_string_lossy().as_ref().as_bytes(), NON_ALPHANUMERIC)
 	);
 
-	let response = service.get_bytes(&uri);
+	let response = service.get_bytes(&uri, &HeaderMap::new());
 	assert_eq!(response.status(), StatusCode::OK);
 	assert_eq!(response.body().len(), 24_142);
 
-	// TODO
-	// {
-	// 	let mut response = client
-	// 		.get("/api/serve/collection%2FKhemmis%2FHunted%2F02%20-%20Candlelight.mp3")
-	// 		.header(Range::bytes(100, 299))
-	// 		.dispatch();
-	// 	assert_eq!(response.status(), Status::PartialContent);
-	// 	let body = response.body().unwrap();
-	// 	let body = body.into_bytes().unwrap();
-	// 	assert_eq!(body.len(), 200);
-	// 	assert_eq!(response.headers().get_one("Content-Length").unwrap(), "200");
-	// }
+	{
+		let mut headers = HeaderMap::new();
+		headers.append(RANGE, HeaderValue::from_str("bytes=100-299").unwrap());
+		let response = service.get_bytes(&uri, &headers);
+		assert_eq!(response.status(), StatusCode::PARTIAL_CONTENT);
+		assert_eq!(response.body().len(), 200);
+		assert_eq!(response.headers().get(CONTENT_LENGTH).unwrap(), "200");
+	}
 }
 
 #[named]
