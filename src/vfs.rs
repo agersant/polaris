@@ -1,5 +1,4 @@
 use anyhow::*;
-use core::ops::Deref;
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -20,7 +19,7 @@ impl VFSSource for DB {
 		let connection = self.connect()?;
 		let points: Vec<MountPoint> = mount_points
 			.select((source, name))
-			.get_results(connection.deref())?;
+			.get_results(&connection)?;
 		for point in points {
 			vfs.mount(&Path::new(&point.source), &point.name)?;
 		}

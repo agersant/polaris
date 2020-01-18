@@ -1,5 +1,4 @@
 use anyhow::*;
-use core::ops::Deref;
 use diesel::prelude::*;
 use log::{error, info};
 use reqwest;
@@ -28,7 +27,7 @@ impl DDNSConfigSource for DB {
 		let connection = self.connect()?;
 		Ok(ddns_config
 			.select((host, username, password))
-			.get_result(connection.deref())?)
+			.get_result(&connection)?)
 	}
 }
 

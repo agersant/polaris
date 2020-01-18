@@ -371,7 +371,7 @@ fn clean(db: &DB) -> Result<()> {
 			let connection = db.connect()?;
 			for chunk in missing_songs[..].chunks(INDEX_BUILDING_CLEAN_BUFFER_SIZE) {
 				diesel::delete(songs::table.filter(songs::path.eq_any(chunk)))
-					.execute(connection.deref())?;
+					.execute(&connection)?;
 			}
 		}
 	}
@@ -382,7 +382,7 @@ fn clean(db: &DB) -> Result<()> {
 			let connection = db.connect()?;
 			all_directories = directories::table
 				.select(directories::path)
-				.load(connection.deref())?;
+				.load(&connection)?;
 		}
 
 		let missing_directories = all_directories
@@ -397,7 +397,7 @@ fn clean(db: &DB) -> Result<()> {
 			let connection = db.connect()?;
 			for chunk in missing_directories[..].chunks(INDEX_BUILDING_CLEAN_BUFFER_SIZE) {
 				diesel::delete(directories::table.filter(directories::path.eq_any(chunk)))
-					.execute(connection.deref())?;
+					.execute(&connection)?;
 			}
 		}
 	}
@@ -533,7 +533,7 @@ where
 		// Browse top-level
 		let real_directories: Vec<Directory> = directories::table
 			.filter(directories::parent.is_null())
-			.load(connection.deref())?;
+			.load(&connection)?;
 		let virtual_directories = real_directories
 			.into_iter()
 			.filter_map(|s| virtualize_directory(&vfs, s));
@@ -546,7 +546,7 @@ where
 		let real_directories: Vec<Directory> = directories::table
 			.filter(directories::parent.eq(&real_path_string))
 			.order(sql::<sql_types::Bool>("path COLLATE NOCASE ASC"))
-			.load(connection.deref())?;
+			.load(&connection)?;
 		let virtual_directories = real_directories
 			.into_iter()
 			.filter_map(|s| virtualize_directory(&vfs, s));
@@ -555,7 +555,7 @@ where
 		let real_songs: Vec<Song> = songs::table
 			.filter(songs::parent.eq(&real_path_string))
 			.order(sql::<sql_types::Bool>("path COLLATE NOCASE ASC"))
-			.load(connection.deref())?;
+			.load(&connection)?;
 		let virtual_songs = real_songs
 			.into_iter()
 			.filter_map(|s| virtualize_song(&vfs, s));
@@ -579,9 +579,9 @@ where
 		songs
 			.filter(path.like(&like_path))
 			.order(path)
-			.load(connection.deref())?
+			.load(&connection)?
 	} else {
-		songs.order(path).load(connection.deref())?
+		songs.order(path).load(&connection)?
 	};
 
 	let virtual_songs = real_songs
@@ -598,7 +598,7 @@ pub fn get_random_albums(db: &DB, count: i64) -> Result<Vec<Directory>> {
 		.filter(album.is_not_null())
 		.limit(count)
 		.order(random)
-		.load(connection.deref())?;
+		.load(&connection)?;
 	let virtual_directories = real_directories
 		.into_iter()
 		.filter_map(|s| virtualize_directory(&vfs, s));
@@ -613,7 +613,7 @@ pub fn get_recent_albums(db: &DB, count: i64) -> Result<Vec<Directory>> {
 		.filter(album.is_not_null())
 		.order(date_added.desc())
 		.limit(count)
-		.load(connection.deref())?;
+		.load(&connection)?;
 	let virtual_directories = real_directories
 		.into_iter()
 		.filter_map(|s| virtualize_directory(&vfs, s));
@@ -632,7 +632,7 @@ pub fn search(db: &DB, query: &str) -> Result<Vec<CollectionFile>> {
 		let real_directories: Vec<Directory> = directories
 			.filter(path.like(&like_test))
 			.filter(parent.not_like(&like_test))
-			.load(connection.deref())?;
+			.load(&connection)?;
 
 		let virtual_directories = real_directories
 			.into_iter()
@@ -653,7 +653,7 @@ pub fn search(db: &DB, query: &str) -> Result<Vec<CollectionFile>> {
 					.or(album_artist.like(&like_test)),
 			)
 			.filter(parent.not_like(&like_test))
-			.load(connection.deref())?;
+			.load(&connection)?;
 
 		let virtual_songs = real_songs
 			.into_iter()
@@ -674,7 +674,7 @@ pub fn get_song(db: &DB, virtual_path: &Path) -> Result<Song> {
 	use self::songs::dsl::*;
 	let real_song: Song = songs
 		.filter(path.eq(real_path_string))
-		.get_result(connection.deref())?;
+		.get_result(&connection)?;
 
 	match virtualize_song(&vfs, real_song) {
 		Some(s) => Ok(s),
@@ -715,7 +715,7 @@ fn test_metadata() {
 	let connection = db.connect().unwrap();
 	let songs: Vec<Song> = songs::table
 		.filter(songs::title.eq("シャーベット (Sherbet)"))
-		.load(connection.deref())
+		.load(&connection)
 		.unwrap();
 
 	assert_eq!(songs.len(), 1);

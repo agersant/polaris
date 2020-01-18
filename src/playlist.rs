@@ -1,6 +1,5 @@
 use anyhow::*;
 use core::clone::Clone;
-use core::ops::Deref;
 use diesel;
 use diesel::prelude::*;
 use diesel::sql_types;
@@ -57,14 +56,14 @@ pub fn list_playlists(owner: &str, db: &DB) -> Result<Vec<String>> {
 		user = users
 			.filter(name.eq(owner))
 			.select((id,))
-			.first(connection.deref())?;
+			.first(&connection)?;
 	}
 
 	{
 		use self::playlists::dsl::*;
 		let found_playlists: Vec<String> = Playlist::belonging_to(&user)
 			.select(name)
-			.load(connection.deref())?;
+			.load(&connection)?;
 		Ok(found_playlists)
 	}
 }
@@ -129,7 +128,7 @@ pub fn save_playlist(playlist_name: &str, owner: &str, content: &[String], db: &
 		connection.transaction::<_, diesel::result::Error, _>(|| {
 			// Delete old content (if any)
 			let old_songs = PlaylistSong::belonging_to(&playlist);
-			diesel::delete(old_songs).execute(connection.deref())?;
+			diesel::delete(old_songs).execute(&connection)?;
 
 			// Insert content
 			diesel::insert_into(playlist_songs::table)
@@ -207,7 +206,7 @@ pub fn delete_playlist(playlist_name: &str, owner: &str, db: &DB) -> Result<()> 
 	{
 		use self::playlists::dsl::*;
 		let q = Playlist::belonging_to(&user).filter(name.eq(playlist_name));
-		diesel::delete(q).execute(connection.deref())?;
+		diesel::delete(q).execute(&connection)?;
 	}
 
 	Ok(())
