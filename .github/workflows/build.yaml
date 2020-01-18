@@ -12,7 +12,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        features: [--all-features, --no-default-features]
+        features: [--all-features, --features default]
         os: [ubuntu-latest, windows-latest, macOS-latest]
 
     steps:
