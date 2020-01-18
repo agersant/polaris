@@ -68,9 +68,6 @@ pub fn run(
 		db,
 		command_sender,
 	)?;
-	// TODO do this in main
-	std::thread::spawn(move || {
-		server.launch();
-	});
+	server.launch();
 	Ok(())
 }
