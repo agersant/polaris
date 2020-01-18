@@ -1,6 +1,7 @@
 use anyhow::*;
 use diesel::r2d2::{self, ConnectionManager, PooledConnection};
 use diesel::sqlite::SqliteConnection;
+use diesel::RunQueryDsl;
 use diesel_migrations;
 use log::info;
 use std::path::Path;
@@ -18,14 +19,29 @@ pub struct DB {
 	pool: r2d2::Pool<ConnectionManager<SqliteConnection>>,
 }
 
+#[derive(Debug)]
+struct ConnectionCustomizer {}
+impl diesel::r2d2::CustomizeConnection<SqliteConnection, diesel::r2d2::Error> for ConnectionCustomizer {
+	fn on_acquire(&self, connection: &mut SqliteConnection) -> Result<(), diesel::r2d2::Error> {
+		let query = diesel::sql_query(r#"
+			PRAGMA busy_timeout = 60000;
+			PRAGMA journal_mode = WAL;
+			PRAGMA synchronous = NORMAL;
+			PRAGMA foreign_keys = ON;
+		"#);
+		query.execute(connection)
+			.map_err(|e| diesel::r2d2::Error::QueryError(e))?;
+		Ok(())
+	}
+}
+
 impl DB {
 	pub fn new(path: &Path) -> Result<DB> {
 		info!("Database file path: {}", path.to_string_lossy());
 		let manager = ConnectionManager::<SqliteConnection>::new(path.to_string_lossy());
-		let pool = r2d2::Pool::builder()
-			.build(manager)
-			.expect("Failed to create pool."); // TODO handle error
-
+		let pool = diesel::r2d2::Pool::builder()
+			.connection_customizer(Box::new(ConnectionCustomizer {}))
+			.build(manager)?;
 		let db = DB { pool: pool };
 		db.migrate_up()?;
 		Ok(db)
