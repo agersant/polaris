@@ -183,12 +183,9 @@ impl IndexBuilder {
 	#[cfg_attr(feature = "profile-index", flame)]
 	fn flush_songs(&mut self) -> Result<()> {
 		let connection = self.db.connect()?;
-		connection.transaction::<_, anyhow::Error, _>(|| {
-			diesel::insert_into(songs::table)
-				.values(&self.new_songs)
-				.execute(&*connection)?; // TODO https://github.com/diesel-rs/diesel/issues/1822
-			Ok(())
-		})?;
+		diesel::insert_into(songs::table)
+			.values(&self.new_songs)
+			.execute(&*connection)?; // TODO https://github.com/diesel-rs/diesel/issues/1822
 		self.new_songs.clear();
 		Ok(())
 	}
@@ -196,12 +193,9 @@ impl IndexBuilder {
 	#[cfg_attr(feature = "profile-index", flame)]
 	fn flush_directories(&mut self) -> Result<()> {
 		let connection = self.db.connect()?;
-		connection.transaction::<_, anyhow::Error, _>(|| {
-			diesel::insert_into(directories::table)
-				.values(&self.new_directories)
-				.execute(&*connection)?; // TODO https://github.com/diesel-rs/diesel/issues/1822
-			Ok(())
-		})?;
+		diesel::insert_into(directories::table)
+			.values(&self.new_directories)
+			.execute(&*connection)?; // TODO https://github.com/diesel-rs/diesel/issues/1822
 		self.new_directories.clear();
 		Ok(())
 	}
