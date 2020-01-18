@@ -12,7 +12,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        features: [--all-features, --no-default-features]
+        features: [--all-features, --features default]
         os: [ubuntu-latest, windows-latest, macOS-latest]
 
     steps:
@@ -24,10 +24,10 @@ jobs:
         submodules: true
     - uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly
-        override: true
+        toolchain: nightly-2020-01-14
+        profile: minimal
+        default: true
     - uses: actions-rs/cargo@v1
       with:
         command: test
-        toolchain: nightly
         args: --release ${{ matrix.features }}

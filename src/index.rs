@@ -4,7 +4,6 @@ use diesel;
 use diesel::dsl::sql;
 use diesel::prelude::*;
 use diesel::sql_types;
-use diesel::sqlite::SqliteConnection;
 #[cfg(feature = "profile-index")]
 use flame;
 use log::{error, info};
@@ -22,8 +21,7 @@ use std::time;
 use crate::config::MiscSettings;
 #[cfg(test)]
 use crate::db;
-use crate::db::{directories, misc_settings, songs};
-use crate::db::{ConnectionSource, DB};
+use crate::db::{directories, misc_settings, songs, DB};
 use crate::metadata;
 use crate::vfs::{VFSSource, VFS};
 
@@ -80,16 +78,14 @@ impl CommandSender {
 	}
 }
 
-pub fn init(db: Arc<DB>) -> Arc<CommandSender> {
+pub fn init(db: DB) -> Arc<CommandSender> {
 	let (index_sender, index_receiver) = channel();
 	let command_sender = Arc::new(CommandSender::new(index_sender));
 	let command_receiver = CommandReceiver::new(index_receiver);
 
 	// Start update loop
-	let db_ref = db.clone();
 	std::thread::spawn(move || {
-		let db = db_ref.deref();
-		update_loop(db, &command_receiver);
+		update_loop(&db, &command_receiver);
 	});
 
 	command_sender
@@ -162,19 +158,16 @@ struct NewDirectory {
 	date_added: i32,
 }
 
-struct IndexBuilder<'conn> {
+struct IndexBuilder {
 	new_songs: Vec<NewSong>,
 	new_directories: Vec<NewDirectory>,
-	connection: &'conn Mutex<SqliteConnection>,
+	db: DB,
 	album_art_pattern: Regex,
 }
 
-impl<'conn> IndexBuilder<'conn> {
+impl IndexBuilder {
 	#[cfg_attr(feature = "profile-index", flame)]
-	fn new(
-		connection: &Mutex<SqliteConnection>,
-		album_art_pattern: Regex,
-	) -> Result<IndexBuilder<'_>> {
+	fn new(db: DB, album_art_pattern: Regex) -> Result<IndexBuilder> {
 		let mut new_songs = Vec::new();
 		let mut new_directories = Vec::new();
 		new_songs.reserve_exact(INDEX_BUILDING_INSERT_BUFFER_SIZE);
@@ -182,35 +175,27 @@ impl<'conn> IndexBuilder<'conn> {
 		Ok(IndexBuilder {
 			new_songs,
 			new_directories,
-			connection,
+			db,
 			album_art_pattern,
 		})
 	}
 
 	#[cfg_attr(feature = "profile-index", flame)]
 	fn flush_songs(&mut self) -> Result<()> {
-		let connection = self.connection.lock().unwrap();
-		let connection = connection.deref();
-		connection.transaction::<_, anyhow::Error, _>(|| {
-			diesel::insert_into(songs::table)
-				.values(&self.new_songs)
-				.execute(connection)?;
-			Ok(())
-		})?;
+		let connection = self.db.connect()?;
+		diesel::insert_into(songs::table)
+			.values(&self.new_songs)
+			.execute(&*connection)?; // TODO https://github.com/diesel-rs/diesel/issues/1822
 		self.new_songs.clear();
 		Ok(())
 	}
 
 	#[cfg_attr(feature = "profile-index", flame)]
 	fn flush_directories(&mut self) -> Result<()> {
-		let connection = self.connection.lock().unwrap();
-		let connection = connection.deref();
-		connection.transaction::<_, anyhow::Error, _>(|| {
-			diesel::insert_into(directories::table)
-				.values(&self.new_directories)
-				.execute(connection)?;
-			Ok(())
-		})?;
+		let connection = self.db.connect()?;
+		diesel::insert_into(directories::table)
+			.values(&self.new_directories)
+			.execute(&*connection)?; // TODO https://github.com/diesel-rs/diesel/issues/1822
 		self.new_directories.clear();
 		Ok(())
 	}
@@ -364,17 +349,14 @@ impl<'conn> IndexBuilder<'conn> {
 }
 
 #[cfg_attr(feature = "profile-index", flame)]
-fn clean<T>(db: &T) -> Result<()>
-where
-	T: ConnectionSource + VFSSource,
-{
+fn clean(db: &DB) -> Result<()> {
 	let vfs = db.get_vfs()?;
 
 	{
 		let all_songs: Vec<String>;
 		{
-			let connection = db.get_connection();
-			all_songs = songs::table.select(songs::path).load(connection.deref())?;
+			let connection = db.connect()?;
+			all_songs = songs::table.select(songs::path).load(&connection)?;
 		}
 
 		let missing_songs = all_songs
@@ -386,10 +368,10 @@ where
 			.collect::<Vec<_>>();
 
 		{
-			let connection = db.get_connection();
+			let connection = db.connect()?;
 			for chunk in missing_songs[..].chunks(INDEX_BUILDING_CLEAN_BUFFER_SIZE) {
 				diesel::delete(songs::table.filter(songs::path.eq_any(chunk)))
-					.execute(connection.deref())?;
+					.execute(&connection)?;
 			}
 		}
 	}
@@ -397,10 +379,10 @@ where
 	{
 		let all_directories: Vec<String>;
 		{
-			let connection = db.get_connection();
+			let connection = db.connect()?;
 			all_directories = directories::table
 				.select(directories::path)
-				.load(connection.deref())?;
+				.load(&connection)?;
 		}
 
 		let missing_directories = all_directories
@@ -412,10 +394,10 @@ where
 			.collect::<Vec<_>>();
 
 		{
-			let connection = db.get_connection();
+			let connection = db.connect()?;
 			for chunk in missing_directories[..].chunks(INDEX_BUILDING_CLEAN_BUFFER_SIZE) {
 				diesel::delete(directories::table.filter(directories::path.eq_any(chunk)))
-					.execute(connection.deref())?;
+					.execute(&connection)?;
 			}
 		}
 	}
@@ -424,22 +406,18 @@ where
 }
 
 #[cfg_attr(feature = "profile-index", flame)]
-fn populate<T>(db: &T) -> Result<()>
-where
-	T: ConnectionSource + VFSSource,
-{
+fn populate(db: &DB) -> Result<()> {
 	let vfs = db.get_vfs()?;
 	let mount_points = vfs.get_mount_points();
 
 	let album_art_pattern;
 	{
-		let connection = db.get_connection();
-		let settings: MiscSettings = misc_settings::table.get_result(connection.deref())?;
+		let connection = db.connect()?;
+		let settings: MiscSettings = misc_settings::table.get_result(&connection)?;
 		album_art_pattern = Regex::new(&settings.index_album_art_pattern)?;
 	}
 
-	let connection_mutex = db.get_connection_mutex();
-	let mut builder = IndexBuilder::new(connection_mutex.deref(), album_art_pattern)?;
+	let mut builder = IndexBuilder::new(db.clone(), album_art_pattern)?;
 	for target in mount_points.values() {
 		builder.populate_directory(None, target.as_path())?;
 	}
@@ -448,10 +426,7 @@ where
 	Ok(())
 }
 
-pub fn update<T>(db: &T) -> Result<()>
-where
-	T: ConnectionSource + VFSSource,
-{
+pub fn update(db: &DB) -> Result<()> {
 	let start = time::Instant::now();
 	info!("Beginning library index update");
 	clean(db)?;
@@ -465,10 +440,7 @@ where
 	Ok(())
 }
 
-fn update_loop<T>(db: &T, command_buffer: &CommandReceiver)
-where
-	T: ConnectionSource + VFSSource,
-{
+fn update_loop(db: &DB, command_buffer: &CommandReceiver) {
 	loop {
 		// Wait for a command
 		if command_buffer.receiver.recv().is_err() {
@@ -492,10 +464,7 @@ where
 	}
 }
 
-pub fn self_trigger<T>(db: &T, command_buffer: &Arc<CommandSender>)
-where
-	T: ConnectionSource,
-{
+pub fn self_trigger(db: &DB, command_buffer: &Arc<CommandSender>) {
 	loop {
 		{
 			let command_buffer = command_buffer.deref();
@@ -504,19 +473,20 @@ where
 				return;
 			}
 		}
-		let sleep_duration;
-		{
-			let connection = db.get_connection();
-			let settings: Result<MiscSettings> = misc_settings::table
-				.get_result(connection.deref())
-				.map_err(|e| e.into());
-			if let Err(ref e) = settings {
-				error!("Could not retrieve index sleep duration: {}", e);
-			}
-			sleep_duration = settings
-				.map(|s| s.index_sleep_duration_seconds)
-				.unwrap_or(1800);
-		}
+		let sleep_duration = {
+			let connection = db.connect();
+			connection
+				.and_then(|c| {
+					misc_settings::table
+						.get_result(&c)
+						.map_err(|e| Error::new(e))
+				})
+				.map(|s: MiscSettings| s.index_sleep_duration_seconds)
+				.unwrap_or_else(|e| {
+					error!("Could not retrieve index sleep duration: {}", e);
+					1800
+				})
+		};
 		thread::sleep(time::Duration::from_secs(sleep_duration as u64));
 	}
 }
@@ -551,20 +521,19 @@ fn virtualize_directory(vfs: &VFS, mut directory: Directory) -> Option<Directory
 	Some(directory)
 }
 
-pub fn browse<T, P>(db: &T, virtual_path: P) -> Result<Vec<CollectionFile>>
+pub fn browse<P>(db: &DB, virtual_path: P) -> Result<Vec<CollectionFile>>
 where
-	T: ConnectionSource + VFSSource,
 	P: AsRef<Path>,
 {
 	let mut output = Vec::new();
 	let vfs = db.get_vfs()?;
-	let connection = db.get_connection();
+	let connection = db.connect()?;
 
 	if virtual_path.as_ref().components().count() == 0 {
 		// Browse top-level
 		let real_directories: Vec<Directory> = directories::table
 			.filter(directories::parent.is_null())
-			.load(connection.deref())?;
+			.load(&connection)?;
 		let virtual_directories = real_directories
 			.into_iter()
 			.filter_map(|s| virtualize_directory(&vfs, s));
@@ -577,7 +546,7 @@ where
 		let real_directories: Vec<Directory> = directories::table
 			.filter(directories::parent.eq(&real_path_string))
 			.order(sql::<sql_types::Bool>("path COLLATE NOCASE ASC"))
-			.load(connection.deref())?;
+			.load(&connection)?;
 		let virtual_directories = real_directories
 			.into_iter()
 			.filter_map(|s| virtualize_directory(&vfs, s));
@@ -586,7 +555,7 @@ where
 		let real_songs: Vec<Song> = songs::table
 			.filter(songs::parent.eq(&real_path_string))
 			.order(sql::<sql_types::Bool>("path COLLATE NOCASE ASC"))
-			.load(connection.deref())?;
+			.load(&connection)?;
 		let virtual_songs = real_songs
 			.into_iter()
 			.filter_map(|s| virtualize_song(&vfs, s));
@@ -596,14 +565,13 @@ where
 	Ok(output)
 }
 
-pub fn flatten<T, P>(db: &T, virtual_path: P) -> Result<Vec<Song>>
+pub fn flatten<P>(db: &DB, virtual_path: P) -> Result<Vec<Song>>
 where
-	T: ConnectionSource + VFSSource,
 	P: AsRef<Path>,
 {
 	use self::songs::dsl::*;
 	let vfs = db.get_vfs()?;
-	let connection = db.get_connection();
+	let connection = db.connect()?;
 
 	let real_songs: Vec<Song> = if virtual_path.as_ref().parent() != None {
 		let real_path = vfs.virtual_to_real(virtual_path)?;
@@ -611,9 +579,9 @@ where
 		songs
 			.filter(path.like(&like_path))
 			.order(path)
-			.load(connection.deref())?
+			.load(&connection)?
 	} else {
-		songs.order(path).load(connection.deref())?
+		songs.order(path).load(&connection)?
 	};
 
 	let virtual_songs = real_songs
@@ -622,48 +590,39 @@ where
 	Ok(virtual_songs.collect::<Vec<_>>())
 }
 
-pub fn get_random_albums<T>(db: &T, count: i64) -> Result<Vec<Directory>>
-where
-	T: ConnectionSource + VFSSource,
-{
+pub fn get_random_albums(db: &DB, count: i64) -> Result<Vec<Directory>> {
 	use self::directories::dsl::*;
 	let vfs = db.get_vfs()?;
-	let connection = db.get_connection();
+	let connection = db.connect()?;
 	let real_directories = directories
 		.filter(album.is_not_null())
 		.limit(count)
 		.order(random)
-		.load(connection.deref())?;
+		.load(&connection)?;
 	let virtual_directories = real_directories
 		.into_iter()
 		.filter_map(|s| virtualize_directory(&vfs, s));
 	Ok(virtual_directories.collect::<Vec<_>>())
 }
 
-pub fn get_recent_albums<T>(db: &T, count: i64) -> Result<Vec<Directory>>
-where
-	T: ConnectionSource + VFSSource,
-{
+pub fn get_recent_albums(db: &DB, count: i64) -> Result<Vec<Directory>> {
 	use self::directories::dsl::*;
 	let vfs = db.get_vfs()?;
-	let connection = db.get_connection();
+	let connection = db.connect()?;
 	let real_directories: Vec<Directory> = directories
 		.filter(album.is_not_null())
 		.order(date_added.desc())
 		.limit(count)
-		.load(connection.deref())?;
+		.load(&connection)?;
 	let virtual_directories = real_directories
 		.into_iter()
 		.filter_map(|s| virtualize_directory(&vfs, s));
 	Ok(virtual_directories.collect::<Vec<_>>())
 }
 
-pub fn search<T>(db: &T, query: &str) -> Result<Vec<CollectionFile>>
-where
-	T: ConnectionSource + VFSSource,
-{
+pub fn search(db: &DB, query: &str) -> Result<Vec<CollectionFile>> {
 	let vfs = db.get_vfs()?;
-	let connection = db.get_connection();
+	let connection = db.connect()?;
 	let like_test = format!("%{}%", query);
 	let mut output = Vec::new();
 
@@ -673,7 +632,7 @@ where
 		let real_directories: Vec<Directory> = directories
 			.filter(path.like(&like_test))
 			.filter(parent.not_like(&like_test))
-			.load(connection.deref())?;
+			.load(&connection)?;
 
 		let virtual_directories = real_directories
 			.into_iter()
@@ -694,7 +653,7 @@ where
 					.or(album_artist.like(&like_test)),
 			)
 			.filter(parent.not_like(&like_test))
-			.load(connection.deref())?;
+			.load(&connection)?;
 
 		let virtual_songs = real_songs
 			.into_iter()
@@ -706,19 +665,16 @@ where
 	Ok(output)
 }
 
-pub fn get_song<T>(db: &T, virtual_path: &Path) -> Result<Song>
-where
-	T: ConnectionSource + VFSSource,
-{
+pub fn get_song(db: &DB, virtual_path: &Path) -> Result<Song> {
 	let vfs = db.get_vfs()?;
-	let connection = db.get_connection();
+	let connection = db.connect()?;
 	let real_path = vfs.virtual_to_real(virtual_path)?;
 	let real_path_string = real_path.as_path().to_string_lossy();
 
 	use self::songs::dsl::*;
 	let real_song: Song = songs
 		.filter(path.eq(real_path_string))
-		.get_result(connection.deref())?;
+		.get_result(&connection)?;
 
 	match virtualize_song(&vfs, real_song) {
 		Some(s) => Ok(s),
@@ -732,9 +688,9 @@ fn test_populate() {
 	update(&db).unwrap();
 	update(&db).unwrap(); // Check that subsequent updates don't run into conflicts
 
-	let connection = db.get_connection();
-	let all_directories: Vec<Directory> = directories::table.load(connection.deref()).unwrap();
-	let all_songs: Vec<Song> = songs::table.load(connection.deref()).unwrap();
+	let connection = db.connect().unwrap();
+	let all_directories: Vec<Directory> = directories::table.load(&connection).unwrap();
+	let all_songs: Vec<Song> = songs::table.load(&connection).unwrap();
 	assert_eq!(all_directories.len(), 5);
 	assert_eq!(all_songs.len(), 12);
 }
@@ -756,10 +712,10 @@ fn test_metadata() {
 	let db = db::get_test_db("metadata.sqlite");
 	update(&db).unwrap();
 
-	let connection = db.get_connection();
+	let connection = db.connect().unwrap();
 	let songs: Vec<Song> = songs::table
 		.filter(songs::title.eq("シャーベット (Sherbet)"))
-		.load(connection.deref())
+		.load(&connection)
 		.unwrap();
 
 	assert_eq!(songs.len(), 1);

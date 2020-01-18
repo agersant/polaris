@@ -1,6 +1,5 @@
 use anyhow::*;
 use core::clone::Clone;
-use core::ops::Deref;
 use diesel;
 use diesel::prelude::*;
 use diesel::sql_types;
@@ -9,7 +8,7 @@ use std::path::Path;
 
 #[cfg(test)]
 use crate::db;
-use crate::db::ConnectionSource;
+use crate::db::DB;
 use crate::db::{playlist_songs, playlists, users};
 use crate::index::{self, Song};
 use crate::vfs::VFSSource;
@@ -48,11 +47,8 @@ pub struct NewPlaylistSong {
 	ordering: i32,
 }
 
-pub fn list_playlists<T>(owner: &str, db: &T) -> Result<Vec<String>>
-where
-	T: ConnectionSource + VFSSource,
-{
-	let connection = db.get_connection();
+pub fn list_playlists(owner: &str, db: &DB) -> Result<Vec<String>> {
+	let connection = db.connect()?;
 
 	let user: User;
 	{
@@ -60,29 +56,26 @@ where
 		user = users
 			.filter(name.eq(owner))
 			.select((id,))
-			.first(connection.deref())?;
+			.first(&connection)?;
 	}
 
 	{
 		use self::playlists::dsl::*;
 		let found_playlists: Vec<String> = Playlist::belonging_to(&user)
 			.select(name)
-			.load(connection.deref())?;
+			.load(&connection)?;
 		Ok(found_playlists)
 	}
 }
 
-pub fn save_playlist<T>(playlist_name: &str, owner: &str, content: &[String], db: &T) -> Result<()>
-where
-	T: ConnectionSource + VFSSource,
-{
+pub fn save_playlist(playlist_name: &str, owner: &str, content: &[String], db: &DB) -> Result<()> {
 	let user: User;
 	let new_playlist: NewPlaylist;
 	let playlist: Playlist;
 	let vfs = db.get_vfs()?;
 
 	{
-		let connection = db.get_connection();
+		let connection = db.connect()?;
 
 		// Find owner
 		{
@@ -90,7 +83,7 @@ where
 			user = users
 				.filter(name.eq(owner))
 				.select((id,))
-				.get_result(connection.deref())?;
+				.get_result(&connection)?;
 		}
 
 		// Create playlist
@@ -101,14 +94,14 @@ where
 
 		diesel::insert_into(playlists::table)
 			.values(&new_playlist)
-			.execute(connection.deref())?;
+			.execute(&connection)?;
 
 		{
 			use self::playlists::dsl::*;
 			playlist = playlists
 				.select((id, owner))
 				.filter(name.eq(playlist_name).and(owner.eq(user.id)))
-				.get_result(connection.deref())?;
+				.get_result(&connection)?;
 		}
 	}
 
@@ -131,34 +124,29 @@ where
 	}
 
 	{
-		let connection = db.get_connection();
-		connection
-			.deref()
-			.transaction::<_, diesel::result::Error, _>(|| {
-				// Delete old content (if any)
-				let old_songs = PlaylistSong::belonging_to(&playlist);
-				diesel::delete(old_songs).execute(connection.deref())?;
+		let connection = db.connect()?;
+		connection.transaction::<_, diesel::result::Error, _>(|| {
+			// Delete old content (if any)
+			let old_songs = PlaylistSong::belonging_to(&playlist);
+			diesel::delete(old_songs).execute(&connection)?;
 
-				// Insert content
-				diesel::insert_into(playlist_songs::table)
-					.values(&new_songs)
-					.execute(connection.deref())?;
-				Ok(())
-			})?;
+			// Insert content
+			diesel::insert_into(playlist_songs::table)
+				.values(&new_songs)
+				.execute(&*connection)?; // TODO https://github.com/diesel-rs/diesel/issues/1822
+			Ok(())
+		})?;
 	}
 
 	Ok(())
 }
 
-pub fn read_playlist<T>(playlist_name: &str, owner: &str, db: &T) -> Result<Vec<Song>>
-where
-	T: ConnectionSource + VFSSource,
-{
+pub fn read_playlist(playlist_name: &str, owner: &str, db: &DB) -> Result<Vec<Song>> {
 	let vfs = db.get_vfs()?;
 	let songs: Vec<Song>;
 
 	{
-		let connection = db.get_connection();
+		let connection = db.connect()?;
 		let user: User;
 		let playlist: Playlist;
 
@@ -168,7 +156,7 @@ where
 			user = users
 				.filter(name.eq(owner))
 				.select((id,))
-				.get_result(connection.deref())?;
+				.get_result(&connection)?;
 		}
 
 		// Find playlist
@@ -177,7 +165,7 @@ where
 			playlist = playlists
 				.select((id, owner))
 				.filter(name.eq(playlist_name).and(owner.eq(user.id)))
-				.get_result(connection.deref())?;
+				.get_result(&connection)?;
 		}
 
 		// Select songs. Not using Diesel because we need to LEFT JOIN using a custom column
@@ -191,7 +179,7 @@ where
 		"#,
 		);
 		let query = query.clone().bind::<sql_types::Integer, _>(playlist.id);
-		songs = query.get_results(connection.deref())?;
+		songs = query.get_results(&connection)?;
 	}
 
 	// Map real path to virtual paths
@@ -203,11 +191,8 @@ where
 	Ok(virtual_songs)
 }
 
-pub fn delete_playlist<T>(playlist_name: &str, owner: &str, db: &T) -> Result<()>
-where
-	T: ConnectionSource + VFSSource,
-{
-	let connection = db.get_connection();
+pub fn delete_playlist(playlist_name: &str, owner: &str, db: &DB) -> Result<()> {
+	let connection = db.connect()?;
 
 	let user: User;
 	{
@@ -215,13 +200,13 @@ where
 		user = users
 			.filter(name.eq(owner))
 			.select((id,))
-			.first(connection.deref())?;
+			.first(&connection)?;
 	}
 
 	{
 		use self::playlists::dsl::*;
 		let q = Playlist::belonging_to(&user).filter(name.eq(playlist_name));
-		diesel::delete(q).execute(connection.deref())?;
+		diesel::delete(q).execute(&connection)?;
 	}
 
 	Ok(())

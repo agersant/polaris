@@ -1,10 +1,9 @@
 use anyhow::*;
-use core::ops::Deref;
 use diesel;
 use diesel::prelude::*;
 
 use crate::db::users;
-use crate::db::ConnectionSource;
+use crate::db::DB;
 
 #[derive(Debug, Insertable, Queryable)]
 #[table_name = "users"]
@@ -38,16 +37,13 @@ fn verify_password(password_hash: &str, attempted_password: &str) -> bool {
 	pbkdf2::pbkdf2_check(attempted_password, password_hash).is_ok()
 }
 
-pub fn auth<T>(db: &T, username: &str, password: &str) -> Result<bool>
-where
-	T: ConnectionSource,
-{
+pub fn auth(db: &DB, username: &str, password: &str) -> Result<bool> {
 	use crate::db::users::dsl::*;
-	let connection = db.get_connection();
+	let connection = db.connect()?;
 	match users
 		.select(password_hash)
 		.filter(name.eq(username))
-		.get_result(connection.deref())
+		.get_result(&connection)
 	{
 		Err(diesel::result::Error::NotFound) => Ok(false),
 		Ok(hash) => {
@@ -58,88 +54,67 @@ where
 	}
 }
 
-pub fn count<T>(db: &T) -> Result<i64>
-where
-	T: ConnectionSource,
-{
+pub fn count(db: &DB) -> Result<i64> {
 	use crate::db::users::dsl::*;
-	let connection = db.get_connection();
-	let count = users.count().get_result(connection.deref())?;
+	let connection = db.connect()?;
+	let count = users.count().get_result(&connection)?;
 	Ok(count)
 }
 
-pub fn exists<T>(db: &T, username: &str) -> Result<bool>
-where
-	T: ConnectionSource,
-{
+pub fn exists(db: &DB, username: &str) -> Result<bool> {
 	use crate::db::users::dsl::*;
-	let connection = db.get_connection();
+	let connection = db.connect()?;
 	let results: Vec<String> = users
 		.select(name)
 		.filter(name.eq(username))
-		.get_results(connection.deref())?;
+		.get_results(&connection)?;
 	Ok(results.len() > 0)
 }
 
-pub fn is_admin<T>(db: &T, username: &str) -> Result<bool>
-where
-	T: ConnectionSource,
-{
+pub fn is_admin(db: &DB, username: &str) -> Result<bool> {
 	use crate::db::users::dsl::*;
-	let connection = db.get_connection();
+	let connection = db.connect()?;
 	let is_admin: i32 = users
 		.filter(name.eq(username))
 		.select(admin)
-		.get_result(connection.deref())?;
+		.get_result(&connection)?;
 	Ok(is_admin != 0)
 }
 
-pub fn lastfm_link<T>(db: &T, username: &str, lastfm_login: &str, session_key: &str) -> Result<()>
-where
-	T: ConnectionSource,
-{
+pub fn lastfm_link(db: &DB, username: &str, lastfm_login: &str, session_key: &str) -> Result<()> {
 	use crate::db::users::dsl::*;
-	let connection = db.get_connection();
+	let connection = db.connect()?;
 	diesel::update(users.filter(name.eq(username)))
 		.set((
 			lastfm_username.eq(lastfm_login),
 			lastfm_session_key.eq(session_key),
 		))
-		.execute(connection.deref())?;
+		.execute(&connection)?;
 	Ok(())
 }
 
-pub fn get_lastfm_session_key<T>(db: &T, username: &str) -> Result<String>
-where
-	T: ConnectionSource,
-{
+pub fn get_lastfm_session_key(db: &DB, username: &str) -> Result<String> {
 	use crate::db::users::dsl::*;
-	let connection = db.get_connection();
+	let connection = db.connect()?;
 	let token = users
 		.filter(name.eq(username))
 		.select(lastfm_session_key)
-		.get_result(connection.deref())?;
+		.get_result(&connection)?;
 	match token {
 		Some(t) => Ok(t),
 		_ => Err(anyhow!("Missing LastFM credentials")),
 	}
 }
 
-pub fn is_lastfm_linked<T>(db: &T, username: &str) -> bool
-where
-	T: ConnectionSource,
-{
+pub fn is_lastfm_linked(db: &DB, username: &str) -> bool {
 	get_lastfm_session_key(db, username).is_ok()
 }
 
-pub fn lastfm_unlink<T>(db: &T, username: &str) -> Result<()>
-where
-	T: ConnectionSource,
-{
+pub fn lastfm_unlink(db: &DB, username: &str) -> Result<()> {
 	use crate::db::users::dsl::*;
-	let connection = db.get_connection();
+	let connection = db.connect()?;
 	diesel::update(users.filter(name.eq(username)))
 		.set((lastfm_session_key.eq(""), lastfm_username.eq("")))
-		.execute(connection.deref())?;
+		.execute(&connection)?;
 	Ok(())
 }

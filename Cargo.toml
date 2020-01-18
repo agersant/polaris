@@ -5,19 +5,24 @@ authors = ["Antoine Gersant <antoine.gersant@lesforges.org>"]
 edition = "2018"
 
 [features]
+default = ["service-rocket"]
 ui = []
 profile-index = ["flame", "flamer"]
+service-rocket = ["rocket", "rocket_contrib"]
 
 [dependencies]
 anyhow = "1.0"
 ape = "0.2.0"
 app_dirs = "1.1.1"
 base64 = "0.11.0"
-diesel = { version = "1.4", features = ["sqlite"] }
+cookie = "0.12.0"
+diesel = { version = "1.4", features = ["sqlite", "r2d2"] }
 diesel_migrations = { version = "1.4", features = ["sqlite"] }
 flame = { version = "0.2.2", optional = true }
 flamer = { version = "0.4", optional = true }
+function_name = "0.2.0"
 getopts = "0.2.15"
+http = "0.2"
 id3 = "0.3"
 image = "0.22"
 libsqlite3-sys = { version = "0.16", features = ["bundled-windows"] }
@@ -30,7 +35,7 @@ pbkdf2 = "0.3"
 rand = "0.7"
 regex = "1.2"
 reqwest = "0.9.2"
-rocket = "0.4.2"
+rocket = { version = "0.4.2", optional = true }
 rust-crypto = "0.2.36"
 serde = { version = "1.0", features = ["derive"] }
 serde_derive = "1.0"
@@ -39,11 +44,13 @@ simplelog = "0.7"
 thiserror = "1.0"
 time = "0.1"
 toml = "0.5"
+url = "2.1"
 
 [dependencies.rocket_contrib]
 version = "0.4.2"
 default_features = false
 features = ["json", "serve"]
+optional = true
 
 [target.'cfg(windows)'.dependencies]
 uuid = "0.8"
@@ -55,3 +62,6 @@ features = ["winuser", "libloaderapi", "shellapi", "errhandlingapi"]
 [target.'cfg(unix)'.dependencies]
 sd-notify = "0.1.0"
 unix-daemonize = "0.1.2"
+
+[dev-dependencies]
+percent-encoding = "2.1"
