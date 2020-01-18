@@ -482,7 +482,10 @@ pub fn self_trigger(db: &DB, command_buffer: &Arc<CommandSender>) {
 						.map_err(|e| Error::new(e))
 				})
 				.map(|s: MiscSettings| s.index_sleep_duration_seconds)
-				.unwrap_or(1800) // TODO log error
+				.unwrap_or_else(|e| {
+					error!("Could not retrieve index sleep duration: {}", e);
+					1800
+				})
 		};
 		thread::sleep(time::Duration::from_secs(sleep_duration as u64));
 	}
