@@ -315,10 +315,16 @@ fn insert_songs(receiver: Receiver<NewSong>, db: DB) {
 			Ok(s) => {
 				new_entries.push(s);
 				if new_entries.len() >= INDEX_BUILDING_INSERT_BUFFER_SIZE {
-					let connection = db.connect().unwrap();
-					diesel::insert_into(songs::table)
-					.values(&new_entries)
-					.execute(&*connection).unwrap(); // TODO https://github.com/diesel-rs/diesel/issues/1822
+					if db.connect()
+					.and_then(|connection|{
+						diesel::insert_into(songs::table)
+							.values(&new_entries)
+							.execute(&*connection) // TODO https://github.com/diesel-rs/diesel/issues/1822
+							.map_err(Error::new)
+					})
+					.is_err() {
+						error!("Could not insert new songs in database");
+					}
 					new_entries.clear();
 				}
 			},
@@ -327,10 +333,16 @@ fn insert_songs(receiver: Receiver<NewSong>, db: DB) {
 	}
 
 	if new_entries.len() > 0 {
-		let connection = db.connect().unwrap();
-		diesel::insert_into(songs::table)
-			.values(&new_entries)
-			.execute(&*connection).unwrap();
+		if db.connect()
+		.and_then(|connection|{
+			diesel::insert_into(songs::table)
+				.values(&new_entries)
+				.execute(&*connection) // TODO https://github.com/diesel-rs/diesel/issues/1822
+				.map_err(Error::new)
+		})
+		.is_err() {
+			error!("Could not insert new songs in database");
+		}
 	}
 }
 
@@ -343,10 +355,16 @@ fn insert_directories(receiver: Receiver<NewDirectory>, db: DB) {
 			Ok(s) => {
 				new_entries.push(s);
 				if new_entries.len() >= INDEX_BUILDING_INSERT_BUFFER_SIZE {
-					let connection = db.connect().unwrap();
-					diesel::insert_into(directories::table)
-					.values(&new_entries)
-					.execute(&*connection).unwrap(); // TODO https://github.com/diesel-rs/diesel/issues/1822
+					if db.connect()
+					.and_then(|connection|{
+						diesel::insert_into(directories::table)
+							.values(&new_entries)
+							.execute(&*connection) // TODO https://github.com/diesel-rs/diesel/issues/1822
+							.map_err(Error::new)
+					})
+					.is_err() {
+						error!("Could not insert new directories in database");
+					}
 					new_entries.clear();
 				}
 			},
@@ -355,9 +373,15 @@ fn insert_directories(receiver: Receiver<NewDirectory>, db: DB) {
 	}
 
 	if new_entries.len() > 0 {
-		let connection = db.connect().unwrap();
-		diesel::insert_into(directories::table)
-			.values(&new_entries)
-			.execute(&*connection).unwrap();
+		if db.connect()
+		.and_then(|connection|{
+			diesel::insert_into(directories::table)
+				.values(&new_entries)
+				.execute(&*connection) // TODO https://github.com/diesel-rs/diesel/issues/1822
+				.map_err(Error::new)
+		})
+		.is_err() {
+			error!("Could not insert new directories in database");
+		}
 	}
 }
