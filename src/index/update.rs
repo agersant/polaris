@@ -99,8 +99,15 @@ impl IndexUpdater {
 		Ok(None)
 	}
 
-	#[cfg_attr(feature = "profile-index", flame)]
 	fn populate_directory(&mut self, parent: Option<&Path>, path: &Path) -> Result<()> {
+
+		#[cfg(feature = "profile-index")]
+		let _guard = flame::start_guard(format!("dir: {}",
+			path.file_name().map(|s| {
+				s.to_string_lossy().into_owned()
+			}).unwrap_or("Unknown".to_owned())
+		));
+
 		// Find artwork
 		let artwork = {
 			#[cfg(feature = "profile-index")]
@@ -140,8 +147,7 @@ impl IndexUpdater {
 
 		// Insert content
 		for file in fs::read_dir(path)? {
-			#[cfg(feature = "profile-index")]
-			let _guard = flame::start_guard("directory-entry");
+
 			let file_path = match file {
 				Ok(ref f) => f.path(),
 				_ => {
@@ -150,6 +156,13 @@ impl IndexUpdater {
 				}
 			};
 
+			#[cfg(feature = "profile-index")]
+			let _guard = flame::start_guard(format!("file: {}",
+				file_path.as_path().file_name().map(|s| {
+					s.to_string_lossy().into_owned()
+				}).unwrap_or("Unknown".to_owned())
+			));
+
 			if file_path.is_dir() {
 				sub_directories.push(file_path.to_path_buf());
 				continue;
@@ -157,9 +170,6 @@ impl IndexUpdater {
 
 			if let Some(file_path_string) = file_path.to_str() {
 				if let Some(tags) = metadata::read(file_path.as_path()) {
-
-					#[cfg(feature = "profile-index")]
-					let _guard = flame::start_guard("process_song");
 
 					if tags.year.is_some() {
 						inconsistent_directory_year |=
