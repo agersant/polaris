@@ -4,6 +4,7 @@ use diesel::prelude::*;
 #[cfg(feature = "profile-index")]
 use flame;
 use log::{error, info};
+use rayon::prelude::*;
 use regex::Regex;
 use std::fs;
 use std::path::Path;
@@ -261,7 +262,7 @@ pub fn clean(db: &DB) -> Result<()> {
 		}
 
 		let missing_songs = all_songs
-			.into_iter()
+			.par_iter()
 			.filter(|ref song_path| {
 				let path = Path::new(&song_path);
 				!path.exists() || vfs.real_to_virtual(path).is_err()
@@ -287,7 +288,7 @@ pub fn clean(db: &DB) -> Result<()> {
 		}
 
 		let missing_directories = all_directories
-			.into_iter()
+			.par_iter()
 			.filter(|ref directory_path| {
 				let path = Path::new(&directory_path);
 				!path.exists() || vfs.real_to_virtual(path).is_err()
