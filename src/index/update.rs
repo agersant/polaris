@@ -4,14 +4,16 @@ use diesel::prelude::*;
 #[cfg(feature = "profile-index")]
 use flame;
 use log::{error, info};
+use rayon::prelude::*;
 use regex::Regex;
 use std::fs;
 use std::path::Path;
 use std::time;
+use std::sync::mpsc::*;
 
 use crate::config::MiscSettings;
 use crate::db::{directories, misc_settings, songs, DB};
-use crate::metadata;
+use crate::index::metadata;
 use crate::vfs::VFSSource;
 
 const INDEX_BUILDING_INSERT_BUFFER_SIZE: usize = 1000; // Insertions in each transaction
@@ -24,7 +26,7 @@ pub fn update(db: &DB) -> Result<()> {
 	populate(db)?;
 	info!(
 		"Library index update took {} seconds",
-		start.elapsed().as_secs()
+		start.elapsed().as_millis() as f32 / 1000.0
 	);
 	#[cfg(feature = "profile-index")]
 	flame::dump_html(&mut fs::File::create("index-flame-graph.html").unwrap()).unwrap();
@@ -59,64 +61,30 @@ struct NewDirectory {
 	date_added: i32,
 }
 
-struct IndexBuilder {
-	new_songs: Vec<NewSong>,
-	new_directories: Vec<NewDirectory>,
-	db: DB,
+struct IndexUpdater {
+	directory_sender: Sender<NewDirectory>,
+	song_sender: Sender<NewSong>,
 	album_art_pattern: Regex,
 }
 
-impl IndexBuilder {
+impl IndexUpdater {
 	#[cfg_attr(feature = "profile-index", flame)]
-	fn new(db: DB, album_art_pattern: Regex) -> Result<IndexBuilder> {
-		let mut new_songs = Vec::new();
-		let mut new_directories = Vec::new();
-		new_songs.reserve_exact(INDEX_BUILDING_INSERT_BUFFER_SIZE);
-		new_directories.reserve_exact(INDEX_BUILDING_INSERT_BUFFER_SIZE);
-		Ok(IndexBuilder {
-			new_songs,
-			new_directories,
-			db,
+	fn new(album_art_pattern: Regex, directory_sender: Sender<NewDirectory>, song_sender: Sender<NewSong>) -> Result<IndexUpdater> {
+		Ok(IndexUpdater {
+			directory_sender,
+			song_sender,
 			album_art_pattern,
 		})
 	}
 
 	#[cfg_attr(feature = "profile-index", flame)]
-	fn flush_songs(&mut self) -> Result<()> {
-		let connection = self.db.connect()?;
-		diesel::insert_into(songs::table)
-			.values(&self.new_songs)
-			.execute(&*connection)?; // TODO https://github.com/diesel-rs/diesel/issues/1822
-		self.new_songs.clear();
-		Ok(())
-	}
-
-	#[cfg_attr(feature = "profile-index", flame)]
-	fn flush_directories(&mut self) -> Result<()> {
-		let connection = self.db.connect()?;
-		diesel::insert_into(directories::table)
-			.values(&self.new_directories)
-			.execute(&*connection)?; // TODO https://github.com/diesel-rs/diesel/issues/1822
-		self.new_directories.clear();
-		Ok(())
-	}
-
-	#[cfg_attr(feature = "profile-index", flame)]
 	fn push_song(&mut self, song: NewSong) -> Result<()> {
-		if self.new_songs.len() >= self.new_songs.capacity() {
-			self.flush_songs()?;
-		}
-		self.new_songs.push(song);
-		Ok(())
+		self.song_sender.send(song).map_err(Error::new)
 	}
 
 	#[cfg_attr(feature = "profile-index", flame)]
 	fn push_directory(&mut self, directory: NewDirectory) -> Result<()> {
-		if self.new_directories.len() >= self.new_directories.capacity() {
-			self.flush_directories()?;
-		}
-		self.new_directories.push(directory);
-		Ok(())
+		self.directory_sender.send(directory).map_err(Error::new)
 	}
 
 	fn get_artwork(&self, dir: &Path) -> Result<Option<String>> {
@@ -134,19 +102,31 @@ impl IndexBuilder {
 	#[cfg_attr(feature = "profile-index", flame)]
 	fn populate_directory(&mut self, parent: Option<&Path>, path: &Path) -> Result<()> {
 		// Find artwork
-		let artwork = self.get_artwork(path).unwrap_or(None);
+		let artwork = {
+			#[cfg(feature = "profile-index")]
+			let _guard = flame::start_guard("artwork");
+			self.get_artwork(path).unwrap_or(None)
+		};
 
 		// Extract path and parent path
 		let parent_string = parent.and_then(|p| p.to_str()).map(|s| s.to_owned());
 		let path_string = path.to_str().ok_or(anyhow!("Invalid directory path"))?;
 
 		// Find date added
-		let metadata = fs::metadata(path_string)?;
-		let created = metadata
+		let metadata = {
+			#[cfg(feature = "profile-index")]
+			let _guard = flame::start_guard("metadata");
+			fs::metadata(path_string)?
+		};
+		let created = {
+			#[cfg(feature = "profile-index")]
+			let _guard = flame::start_guard("created_date");
+			metadata
 			.created()
 			.or_else(|_| metadata.modified())?
 			.duration_since(time::UNIX_EPOCH)?
-			.as_secs() as i32;
+			.as_secs() as i32
+		};
 
 		let mut directory_album = None;
 		let mut directory_year = None;
@@ -176,7 +156,11 @@ impl IndexBuilder {
 			}
 
 			if let Some(file_path_string) = file_path.to_str() {
-				if let Ok(tags) = metadata::read(file_path.as_path()) {
+				if let Some(tags) = metadata::read(file_path.as_path()) {
+
+					#[cfg(feature = "profile-index")]
+					let _guard = flame::start_guard("process_song");
+
 					if tags.year.is_some() {
 						inconsistent_directory_year |=
 							directory_year.is_some() && directory_year != tags.year;
@@ -219,25 +203,31 @@ impl IndexBuilder {
 		}
 
 		// Insert directory
-		if inconsistent_directory_year {
-			directory_year = None;
-		}
-		if inconsistent_directory_album {
-			directory_album = None;
-		}
-		if inconsistent_directory_artist {
-			directory_artist = None;
-		}
+		let directory = {
+			#[cfg(feature = "profile-index")]
+			let _guard = flame::start_guard("create_directory");
 
-		let directory = NewDirectory {
-			path: path_string.to_owned(),
-			parent: parent_string,
-			artwork,
-			album: directory_album,
-			artist: directory_artist,
-			year: directory_year,
-			date_added: created,
+			if inconsistent_directory_year {
+				directory_year = None;
+			}
+			if inconsistent_directory_album {
+				directory_album = None;
+			}
+			if inconsistent_directory_artist {
+				directory_artist = None;
+			}
+
+			NewDirectory {
+				path: path_string.to_owned(),
+				parent: parent_string,
+				artwork,
+				album: directory_album,
+				artist: directory_artist,
+				year: directory_year,
+				date_added: created,
+			}
 		};
+
 		self.push_directory(directory)?;
 
 		// Populate subdirectories
@@ -261,7 +251,7 @@ pub fn clean(db: &DB) -> Result<()> {
 		}
 
 		let missing_songs = all_songs
-			.into_iter()
+			.par_iter()
 			.filter(|ref song_path| {
 				let path = Path::new(&song_path);
 				!path.exists() || vfs.real_to_virtual(path).is_err()
@@ -287,7 +277,7 @@ pub fn clean(db: &DB) -> Result<()> {
 		}
 
 		let missing_directories = all_directories
-			.into_iter()
+			.par_iter()
 			.filter(|ref directory_path| {
 				let path = Path::new(&directory_path);
 				!path.exists() || vfs.real_to_virtual(path).is_err()
@@ -311,18 +301,112 @@ pub fn populate(db: &DB) -> Result<()> {
 	let vfs = db.get_vfs()?;
 	let mount_points = vfs.get_mount_points();
 
-	let album_art_pattern;
-	{
+	let album_art_pattern  = {
 		let connection = db.connect()?;
 		let settings: MiscSettings = misc_settings::table.get_result(&connection)?;
-		album_art_pattern = Regex::new(&settings.index_album_art_pattern)?;
+		Regex::new(&settings.index_album_art_pattern)?
+	};
+
+	let (directory_sender, directory_receiver) = channel();
+	let (song_sender, song_receiver) = channel();
+
+	let songs_db = db.clone();
+	let directories_db = db.clone();
+
+	let directories_thread = std::thread::spawn(move || {
+		insert_directories(directory_receiver, directories_db);
+	});
+
+	let songs_thread = std::thread::spawn(move || {
+		insert_songs(song_receiver, songs_db);
+	});
+
+	{
+		let mut updater = IndexUpdater::new(album_art_pattern, directory_sender, song_sender)?;
+		for target in mount_points.values() {
+			updater.populate_directory(None, target.as_path())?;
+		}
 	}
 
-	let mut builder = IndexBuilder::new(db.clone(), album_art_pattern)?;
-	for target in mount_points.values() {
-		builder.populate_directory(None, target.as_path())?;
+	match directories_thread.join() {
+		Err(e) => error!("Error while waiting for directory insertions to complete: {:?}", e),
+		_ => (),
 	}
-	builder.flush_songs()?;
-	builder.flush_directories()?;
+
+	match songs_thread.join() {
+		Err(e) => error!("Error while waiting for song insertions to complete: {:?}", e),
+		_ => (),
+	}
+
 	Ok(())
+}
+
+fn flush_directories(db: &DB, entries: &Vec<NewDirectory>) {
+	if db.connect()
+	.and_then(|connection|{
+		diesel::insert_into(directories::table)
+			.values(entries)
+			.execute(&*connection) // TODO https://github.com/diesel-rs/diesel/issues/1822
+			.map_err(Error::new)
+	})
+	.is_err() {
+		error!("Could not insert new directories in database");
+	}
+}
+
+fn flush_songs(db: &DB, entries: &Vec<NewSong>) {
+	if db.connect()
+	.and_then(|connection|{
+		diesel::insert_into(songs::table)
+			.values(entries)
+			.execute(&*connection) // TODO https://github.com/diesel-rs/diesel/issues/1822
+			.map_err(Error::new)
+	})
+	.is_err() {
+		error!("Could not insert new songs in database");
+	}
+}
+
+fn insert_directories(receiver: Receiver<NewDirectory>, db: DB) {
+	let mut new_entries = Vec::new();
+	new_entries.reserve_exact(INDEX_BUILDING_INSERT_BUFFER_SIZE);
+
+	loop {
+		match receiver.recv() {
+			Ok(s) => {
+				new_entries.push(s);
+				if new_entries.len() >= INDEX_BUILDING_INSERT_BUFFER_SIZE {
+					flush_directories(&db, &new_entries);
+					new_entries.clear();
+				}
+			},
+			Err(_) => break,
+		}
+	}
+
+	if new_entries.len() > 0 {
+		flush_directories(&db, &new_entries);
+	}
+}
+
+fn insert_songs(receiver: Receiver<NewSong>, db: DB) {
+	let mut new_entries = Vec::new();
+	new_entries.reserve_exact(INDEX_BUILDING_INSERT_BUFFER_SIZE);
+
+	loop {
+		match receiver.recv() {
+			Ok(s) => {
+				new_entries.push(s);
+				if new_entries.len() >= INDEX_BUILDING_INSERT_BUFFER_SIZE {
+					flush_songs(&db, &new_entries);
+					new_entries.clear();
+				}
+			},
+			Err(_) => break,
+		}
+	}
+
+	if new_entries.len() > 0 {
+		flush_songs(&db, &new_entries);
+	}
 }

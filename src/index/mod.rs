@@ -11,6 +11,7 @@ use crate::db::{misc_settings, DB};
 use crate::config::MiscSettings;
 use crate::vfs::VFS;
 
+mod metadata;
 mod query;
 #[cfg(test)]
 mod test;

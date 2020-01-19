@@ -2,6 +2,7 @@ use anyhow::*;
 use ape;
 use id3;
 use lewton::inside_ogg::OggStreamReader;
+use log::error;
 use metaflac;
 use mp3_duration;
 use regex::Regex;
@@ -24,22 +25,38 @@ pub struct SongTags {
 }
 
 #[cfg_attr(feature = "profile-index", flame)]
-pub fn read(path: &Path) -> Result<SongTags> {
-	match utils::get_audio_format(path) {
-		Some(AudioFormat::FLAC) => read_flac(path),
-		Some(AudioFormat::MP3) => read_id3(path),
-		Some(AudioFormat::MPC) => read_ape(path),
-		Some(AudioFormat::OGG) => read_vorbis(path),
-		_ => bail!("Unsupported file format for reading metadata"),
+pub fn read(path: &Path) -> Option<SongTags> {
+	let data = match utils::get_audio_format(path) {
+		Some(AudioFormat::FLAC) => Some(read_flac(path)),
+		Some(AudioFormat::MP3) => Some(read_id3(path)),
+		Some(AudioFormat::MPC) => Some(read_ape(path)),
+		Some(AudioFormat::OGG) => Some(read_vorbis(path)),
+		_ => None,
+	};
+	match data {
+		Some(Ok(d)) => Some(d),
+		Some(Err(e)) => {
+			error!("Error while reading file metadata for '{:?}': {}", path, e);
+			None
+		}
+		None => None,
 	}
 }
 
 #[cfg_attr(feature = "profile-index", flame)]
 fn read_id3(path: &Path) -> Result<SongTags> {
-	let tag = id3::Tag::read_from_path(&path)?;
-	let duration = mp3_duration::from_path(&path)
+	let tag = {
+		#[cfg(feature = "profile-index")]
+		let _guard = flame::start_guard("id3_tag_read");
+		id3::Tag::read_from_path(&path)?
+	};
+	let duration = {
+		#[cfg(feature = "profile-index")]
+		let _guard = flame::start_guard("mp3_duration");
+		mp3_duration::from_path(&path)
 		.map(|d| d.as_secs() as u32)
-		.ok();
+		.ok()
+	};
 
 	let artist = tag.artist().map(|s| s.to_string());
 	let album_artist = tag.album_artist().map(|s| s.to_string());
