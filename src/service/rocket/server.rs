@@ -3,11 +3,10 @@ use rocket;
 use rocket::config::{Environment, LoggingLevel};
 use rocket_contrib::serve::StaticFiles;
 use std::path::PathBuf;
-use std::sync::Arc;
 
 use super::api;
 use crate::db::DB;
-use crate::index::CommandSender;
+use crate::index::Index;
 
 pub fn get_server(
 	port: u16,
@@ -18,7 +17,7 @@ pub fn get_server(
 	swagger_url: &str,
 	swagger_dir_path: &PathBuf,
 	db: DB,
-	command_sender: Arc<CommandSender>,
+	command_sender: Index,
 ) -> Result<rocket::Rocket> {
 	let mut config = rocket::Config::build(Environment::Production)
 		.log_level(LoggingLevel::Normal)
@@ -55,7 +54,7 @@ pub fn run(
 	swagger_url: String,
 	swagger_dir_path: PathBuf,
 	db: DB,
-	command_sender: Arc<CommandSender>,
+	command_sender: Index,
 ) -> Result<()> {
 	let server = get_server(
 		port,
