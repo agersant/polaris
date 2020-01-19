@@ -319,11 +319,11 @@ pub fn populate(db: &DB) -> Result<()> {
 		album_art_pattern = Regex::new(&settings.index_album_art_pattern)?;
 	}
 
-	let mut builder = IndexUpdater::new(db.clone(), album_art_pattern)?;
+	let mut updater = IndexUpdater::new(db.clone(), album_art_pattern)?;
 	for target in mount_points.values() {
-		builder.populate_directory(None, target.as_path())?;
+		updater.populate_directory(None, target.as_path())?;
 	}
-	builder.flush_songs()?;
-	builder.flush_directories()?;
+	updater.flush_songs()?;
+	updater.flush_directories()?;
 	Ok(())
 }
