@@ -60,21 +60,21 @@ struct NewDirectory {
 	date_added: i32,
 }
 
-struct IndexBuilder {
+struct IndexUpdater {
 	new_songs: Vec<NewSong>,
 	new_directories: Vec<NewDirectory>,
 	db: DB,
 	album_art_pattern: Regex,
 }
 
-impl IndexBuilder {
+impl IndexUpdater {
 	#[cfg_attr(feature = "profile-index", flame)]
-	fn new(db: DB, album_art_pattern: Regex) -> Result<IndexBuilder> {
+	fn new(db: DB, album_art_pattern: Regex) -> Result<IndexUpdater> {
 		let mut new_songs = Vec::new();
 		let mut new_directories = Vec::new();
 		new_songs.reserve_exact(INDEX_BUILDING_INSERT_BUFFER_SIZE);
 		new_directories.reserve_exact(INDEX_BUILDING_INSERT_BUFFER_SIZE);
-		Ok(IndexBuilder {
+		Ok(IndexUpdater {
 			new_songs,
 			new_directories,
 			db,
@@ -319,7 +319,7 @@ pub fn populate(db: &DB) -> Result<()> {
 		album_art_pattern = Regex::new(&settings.index_album_art_pattern)?;
 	}
 
-	let mut builder = IndexBuilder::new(db.clone(), album_art_pattern)?;
+	let mut builder = IndexUpdater::new(db.clone(), album_art_pattern)?;
 	for target in mount_points.values() {
 		builder.populate_directory(None, target.as_path())?;
 	}
