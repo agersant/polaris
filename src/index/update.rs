@@ -25,7 +25,7 @@ pub fn update(db: &DB) -> Result<()> {
 	populate(db)?;
 	info!(
 		"Library index update took {} seconds",
-		start.elapsed().as_secs()
+		start.elapsed().as_millis() as f32 / 1000.0
 	);
 	#[cfg(feature = "profile-index")]
 	flame::dump_html(&mut fs::File::create("index-flame-graph.html").unwrap()).unwrap();
