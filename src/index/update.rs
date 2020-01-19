@@ -144,7 +144,7 @@ impl IndexUpdater {
 			}
 
 			if let Some(file_path_string) = file_path.to_str() {
-				if let Ok(tags) = metadata::read(file_path.as_path()) {
+				if let Some(tags) = metadata::read(file_path.as_path()) {
 					if tags.year.is_some() {
 						inconsistent_directory_year |=
 							directory_year.is_some() && directory_year != tags.year;
