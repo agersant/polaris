@@ -279,28 +279,41 @@ pub fn populate(db: &DB) -> Result<()> {
 	let vfs = db.get_vfs()?;
 	let mount_points = vfs.get_mount_points();
 
-	let album_art_pattern;
-	{
+	let album_art_pattern  = {
 		let connection = db.connect()?;
 		let settings: MiscSettings = misc_settings::table.get_result(&connection)?;
-		album_art_pattern = Regex::new(&settings.index_album_art_pattern)?;
-	}
+		Regex::new(&settings.index_album_art_pattern)?
+	};
 
 	let (directory_sender, directory_receiver) = channel();
+	let (song_sender, song_receiver) = channel();
+
+	let songs_db = db.clone();
 	let directories_db = db.clone();
-	std::thread::spawn(move || {
+
+	let directories_thread = std::thread::spawn(move || {
 		insert_directories(directory_receiver, directories_db);
 	});
 
-	let (song_sender, song_receiver) = channel();
-	let songs_db = db.clone();
-	std::thread::spawn(move || {
+	let songs_thread = std::thread::spawn(move || {
 		insert_songs(song_receiver, songs_db);
 	});
 
-	let mut updater = IndexUpdater::new(album_art_pattern, directory_sender, song_sender)?;
-	for target in mount_points.values() {
-		updater.populate_directory(None, target.as_path())?;
+	{
+		let mut updater = IndexUpdater::new(album_art_pattern, directory_sender, song_sender)?;
+		for target in mount_points.values() {
+			updater.populate_directory(None, target.as_path())?;
+		}
+	}
+
+	match directories_thread.join() {
+		Err(e) => error!("Error while waiting for directory insertions to complete: {:?}", e),
+		_ => (),
+	}
+
+	match songs_thread.join() {
+		Err(e) => error!("Error while waiting for song insertions to complete: {:?}", e),
+		_ => (),
 	}
 
 	Ok(())
