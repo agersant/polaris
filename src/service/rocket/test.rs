@@ -5,9 +5,8 @@ use rocket::local::Client;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::fs;
-use std::ops::{Deref, DerefMut};
+use std::ops::DerefMut;
 use std::path::PathBuf;
-use std::sync::Arc;
 
 use super::server;
 use crate::db::DB;
@@ -49,7 +48,6 @@ impl<'r, 's> RocketResponse<'r, 's> {
 
 pub struct RocketTestService {
 	client: Client,
-	command_sender: Arc<index::CommandSender>,
 }
 
 pub type ServiceType = RocketTestService;
@@ -67,7 +65,7 @@ impl TestService for RocketTestService {
 		let web_dir_path = PathBuf::from("web");
 		let mut swagger_dir_path = PathBuf::from("docs");
 		swagger_dir_path.push("swagger");
-		let command_sender = index::init(db.clone());
+		let index = index::builder(db.clone()).periodic_updates(false).build();
 
 		let auth_secret: [u8; 32] = [0; 32];
 
@@ -79,14 +77,13 @@ impl TestService for RocketTestService {
 			&web_dir_path,
 			"/swagger",
 			&swagger_dir_path,
-			db.clone(),
-			command_sender.clone(),
+			db,
+			index,
 		)
 		.unwrap();
 		let client = Client::new(server).unwrap();
 		RocketTestService {
 			client,
-			command_sender,
 		}
 	}
 
@@ -154,11 +151,5 @@ impl TestService for RocketTestService {
 			response: response.deref_mut(),
 		}
 		.to_void()
-	}
-}
-
-impl Drop for RocketTestService {
-	fn drop(&mut self) {
-		self.command_sender.deref().exit().unwrap();
 	}
 }

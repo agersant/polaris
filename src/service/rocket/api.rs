@@ -9,13 +9,13 @@ use std::ops::Deref;
 use std::path::PathBuf;
 use std::str;
 use std::str::FromStr;
-use std::sync::Arc;
 use time::Duration;
 
 use super::serve;
 use crate::config::{self, Config, Preferences};
 use crate::db::DB;
 use crate::index;
+use crate::index::Index;
 use crate::lastfm;
 use crate::playlist;
 use crate::service::constants::*;
@@ -231,10 +231,10 @@ fn put_preferences(db: State<'_, DB>, auth: Auth, preferences: Json<Preferences>
 
 #[post("/trigger_index")]
 fn trigger_index(
-	command_sender: State<'_, Arc<index::CommandSender>>,
+	index: State<'_, Index>,
 	_admin_rights: AdminRights,
 ) -> Result<()> {
-	command_sender.trigger_reindex()?;
+	index.trigger_reindex();
 	Ok(())
 }
 

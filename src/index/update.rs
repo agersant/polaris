@@ -3,7 +3,7 @@ use diesel;
 use diesel::prelude::*;
 #[cfg(feature = "profile-index")]
 use flame;
-use log::{error};
+use log::{error, info};
 use regex::Regex;
 use std::fs;
 use std::path::Path;
@@ -16,6 +16,20 @@ use crate::vfs::VFSSource;
 
 const INDEX_BUILDING_INSERT_BUFFER_SIZE: usize = 1000; // Insertions in each transaction
 const INDEX_BUILDING_CLEAN_BUFFER_SIZE: usize = 500; // Insertions in each transaction
+
+pub fn update(db: &DB) -> Result<()> {
+	let start = time::Instant::now();
+	info!("Beginning library index update");
+	clean(db)?;
+	populate(db)?;
+	info!(
+		"Library index update took {} seconds",
+		start.elapsed().as_secs()
+	);
+	#[cfg(feature = "profile-index")]
+	flame::dump_html(&mut fs::File::create("index-flame-graph.html").unwrap()).unwrap();
+	Ok(())
+}
 
 #[derive(Debug, Insertable)]
 #[table_name = "songs"]
