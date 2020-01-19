@@ -102,19 +102,31 @@ impl IndexUpdater {
 	#[cfg_attr(feature = "profile-index", flame)]
 	fn populate_directory(&mut self, parent: Option<&Path>, path: &Path) -> Result<()> {
 		// Find artwork
-		let artwork = self.get_artwork(path).unwrap_or(None);
+		let artwork = {
+			#[cfg(feature = "profile-index")]
+			let _guard = flame::start_guard("artwork");
+			self.get_artwork(path).unwrap_or(None)
+		};
 
 		// Extract path and parent path
 		let parent_string = parent.and_then(|p| p.to_str()).map(|s| s.to_owned());
 		let path_string = path.to_str().ok_or(anyhow!("Invalid directory path"))?;
 
 		// Find date added
-		let metadata = fs::metadata(path_string)?;
-		let created = metadata
+		let metadata = {
+			#[cfg(feature = "profile-index")]
+			let _guard = flame::start_guard("metadata");
+			fs::metadata(path_string)?
+		};
+		let created = {
+			#[cfg(feature = "profile-index")]
+			let _guard = flame::start_guard("created_date");
+			metadata
 			.created()
 			.or_else(|_| metadata.modified())?
 			.duration_since(time::UNIX_EPOCH)?
-			.as_secs() as i32;
+			.as_secs() as i32
+		};
 
 		let mut directory_album = None;
 		let mut directory_year = None;
@@ -145,6 +157,10 @@ impl IndexUpdater {
 
 			if let Some(file_path_string) = file_path.to_str() {
 				if let Some(tags) = metadata::read(file_path.as_path()) {
+
+					#[cfg(feature = "profile-index")]
+					let _guard = flame::start_guard("process_song");
+
 					if tags.year.is_some() {
 						inconsistent_directory_year |=
 							directory_year.is_some() && directory_year != tags.year;
@@ -187,25 +203,31 @@ impl IndexUpdater {
 		}
 
 		// Insert directory
-		if inconsistent_directory_year {
-			directory_year = None;
-		}
-		if inconsistent_directory_album {
-			directory_album = None;
-		}
-		if inconsistent_directory_artist {
-			directory_artist = None;
-		}
+		let directory = {
+			#[cfg(feature = "profile-index")]
+			let _guard = flame::start_guard("create_directory");
 
-		let directory = NewDirectory {
-			path: path_string.to_owned(),
-			parent: parent_string,
-			artwork,
-			album: directory_album,
-			artist: directory_artist,
-			year: directory_year,
-			date_added: created,
+			if inconsistent_directory_year {
+				directory_year = None;
+			}
+			if inconsistent_directory_album {
+				directory_album = None;
+			}
+			if inconsistent_directory_artist {
+				directory_artist = None;
+			}
+
+			NewDirectory {
+				path: path_string.to_owned(),
+				parent: parent_string,
+				artwork,
+				album: directory_album,
+				artist: directory_artist,
+				year: directory_year,
+				date_added: created,
+			}
 		};
+
 		self.push_directory(directory)?;
 
 		// Populate subdirectories
