@@ -31,7 +31,6 @@ mod db;
 mod ddns;
 mod index;
 mod lastfm;
-mod metadata;
 mod playlist;
 mod service;
 

@@ -13,7 +13,7 @@ use std::sync::mpsc::*;
 
 use crate::config::MiscSettings;
 use crate::db::{directories, misc_settings, songs, DB};
-use crate::metadata;
+use crate::index::metadata;
 use crate::vfs::VFSSource;
 
 const INDEX_BUILDING_INSERT_BUFFER_SIZE: usize = 1000; // Insertions in each transaction
