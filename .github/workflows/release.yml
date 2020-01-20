@@ -5,7 +5,7 @@ on:
 
 name: Release
 env:
-  POLARIS_VERSION: ${GITHUB_REF:10}
+  POLARIS_VERSION: ${{ env.GITHUB_REF:10 }}
 
 jobs:
   windows:
