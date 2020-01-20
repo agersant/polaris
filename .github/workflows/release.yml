@@ -7,10 +7,10 @@ name: Release
 
 jobs:
   windows:
-    name: Build Windows Installer
+    name: Upload Windows Installer
     runs-on: windows-latest
     steps:
-    - name: Checkout
+    - name: Checkout Polaris
       uses: actions/checkout@v1
       with:
         submodules: true
@@ -22,7 +22,7 @@ jobs:
         default: true
     - name: Build Installer
       run: res/windows/release_script
-    - name: Create Release
+    - name: Create Github Release
       id: create_release
       uses: actions/create-release@v1.0.0
       env:
@@ -32,7 +32,7 @@ jobs:
         release_name: Polaris ${{ github.ref }}
         draft: true
         prerelease: false
-    - name: Upload Release Asset
+    - name: Upload Installer To Github Release
         uses: actions/upload-release-asset@v1.0.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
