@@ -50,12 +50,6 @@ jobs:
       uses: actions/checkout@v1
       with:
         submodules: true
-    - name: Install Rust Toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: nightly
-        profile: minimal
-        default: true
     - name: Build Archive
       run: res/unix/release_script.sh
     - name: Create Github Release
