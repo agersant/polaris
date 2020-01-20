@@ -23,8 +23,9 @@ jobs:
     - name: Read Polaris Version
       id: version
       run: |
-        set POLARIS_VERSION=%GITHUB_REF:*tags/=%
-        echo "::set-output name=number::%POLARIS_VERSION%"
+        set POLARIS_VERSION %GITHUB_REF:~10%
+        echo %POLARIS_VERSION%
+        echo "::set-output name=number::$POLARIS_VERSION"
     - name: Build Installer
       run: res/windows/release_script
     - name: Create Github Release
