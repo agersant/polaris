@@ -26,6 +26,7 @@ jobs:
     - name: Store Version Number
       env:
         POLARIS_VERSION: ${{ steps.version_number.outputs.tag }}
+      run: echo $POLARIS_VERSION
     - name: Build Installer
       run: res/windows/release_script
     - name: Create Github Release
@@ -62,6 +63,7 @@ jobs:
     - name: Store Version Number
       env:
         POLARIS_VERSION: ${{ steps.version_number.outputs.tag }}
+      run: echo $POLARIS_VERSION
     - name: Build Archive
       run: res/unix/release_script.sh
     - name: Create Github Release
