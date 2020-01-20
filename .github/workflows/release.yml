@@ -4,6 +4,8 @@ on:
     - '[0-9]+.[0-9]+.[0-9]+**'
 
 name: Release
+env:
+  POLARIS_VERSION: ${GITHUB_REF:10}
 
 jobs:
   windows:
@@ -20,9 +22,6 @@ jobs:
         toolchain: nightly-2020-01-01
         profile: minimal
         default: true
-    - name: Read Version Number
-      id: version_number
-      run: echo ::set-env name=POLARIS_VERSION::${GITHUB_REF:10}
     - name: Build Installer
       run: res/windows/release_script
     - name: Create Github Release
@@ -53,9 +52,6 @@ jobs:
       uses: actions/checkout@v1
       with:
         submodules: true
-    - name: Read Version Number
-      id: version_number
-      run: echo ::set-env name=POLARIS_VERSION::${GITHUB_REF:10}
     - name: Build Archive
       run: res/unix/release_script.sh
     - name: Create Github Release
