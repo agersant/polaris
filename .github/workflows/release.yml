@@ -23,7 +23,6 @@ jobs:
     - name: Read Version Number
       id: version_number
       run: echo ::set-env name=POLARIS_VERSION::${GITHUB_REF:10}
-      run: echo $POLARIS_VERSION
     - name: Build Installer
       run: res/windows/release_script
     - name: Create Github Release
@@ -57,7 +56,6 @@ jobs:
     - name: Read Version Number
       id: version_number
       run: echo ::set-env name=POLARIS_VERSION::${GITHUB_REF:10}
-      run: echo $POLARIS_VERSION
     - name: Build Archive
       run: res/unix/release_script.sh
     - name: Create Github Release
