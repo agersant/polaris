@@ -4,6 +4,8 @@ Get-ChildItem "Cargo.toml" | ForEach-Object {
   $script:POLARIS_VERSION = $matches[1]
 }
 
+Get-ChildItem Env:
+
 "Compiling resource file"
 $rc_exe = Join-Path $env:WindowsSDK_ExecutablePath RC.exe
 $rc_params = "/fo res\windows\application\application.res res\windows\application\application.rc"
