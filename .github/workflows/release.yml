@@ -20,6 +20,12 @@ jobs:
         toolchain: nightly
         profile: minimal
         default: true
+    - name: Read Version Number
+      id: version_number
+      run: echo ::set-env name=tag::${GITHUB_REF:10}
+    - name: Store Version Number
+      env:
+        POLARIS_VERSION: ${{ steps.version_number.outputs.tag }}
     - name: Build Installer
       run: res/windows/release_script
     - name: Create Github Release
@@ -28,8 +34,8 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ github.ref }}
-        release_name: Polaris ${{ github.ref }}
+        tag_name: ${{POLARIS_VERSION }}
+        release_name: Polaris ${{ POLARIS_VERSION }}
         draft: true
         prerelease: false
     - name: Upload Installer To Github Release
@@ -38,8 +44,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./release/Polaris ${{ github.ref }}.msi
-        asset_name: Polaris_${{ github.ref }}.msi
+        asset_path: ./release/Polaris ${{ POLARIS_VERSION }}.msi
+        asset_name: Polaris_${{ POLARIS_VERSION }}.msi
         asset_content_type: application/x-msi
 
   linux:
@@ -50,6 +56,12 @@ jobs:
       uses: actions/checkout@v1
       with:
         submodules: true
+    - name: Read Version Number
+      id: version_number
+      run: echo ::set-env name=tag::${GITHUB_REF:10}
+    - name: Store Version Number
+      env:
+        POLARIS_VERSION: ${{ steps.version_number.outputs.tag }}
     - name: Build Archive
       run: res/unix/release_script.sh
     - name: Create Github Release
@@ -58,8 +70,8 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ github.ref }}
-        release_name: Polaris ${{ github.ref }}
+        tag_name: ${{ POLARIS_VERSION }}
+        release_name: Polaris ${{ POLARIS_VERSION }}
         draft: true
         prerelease: false
     - name: Upload Archive To Github Release
@@ -68,6 +80,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./release/polaris-${{ github.ref }}.tar.gz
-        asset_name: Polaris_${{ github.ref }}.tar.gz
+        asset_path: ./release/polaris-${{ POLARIS_VERSION }}.tar.gz
+        asset_name: Polaris_${{ POLARIS_VERSION }}.tar.gz
         asset_content_type: application/gzip
