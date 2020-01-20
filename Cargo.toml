@@ -1,6 +1,6 @@
 [package]
 name = "polaris"
-version = "0.12.0-wip24"
+version = "0.12.0-wip25"
 authors = ["Antoine Gersant <antoine.gersant@lesforges.org>"]
 edition = "2018"
 
