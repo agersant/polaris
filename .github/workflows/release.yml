@@ -41,3 +41,39 @@ jobs:
           asset_path: ./release/Polaris ${{ github.ref }}.msi
           asset_name: Polaris_${{ github.ref }}.msi
           asset_content_type: application/x-msi
+
+  linux:
+    name: Upload Linux Setup Files
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Polaris
+      uses: actions/checkout@v1
+      with:
+        submodules: true
+    - name: Install Rust Toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        profile: minimal
+        default: true
+    - name: Build Archive
+      run: res/unix/release_script.sh
+    - name: Create Github Release
+      id: create_release
+      uses: actions/create-release@v1.0.0
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Polaris ${{ github.ref }}
+        draft: true
+        prerelease: false
+    - name: Upload Archive To Github Release
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./release/polaris-${{ github.ref }}.tar.gz
+          asset_name: Polaris_${{ github.ref }}.tar.gz
+          asset_content_type: application/gzip
