@@ -7,7 +7,7 @@ Get-ChildItem "Cargo.toml" | ForEach-Object {
 Get-ChildItem Env:
 
 "Compiling resource file"
-$rc_exe = Join-Path $env:WindowsSDK_ExecutablePath RC.exe
+$rc_exe = Join-Path $env:VS140COMNTOOLS RC.exe
 $rc_params = "/fo res\windows\application\application.res res\windows\application\application.rc"
 & $rc_exe $rc_params
 
