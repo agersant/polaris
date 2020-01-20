@@ -6,8 +6,7 @@ Get-ChildItem "Cargo.toml" | ForEach-Object {
 
 "Compiling resource file"
 $rc_exe = Join-Path "C:\Program Files (x86)\Windows Kits\10\bin\10.0.18362.0\x64" RC.exe
-$rc_params = "/fo res\windows\application\application.res res\windows\application\application.rc"
-& $rc_exe $rc_params
+& $rc_exe /fo res\windows\application\application.res res\windows\application\application.rc
 
 ""
 "Compiling executable"
