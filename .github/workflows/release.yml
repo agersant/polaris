@@ -33,14 +33,14 @@ jobs:
         draft: true
         prerelease: false
     - name: Upload Installer To Github Release
-        uses: actions/upload-release-asset@v1.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./release/Polaris ${{ github.ref }}.msi
-          asset_name: Polaris_${{ github.ref }}.msi
-          asset_content_type: application/x-msi
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./release/Polaris ${{ github.ref }}.msi
+        asset_name: Polaris_${{ github.ref }}.msi
+        asset_content_type: application/x-msi
 
   linux:
     name: Upload Linux Setup Files
@@ -69,11 +69,11 @@ jobs:
         draft: true
         prerelease: false
     - name: Upload Archive To Github Release
-        uses: actions/upload-release-asset@v1.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./release/polaris-${{ github.ref }}.tar.gz
-          asset_name: Polaris_${{ github.ref }}.tar.gz
-          asset_content_type: application/gzip
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./release/polaris-${{ github.ref }}.tar.gz
+        asset_name: Polaris_${{ github.ref }}.tar.gz
+        asset_content_type: application/gzip
