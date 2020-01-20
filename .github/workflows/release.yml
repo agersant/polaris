@@ -58,8 +58,8 @@ jobs:
     - name: Read Polaris Version
       id: version
       run: |
-        POLARIS_VERSION=${GITHUB_REF:10}
-        echo "::set-output name=number::$POLARIS_VERSION"
+        set POLARIS_VERSION=%GITHUB_REF:*tags/=%
+        echo "::set-output name=number::%POLARIS_VERSION%"
     - name: Build Archive
       run: res/unix/release_script.sh
     - name: Create Github Release
