@@ -1,0 +1,43 @@
+on:
+  push:
+    tags:
+    - '[0-9]+.[0-9]+.[0-9]+**'
+
+name: Release
+
+jobs:
+  windows:
+    name: Build Windows Installer
+    runs-on: windows-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v1
+      with:
+        submodules: true
+    - name: Install Rust Toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        profile: minimal
+        default: true
+    - name: Build Installer
+      run: res/windows/release_script
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1.0.0
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Polaris ${{ github.ref }}
+        draft: true
+        prerelease: false
+    - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./release/Polaris ${{ github.ref }}.msi
+          asset_name: Polaris_${{ github.ref }}.msi
+          asset_content_type: application/x-msi

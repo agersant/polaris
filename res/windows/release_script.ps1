@@ -45,5 +45,3 @@ light -dWebUIDir=".\release\tmp\web" -dSwaggerUIDir=".\release\tmp\swagger" -wx 
 "Cleaning up"
 Remove-Item -Recurse .\release\tmp
 
-""
-Read-Host -Prompt "All clear! Press Enter to exit"
