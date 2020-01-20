@@ -21,10 +21,10 @@ jobs:
         profile: minimal
         default: true
     - name: Read Polaris Version
-        shell: bash
-        run: |
-          echo ::set-env name=POLARIS_VERSION::${GITHUB_REF:10}
-          echo "Polaris version is $POLARIS_VERSION"
+      shell: bash
+      run: |
+        echo ::set-env name=POLARIS_VERSION::${GITHUB_REF:10}
+        echo "Polaris version is $POLARIS_VERSION"
     - name: Build Installer
       run: res/windows/release_script
     - name: Create Github Release
@@ -56,9 +56,9 @@ jobs:
       with:
         submodules: true
     - name: Read Polaris Version
-        run: |
-          echo ::set-env name=POLARIS_VERSION::${GITHUB_REF:10}
-          echo "Polaris version is $POLARIS_VERSION"
+      run: |
+        echo ::set-env name=POLARIS_VERSION::${GITHUB_REF:10}
+        echo "Polaris version is $POLARIS_VERSION"
     - name: Build Archive
       run: res/unix/release_script.sh
     - name: Create Github Release
