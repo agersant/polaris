@@ -7,7 +7,7 @@ name: Release
 
 jobs:
   windows:
-    name: Upload Windows Installer
+    name: Windows
     runs-on: windows-latest
     steps:
     - name: Checkout Polaris
@@ -46,7 +46,7 @@ jobs:
         asset_content_type: application/x-msi
 
   linux:
-    name: Upload Linux Setup Files
+    name: Linux
     runs-on: ubuntu-latest
     steps:
     - name: Checkout Polaris
@@ -68,7 +68,7 @@ jobs:
         release_name: Polaris ${{ env.POLARIS_VERSION }}
         draft: true
         prerelease: false
-    - name: Upload Archive To Github Release
+    - name: Upload To Github Release
       uses: actions/upload-release-asset@v1.0.1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
