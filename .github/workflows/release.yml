@@ -56,7 +56,7 @@ jobs:
     - name: Retrieve Upload URL
       uses: actions/download-artifact@v1
       with:
-        name: upload-url
+        name: release
     - name: Read Upload URL
       shell: bash
       run: echo ::set-env name=UPLOAD_URL::$(cat release/upload-url)
@@ -87,7 +87,7 @@ jobs:
     - name: Retrieve Upload URL
       uses: actions/download-artifact@v1
       with:
-        name: upload-url
+        name: release
     - name: Read Upload URL
       run: echo ::set-env name=UPLOAD_URL::$(cat release/upload-url)
     - name: Upload To Github Release
