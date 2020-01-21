@@ -9,10 +9,12 @@ Compiling and running Polaris is very easy as it only depends on the Rust toolch
 Polaris supports a few command line arguments which are useful during development:
 
 - `-w some/path/to/web/dir` lets you point to the directory to be served as the web interface. You'll probably want to point this to the `/web` directory of the polaris repository.
-- `-d some/path/to/a/file.db` lets you manually choose where Polaris stores its configuration and music index (you can reuse the same database accross multiple runs)
-- `-f` (on Linux) makes Polaris not fork into a separate process
+- `-s some/path/to/web/dir` lets you point to the directory to be served as the swagger API documentation. You'll probably want to point this to the `/docs/swagger` directory of the polaris repository.
+- `-d some/path/to/a/file.db` lets you manually choose where Polaris stores its configuration and music index (you can reuse the same database accross multiple runs).
+- `-c some/config.toml` lets you use a configuration file to add content to the database. This can be useful if you frequently delete the database and would like to automate the first time flow. The configuration format is not documented but can be inferred by looking at the `Config` struct in `config.rs`.
+- `-f` (on Linux) makes Polaris not fork into a separate process.
 
-Putting it all together, a typical command to compile and run the program would be: `cargo run -- -w web -d test/my.db`
+Putting it all together, a typical command to compile and run the program would be: `cargo run -- -w web -s docs/swagger -d test/my.db`
 
 While Polaris is running, access the web UI at [http://localhost:5050](http://localhost:5050).
 
