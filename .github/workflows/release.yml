@@ -45,7 +45,7 @@ jobs:
     - name: Install Rust Toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly-2020-01-01
+        toolchain: nightly
         profile: minimal
         default: true
     - name: Read Polaris Version
