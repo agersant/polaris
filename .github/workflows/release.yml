@@ -41,7 +41,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./release/Polaris ${{ env.POLARIS_VERSION }}.msi
+        asset_path: ./release/Polaris_${{ env.POLARIS_VERSION }}.msi
         asset_name: Polaris_${{ env.POLARIS_VERSION }}.msi
         asset_content_type: application/x-msi
 
@@ -73,6 +73,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./release/polaris-${{ env.POLARIS_VERSION }}.tar.gz
+        asset_path: ./release/Polaris_${{ env.POLARIS_VERSION }}.tar.gz
         asset_name: Polaris_${{ env.POLARIS_VERSION }}.tar.gz
         asset_content_type: application/gzip
