@@ -29,7 +29,7 @@ jobs:
     - name: Store Upload URL
       uses: actions/upload-artifact@v1
       with:
-        name: upload-url
+        name: release
         path: upload-url
 
   windows:
@@ -59,7 +59,7 @@ jobs:
         name: upload-url
     - name: Read Upload URL
       shell: bash
-      run: echo ::set-env name=UPLOAD_URL::$(cat upload-url)
+      run: echo ::set-env name=UPLOAD_URL::$(cat release/upload-url)
     - name: Upload Installer To Github Release
       uses: actions/upload-release-asset@v1.0.1
       env:
@@ -89,7 +89,7 @@ jobs:
       with:
         name: upload-url
     - name: Read Upload URL
-      run: echo ::set-env name=UPLOAD_URL::$(cat upload-url)
+      run: echo ::set-env name=UPLOAD_URL::$(cat release/upload-url)
     - name: Upload To Github Release
       uses: actions/upload-release-asset@v1.0.1
       env:
