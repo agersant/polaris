@@ -1,0 +1,101 @@
+on:
+  push:
+    tags:
+    - '[0-9]+.[0-9]+.[0-9]+**'
+
+name: Release
+
+jobs:
+
+  create_release:
+    name: Create Github Release
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Read Polaris Version
+      run: echo ::set-env name=POLARIS_VERSION::${GITHUB_REF:10}
+    - name: Create Github Release
+      id: create_release
+      uses: actions/create-release@v1.0.0
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ env.POLARIS_VERSION }}
+        release_name: Polaris ${{ env.POLARIS_VERSION }}
+        draft: true
+        prerelease: false
+    - name: Write Upload URL To Disk
+      run: echo "${{ steps.create_release.outputs.upload_url }}" > upload-url
+    - name: Store Upload URL
+      uses: actions/upload-artifact@v1
+      with:
+        name: release
+        path: upload-url
+
+  windows:
+    name: Windows
+    runs-on: windows-latest
+    needs: create_release
+
+    steps:
+    - name: Checkout Polaris
+      uses: actions/checkout@v1
+      with:
+        submodules: true
+    - name: Install Rust Toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly-2020-01-01
+        profile: minimal
+        default: true
+    - name: Read Polaris Version
+      shell: bash
+      run: echo ::set-env name=POLARIS_VERSION::${GITHUB_REF:10}
+    - name: Build Installer
+      run: res/windows/release_script
+    - name: Retrieve Upload URL
+      uses: actions/download-artifact@v1
+      with:
+        name: release
+    - name: Read Upload URL
+      shell: bash
+      run: echo ::set-env name=UPLOAD_URL::$(cat release/upload-url)
+    - name: Upload Installer To Github Release
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ env.UPLOAD_URL }}
+        asset_path: ./release/Polaris_${{ env.POLARIS_VERSION }}.msi
+        asset_name: Polaris_${{ env.POLARIS_VERSION }}.msi
+        asset_content_type: application/x-msi
+
+  linux:
+    name: Linux
+    runs-on: ubuntu-latest
+    needs: create_release
+
+    steps:
+    - name: Checkout Polaris
+      uses: actions/checkout@v1
+      with:
+        submodules: true
+    - name: Read Polaris Version
+      run: echo ::set-env name=POLARIS_VERSION::${GITHUB_REF:10}
+    - name: Build Archive
+      run: res/unix/release_script.sh
+    - name: Retrieve Upload URL
+      uses: actions/download-artifact@v1
+      with:
+        name: release
+    - name: Read Upload URL
+      run: echo ::set-env name=UPLOAD_URL::$(cat release/upload-url)
+    - name: Upload To Github Release
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ env.UPLOAD_URL }}
+        asset_path: ./release/Polaris_${{ env.POLARIS_VERSION }}.tar.gz
+        asset_name: Polaris_${{ env.POLARIS_VERSION }}.tar.gz
+        asset_content_type: application/gzip
