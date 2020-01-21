@@ -25,7 +25,7 @@ jobs:
         draft: true
         prerelease: false
     - name: Write Upload URL To Disk
-      run: ${{ steps.create_release.outputs.upload_url }} > upload-url
+      run: echo "${{ steps.create_release.outputs.upload_url }}" > upload-url
     - name: Store Upload URL
       uses: actions/upload-artifact@v1
       with:
