@@ -24,7 +24,7 @@ jobs:
         submodules: true
     - uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly-2020-01-14
+        toolchain: nightly
         profile: minimal
         default: true
     - uses: actions-rs/cargo@v1
