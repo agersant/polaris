@@ -44,15 +44,15 @@ struct AuthResponse {
 fn scrobble_from_path(db: &DB, track: &Path) -> Result<Scrobble> {
 	let song = index::get_song(db, track)?;
 	Ok(Scrobble::new(
-		song.artist.unwrap_or_else(|| "".into()),
-		song.title.unwrap_or_else(|| "".into()),
-		song.album.unwrap_or_else(|| "".into()),
+		song.artist.as_deref().unwrap_or(""),
+		song.title.as_deref().unwrap_or(""),
+		song.album.as_deref().unwrap_or(""),
 	))
 }
 
 pub fn link(db: &DB, username: &str, token: &str) -> Result<()> {
 	let mut scrobbler = Scrobbler::new(LASTFM_API_KEY.into(), LASTFM_API_SECRET.into());
-	let auth_response = scrobbler.authenticate_with_token(token.to_string())?;
+	let auth_response = scrobbler.authenticate_with_token(token)?;
 
 	user::lastfm_link(db, username, &auth_response.name, &auth_response.key)
 }
@@ -65,8 +65,8 @@ pub fn scrobble(db: &DB, username: &str, track: &Path) -> Result<()> {
 	let mut scrobbler = Scrobbler::new(LASTFM_API_KEY.into(), LASTFM_API_SECRET.into());
 	let scrobble = scrobble_from_path(db, track)?;
 	let auth_token = user::get_lastfm_session_key(db, username)?;
-	scrobbler.authenticate_with_session_key(auth_token);
-	scrobbler.scrobble(scrobble)?;
+	scrobbler.authenticate_with_session_key(&auth_token);
+	scrobbler.scrobble(&scrobble)?;
 	Ok(())
 }
 
@@ -74,7 +74,7 @@ pub fn now_playing(db: &DB, username: &str, track: &Path) -> Result<()> {
 	let mut scrobbler = Scrobbler::new(LASTFM_API_KEY.into(), LASTFM_API_SECRET.into());
 	let scrobble = scrobble_from_path(db, track)?;
 	let auth_token = user::get_lastfm_session_key(db, username)?;
-	scrobbler.authenticate_with_session_key(auth_token);
-	scrobbler.now_playing(scrobble)?;
+	scrobbler.authenticate_with_session_key(&auth_token);
+	scrobbler.now_playing(&scrobble)?;
 	Ok(())
 }
