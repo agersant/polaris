@@ -59,15 +59,24 @@ pub trait TestService {
 
 	fn index(&mut self) {
 		assert!(self.post("/api/trigger_index").status() == StatusCode::OK);
-		for _ in 1..20 {
+
+		loop {
 			let response = self.get_json::<Vec<index::CollectionFile>>("/api/browse");
 			let entries = response.body();
 			if entries.len() > 0 {
-				return;
+				break;
 			}
 			std::thread::sleep(Duration::from_secs(1));
 		}
-		panic!("index timeout");
+
+		loop {
+			let response = self.get_json::<Vec<index::Song>>("/api/flatten");
+			let entries = response.body();
+			if entries.len() > 0 {
+				break;
+			}
+			std::thread::sleep(Duration::from_secs(1));
+		}
 	}
 }
 
