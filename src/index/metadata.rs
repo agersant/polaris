@@ -48,14 +48,23 @@ fn read_id3(path: &Path) -> Result<SongTags> {
 	let tag = {
 		#[cfg(feature = "profile-index")]
 		let _guard = flame::start_guard("id3_tag_read");
-		id3::Tag::read_from_path(&path)?
+		match id3::Tag::read_from_path(&path) {
+			Ok(t) => Ok(t),
+			Err(e) => {
+				if let Some(t) = e.partial_tag {
+					Ok(t)
+				} else {
+					Err(e)
+				}
+			}
+		}?
 	};
 	let duration = {
 		#[cfg(feature = "profile-index")]
 		let _guard = flame::start_guard("mp3_duration");
 		mp3_duration::from_path(&path)
-		.map(|d| d.as_secs() as u32)
-		.ok()
+			.map(|d| d.as_secs() as u32)
+			.ok()
 	};
 
 	let artist = tag.artist().map(|s| s.to_string());
