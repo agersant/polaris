@@ -8,8 +8,8 @@ use rayon::prelude::*;
 use regex::Regex;
 use std::fs;
 use std::path::Path;
-use std::time;
 use std::sync::mpsc::*;
+use std::time;
 
 use crate::config::MiscSettings;
 use crate::db::{directories, misc_settings, songs, DB};
@@ -69,7 +69,11 @@ struct IndexUpdater {
 
 impl IndexUpdater {
 	#[cfg_attr(feature = "profile-index", flame)]
-	fn new(album_art_pattern: Regex, directory_sender: Sender<NewDirectory>, song_sender: Sender<NewSong>) -> Result<IndexUpdater> {
+	fn new(
+		album_art_pattern: Regex,
+		directory_sender: Sender<NewDirectory>,
+		song_sender: Sender<NewSong>,
+	) -> Result<IndexUpdater> {
 		Ok(IndexUpdater {
 			directory_sender,
 			song_sender,
@@ -100,12 +104,12 @@ impl IndexUpdater {
 	}
 
 	fn populate_directory(&mut self, parent: Option<&Path>, path: &Path) -> Result<()> {
-
 		#[cfg(feature = "profile-index")]
-		let _guard = flame::start_guard(format!("dir: {}",
-			path.file_name().map(|s| {
-				s.to_string_lossy().into_owned()
-			}).unwrap_or("Unknown".to_owned())
+		let _guard = flame::start_guard(format!(
+			"dir: {}",
+			path.file_name()
+				.map(|s| { s.to_string_lossy().into_owned() })
+				.unwrap_or("Unknown".to_owned())
 		));
 
 		// Find artwork
@@ -129,10 +133,10 @@ impl IndexUpdater {
 			#[cfg(feature = "profile-index")]
 			let _guard = flame::start_guard("created_date");
 			metadata
-			.created()
-			.or_else(|_| metadata.modified())?
-			.duration_since(time::UNIX_EPOCH)?
-			.as_secs() as i32
+				.created()
+				.or_else(|_| metadata.modified())?
+				.duration_since(time::UNIX_EPOCH)?
+				.as_secs() as i32
 		};
 
 		let mut directory_album = None;
@@ -147,7 +151,6 @@ impl IndexUpdater {
 
 		// Insert content
 		for file in fs::read_dir(path)? {
-
 			let file_path = match file {
 				Ok(ref f) => f.path(),
 				_ => {
@@ -157,10 +160,13 @@ impl IndexUpdater {
 			};
 
 			#[cfg(feature = "profile-index")]
-			let _guard = flame::start_guard(format!("file: {}",
-				file_path.as_path().file_name().map(|s| {
-					s.to_string_lossy().into_owned()
-				}).unwrap_or("Unknown".to_owned())
+			let _guard = flame::start_guard(format!(
+				"file: {}",
+				file_path
+					.as_path()
+					.file_name()
+					.map(|s| { s.to_string_lossy().into_owned() })
+					.unwrap_or("Unknown".to_owned())
 			));
 
 			if file_path.is_dir() {
@@ -170,7 +176,6 @@ impl IndexUpdater {
 
 			if let Some(file_path_string) = file_path.to_str() {
 				if let Some(tags) = metadata::read(file_path.as_path()) {
-
 					if tags.year.is_some() {
 						inconsistent_directory_year |=
 							directory_year.is_some() && directory_year != tags.year;
@@ -311,7 +316,7 @@ pub fn populate(db: &DB) -> Result<()> {
 	let vfs = db.get_vfs()?;
 	let mount_points = vfs.get_mount_points();
 
-	let album_art_pattern  = {
+	let album_art_pattern = {
 		let connection = db.connect()?;
 		let settings: MiscSettings = misc_settings::table.get_result(&connection)?;
 		Regex::new(&settings.index_album_art_pattern)?
@@ -339,12 +344,18 @@ pub fn populate(db: &DB) -> Result<()> {
 	}
 
 	match directories_thread.join() {
-		Err(e) => error!("Error while waiting for directory insertions to complete: {:?}", e),
+		Err(e) => error!(
+			"Error while waiting for directory insertions to complete: {:?}",
+			e
+		),
 		_ => (),
 	}
 
 	match songs_thread.join() {
-		Err(e) => error!("Error while waiting for song insertions to complete: {:?}", e),
+		Err(e) => error!(
+			"Error while waiting for song insertions to complete: {:?}",
+			e
+		),
 		_ => (),
 	}
 
@@ -352,27 +363,31 @@ pub fn populate(db: &DB) -> Result<()> {
 }
 
 fn flush_directories(db: &DB, entries: &Vec<NewDirectory>) {
-	if db.connect()
-	.and_then(|connection|{
-		diesel::insert_into(directories::table)
-			.values(entries)
-			.execute(&*connection) // TODO https://github.com/diesel-rs/diesel/issues/1822
-			.map_err(Error::new)
-	})
-	.is_err() {
+	if db
+		.connect()
+		.and_then(|connection| {
+			diesel::insert_into(directories::table)
+				.values(entries)
+				.execute(&*connection) // TODO https://github.com/diesel-rs/diesel/issues/1822
+				.map_err(Error::new)
+		})
+		.is_err()
+	{
 		error!("Could not insert new directories in database");
 	}
 }
 
 fn flush_songs(db: &DB, entries: &Vec<NewSong>) {
-	if db.connect()
-	.and_then(|connection|{
-		diesel::insert_into(songs::table)
-			.values(entries)
-			.execute(&*connection) // TODO https://github.com/diesel-rs/diesel/issues/1822
-			.map_err(Error::new)
-	})
-	.is_err() {
+	if db
+		.connect()
+		.and_then(|connection| {
+			diesel::insert_into(songs::table)
+				.values(entries)
+				.execute(&*connection) // TODO https://github.com/diesel-rs/diesel/issues/1822
+				.map_err(Error::new)
+		})
+		.is_err()
+	{
 		error!("Could not insert new songs in database");
 	}
 }
@@ -389,7 +404,7 @@ fn insert_directories(receiver: Receiver<NewDirectory>, db: DB) {
 					flush_directories(&db, &new_entries);
 					new_entries.clear();
 				}
-			},
+			}
 			Err(_) => break,
 		}
 	}
@@ -411,7 +426,7 @@ fn insert_songs(receiver: Receiver<NewSong>, db: DB) {
 					flush_songs(&db, &new_entries);
 					new_entries.clear();
 				}
-			},
+			}
 			Err(_) => break,
 		}
 	}

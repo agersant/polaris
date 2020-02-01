@@ -21,15 +21,20 @@ pub struct DB {
 
 #[derive(Debug)]
 struct ConnectionCustomizer {}
-impl diesel::r2d2::CustomizeConnection<SqliteConnection, diesel::r2d2::Error> for ConnectionCustomizer {
+impl diesel::r2d2::CustomizeConnection<SqliteConnection, diesel::r2d2::Error>
+	for ConnectionCustomizer
+{
 	fn on_acquire(&self, connection: &mut SqliteConnection) -> Result<(), diesel::r2d2::Error> {
-		let query = diesel::sql_query(r#"
+		let query = diesel::sql_query(
+			r#"
 			PRAGMA busy_timeout = 60000;
 			PRAGMA journal_mode = WAL;
 			PRAGMA synchronous = NORMAL;
 			PRAGMA foreign_keys = ON;
-		"#);
-		query.execute(connection)
+		"#,
+		);
+		query
+			.execute(connection)
 			.map_err(|e| diesel::r2d2::Error::QueryError(e))?;
 		Ok(())
 	}

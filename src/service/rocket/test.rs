@@ -82,9 +82,7 @@ impl TestService for RocketTestService {
 		)
 		.unwrap();
 		let client = Client::new(server).unwrap();
-		RocketTestService {
-			client,
-		}
+		RocketTestService { client }
 	}
 
 	fn get(&mut self, url: &str) -> Response<()> {

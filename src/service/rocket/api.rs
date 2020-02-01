@@ -230,10 +230,7 @@ fn put_preferences(db: State<'_, DB>, auth: Auth, preferences: Json<Preferences>
 }
 
 #[post("/trigger_index")]
-fn trigger_index(
-	index: State<'_, Index>,
-	_admin_rights: AdminRights,
-) -> Result<()> {
+fn trigger_index(index: State<'_, Index>, _admin_rights: AdminRights) -> Result<()> {
 	index.trigger_reindex();
 	Ok(())
 }

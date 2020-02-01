@@ -173,9 +173,7 @@ fn main() -> Result<()> {
 
 	// Init index
 	info!("Initializing index");
-	let index = index::builder(db.clone())
-		.periodic_updates(true)
-		.build();
+	let index = index::builder(db.clone()).periodic_updates(true).build();
 
 	// API mount target
 	let prefix_url = config.prefix_url.unwrap_or_else(|| "".to_string());

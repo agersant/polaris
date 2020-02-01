@@ -4,11 +4,11 @@ use diesel::prelude::*;
 #[cfg(feature = "profile-index")]
 use flame;
 use log::error;
-use std::sync::{Arc, Mutex, Condvar};
+use std::sync::{Arc, Condvar, Mutex};
 use std::time;
 
-use crate::db::{misc_settings, DB};
 use crate::config::MiscSettings;
+use crate::db::{misc_settings, DB};
 use crate::vfs::VFS;
 
 mod metadata;
@@ -18,9 +18,9 @@ mod test;
 mod types;
 mod update;
 
-pub use self::update::*;
 pub use self::query::*;
 pub use self::types::*;
+pub use self::update::*;
 
 pub fn builder(db: DB) -> IndexBuilder {
 	IndexBuilder {
