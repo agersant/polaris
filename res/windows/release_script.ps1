@@ -29,7 +29,7 @@ Copy-Item .\docs\swagger  					          .\release\tmp\swagger -recurse
 ""
 "Inserting version number in installer config"
 [xml]$wxs = Get-Content .\res\windows\installer\installer.wxs
-$wxs.Wix.Product.UpdateAttribute("Version", $POLARIS_VERSION)
+$wxs.Wix.Product.SetAttribute("Version", $POLARIS_VERSION)
 $wxs.Save('.\res\windows\installer\installer.wxs')
 
 ""
