@@ -2,7 +2,7 @@
     "openapi": "3.0.0",
     "info": {
         "description": "",
-        "version": "4.0",
+        "version": "5.0",
         "title": "Polaris",
         "termsOfService": ""
     },
@@ -444,13 +444,13 @@
                 ]
             }
         },
-        "/serve/{file}": {
+        "/audio/{file}": {
             "get": {
                 "tags": [
                     "Collection"
                 ],
                 "summary": "Access a media file in the collection",
-                "operationId": "getServe",
+                "operationId": "getAudio",
                 "parameters": [
                     {
                         "name": "file",
@@ -465,12 +465,53 @@
                     "200": {
                         "description": "Successful operation",
                         "content": {
-                            "image/*": {
+                            "audio/*": {
                                 "schema": {
                                     "format": "binary"
                                 }
-                            },
-                            "audio/*": {
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "auth_http_header": [],
+                        "auth_cookie": []
+                    }
+                ]
+            }
+        },
+        "/thumbnail/{file}": {
+            "get": {
+                "tags": [
+                    "Collection"
+                ],
+                "summary": "Generate an image thumbnail for a media file in the collection",
+                "operationId": "getServe",
+                "parameters": [
+                    {
+                        "name": "file",
+                        "in": "path",
+                        "description": "Path to the desired file",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "pad",
+                        "in": "query",
+                        "description": "Indicates whether the thumbnail should be padded to a square aspect-ratio",
+                        "schema": {
+                            "type": "boolean",
+                            "default": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "image/*": {
                                 "schema": {
                                     "format": "binary"
                                 }

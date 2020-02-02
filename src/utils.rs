@@ -60,28 +60,3 @@ fn test_get_audio_format() {
 		Some(AudioFormat::FLAC)
 	);
 }
-
-pub fn is_image(path: &Path) -> bool {
-	let extension = match path.extension() {
-		Some(e) => e,
-		_ => return false,
-	};
-	let extension = match extension.to_str() {
-		Some(e) => e,
-		_ => return false,
-	};
-	match extension.to_lowercase().as_str() {
-		"png" => true,
-		"gif" => true,
-		"jpg" => true,
-		"jpeg" => true,
-		"bmp" => true,
-		_ => false,
-	}
-}
-
-#[test]
-fn test_is_image() {
-	assert!(!is_image(Path::new("animals/🐷/my🐖file.mp3")));
-	assert!(is_image(Path::new("animals/🐷/my🐖file.jpg")));
-}

@@ -107,7 +107,7 @@ fn test_service_version() {
 	let mut service = ServiceType::new(function_name!());
 	let response = service.get_json::<dto::Version>("/api/version");
 	let version = response.body();
-	assert_eq!(version, &dto::Version { major: 4, minor: 0 });
+	assert_eq!(version, &dto::Version { major: 5, minor: 0 });
 }
 
 #[named]
@@ -389,7 +389,7 @@ fn test_service_serve() {
 	path.push("Hunted");
 	path.push("02 - Candlelight.mp3");
 	let uri = format!(
-		"/api/serve/{}",
+		"/api/audio/{}",
 		percent_encode(path.to_string_lossy().as_ref().as_bytes(), NON_ALPHANUMERIC)
 	);
 

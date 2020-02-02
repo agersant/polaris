@@ -4,6 +4,7 @@ use rocket::request::{self, FromParam, FromRequest, Request};
 use rocket::response::content::Html;
 use rocket::{delete, get, post, put, routes, Outcome, State};
 use rocket_contrib::json::Json;
+use std::default::Default;
 use std::fs::File;
 use std::ops::Deref;
 use std::path::PathBuf;
@@ -23,7 +24,6 @@ use crate::service::dto;
 use crate::service::error::APIError;
 use crate::thumbnails;
 use crate::user;
-use crate::utils;
 use crate::vfs::VFSSource;
 
 pub fn get_routes() -> Vec<rocket::Route> {
@@ -44,7 +44,8 @@ pub fn get_routes() -> Vec<rocket::Route> {
 		recent,
 		search_root,
 		search,
-		serve,
+		audio,
+		thumbnail,
 		list_playlists,
 		save_playlist,
 		read_playlist,
@@ -305,19 +306,23 @@ fn search(
 	Ok(Json(result))
 }
 
-#[get("/serve/<path>")]
-fn serve(db: State<'_, DB>, _auth: Auth, path: VFSPathBuf) -> Result<serve::RangeResponder<File>> {
+#[get("/audio/<path>")]
+fn audio(db: State<'_, DB>, _auth: Auth, path: VFSPathBuf) -> Result<serve::RangeResponder<File>> {
 	let vfs = db.get_vfs()?;
 	let real_path = vfs.virtual_to_real(&path.into() as &PathBuf)?;
-
-	let serve_path = if utils::is_image(&real_path) {
-		thumbnails::get_thumbnail(&real_path, 400)?
-	} else {
-		real_path
-	};
-
-	let file = File::open(serve_path)?;
+	let file = File::open(&real_path)?;
 	Ok(serve::RangeResponder::new(file))
+}
+
+#[get("/thumbnail/<path>?<pad>")]
+fn thumbnail(db: State<'_, DB>, _auth: Auth, path: VFSPathBuf, pad: Option<bool>) -> Result<File> {
+	let vfs = db.get_vfs()?;
+	let image_path = vfs.virtual_to_real(&path.into() as &PathBuf)?;
+	let mut options = thumbnails::Options::default();
+	options.pad_to_square = pad.unwrap_or(options.pad_to_square);
+	let thumbnail_path = thumbnails::get_thumbnail(&image_path, &options)?;
+	let file = File::open(thumbnail_path)?;
+	Ok(file)
 }
 
 #[get("/playlists")]
