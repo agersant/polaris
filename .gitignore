@@ -6,6 +6,5 @@ test/*.sqlite
 *.sqlite-wal
 *.sqlite-shm
 tmp
-TestConfigLinux.toml
-TestConfigWindows.toml
+TestConfig*
 index-flame-graph.html
