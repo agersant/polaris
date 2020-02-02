@@ -40,6 +40,10 @@ jobs:
     steps:
     - name: Checkout Polaris
       uses: actions/checkout@v1
+    - name: Download Polaris Web
+      run: |
+        curl -L -o web.zip https://github.com/agersant/polaris-web/releases/latest/download/web.zip
+        unzip web.zip
     - name: Install Rust Toolchain
       uses: actions-rs/toolchain@v1
       with:
@@ -76,6 +80,10 @@ jobs:
     steps:
     - name: Checkout Polaris
       uses: actions/checkout@v1
+    - name: Download Polaris Web
+      run: |
+        curl -L -o web.zip https://github.com/agersant/polaris-web/releases/latest/download/web.zip
+        unzip web.zip
     - name: Read Polaris Version
       run: echo ::set-env name=POLARIS_VERSION::${GITHUB_REF:10}
     - name: Build Archive
