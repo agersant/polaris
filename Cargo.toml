@@ -20,7 +20,6 @@ diesel = { version = "1.4", features = ["sqlite", "r2d2"] }
 diesel_migrations = { version = "1.4", features = ["sqlite"] }
 flame = { version = "0.2.2", optional = true }
 flamer = { version = "0.4", optional = true }
-function_name = "0.2.0"
 getopts = "0.2.15"
 http = "0.2"
 id3 = "0.4"
