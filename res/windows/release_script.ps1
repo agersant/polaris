@@ -27,6 +27,12 @@ Copy-Item .\web   								            .\release\tmp\web     -recurse
 Copy-Item .\docs\swagger  					          .\release\tmp\swagger -recurse
 
 ""
+"Inserting version number in installer config"
+[xml]$wxs = Get-Content .\res\windows\installer\installer.wxs
+$wxs.Wix.Product.UpdateAttribute("Version", $POLARIS_VERSION)
+$wxs.Save('.\res\windows\installer\installer.wxs')
+
+""
 "Creating installer"
 $heat_exe = Join-Path $env:WIX bin\heat.exe
 & $heat_exe dir .\release\tmp\web\ -ag -g1 -dr AppDataPolaris -cg WebUI -sfrag -var wix.WebUIDir -out .\release\tmp\web_ui_fragment.wxs
