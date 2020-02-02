@@ -23,14 +23,8 @@ Copy-Item .\res\windows\installer\license.rtf	.\release\tmp\
 Copy-Item .\res\windows\installer\banner.bmp	.\release\tmp\
 Copy-Item .\res\windows\installer\dialog.bmp	.\release\tmp\
 Copy-Item .\target\release\polaris.exe 			  .\release\tmp\
-Copy-Item .\web\img								            .\release\tmp\web\img   -recurse
-Copy-Item .\web\js								            .\release\tmp\web\js    -recurse
-Copy-Item .\web\lib								            .\release\tmp\web\lib   -recurse
-Copy-Item .\web\style								          .\release\tmp\web\style -recurse
-Copy-Item .\web\tags								          .\release\tmp\web\tags  -recurse
-Copy-Item .\web\favicon.png					          .\release\tmp\web\
-Copy-Item .\web\index.html					          .\release\tmp\web\
-Copy-Item .\docs\swagger  					          .\release\tmp\swagger   -recurse
+Copy-Item .\web   								            .\release\tmp\web     -recurse
+Copy-Item .\docs\swagger  					          .\release\tmp\swagger -recurse
 
 ""
 "Creating installer"

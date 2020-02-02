@@ -7,10 +7,6 @@
 
 Note that the Github web UI will separate the release from the corresponding tag until published.
 
-# How to pull changes from polaris-web
-
-- Run `git submodule update --recursive --remote` or the `update_submodules.bat` script
-
 # How to change the database schema
 
 - Add a new folder under `migrations` following the existing pattern

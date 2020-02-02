@@ -20,8 +20,6 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       run: sudo apt-get install libsqlite3-dev
     - uses: actions/checkout@v1
-      with:
-        submodules: true
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: nightly
