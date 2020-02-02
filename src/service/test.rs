@@ -1,5 +1,4 @@
 use cookie::Cookie;
-use function_name::named;
 use http::header::*;
 use http::{HeaderMap, HeaderValue, Response, StatusCode};
 use percent_encoding::{percent_encode, NON_ALPHANUMERIC};
@@ -15,6 +14,7 @@ use crate::{config, ddns, index, vfs};
 #[cfg(feature = "service-rocket")]
 pub use crate::service::rocket::test::ServiceType;
 
+const TEST_DB_PREFIX: &str = "service-test-";
 const TEST_USERNAME: &str = "test_user";
 const TEST_PASSWORD: &str = "test_password";
 const TEST_MOUNT_NAME: &str = "collection";
@@ -80,40 +80,35 @@ pub trait TestService {
 	}
 }
 
-#[named]
 #[test]
 fn test_service_index() {
-	let mut service = ServiceType::new(function_name!());
+	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
 	service.get("/");
 }
 
-#[named]
 #[test]
 fn test_service_swagger_index() {
-	let mut service = ServiceType::new(function_name!());
+	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
 	assert!(service.get("/swagger").status() == StatusCode::OK);
 }
 
-#[named]
 #[test]
 fn test_service_swagger_index_with_trailing_slash() {
-	let mut service = ServiceType::new(function_name!());
+	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
 	assert!(service.get("/swagger/").status() == StatusCode::OK);
 }
 
-#[named]
 #[test]
 fn test_service_version() {
-	let mut service = ServiceType::new(function_name!());
+	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
 	let response = service.get_json::<dto::Version>("/api/version");
 	let version = response.body();
 	assert_eq!(version, &dto::Version { major: 5, minor: 0 });
 }
 
-#[named]
 #[test]
 fn test_service_initial_setup() {
-	let mut service = ServiceType::new(function_name!());
+	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
 	{
 		let response = service.get_json::<dto::InitialSetup>("/api/initial_setup");
 		let initial_setup = response.body();
@@ -137,10 +132,9 @@ fn test_service_initial_setup() {
 	}
 }
 
-#[named]
 #[test]
 fn test_service_settings() {
-	let mut service = ServiceType::new(function_name!());
+	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
 	service.complete_initial_setup();
 
 	assert!(service.get("/api/settings").status() == StatusCode::UNAUTHORIZED);
@@ -226,16 +220,14 @@ fn test_service_settings() {
 	assert_eq!(received, &configuration);
 }
 
-#[named]
 #[test]
 fn test_service_preferences() {
 	// TODO
 }
 
-#[named]
 #[test]
 fn test_service_trigger_index() {
-	let mut service = ServiceType::new(function_name!());
+	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
 	service.complete_initial_setup();
 	service.login();
 
@@ -250,10 +242,9 @@ fn test_service_trigger_index() {
 	assert_eq!(entries.len(), 2);
 }
 
-#[named]
 #[test]
 fn test_service_auth() {
-	let mut service = ServiceType::new(function_name!());
+	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
 	service.complete_initial_setup();
 
 	{
@@ -289,10 +280,9 @@ fn test_service_auth() {
 	}
 }
 
-#[named]
 #[test]
 fn test_service_browse() {
-	let mut service = ServiceType::new(function_name!());
+	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
 	service.complete_initial_setup();
 	service.login();
 	service.index();
@@ -315,10 +305,9 @@ fn test_service_browse() {
 	assert_eq!(entries.len(), 5);
 }
 
-#[named]
 #[test]
 fn test_service_flatten() {
-	let mut service = ServiceType::new(function_name!());
+	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
 	service.complete_initial_setup();
 	service.login();
 	service.index();
@@ -332,10 +321,9 @@ fn test_service_flatten() {
 	assert_eq!(entries.len(), 12);
 }
 
-#[named]
 #[test]
 fn test_service_random() {
-	let mut service = ServiceType::new(function_name!());
+	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
 	service.complete_initial_setup();
 	service.login();
 	service.index();
@@ -345,10 +333,9 @@ fn test_service_random() {
 	assert_eq!(entries.len(), 2);
 }
 
-#[named]
 #[test]
 fn test_service_recent() {
-	let mut service = ServiceType::new(function_name!());
+	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
 	service.complete_initial_setup();
 	service.login();
 	service.index();
@@ -358,10 +345,9 @@ fn test_service_recent() {
 	assert_eq!(entries.len(), 2);
 }
 
-#[named]
 #[test]
 fn test_service_search() {
-	let mut service = ServiceType::new(function_name!());
+	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
 	service.complete_initial_setup();
 	service.login();
 	service.index();
@@ -375,10 +361,9 @@ fn test_service_search() {
 	}
 }
 
-#[named]
 #[test]
 fn test_service_serve() {
-	let mut service = ServiceType::new(function_name!());
+	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
 	service.complete_initial_setup();
 	service.login();
 	service.index();
@@ -407,10 +392,9 @@ fn test_service_serve() {
 	}
 }
 
-#[named]
 #[test]
 fn test_service_playlists() {
-	let mut service = ServiceType::new(function_name!());
+	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
 	service.complete_initial_setup();
 	service.login();
 	service.index();
