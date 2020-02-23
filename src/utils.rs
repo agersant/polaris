@@ -3,13 +3,13 @@ use app_dirs::{app_root, AppDataType, AppInfo};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-#[cfg(not(target_os = "linux"))]
+#[cfg(target_family = "windows")]
 const APP_INFO: AppInfo = AppInfo {
 	name: "Polaris",
 	author: "Permafrost",
 };
 
-#[cfg(target_os = "linux")]
+#[cfg(not(target_family = "windows"))]
 const APP_INFO: AppInfo = AppInfo {
 	name: "polaris",
 	author: "permafrost",
