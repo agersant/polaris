@@ -1,5 +1,6 @@
 # How to make a release
 
+- `git pull` to not miss out on any recent contributions
 - Update version number in Cargo.toml and commit the change (no need to push)
 - Run `make_release.ps1`
 - After CI completes, find the release on Github and write the changelog
