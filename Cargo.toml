@@ -15,7 +15,6 @@ anyhow = "1.0"
 ape = "0.2.0"
 app_dirs = "1.1.1"
 base64 = "0.11.0"
-cookie = "0.13.0"
 diesel = { version = "1.4", features = ["sqlite", "r2d2"] }
 diesel_migrations = { version = "1.4", features = ["sqlite"] }
 flame = { version = "0.2.2", optional = true }
@@ -65,6 +64,7 @@ unix-daemonize = "0.1.2"
 
 [dev-dependencies]
 percent-encoding = "2.1"
+cookie = "0.13.0"
 
 [profile.release.build-override]
 opt-level = 0
