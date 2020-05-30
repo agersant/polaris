@@ -64,7 +64,7 @@ unix-daemonize = "0.1.2"
 
 [dev-dependencies]
 percent-encoding = "2.1"
-cookie = "0.13.0"
+cookie = "0.14.0"
 
 [profile.release.build-override]
 opt-level = 0
