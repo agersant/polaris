@@ -1,7 +1,7 @@
 use anyhow::*;
 use rocket;
 use rocket::config::{Environment, LoggingLevel};
-use rocket_contrib::serve::StaticFiles;
+use rocket_contrib::serve::{Options, StaticFiles};
 use std::path::PathBuf;
 
 use super::api;
@@ -30,6 +30,7 @@ pub fn get_server(
 
 	let swagger_routes_rank = 0;
 	let web_routes_rank = swagger_routes_rank + 1;
+	let static_file_options = Options::Index | Options::NormalizeDirs;
 
 	Ok(rocket::custom(config)
 		.manage(db)
@@ -37,11 +38,11 @@ pub fn get_server(
 		.mount(&api_url, api::get_routes())
 		.mount(
 			&swagger_url,
-			StaticFiles::from(swagger_dir_path).rank(swagger_routes_rank),
+			StaticFiles::new(swagger_dir_path, static_file_options).rank(swagger_routes_rank),
 		)
 		.mount(
 			&web_url,
-			StaticFiles::from(web_dir_path).rank(web_routes_rank),
+			StaticFiles::new(web_dir_path, static_file_options).rank(web_routes_rank),
 		))
 }
 

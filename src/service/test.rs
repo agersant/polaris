@@ -89,13 +89,16 @@ fn test_service_index() {
 #[test]
 fn test_service_swagger_index() {
 	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
-	assert!(service.get("/swagger").status() == StatusCode::OK);
+	assert_eq!(
+		service.get("/swagger").status(),
+		StatusCode::PERMANENT_REDIRECT
+	);
 }
 
 #[test]
 fn test_service_swagger_index_with_trailing_slash() {
 	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
-	assert!(service.get("/swagger/").status() == StatusCode::OK);
+	assert_eq!(service.get("/swagger/").status(), StatusCode::OK);
 }
 
 #[test]
