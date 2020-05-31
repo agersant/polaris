@@ -22,7 +22,7 @@ flamer = { version = "0.4", optional = true }
 getopts = "0.2.15"
 http = "0.2"
 id3 = "0.5.1"
-image = "0.22"
+image = "0.23.4"
 libsqlite3-sys = { version = "0.16", features = ["bundled-windows"] }
 rustfm-scrobble = "^1"
 lewton = "0.10.1"

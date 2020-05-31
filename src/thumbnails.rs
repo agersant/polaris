@@ -1,11 +1,7 @@
 use anyhow::*;
 use image;
-use image::DynamicImage;
-use image::FilterType;
-use image::GenericImage;
-use image::GenericImageView;
-use image::ImageBuffer;
-use image::ImageOutputFormat;
+use image::imageops::FilterType;
+use image::{DynamicImage, GenericImage, GenericImageView, ImageBuffer, ImageOutputFormat};
 use std::cmp;
 use std::collections::hash_map::DefaultHasher;
 use std::fs::{DirBuilder, File};
@@ -79,13 +75,13 @@ pub fn get_thumbnail(real_path: &Path, options: &Options) -> Result<PathBuf> {
 				&scaled_image,
 				(out_dimension - scaled_width) / 2,
 				(out_dimension - scaled_height) / 2,
-			);
+			)?;
 		} else {
 			final_image = source_image.resize(out_dimension, out_dimension, FilterType::Lanczos3);
 		}
 
 		let mut out_file = File::create(&out_path)?;
-		final_image.write_to(&mut out_file, ImageOutputFormat::JPEG(quality))?;
+		final_image.write_to(&mut out_file, ImageOutputFormat::Jpeg(quality))?;
 	}
 
 	Ok(out_path)
