@@ -242,7 +242,7 @@ fn test_service_trigger_index() {
 
 	let response = service.get_json::<Vec<index::Directory>>("/api/random");
 	let entries = response.body();
-	assert_eq!(entries.len(), 2);
+	assert_eq!(entries.len(), 3);
 }
 
 #[test]
@@ -317,11 +317,11 @@ fn test_service_flatten() {
 
 	let response = service.get_json::<Vec<index::Song>>("/api/flatten");
 	let entries = response.body();
-	assert_eq!(entries.len(), 12);
+	assert_eq!(entries.len(), 13);
 
 	let response = service.get_json::<Vec<index::Song>>("/api/flatten/collection");
 	let entries = response.body();
-	assert_eq!(entries.len(), 12);
+	assert_eq!(entries.len(), 13);
 }
 
 #[test]
@@ -333,7 +333,7 @@ fn test_service_random() {
 
 	let response = service.get_json::<Vec<index::Directory>>("/api/random");
 	let entries = response.body();
-	assert_eq!(entries.len(), 2);
+	assert_eq!(entries.len(), 3);
 }
 
 #[test]
@@ -345,7 +345,7 @@ fn test_service_recent() {
 
 	let response = service.get_json::<Vec<index::Directory>>("/api/recent");
 	let entries = response.body();
-	assert_eq!(entries.len(), 2);
+	assert_eq!(entries.len(), 3);
 }
 
 #[test]
