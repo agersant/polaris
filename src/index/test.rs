@@ -13,8 +13,8 @@ fn test_populate() {
 	let connection = db.connect().unwrap();
 	let all_directories: Vec<Directory> = directories::table.load(&connection).unwrap();
 	let all_songs: Vec<Song> = songs::table.load(&connection).unwrap();
-	assert_eq!(all_directories.len(), 5);
-	assert_eq!(all_songs.len(), 12);
+	assert_eq!(all_directories.len(), 6);
+	assert_eq!(all_songs.len(), 13);
 }
 
 #[test]
@@ -101,9 +101,26 @@ fn test_browse() {
 fn test_flatten() {
 	let db = db::get_test_db("flatten.sqlite");
 	update(&db).unwrap();
+
+	// Flatten all
 	let results = flatten(&db, Path::new("root")).unwrap();
-	assert_eq!(results.len(), 12);
+	assert_eq!(results.len(), 13);
 	assert_eq!(results[0].title, Some("Above The Water".to_owned()));
+
+	// Flatten a directory
+	let mut path = PathBuf::new();
+	path.push("root");
+	path.push("Tobokegao");
+	let results = flatten(&db, &path).unwrap();
+	assert_eq!(results.len(), 8);
+
+	// Flatten a directory that is a prefix of another directory (Picnic Remixes)
+	let mut path = PathBuf::new();
+	path.push("root");
+	path.push("Tobokegao");
+	path.push("Picnic");
+	let results = flatten(&db, &path).unwrap();
+	assert_eq!(results.len(), 7);
 }
 
 #[test]

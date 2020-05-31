@@ -101,9 +101,13 @@ where
 
 	let real_songs: Vec<Song> = if virtual_path.as_ref().parent() != None {
 		let real_path = vfs.virtual_to_real(virtual_path)?;
-		let like_path = real_path.as_path().to_string_lossy().into_owned() + "%";
+		let song_path_filter = {
+			let mut path_buf = real_path.clone();
+			path_buf.push("%");
+			path_buf.as_path().to_string_lossy().into_owned()
+		};
 		songs
-			.filter(path.like(&like_path))
+			.filter(path.like(&song_path_filter))
 			.order(path)
 			.load(&connection)?
 	} else {

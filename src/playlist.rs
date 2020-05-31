@@ -259,18 +259,18 @@ fn test_fill_playlist() {
 		.into_iter()
 		.map(|s| s.path)
 		.collect();
-	assert_eq!(playlist_content.len(), 12);
+	assert_eq!(playlist_content.len(), 13);
 
 	let first_song = playlist_content[0].clone();
 	playlist_content.push(first_song);
-	assert_eq!(playlist_content.len(), 13);
+	assert_eq!(playlist_content.len(), 14);
 
 	save_playlist("all_the_music", "test_user", &playlist_content, &db).unwrap();
 
 	let songs = read_playlist("all_the_music", "test_user", &db).unwrap();
-	assert_eq!(songs.len(), 13);
+	assert_eq!(songs.len(), 14);
 	assert_eq!(songs[0].title, Some("Above The Water".to_owned()));
-	assert_eq!(songs[12].title, Some("Above The Water".to_owned()));
+	assert_eq!(songs[13].title, Some("Above The Water".to_owned()));
 
 	use std::path::PathBuf;
 	let mut first_song_path = PathBuf::new();
@@ -283,5 +283,5 @@ fn test_fill_playlist() {
 	// Save again to verify that we don't dupe the content
 	save_playlist("all_the_music", "test_user", &playlist_content, &db).unwrap();
 	let songs = read_playlist("all_the_music", "test_user", &db).unwrap();
-	assert_eq!(songs.len(), 13);
+	assert_eq!(songs.len(), 14);
 }
