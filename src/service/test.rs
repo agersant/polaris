@@ -188,7 +188,7 @@ fn test_service_settings() {
 			config::ConfigUser {
 				name: "test_user".into(),
 				password: "some_password".into(),
-				admin: true,
+				admin: false,
 			},
 			config::ConfigUser {
 				name: "other_user".into(),

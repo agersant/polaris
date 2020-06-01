@@ -146,7 +146,10 @@ impl<'a, 'r> FromRequest<'a, 'r> for Auth {
 	}
 }
 
-struct AdminRights {}
+struct AdminRights {
+	auth: Option<Auth>,
+}
+
 impl<'a, 'r> FromRequest<'a, 'r> for AdminRights {
 	type Error = ();
 
@@ -155,14 +158,14 @@ impl<'a, 'r> FromRequest<'a, 'r> for AdminRights {
 
 		match user::count(&db) {
 			Err(_) => return Outcome::Failure((Status::InternalServerError, ())),
-			Ok(0) => return Outcome::Success(AdminRights {}),
+			Ok(0) => return Outcome::Success(AdminRights { auth: None }),
 			_ => (),
 		};
 
 		let auth = request.guard::<Auth>()?;
 		match user::is_admin(&db, &auth.username) {
 			Err(_) => Outcome::Failure((Status::InternalServerError, ())),
-			Ok(true) => Outcome::Success(AdminRights {}),
+			Ok(true) => Outcome::Success(AdminRights { auth: Some(auth) }),
 			Ok(false) => Outcome::Failure((Status::Forbidden, ())),
 		}
 	}
@@ -213,8 +216,19 @@ fn get_settings(db: State<'_, DB>, _admin_rights: AdminRights) -> Result<Json<Co
 }
 
 #[put("/settings", data = "<config>")]
-fn put_settings(db: State<'_, DB>, _admin_rights: AdminRights, config: Json<Config>) -> Result<()> {
-	config::amend(&db, &config)?;
+fn put_settings(db: State<'_, DB>, admin_rights: AdminRights, config: Json<Config>) -> Result<()> {
+	// Do not let users remove their own admin rights
+	let mut sanitized_config = config.clone();
+	if let Some(users) = &mut sanitized_config.users {
+		for user in users.iter_mut() {
+			if let Some(auth) = &admin_rights.auth {
+				if auth.username == user.name {
+					user.admin = true;
+				}
+			}
+		}
+	}
+	config::amend(&db, &sanitized_config)?;
 	Ok(())
 }
 
