@@ -18,7 +18,7 @@ jobs:
     steps:
     - name: Install libsqlite3-dev
       if: matrix.os == 'ubuntu-latest'
-      run: sudo apt-get install libsqlite3-dev
+      run: sudo apt-get update && sudo apt-get install libsqlite3-dev
     - uses: actions/checkout@v1
     - uses: actions-rs/toolchain@v1
       with:
