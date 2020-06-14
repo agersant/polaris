@@ -5,10 +5,10 @@ use lewton::inside_ogg::OggStreamReader;
 use log::error;
 use metaflac;
 use mp3_duration;
+use mp4ameta;
 use regex::Regex;
 use std::fs;
 use std::path::Path;
-use mp4ameta;
 
 use crate::utils;
 use crate::utils::AudioFormat;
