@@ -250,10 +250,12 @@ fn test_read_metadata() {
 		duration: Some(0),
 		..sample_tags.clone()
 	};
+	let m4a_sample_tag = SongTags {
+		duration: Some(0),
+		..sample_tags.clone()
+	};
 	assert_eq!(read(Path::new("test/sample.mp3")).unwrap(), mp3_sample_tag);
 	assert_eq!(read(Path::new("test/sample.ogg")).unwrap(), sample_tags);
-	assert_eq!(
-		read(Path::new("test/sample.flac")).unwrap(),
-		flac_sample_tag
-	);
+	assert_eq!(read(Path::new("test/sample.flac")).unwrap(), flac_sample_tag);
+	assert_eq!(read(Path::new("test/sample.m4a")).unwrap(), m4a_sample_tag);
 }
