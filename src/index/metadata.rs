@@ -218,14 +218,15 @@ fn read_mp4(path: &Path) -> Result<SongTags> {
 		track_number: None,
 		year: None,
 	};
-	tags.artist = Some(tag.artist().unwrap().to_string());
-	tags.album_artist = Some(tag.album_artist().unwrap().to_string());
-	tags.album = Some(tag.album().unwrap().to_string());
-	tags.title = Some(tag.title().unwrap().to_string());
-	tags.duration = Some(tag.duration().unwrap() as u32);
+	tags.artist = tag.artist().map(|v| v.to_string());
+	tags.album_artist = tag.album_artist().map(|v| v.to_string());
+	tags.album = tag.album().map(|v| v.to_string());
+	tags.title = tag.title().map(|v| v.to_string());
+	tags.duration = tag.duration().map(|v| v as u32);
 	tags.disc_number = tag.disk_number().0.and_then(|d| Some(d as u32));
 	tags.track_number = tag.track_number().0.and_then(|d| Some(d as u32));
-	tags.year = tag.year().unwrap().parse::<i32>().ok();
+	let year = tag.year().and_then(|v| Some(v.parse::<i32>().ok()));
+	tags.year = match year { None => None, Some(year) => year};
 
 	Ok(tags)
 }
