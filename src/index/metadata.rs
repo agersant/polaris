@@ -225,8 +225,7 @@ fn read_mp4(path: &Path) -> Result<SongTags> {
 	tags.duration = tag.duration().map(|v| v as u32);
 	tags.disc_number = tag.disk_number().0.and_then(|d| Some(d as u32));
 	tags.track_number = tag.track_number().0.and_then(|d| Some(d as u32));
-	let year = tag.year().and_then(|v| Some(v.parse::<i32>().ok()));
-	tags.year = match year { None => None, Some(year) => year};
+	tags.year = tag.year().and_then(|v| v.parse::<i32>().ok());
 
 	Ok(tags)
 }
