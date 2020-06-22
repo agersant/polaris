@@ -5,6 +5,7 @@ use lewton::inside_ogg::OggStreamReader;
 use log::error;
 use metaflac;
 use mp3_duration;
+use mp4ameta;
 use regex::Regex;
 use std::fs;
 use std::path::Path;
@@ -29,6 +30,7 @@ pub fn read(path: &Path) -> Option<SongTags> {
 	let data = match utils::get_audio_format(path) {
 		Some(AudioFormat::FLAC) => Some(read_flac(path)),
 		Some(AudioFormat::MP3) => Some(read_id3(path)),
+		Some(AudioFormat::MP4) => Some(read_mp4(path)),
 		Some(AudioFormat::MPC) => Some(read_ape(path)),
 		Some(AudioFormat::OGG) => Some(read_vorbis(path)),
 		_ => None,
@@ -203,6 +205,31 @@ fn read_flac(path: &Path) -> Result<SongTags> {
 	})
 }
 
+#[cfg_attr(feature = "profile-index", flame)]
+fn read_mp4(path: &Path) -> Result<SongTags> {
+	let tag = mp4ameta::Tag::read_from_path(path)?;
+	let mut tags = SongTags {
+		artist: None,
+		album_artist: None,
+		album: None,
+		title: None,
+		duration: None,
+		disc_number: None,
+		track_number: None,
+		year: None,
+	};
+	tags.artist = tag.artist().map(|v| v.to_string());
+	tags.album_artist = tag.album_artist().map(|v| v.to_string());
+	tags.album = tag.album().map(|v| v.to_string());
+	tags.title = tag.title().map(|v| v.to_string());
+	tags.duration = tag.duration().map(|v| v as u32);
+	tags.disc_number = tag.disk_number().0.and_then(|d| Some(d as u32));
+	tags.track_number = tag.track_number().0.and_then(|d| Some(d as u32));
+	tags.year = tag.year().and_then(|v| v.parse::<i32>().ok());
+
+	Ok(tags)
+}
+
 #[test]
 fn test_read_metadata() {
 	let sample_tags = SongTags {
@@ -223,10 +250,12 @@ fn test_read_metadata() {
 		duration: Some(0),
 		..sample_tags.clone()
 	};
+	let m4a_sample_tag = SongTags {
+		duration: Some(0),
+		..sample_tags.clone()
+	};
 	assert_eq!(read(Path::new("test/sample.mp3")).unwrap(), mp3_sample_tag);
 	assert_eq!(read(Path::new("test/sample.ogg")).unwrap(), sample_tags);
-	assert_eq!(
-		read(Path::new("test/sample.flac")).unwrap(),
-		flac_sample_tag
-	);
+	assert_eq!(read(Path::new("test/sample.flac")).unwrap(), flac_sample_tag);
+	assert_eq!(read(Path::new("test/sample.m4a")).unwrap(), m4a_sample_tag);
 }
