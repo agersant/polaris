@@ -1474,7 +1474,7 @@ dependencies = [
 
 [[package]]
 name = "polaris"
-version = "0.12.3"
+version = "0.12.4"
 dependencies = [
  "anyhow 1.0.31 (registry+https://github.com/rust-lang/crates.io-index)",
  "ape 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
