@@ -45,6 +45,7 @@
     </DirectoryRef>
     <Feature Id="Complete" Level="1">
       <ComponentRef Id="MainExecutable" />
+      <ComponentRef Id="CLIExecutable" />
       <ComponentRef Id="ProgramMenuDir" />
       <ComponentRef Id="CleanupExtraData" />
       <ComponentGroupRef Id="WebUI" />
