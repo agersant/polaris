@@ -11,6 +11,7 @@ $rc_exe = Join-Path "C:\Program Files (x86)\Windows Kits\10\bin\10.0.18362.0\x64
 ""
 "Compiling executable"
 cargo rustc --release --features "ui" -- -C link-args="/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup res\windows\application\application.res"
+cargo rustc --release -- -o ".\target\release\polaris-cli.exe" -C link-args="res\windows\application\application.res"
 
 ""
 "Creating output directory"
@@ -23,6 +24,7 @@ Copy-Item .\res\windows\installer\license.rtf	.\release\tmp\
 Copy-Item .\res\windows\installer\banner.bmp	.\release\tmp\
 Copy-Item .\res\windows\installer\dialog.bmp	.\release\tmp\
 Copy-Item .\target\release\polaris.exe 			  .\release\tmp\
+Copy-Item .\target\release\polaris-cli.exe 		.\release\tmp\
 Copy-Item .\web   								            .\release\tmp\web     -recurse
 Copy-Item .\docs\swagger  					          .\release\tmp\swagger -recurse
 

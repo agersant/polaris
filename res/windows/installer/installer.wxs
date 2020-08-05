@@ -16,6 +16,9 @@
                 <Shortcut Id="DesktopPolaris" Directory="DesktopFolder" Name="Polaris" WorkingDirectory="AppDataPolaris" Icon="polaris.exe" IconIndex="0" Advertise="yes" />
               </File>
             </Component>
+    			  <Component Id="CLIExecutable" Guid="*">
+			  	    <File Source="polaris-cli.exe" KeyPath="yes" Checksum="yes" />
+	          </Component>
           </Directory>
         </Directory>
       </Directory>
