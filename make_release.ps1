@@ -4,5 +4,7 @@ Get-ChildItem "Cargo.toml" | ForEach-Object {
 	$script:POLARIS_VERSION = $matches[1]
 }
 
-git tag -a $POLARIS_VERSION -m "Polaris $POLARIS_VERSION"
-git push origin $POLARIS_VERSION
+git tag -d $POLARIS_VERSION
+git push --delete origin $POLARIS_VERSION
+git tag $POLARIS_VERSION
+git push --tags
