@@ -195,18 +195,18 @@ fn read_opus(path: &Path) -> Result<SongTags> {
 	for (key, value) in headers.comments.user_comments {
 		if "TITLE".eq_ignore_ascii_case(&key) {
 			tags.title = Some(value);
-		} else if "ALBUM".eq_ignore_ascii_case(key.as_str()) {
+		} else if "ALBUM".eq_ignore_ascii_case(&key) {
 			tags.album = Some(value);
-		} else if "ARTIST".eq_ignore_ascii_case(key.as_str()) {
+		} else if "ARTIST".eq_ignore_ascii_case(&key) {
 			tags.artist = Some(value);
-		} else if "ALBUMARTIST".eq_ignore_ascii_case(key.as_str()) {
+		} else if "ALBUMARTIST".eq_ignore_ascii_case(&key) {
 			tags.album_artist = Some(value);
-		} else if "TRACKNUMBER".eq_ignore_ascii_case(key.as_str()) {
+		} else if "TRACKNUMBER".eq_ignore_ascii_case(&key) {
 			tags.track_number = value.parse().ok();
-		} else if "DISCNUMBER".eq_ignore_ascii_case(key.as_str()) {
-			tags.disc_number = value.parse::<u32>().ok();
-		} else if "DATE".eq_ignore_ascii_case(key.as_str()) {
-			tags.year = value.parse::<i32>().ok();
+		} else if "DISCNUMBER".eq_ignore_ascii_case(&key) {
+			tags.disc_number = value.parse().ok();
+		} else if "DATE".eq_ignore_ascii_case(&key) {
+			tags.year = value.parse().ok();
 		}
 	}
 
