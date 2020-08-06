@@ -193,7 +193,7 @@ fn read_opus(path: &Path) -> Result<SongTags> {
 	};
 
 	for (key, value) in headers.comments.user_comments {
-		match key.as_str().to_uppercase().as_str() {
+		match key.to_uppercase().as_str() {
 			"TITLE" => tags.title = Some(value),
 			"ALBUM" => tags.album = Some(value),
 			"ARTIST" => tags.artist = Some(value),
