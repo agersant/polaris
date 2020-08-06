@@ -30,6 +30,7 @@ pub enum AudioFormat {
 	MP4,
 	MPC,
 	OGG,
+	OPUS,
 }
 
 #[cfg_attr(feature = "profile-index", flame)]
@@ -48,6 +49,7 @@ pub fn get_audio_format(path: &Path) -> Option<AudioFormat> {
 		"m4a" => Some(AudioFormat::MP4),
 		"mpc" => Some(AudioFormat::MPC),
 		"ogg" => Some(AudioFormat::OGG),
+		"opus" => Some(AudioFormat::OPUS),
 		_ => None,
 	}
 }

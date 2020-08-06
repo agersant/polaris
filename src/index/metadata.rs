@@ -9,6 +9,7 @@ use mp4ameta;
 use regex::Regex;
 use std::fs;
 use std::path::Path;
+use opus_headers;
 
 use crate::utils;
 use crate::utils::AudioFormat;
@@ -33,6 +34,7 @@ pub fn read(path: &Path) -> Option<SongTags> {
 		Some(AudioFormat::MP4) => Some(read_mp4(path)),
 		Some(AudioFormat::MPC) => Some(read_ape(path)),
 		Some(AudioFormat::OGG) => Some(read_vorbis(path)),
+		Some(AudioFormat::OPUS) => Some(read_opus(path)),
 		_ => None,
 	};
 	match data {
@@ -161,6 +163,37 @@ fn read_vorbis(path: &Path) -> Result<SongTags> {
 
 	for (key, value) in source.comment_hdr.comment_list {
 		match key.as_str() {
+			"TITLE" => tags.title = Some(value),
+			"ALBUM" => tags.album = Some(value),
+			"ARTIST" => tags.artist = Some(value),
+			"ALBUMARTIST" => tags.album_artist = Some(value),
+			"TRACKNUMBER" => tags.track_number = value.parse::<u32>().ok(),
+			"DISCNUMBER" => tags.disc_number = value.parse::<u32>().ok(),
+			"DATE" => tags.year = value.parse::<i32>().ok(),
+			_ => (),
+		}
+	}
+
+	Ok(tags)
+}
+
+#[cfg_attr(feature = "profile-index", flame)]
+fn read_opus(path: &Path) -> Result<SongTags> {
+	let headers = opus_headers::parse_from_path(path)?;
+
+	let mut tags = SongTags {
+		artist: None,
+		album_artist: None,
+		album: None,
+		title: None,
+		duration: None,
+		disc_number: None,
+		track_number: None,
+		year: None,
+	};
+
+	for (key, value) in headers.comments.user_comments {
+		match key.as_str().to_uppercase().as_str() {
 			"TITLE" => tags.title = Some(value),
 			"ALBUM" => tags.album = Some(value),
 			"ARTIST" => tags.artist = Some(value),

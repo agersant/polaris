@@ -45,6 +45,7 @@ thiserror = "1.0.19"
 time = "0.1"
 toml = "0.5"
 url = "2.1"
+opus_headers = "0.1.2"
 
 [dependencies.rocket_contrib]
 version = "0.4.5"
