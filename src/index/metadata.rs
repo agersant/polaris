@@ -202,7 +202,7 @@ fn read_opus(path: &Path) -> Result<SongTags> {
 		} else if "ALBUMARTIST".eq_ignore_ascii_case(key.as_str()) {
 			tags.album_artist = Some(value);
 		} else if "TRACKNUMBER".eq_ignore_ascii_case(key.as_str()) {
-			tags.track_number = value.parse::<u32>().ok();
+			tags.track_number = value.parse().ok();
 		} else if "DISCNUMBER".eq_ignore_ascii_case(key.as_str()) {
 			tags.disc_number = value.parse::<u32>().ok();
 		} else if "DATE".eq_ignore_ascii_case(key.as_str()) {
