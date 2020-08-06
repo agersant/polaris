@@ -193,7 +193,7 @@ fn read_opus(path: &Path) -> Result<SongTags> {
 	};
 
 	for (key, value) in headers.comments.user_comments {
-		if "TITLE".eq_ignore_ascii_case(key.as_str()) {
+		if "TITLE".eq_ignore_ascii_case(&key) {
 			tags.title = Some(value);
 		} else if "ALBUM".eq_ignore_ascii_case(key.as_str()) {
 			tags.album = Some(value);
