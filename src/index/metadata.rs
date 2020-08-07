@@ -14,15 +14,7 @@ use opus_headers;
 use crate::utils;
 use crate::utils::AudioFormat;
 
-macro_rules! match_ignore_case {
-    (match $v:ident {
-        $( $lit:literal => $res:expr, )*
-        _ => $catch_all:expr $(,)?
-    }) => {{
-        $( if $lit.eq_ignore_ascii_case(&$v) { $res } else )*
-        { $catch_all }
-    }};
-}
+use crate::match_ignore_case;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SongTags {

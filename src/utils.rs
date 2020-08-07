@@ -3,6 +3,17 @@ use app_dirs::{app_root, AppDataType, AppInfo};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+#[macro_export]
+macro_rules! match_ignore_case {
+    (match $v:ident {
+        $( $lit:literal => $res:expr, )*
+        _ => $catch_all:expr $(,)?
+    }) => {{
+        $( if $lit.eq_ignore_ascii_case(&$v) { $res } else )*
+        { $catch_all }
+    }};
+}
+
 #[cfg(target_family = "windows")]
 const APP_INFO: AppInfo = AppInfo {
 	name: "Polaris",
