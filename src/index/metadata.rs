@@ -305,4 +305,5 @@ fn test_read_metadata() {
 	assert_eq!(read(Path::new("test/sample.ogg")).unwrap(), sample_tags);
 	assert_eq!(read(Path::new("test/sample.flac")).unwrap(), flac_sample_tag);
 	assert_eq!(read(Path::new("test/sample.m4a")).unwrap(), m4a_sample_tag);
+	assert_eq!(read(Path::new("test/sample.opus")).unwrap(), sample_tags);
 }
