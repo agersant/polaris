@@ -13,6 +13,7 @@ macro_rules! match_ignore_case {
         { $catch_all }
     }};
 }
+pub use crate::match_ignore_case;
 
 #[cfg(target_family = "windows")]
 const APP_INFO: AppInfo = AppInfo {

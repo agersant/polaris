@@ -14,8 +14,6 @@ use opus_headers;
 use crate::utils;
 use crate::utils::AudioFormat;
 
-use crate::match_ignore_case;
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct SongTags {
 	pub disc_number: Option<u32>,
@@ -164,7 +162,7 @@ fn read_vorbis(path: &Path) -> Result<SongTags> {
 	};
 
 	for (key, value) in source.comment_hdr.comment_list {
-		match_ignore_case! {
+		utils::match_ignore_case! {
 			match key {
 				"TITLE" => tags.title = Some(value),
 				"ALBUM" => tags.album = Some(value),
@@ -197,7 +195,7 @@ fn read_opus(path: &Path) -> Result<SongTags> {
 	};
 
 	for (key, value) in headers.comments.user_comments {
-		match_ignore_case! {
+		utils::match_ignore_case! {
 			match key {
 				"TITLE" => tags.title = Some(value),
 				"ALBUM" => tags.album = Some(value),
