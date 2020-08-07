@@ -14,6 +14,16 @@ use opus_headers;
 use crate::utils;
 use crate::utils::AudioFormat;
 
+macro_rules! match_ignore_case {
+    (match $v:ident {
+        $( $lit:literal => $res:expr, )*
+        _ => $catch_all:expr $(,)?
+    }) => {{
+        $( if $lit.eq_ignore_ascii_case(&$v) { $res } else )*
+        { $catch_all }
+    }};
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct SongTags {
 	pub disc_number: Option<u32>,
@@ -162,15 +172,17 @@ fn read_vorbis(path: &Path) -> Result<SongTags> {
 	};
 
 	for (key, value) in source.comment_hdr.comment_list {
-		match key.as_str() {
-			"TITLE" => tags.title = Some(value),
-			"ALBUM" => tags.album = Some(value),
-			"ARTIST" => tags.artist = Some(value),
-			"ALBUMARTIST" => tags.album_artist = Some(value),
-			"TRACKNUMBER" => tags.track_number = value.parse::<u32>().ok(),
-			"DISCNUMBER" => tags.disc_number = value.parse::<u32>().ok(),
-			"DATE" => tags.year = value.parse::<i32>().ok(),
-			_ => (),
+		match_ignore_case! {
+			match key {
+				"TITLE" => tags.title = Some(value),
+				"ALBUM" => tags.album = Some(value),
+				"ARTIST" => tags.artist = Some(value),
+				"ALBUMARTIST" => tags.album_artist = Some(value),
+				"TRACKNUMBER" => tags.track_number = value.parse::<u32>().ok(),
+				"DISCNUMBER" => tags.disc_number = value.parse::<u32>().ok(),
+				"DATE" => tags.year = value.parse::<i32>().ok(),
+				_ => (),
+			}
 		}
 	}
 
@@ -193,20 +205,17 @@ fn read_opus(path: &Path) -> Result<SongTags> {
 	};
 
 	for (key, value) in headers.comments.user_comments {
-		if "TITLE".eq_ignore_ascii_case(&key) {
-			tags.title = Some(value);
-		} else if "ALBUM".eq_ignore_ascii_case(&key) {
-			tags.album = Some(value);
-		} else if "ARTIST".eq_ignore_ascii_case(&key) {
-			tags.artist = Some(value);
-		} else if "ALBUMARTIST".eq_ignore_ascii_case(&key) {
-			tags.album_artist = Some(value);
-		} else if "TRACKNUMBER".eq_ignore_ascii_case(&key) {
-			tags.track_number = value.parse().ok();
-		} else if "DISCNUMBER".eq_ignore_ascii_case(&key) {
-			tags.disc_number = value.parse().ok();
-		} else if "DATE".eq_ignore_ascii_case(&key) {
-			tags.year = value.parse().ok();
+		match_ignore_case! {
+			match key {
+				"TITLE" => tags.title = Some(value),
+				"ALBUM" => tags.album = Some(value),
+				"ARTIST" => tags.artist = Some(value),
+				"ALBUMARTIST" => tags.album_artist = Some(value),
+				"TRACKNUMBER" => tags.track_number = value.parse::<u32>().ok(),
+				"DISCNUMBER" => tags.disc_number = value.parse::<u32>().ok(),
+				"DATE" => tags.year = value.parse::<i32>().ok(),
+				_ => (),
+			}
 		}
 	}
 
