@@ -3,6 +3,18 @@ use app_dirs::{app_root, AppDataType, AppInfo};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+#[macro_export]
+macro_rules! match_ignore_case {
+    (match $v:ident {
+        $( $lit:literal => $res:expr, )*
+        _ => $catch_all:expr $(,)?
+    }) => {{
+        $( if $lit.eq_ignore_ascii_case(&$v) { $res } else )*
+        { $catch_all }
+    }};
+}
+pub use crate::match_ignore_case;
+
 #[cfg(target_family = "windows")]
 const APP_INFO: AppInfo = AppInfo {
 	name: "Polaris",
@@ -30,6 +42,7 @@ pub enum AudioFormat {
 	MP4,
 	MPC,
 	OGG,
+	OPUS,
 }
 
 #[cfg_attr(feature = "profile-index", flame)]
@@ -48,6 +61,7 @@ pub fn get_audio_format(path: &Path) -> Option<AudioFormat> {
 		"m4a" => Some(AudioFormat::MP4),
 		"mpc" => Some(AudioFormat::MPC),
 		"ogg" => Some(AudioFormat::OGG),
+		"opus" => Some(AudioFormat::OPUS),
 		_ => None,
 	}
 }
