@@ -81,7 +81,7 @@ The steps below will walk you through setting up YDNS and Polaris to give your i
 		- Make sure the `Type` field is set to `A`
 		- Set content to 0.0.0.0
 	- You should now be back on the "records" page which was pictured above
-	- Click on the ID number on the left (#28717 in the example above) of the column that has AAAA listed as its "Type".
+	- Click on the ID number on the left for the row that has its `Type` listed as `AAAA` (#28717 in the picture above).
 	- Click on the red trash can icon in the corner to delete this record
 	- Done!
 6. In the Polaris web interface, access the `Dynamic DNS` tab of the settings screen:
