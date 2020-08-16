@@ -30,17 +30,18 @@ You can now start Polaris from the start menu or from your desktop, Polaris will
 #### Polaris installation
 1. Download the [latest release]((https://github.com/agersant/polaris/releases/latest)) of Polaris (you want the .tar.gz file)
 2. Extract the polaris archive in a directory and open a terminal in that directory
-3. Execute `make install` (this may take several minutes)
+3. If you would like to customize the directories used by the installation process, you can set the following environment variables: `BINDIR`, `DATADIR`, `LOCALSTATEDIR`, `RUNSTATEDIR`
+4. Execute `make install` (this may take several minutes)
 
 The Polaris footprint on your system will be:
-- The polaris executable under `/usr/bin`
-- A handful of static files under `/usr/share/polaris`
-- A log file under `/var/log/polaris`
-- A database file containing your settings and music index under `/var/lib/polaris`
-- Many album art thumbnails under `/var/cache/polaris/thumbnails`
-- A PID file under `/run/polaris` which may be useful to run Polaris in conjunction with Systemd
+- The `polaris` executable in `$(BINDIR)/bin`, defaulting to `/usr/local/bin`
+- A handful of static files in `$(DATADIR)/polaris`, defaulting to `/usr/local/share/polaris`
+- A database file containing your settings and music index in `$(LOCALSTATEDIR)/lib/polaris`, defaulting to `/var/lib/polaris`
+- A log file in `$(LOCALSTATEDIR)/log/polaris`, defaulting to `/var/log/polaris`
+- Album art thumbnails in `$(LOCALSTATEDIR)/cache/polaris`, defaulting to `/var/cache/polaris`
+- A  PID file in `$(RUNSTATEDIR)/polaris`, defaulting to `/run/polaris`
 
-From here, you might want to adjust your system to run Polaris on login using Cron, Systemd or whichever method your distribution endorses.
+From here, you might want to adjust your system to run Polaris on login using Systemd, Cron or whichever method your distribution endorses.
 
 If you want to uninstall Polaris, execute `make uninstall` from the extracted archive's directory. This will delete all the files and directories listed above, including your Polaris database.
 
