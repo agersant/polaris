@@ -21,6 +21,7 @@ use std::io::prelude::*;
 use unix_daemonize::{daemonize_redirect, ChdirMode};
 
 use anyhow::*;
+use directories::{Directories, PolarisDirectories};
 use getopts::Options;
 use log::info;
 use simplelog::{LevelFilter, SimpleLogger, TermLogger, TerminalMode};
@@ -29,6 +30,7 @@ use std::path::Path;
 mod config;
 mod db;
 mod ddns;
+mod directories;
 mod index;
 mod lastfm;
 mod playlist;
@@ -51,13 +53,13 @@ fn daemonize(options: &getopts::Matches) -> Result<()> {
 	if options.opt_present("f") {
 		return Ok(());
 	}
-	let mut log_file = utils::get_data_root()?;
+	let mut log_file = Directories::get_log_directory()?;
 	log_file.push("polaris.log");
 	let pid = match daemonize_redirect(Some(&log_file), Some(&log_file), ChdirMode::NoChdir) {
 		Ok(p) => p,
 		Err(e) => bail!("Daemonize error: {:#?}", e),
 	};
-	let mut pid_path = utils::get_data_root()?;
+	let mut pid_path = Directories::get_pid_directory()?;
 	pid_path.push("polaris.pid");
 	let mut file = File::create(pid_path)?;
 	file.write_all(pid.to_string().as_bytes())?;
@@ -152,7 +154,7 @@ fn main() -> Result<()> {
 	// Init DB
 	info!("Starting up database");
 	let db_path = matches.opt_str("d");
-	let mut default_db_path = utils::get_data_root()?;
+	let mut default_db_path = Directories::get_db_directory()?;
 	default_db_path.push("db.sqlite");
 	let db_path = db_path
 		.map(|n| Path::new(n.as_str()).to_path_buf())
@@ -182,7 +184,7 @@ fn main() -> Result<()> {
 
 	// Web client mount target
 	let web_dir_name = matches.opt_str("w");
-	let mut default_web_dir = utils::get_data_root()?;
+	let mut default_web_dir = Directories::get_static_directory()?;
 	default_web_dir.push("web");
 	let web_dir_path = web_dir_name
 		.map(|n| Path::new(n.as_str()).to_path_buf())
@@ -193,7 +195,7 @@ fn main() -> Result<()> {
 
 	// Swagger files mount target
 	let swagger_dir_name = matches.opt_str("s");
-	let mut default_swagger_dir = utils::get_data_root()?;
+	let mut default_swagger_dir = Directories::get_static_directory()?;
 	default_swagger_dir.push("swagger");
 	let swagger_dir_path = swagger_dir_name
 		.map(|n| Path::new(n.as_str()).to_path_buf())

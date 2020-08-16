@@ -1,3 +1,4 @@
+use crate::directories::{Directories, PolarisDirectories};
 use anyhow::*;
 use image;
 use image::imageops::FilterType;
@@ -7,10 +8,6 @@ use std::collections::hash_map::DefaultHasher;
 use std::fs::{DirBuilder, File};
 use std::hash::{Hash, Hasher};
 use std::path::*;
-
-use crate::utils;
-
-const THUMBNAILS_PATH: &str = "thumbnails";
 
 #[derive(Debug, Hash)]
 pub struct Options {
@@ -37,8 +34,7 @@ fn hash(path: &Path, options: &Options) -> u64 {
 }
 
 pub fn get_thumbnail(real_path: &Path, options: &Options) -> Result<PathBuf> {
-	let mut out_path = utils::get_data_root()?;
-	out_path.push(THUMBNAILS_PATH);
+	let mut out_path = Directories::get_thumbnail_directory()?;
 
 	let mut dir_builder = DirBuilder::new();
 	dir_builder.recursive(true);

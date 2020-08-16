@@ -13,7 +13,6 @@ service-rocket = ["rocket", "rocket_contrib"]
 [dependencies]
 anyhow = "1.0.31"
 ape = "0.3.0"
-app_dirs = "1.1.1"
 base64 = "0.12.1"
 crossbeam-channel = "0.4"
 diesel = { version = "1.4.4", features = ["sqlite", "r2d2"] }
@@ -54,6 +53,7 @@ features = ["json", "serve"]
 optional = true
 
 [target.'cfg(windows)'.dependencies]
+app_dirs = "1.1.1"
 uuid = "0.8"
 
 [target.'cfg(windows)'.dependencies.winapi]
