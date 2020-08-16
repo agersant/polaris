@@ -1,7 +1,7 @@
 use crate::directories::PolarisDirectories;
 use anyhow::*;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub struct Directories {}
 
