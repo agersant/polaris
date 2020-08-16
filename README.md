@@ -32,11 +32,17 @@ You can now start Polaris from the start menu or from your desktop, Polaris will
 2. Extract the polaris archive in a directory and open a terminal in that directory
 3. Execute `make install` (this may take several minutes)
 
-This installation process puts the polaris executable in `~/.local/bin/polaris` and several data files under `~/.local/share/polaris`.
+The Polaris footprint on your system will be:
+- The polaris executable under `/usr/bin`
+- A handful of static files under `/usr/share/polaris`
+- Log file under `/var/log/polaris`
+- Database file containing your settings and music index under `/var/lib/polaris`
+- Album art thumbnails under `/var/cache/polaris/thumbnails`
+- A PID file under `/run/polaris` which may be useful to run Polaris in conjunction with Systemd
 
 From here, you might want to adjust your system to run Polaris on login using Cron, Systemd or whichever method your distribution endorses.
 
-If you want to uninstall Polaris, execute `make uninstall` from the extracted archive's directory. This will simply delete the directories created by the install process.
+If you want to uninstall Polaris, execute `make uninstall` from the extracted archive's directory. This will delete all the files and directories listed above, including your Polaris database.
 
 ### In a docker container
 
