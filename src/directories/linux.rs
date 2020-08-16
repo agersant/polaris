@@ -6,7 +6,7 @@ use std::path::PathBuf;
 pub struct Directories {}
 
 impl Directories {
-	fn get_pid_directory() -> Result<PathBuf> {
+	pub fn get_pid_directory() -> Result<PathBuf> {
 		let path = Path::new("/run/polaris");
 		fs::create_dir_all(&path)?;
 		Ok(path.to_owned())
