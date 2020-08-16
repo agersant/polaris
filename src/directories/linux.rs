@@ -14,8 +14,8 @@ impl Directories {
 }
 
 impl PolarisDirectories for Directories {
-	fn get_log_directory() -> Result<PathBuf> {
-		let path = Path::new(option_env!("POLARIS_LOG_DIR").unwrap_or("."));
+	fn get_static_directory() -> Result<PathBuf> {
+		let path = Path::new(option_env!("POLARIS_STATIC_DIR").unwrap_or("."));
 		fs::create_dir_all(&path)?;
 		Ok(path.to_owned())
 	}
@@ -26,15 +26,15 @@ impl PolarisDirectories for Directories {
 		Ok(path.to_owned())
 	}
 
-	fn get_thumbnail_directory() -> Result<PathBuf> {
-		let mut path = Path::new(option_env!("POLARIS_CACHE_DIR").unwrap_or(".")).to_owned();
-		path.push("thumbnails");
+	fn get_log_directory() -> Result<PathBuf> {
+		let path = Path::new(option_env!("POLARIS_LOG_DIR").unwrap_or("."));
 		fs::create_dir_all(&path)?;
 		Ok(path.to_owned())
 	}
 
-	fn get_static_directory() -> Result<PathBuf> {
-		let path = Path::new(option_env!("POLARIS_STATIC_DIR").unwrap_or("."));
+	fn get_thumbnail_directory() -> Result<PathBuf> {
+		let mut path = Path::new(option_env!("POLARIS_CACHE_DIR").unwrap_or(".")).to_owned();
+		path.push("thumbnails");
 		fs::create_dir_all(&path)?;
 		Ok(path.to_owned())
 	}

@@ -23,11 +23,15 @@ impl Directories {
 }
 
 impl PolarisDirectories for Directories {
-	fn get_log_directory() -> Result<PathBuf> {
+	fn get_static_directory() -> Result<PathBuf> {
 		Directories::get_data_root()
 	}
 
 	fn get_db_directory() -> Result<PathBuf> {
+		Directories::get_data_root()
+	}
+
+	fn get_log_directory() -> Result<PathBuf> {
 		Directories::get_data_root()
 	}
 
@@ -36,9 +40,5 @@ impl PolarisDirectories for Directories {
 			p.push("thumbnails");
 			p
 		})
-	}
-
-	fn get_static_directory() -> Result<PathBuf> {
-		Directories::get_data_root()
 	}
 }
