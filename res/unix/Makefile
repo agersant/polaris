@@ -1,5 +1,9 @@
 POLARIS_BIN_DIR := /usr/bin/polaris
 POLARIS_STATIC_DIR := /usr/share/polaris
+POLARIS_LOG_DIR := /var/log/polaris
+POLARIS_DB_DIR := /var/lib/polaris
+POLARIS_CACHE_DIR := /var/cache/polaris
+POLARIS_PID_DIR := /run/polaris
 
 all: build
 
@@ -20,3 +24,7 @@ clean:
 uninstall:
 	rm -r $(POLARIS_BIN_DIR)
 	rm -r $(POLARIS_STATIC_DIR)
+	rm -r $(POLARIS_LOG_DIR)
+	rm -r $(POLARIS_DB_DIR)
+	rm -r $(POLARIS_CACHE_DIR)
+	rm -r $(POLARIS_PID_DIR)
