@@ -14,7 +14,8 @@ mod linux;
 pub use self::linux::Directories;
 
 pub trait PolarisDirectories {
-	fn get_static_directory() -> Result<PathBuf>;
+	fn get_web_directory() -> Result<PathBuf>;
+	fn get_swagger_directory() -> Result<PathBuf>;
 	fn get_db_directory() -> Result<PathBuf>;
 	fn get_log_directory() -> Result<PathBuf>;
 	fn get_thumbnail_directory() -> Result<PathBuf>;

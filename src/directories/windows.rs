@@ -23,8 +23,18 @@ impl Directories {
 }
 
 impl PolarisDirectories for Directories {
-	fn get_static_directory() -> Result<PathBuf> {
-		Directories::get_data_root()
+	fn get_web_directory() -> Result<PathBuf> {
+		Directories::get_data_root().map(|mut p| {
+			p.push("web");
+			p
+		})
+	}
+
+	fn get_swagger_directory() -> Result<PathBuf> {
+		Directories::get_data_root().map(|mut p| {
+			p.push("swagger");
+			p
+		})
 	}
 
 	fn get_db_directory() -> Result<PathBuf> {

@@ -14,8 +14,14 @@ impl Directories {
 }
 
 impl PolarisDirectories for Directories {
-	fn get_static_directory() -> Result<PathBuf> {
-		let path = Path::new(option_env!("POLARIS_STATIC_DIR").unwrap_or("."));
+	fn get_web_directory() -> Result<PathBuf> {
+		let path = Path::new(option_env!("POLARIS_WEB_DIR").unwrap_or("."));
+		fs::create_dir_all(&path)?;
+		Ok(path.to_owned())
+	}
+
+	fn get_swagger_directory() -> Result<PathBuf> {
+		let path = Path::new(option_env!("POLARIS_SWAGGER_DIR").unwrap_or("."));
 		fs::create_dir_all(&path)?;
 		Ok(path.to_owned())
 	}

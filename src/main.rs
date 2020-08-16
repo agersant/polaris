@@ -184,8 +184,7 @@ fn main() -> Result<()> {
 
 	// Web client mount target
 	let web_dir_name = matches.opt_str("w");
-	let mut default_web_dir = Directories::get_static_directory()?;
-	default_web_dir.push("web");
+	let default_web_dir = Directories::get_web_directory()?;
 	let web_dir_path = web_dir_name
 		.map(|n| Path::new(n.as_str()).to_path_buf())
 		.unwrap_or(default_web_dir);
@@ -195,8 +194,7 @@ fn main() -> Result<()> {
 
 	// Swagger files mount target
 	let swagger_dir_name = matches.opt_str("s");
-	let mut default_swagger_dir = Directories::get_static_directory()?;
-	default_swagger_dir.push("swagger");
+	let default_swagger_dir = Directories::get_swagger_directory()?;
 	let swagger_dir_path = swagger_dir_name
 		.map(|n| Path::new(n.as_str()).to_path_buf())
 		.unwrap_or(default_swagger_dir);
