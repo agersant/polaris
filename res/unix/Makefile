@@ -1,11 +1,16 @@
 .PHONY: all build install install-bin install-data clean uninstall
 
-POLARIS_BIN_DIR := /usr/bin
-POLARIS_STATIC_DIR := /usr/share/polaris
-POLARIS_LOG_DIR := /var/log/polaris
-POLARIS_DB_DIR := /var/lib/polaris
-POLARIS_CACHE_DIR := /var/cache/polaris
-POLARIS_PID_DIR := /run/polaris
+BINDIR ?= /usr/local/bin
+DATADIR ?= /usr/local/share
+LOCALSTATEDIR ?= /var
+RUNSTATEDIR ?= /run
+
+POLARIS_BIN_PATH := $(BINDIR)/polaris
+export POLARIS_STATIC_DIR := $(DATADIR)/polaris
+export POLARIS_DB_DIR := $(LOCALSTATEDIR)/lib/polaris
+export POLARIS_LOG_DIR := $(LOCALSTATEDIR)/log/polaris
+export POLARIS_CACHE_DIR := $(LOCALSTATEDIR)/cache/polaris
+export POLARIS_PID_DIR := $(RUNSTATEDIR)/polaris
 
 all: build
 
@@ -15,7 +20,7 @@ build:
 install: install-bin install-data
 
 install-bin: build
-	install -Dm755 ./target/release/polaris $(POLARIS_BIN_DIR)/polaris
+	install -Dm755 ./target/release/polaris $(POLARIS_BIN_PATH)
 
 install-data:
 	install -d $(POLARIS_STATIC_DIR)
@@ -26,7 +31,7 @@ clean:
 	cargo clean
 
 uninstall:
-	rm $(POLARIS_BIN_DIR)/polaris
+	rm $(POLARIS_BIN_PATH)
 	rm -r $(POLARIS_STATIC_DIR)
 	rm -r $(POLARIS_LOG_DIR)
 	rm -r $(POLARIS_DB_DIR)
