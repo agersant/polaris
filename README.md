@@ -35,9 +35,9 @@ You can now start Polaris from the start menu or from your desktop, Polaris will
 The Polaris footprint on your system will be:
 - The polaris executable under `/usr/bin`
 - A handful of static files under `/usr/share/polaris`
-- Log file under `/var/log/polaris`
-- Database file containing your settings and music index under `/var/lib/polaris`
-- Album art thumbnails under `/var/cache/polaris/thumbnails`
+- A log file under `/var/log/polaris`
+- A database file containing your settings and music index under `/var/lib/polaris`
+- Many album art thumbnails under `/var/cache/polaris/thumbnails`
 - A PID file under `/run/polaris` which may be useful to run Polaris in conjunction with Systemd
 
 From here, you might want to adjust your system to run Polaris on login using Cron, Systemd or whichever method your distribution endorses.
