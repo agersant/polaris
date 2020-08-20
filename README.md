@@ -30,20 +30,20 @@ You can now start Polaris from the start menu or from your desktop, Polaris will
 #### Polaris installation
 1. Download the [latest release]((https://github.com/agersant/polaris/releases/latest)) of Polaris (you want the .tar.gz file)
 2. Extract the polaris archive in a directory and open a terminal in that directory
-3. If you would like to customize the directories used by the installation process, you can set the following environment variables: `BINDIR`, `DATADIR`, `LOCALSTATEDIR`, `RUNSTATEDIR`
+3. If you would like to customize the directories used by the installation process, you can specify any number of the following environment variables: `PREFIX`, `EXEC_PREFIX`, `DATAROOTDIR`, `DATADIR`, `LOCALSTATEDIR` and `RUNSTATEDIR`. Refer to the [Make manual](https://www.gnu.org/software/make/manual/html_node/Directory-Variables.html#Directory-Variables) for details on how these are used.
 4. Execute `make install` (this may take several minutes)
 
-The Polaris footprint on your system will be:
-- The `polaris` executable in `$(BINDIR)/bin`, defaulting to `/usr/local/bin`
-- A handful of static files in `$(DATADIR)/polaris`, defaulting to `/usr/local/share/polaris`
-- A database file containing your settings and music index in `$(LOCALSTATEDIR)/lib/polaris`, defaulting to `/var/lib/polaris`
-- A log file in `$(LOCALSTATEDIR)/log/polaris`, defaulting to `/var/log/polaris`
-- Album art thumbnails in `$(LOCALSTATEDIR)/cache/polaris`, defaulting to `/var/cache/polaris`
-- A  PID file in `$(RUNSTATEDIR)/polaris`, defaulting to `/run/polaris`
+Using default install paths, the Polaris footprint on your system will be:
+- The `polaris` executable in `/usr/local/bin`
+- A handful of static files in `/usr/local/share/polaris`
+- A database file containing your settings and music index in `usr/local/var/lib/polaris`
+- A log file in `usr/local/var/log/polaris`
+- Album art thumbnails in `usr/local/var/cache/polaris`
+- A PID file in `usr/local/var/run/polaris`
 
 From here, you might want to adjust your system to run Polaris on login using Systemd, Cron or whichever method your distribution endorses.
 
-If you want to uninstall Polaris, execute `make uninstall` from the extracted archive's directory. This will delete all the files and directories listed above, including your Polaris database.
+If you want to uninstall Polaris, execute `make uninstall` from the extracted archive's directory. This will delete all the files and directories listed above **including your Polaris database**. If you customized the install process by specifying environment variables like `PREFIX`, make sure they are set to the same values when running `make uninstall`.
 
 ### In a docker container
 
