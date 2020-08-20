@@ -1,9 +1,14 @@
 .PHONY: all build install install-bin install-data clean uninstall
 
-BINDIR ?= /usr/local/bin
-DATADIR ?= /usr/local/share
-LOCALSTATEDIR ?= /var
-RUNSTATEDIR ?= /run
+PREFIX ?= /usr/local
+
+EXEC_PREFIX ?= $(PREFIX)
+BINDIR ?= $(EXEC_PREFIX)/bin
+
+DATAROOTDIR ?= $(PREFIX)/share
+DATADIR ?= $(DATAROOTDIR)
+LOCALSTATEDIR ?= $(PREFIX)/var
+RUNSTATEDIR ?= $(LOCALSTATEDIR)/run
 
 POLARIS_BIN_PATH := $(BINDIR)/polaris
 export POLARIS_WEB_DIR :=  $(DATADIR)/polaris/web
