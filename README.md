@@ -26,7 +26,7 @@ Polaris is a music streaming application, designed to let you enjoy your music c
 
 ## Documentation
 
-- [Contribute to Polaris](docs/CONTRIBUTE.md)
+- [Contribute to Polaris](docs/CONTRIBUTING.md)
 - [Maintenance Runbooks](docs/MAINTENANCE.md)
 
 ### API Documentation
