@@ -23,7 +23,6 @@ Polaris is a music streaming application, designed to let you enjoy your music c
 
 ![Polaris Web UI](res/readme/web_ui.png?raw=true "Polaris Web UI")
 ![Polaris Web UI Dark Mode](res/readme/dark_mode.png?raw=true "Polaris Web UI")
-![Polaris Web UI Dark Mode](res/readme/setup_flow.png?raw=true "Polaris Web UI")
 
 ## Documentation
 
