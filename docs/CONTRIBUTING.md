@@ -1,4 +1,6 @@
-# Compiling and Running Polaris
+# Contributing
+
+## Compiling and Running Polaris
 
 Compiling and running Polaris is very easy as it only depends on the Rust toolchain.
 
@@ -18,6 +20,6 @@ Putting it all together, a typical command to compile and run the program would 
 
 While Polaris is running, access the web UI at [http://localhost:5050](http://localhost:5050).
 
-# Running Unit Tests
+## Running Unit Tests
 
 That's the easy part, simply run `cargo test`!
