@@ -16,8 +16,8 @@ Polaris is a music streaming application, designed to let you enjoy your music c
 
 ## Tutorials
 
-- [Getting Started](https://agersant.github.io/polaris/SETUP.md)
-- [Streaming From Remote Devices](https://agersant.github.io/polaris/DDNS.md)
+- [Getting Started](https://agersant.github.io/polaris/SETUP)
+- [Streaming From Remote Devices](https://agersant.github.io/polaris/DDNS)
 
 ## Screenshots
 
@@ -26,8 +26,8 @@ Polaris is a music streaming application, designed to let you enjoy your music c
 
 ## Documentation
 
-- [Contribute to Polaris](https://agersant.github.io/polaris/CONTRIBUTE.md)
-- [Maintenance Runbooks](https://agersant.github.io/polaris/MAINTENANCE.md)
+- [Contribute to Polaris](https://agersant.github.io/polaris/CONTRIBUTE)
+- [Maintenance Runbooks](https://agersant.github.io/polaris/MAINTENANCE)
 
 ### API Documentation
 The Polaris server API is documented via [Swagger](https://agersant.github.io/polaris/swagger). Please note that this Swagger page does not point to a live Polaris server so the `Try it out` buttons are not expected to work.
