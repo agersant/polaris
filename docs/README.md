@@ -1,3 +1,0 @@
-## Documentation
-
-- [API Documentation](swagger)
