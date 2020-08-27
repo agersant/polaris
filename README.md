@@ -3,7 +3,7 @@
 <img src="res/readme/logo.png?raw=true"/>
 Polaris is a music streaming application, designed to let you enjoy your music collection from any computer or mobile device. Polaris works by streaming your music directly from your own computer, without uploading it to a third-party. It is free and open-source software, without any kind of premium version. The only requirement is that your computer stays on while it streams music!
 
-## Key Features
+## Features
 - Optimized for large music collections
 - Can run on Windows, Linux and BSD or through Docker
 - Listen to your music through on the web or using the [Polaris Android](https://github.com/agersant/polaris-android) app
