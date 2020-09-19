@@ -2,7 +2,7 @@ album_art_pattern = '^Folder\.(png|jpg|jpeg)$'
 
 [[mount_dirs]]
 name = 'root'
-source = 'test/collection'
+source = 'test-data/small-collection'
 
 [[users]]
 name = 'test_user'

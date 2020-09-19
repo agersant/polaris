@@ -1,10 +1,7 @@
 target
 release
 *.res
-test/*.sqlite
-*.sqlite-journal
-*.sqlite-wal
-*.sqlite-shm
+test-output
 tmp
 TestConfig*
 index-flame-graph.html

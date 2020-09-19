@@ -20,8 +20,8 @@ fn test_populate() {
 #[test]
 fn test_metadata() {
 	let mut target = PathBuf::new();
-	target.push("test");
-	target.push("collection");
+	target.push("test-data");
+	target.push("small-collection");
 	target.push("Tobokegao");
 	target.push("Picnic");
 

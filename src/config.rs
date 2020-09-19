@@ -284,7 +284,9 @@ fn clean_path_string(path_string: &str) -> path::PathBuf {
 #[cfg(test)]
 fn get_test_db(name: &str) -> crate::db::DB {
 	let mut db_path = path::PathBuf::new();
-	db_path.push("test");
+	db_path.push("test-output");
+	fs::create_dir_all(&db_path).unwrap();
+
 	db_path.push(name);
 	if db_path.exists() {
 		fs::remove_file(&db_path).unwrap();

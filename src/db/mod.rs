@@ -84,17 +84,20 @@ impl DB {
 #[cfg(test)]
 pub fn get_test_db(name: &str) -> DB {
 	use crate::config;
-	let config_path = Path::new("test/config.toml");
+	let config_path = Path::new("test-data/config.toml");
 	let config = config::parse_toml_file(&config_path).unwrap();
 
 	let mut db_path = std::path::PathBuf::new();
-	db_path.push("test");
+	db_path.push("test-output");
+	std::fs::create_dir_all(&db_path).unwrap();
+
 	db_path.push(name);
 	if db_path.exists() {
 		std::fs::remove_file(&db_path).unwrap();
 	}
 
 	let db = DB::new(&db_path).unwrap();
+
 	config::reset(&db).unwrap();
 	config::amend(&db, &config).unwrap();
 	db
