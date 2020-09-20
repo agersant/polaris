@@ -18,7 +18,7 @@ const TEST_DB_PREFIX: &str = "service-test-";
 const TEST_USERNAME: &str = "test_user";
 const TEST_PASSWORD: &str = "test_password";
 const TEST_MOUNT_NAME: &str = "collection";
-const TEST_MOUNT_SOURCE: &str = "test/collection";
+const TEST_MOUNT_SOURCE: &str = "test-data/small-collection";
 
 pub trait TestService {
 	fn new(db_name: &str) -> Self;
@@ -180,7 +180,7 @@ fn test_service_settings() {
 			},
 			vfs::MountPoint {
 				name: "more_music".into(),
-				source: "test/collection".into(),
+				source: "test-data/small-collection".into(),
 			},
 		]),
 		prefix_url: Some("my_prefix".to_owned()),

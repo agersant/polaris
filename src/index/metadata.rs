@@ -6,10 +6,10 @@ use log::error;
 use metaflac;
 use mp3_duration;
 use mp4ameta;
+use opus_headers;
 use regex::Regex;
 use std::fs;
 use std::path::Path;
-use opus_headers;
 
 use crate::utils;
 use crate::utils::AudioFormat;
@@ -291,9 +291,24 @@ fn test_read_metadata() {
 		duration: Some(0),
 		..sample_tags.clone()
 	};
-	assert_eq!(read(Path::new("test/sample.mp3")).unwrap(), mp3_sample_tag);
-	assert_eq!(read(Path::new("test/sample.ogg")).unwrap(), sample_tags);
-	assert_eq!(read(Path::new("test/sample.flac")).unwrap(), flac_sample_tag);
-	assert_eq!(read(Path::new("test/sample.m4a")).unwrap(), m4a_sample_tag);
-	assert_eq!(read(Path::new("test/sample.opus")).unwrap(), sample_tags);
+	assert_eq!(
+		read(Path::new("test-data/formats/sample.mp3")).unwrap(),
+		mp3_sample_tag
+	);
+	assert_eq!(
+		read(Path::new("test-data/formats/sample.ogg")).unwrap(),
+		sample_tags
+	);
+	assert_eq!(
+		read(Path::new("test-data/formats/sample.flac")).unwrap(),
+		flac_sample_tag
+	);
+	assert_eq!(
+		read(Path::new("test-data/formats/sample.m4a")).unwrap(),
+		m4a_sample_tag
+	);
+	assert_eq!(
+		read(Path::new("test-data/formats/sample.opus")).unwrap(),
+		sample_tags
+	);
 }

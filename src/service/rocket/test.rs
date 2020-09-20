@@ -55,11 +55,14 @@ pub type ServiceType = RocketTestService;
 impl TestService for RocketTestService {
 	fn new(db_name: &str) -> Self {
 		let mut db_path = PathBuf::new();
-		db_path.push("test");
+		db_path.push("test-output");
+		fs::create_dir_all(&db_path).unwrap();
+
 		db_path.push(format!("{}.sqlite", db_name));
 		if db_path.exists() {
 			fs::remove_file(&db_path).unwrap();
 		}
+
 		let db = DB::new(&db_path).unwrap();
 
 		let web_dir_path = PathBuf::from("web");

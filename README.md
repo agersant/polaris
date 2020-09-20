@@ -5,8 +5,8 @@ Polaris is a music streaming application, designed to let you enjoy your music c
 
 ## Features
 - Optimized for large music collections
-- Can run on Windows, Linux and BSD or through Docker
-- Listen to your music through on the web or using the [Polaris Android](https://github.com/agersant/polaris-android) app
+- Can run on Windows, Linux, BSD, or through Docker
+- Listen to your music on the web or using the [Polaris Android](https://github.com/agersant/polaris-android) app
 - Easy to setup and configure via the built-in web UI
 - Support for `flac`, `mp3`, `mp4`, `mpc`, `ogg` and `opus` files
 - Support for album art images
