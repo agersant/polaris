@@ -3,7 +3,7 @@ echo "Creating output directory"
 mkdir -p release/tmp/polaris
 
 echo "Copying package files"
-cp -r web docs/swagger src migrations test Cargo.toml Cargo.lock res/unix/Makefile release/tmp/polaris
+cp -r web docs/swagger src migrations test-data Cargo.toml Cargo.lock res/unix/Makefile release/tmp/polaris
 
 echo "Creating tarball"
 POLARIS_VERSION=$(grep -m 1 ^version Cargo.toml | awk '{print $3}' | tr -d '"\r\n')
