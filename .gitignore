@@ -1,7 +1,15 @@
+# Build output
 target
+
+# Test output
+test-output
+
+# Profiler output when using the `profile-index` feature
+index-flame-graph.html
+
+# Local config for quick iteration
+TestConfig.toml
+
+# Release process artefacts (usually runs on CI)
 release
 *.res
-test-output
-tmp
-TestConfig*
-index-flame-graph.html

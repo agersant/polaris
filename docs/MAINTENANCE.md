@@ -13,4 +13,4 @@ Note that the Github web UI will separate the release from the corresponding tag
 ## How to change the database schema
 
 - Add a new folder under `migrations` following the existing pattern
-- Run `update_db_schema.bat` (all its should also work in bash if you're a Linux user)
+- Run `update_db_schema.bat`
