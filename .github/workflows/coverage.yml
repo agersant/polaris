@@ -1,0 +1,32 @@
+name: Test Coverage
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+jobs:
+  test:
+    name: Measure Test Coverage
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Install libsqlite3-dev
+      run: sudo apt-get update && sudo apt-get install libsqlite3-dev
+    - name: Checkout Polaris
+      uses: actions/checkout@v1
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        profile: minimal
+        default: true
+    - name: Install Tarpaulin
+      run: cargo install cargo-tarpaulin
+    - name: Run Tests
+      run: cargo tarpaulin --all-features --ignore-tests --out Xml
+    - name: Upload Results
+      uses: codecov/codecov-action@v1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: true
