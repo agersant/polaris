@@ -12,6 +12,7 @@ use super::server;
 use crate::db::DB;
 use crate::index;
 use crate::service::test::TestService;
+use crate::thumbnails::ThumbnailsManager;
 
 pub struct RocketResponse<'r, 's> {
 	response: &'s mut rocket::Response<'r>,
@@ -70,6 +71,12 @@ impl TestService for RocketTestService {
 		swagger_dir_path.push("swagger");
 		let index = index::builder(db.clone()).periodic_updates(false).build();
 
+		let mut thumbnails_path = PathBuf::new();
+		thumbnails_path.push("test-output");
+		thumbnails_path.push("thumbnails");
+		thumbnails_path.push(db_name);
+		let thumbnails_manager = ThumbnailsManager::new(thumbnails_path.as_path());
+
 		let auth_secret: [u8; 32] = [0; 32];
 
 		let server = server::get_server(
@@ -82,6 +89,7 @@ impl TestService for RocketTestService {
 			&swagger_dir_path,
 			db,
 			index,
+			thumbnails_manager,
 		)
 		.unwrap();
 		let client = Client::new(server).unwrap();

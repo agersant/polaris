@@ -434,3 +434,24 @@ fn test_service_playlists() {
 	let playlists = response.body();
 	assert_eq!(playlists.len(), 0);
 }
+
+#[test]
+fn test_service_thumbnail() {
+	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	service.complete_initial_setup();
+	service.login();
+	service.index();
+
+	let mut path = PathBuf::new();
+	path.push("collection");
+	path.push("Khemmis");
+	path.push("Hunted");
+	path.push("Folder.jpg");
+	let uri = format!(
+		"/api/thumbnail/{}",
+		percent_encode(path.to_string_lossy().as_ref().as_bytes(), NON_ALPHANUMERIC)
+	);
+
+	let response = service.get(&uri);
+	assert_eq!(response.status(), StatusCode::OK);
+}

@@ -22,7 +22,7 @@ use crate::playlist;
 use crate::service::constants::*;
 use crate::service::dto;
 use crate::service::error::APIError;
-use crate::thumbnails;
+use crate::thumbnails::{ThumbnailOptions, ThumbnailsManager};
 use crate::user;
 use crate::vfs::VFSSource;
 
@@ -329,12 +329,18 @@ fn audio(db: State<'_, DB>, _auth: Auth, path: VFSPathBuf) -> Result<serve::Rang
 }
 
 #[get("/thumbnail/<path>?<pad>")]
-fn thumbnail(db: State<'_, DB>, _auth: Auth, path: VFSPathBuf, pad: Option<bool>) -> Result<File> {
+fn thumbnail(
+	db: State<'_, DB>,
+	thumbnails_manager: State<'_, ThumbnailsManager>,
+	_auth: Auth,
+	path: VFSPathBuf,
+	pad: Option<bool>,
+) -> Result<File> {
 	let vfs = db.get_vfs()?;
 	let image_path = vfs.virtual_to_real(&path.into() as &PathBuf)?;
-	let mut options = thumbnails::Options::default();
+	let mut options = ThumbnailOptions::default();
 	options.pad_to_square = pad.unwrap_or(options.pad_to_square);
-	let thumbnail_path = thumbnails::get_thumbnail(&image_path, &options)?;
+	let thumbnail_path = thumbnails_manager.get_thumbnail(&image_path, &options)?;
 	let file = File::open(thumbnail_path)?;
 	Ok(file)
 }
