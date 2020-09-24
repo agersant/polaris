@@ -349,6 +349,16 @@ fn test_service_recent() {
 }
 
 #[test]
+fn test_service_search_root() {
+	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	service.complete_initial_setup();
+	service.login();
+	service.index();
+	let response = service.get_json::<Vec<index::CollectionFile>>("/api/search");
+	assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[test]
 fn test_service_search() {
 	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
 	service.complete_initial_setup();
@@ -363,7 +373,6 @@ fn test_service_search() {
 		_ => panic!(),
 	}
 }
-
 #[test]
 fn test_service_serve() {
 	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
