@@ -228,7 +228,7 @@ fn test_service_preferences() {
 	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
 	service.complete_initial_setup();
 	service.login();
-	let response = service.get("/api/preferences");
+	let response = service.get_json::<config::Preferences>("/api/preferences");
 	assert_eq!(response.status(), StatusCode::OK);
 
 	let preferences = config::Preferences::default();
