@@ -61,7 +61,8 @@ impl<'r> rocket::response::Responder<'r> for APIError {
 	fn respond_to(self, _: &rocket::request::Request<'_>) -> rocket::response::Result<'r> {
 		let status = match self {
 			APIError::IncorrectCredentials => rocket::http::Status::Unauthorized,
-			_ => rocket::http::Status::InternalServerError,
+			APIError::OwnAdminPrivilegeRemoval => rocket::http::Status::Conflict,
+			APIError::Unspecified => rocket::http::Status::InternalServerError,
 		};
 		rocket::response::Response::build().status(status).ok()
 	}
@@ -216,19 +217,23 @@ fn get_settings(db: State<'_, DB>, _admin_rights: AdminRights) -> Result<Json<Co
 }
 
 #[put("/settings", data = "<config>")]
-fn put_settings(db: State<'_, DB>, admin_rights: AdminRights, config: Json<Config>) -> Result<()> {
+fn put_settings(
+	db: State<'_, DB>,
+	admin_rights: AdminRights,
+	config: Json<Config>,
+) -> Result<(), APIError> {
 	// Do not let users remove their own admin rights
-	let mut sanitized_config = config.clone();
-	if let Some(users) = &mut sanitized_config.users {
-		for user in users.iter_mut() {
-			if let Some(auth) = &admin_rights.auth {
-				if auth.username == user.name {
-					user.admin = true;
+	if let Some(auth) = &admin_rights.auth {
+		if let Some(users) = &config.users {
+			for user in users {
+				if auth.username == user.name && !user.admin {
+					return Err(APIError::OwnAdminPrivilegeRemoval);
 				}
 			}
 		}
 	}
-	config::amend(&db, &sanitized_config)?;
+
+	config::amend(&db, &config)?;
 	Ok(())
 }
 

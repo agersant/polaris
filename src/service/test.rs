@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use crate::service::constants::*;
 use crate::service::dto;
-use crate::{config, ddns, index, vfs};
+use crate::{config, index, vfs};
 
 #[cfg(feature = "service-rocket")]
 pub use crate::service::rocket::test::ServiceType;
@@ -143,84 +143,28 @@ fn test_service_settings() {
 	assert!(service.get("/api/settings").status() == StatusCode::UNAUTHORIZED);
 	service.login();
 
-	{
-		let response = service.get_json::<config::Config>("/api/settings");
-		let configuration = response.body();
-		assert_eq!(
-			configuration,
-			&config::Config {
-				album_art_pattern: Some("Folder.(jpg|png)".to_string()),
-				reindex_every_n_seconds: Some(1800),
-				mount_dirs: Some(vec![vfs::MountPoint {
-					name: TEST_MOUNT_NAME.into(),
-					source: TEST_MOUNT_SOURCE.into()
-				}]),
-				prefix_url: None,
-				users: Some(vec![config::ConfigUser {
-					name: TEST_USERNAME.into(),
-					password: "".into(),
-					admin: true
-				}]),
-				ydns: Some(ddns::DDNSConfig {
-					host: "".into(),
-					username: "".into(),
-					password: "".into()
-				}),
-			}
-		);
-	}
-
-	let mut configuration = config::Config {
-		album_art_pattern: Some("my_pattern".to_owned()),
-		reindex_every_n_seconds: Some(3600),
-		mount_dirs: Some(vec![
-			vfs::MountPoint {
-				name: TEST_MOUNT_NAME.into(),
-				source: TEST_MOUNT_SOURCE.into(),
-			},
-			vfs::MountPoint {
-				name: "more_music".into(),
-				source: "test-data/small-collection".into(),
-			},
-		]),
-		prefix_url: Some("my_prefix".to_owned()),
-		users: Some(vec![
-			config::ConfigUser {
-				name: "test_user".into(),
-				password: "some_password".into(),
-				admin: false,
-			},
-			config::ConfigUser {
-				name: "other_user".into(),
-				password: "some_other_password".into(),
-				admin: false,
-			},
-		]),
-		ydns: Some(ddns::DDNSConfig {
-			host: "my_host".into(),
-			username: "my_username".into(),
-			password: "my_password".into(),
-		}),
-	};
-
-	service.put_json("/api/settings", &configuration);
-
-	configuration.users = Some(vec![
-		config::ConfigUser {
-			name: "test_user".into(),
-			password: "".into(),
-			admin: true,
-		},
-		config::ConfigUser {
-			name: "other_user".into(),
-			password: "".into(),
-			admin: false,
-		},
-	]);
-
 	let response = service.get_json::<config::Config>("/api/settings");
-	let received = response.body();
-	assert_eq!(received, &configuration);
+	assert_eq!(response.status(), StatusCode::OK);
+
+	let configuration = config::Config::default();
+	let response = service.put_json("/api/settings", &configuration);
+	assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[test]
+fn test_service_settings_cannot_unadmin_self() {
+	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	service.complete_initial_setup();
+	service.login();
+
+	let mut configuration = config::Config::default();
+	configuration.users = Some(vec![config::ConfigUser {
+		name: TEST_USERNAME.into(),
+		password: "".into(),
+		admin: false,
+	}]);
+	let response = service.put_json("/api/settings", &configuration);
+	assert_eq!(response.status(), StatusCode::CONFLICT);
 }
 
 #[test]

@@ -38,7 +38,7 @@ pub struct ConfigUser {
 	pub admin: bool,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Config {
 	pub album_art_pattern: Option<String>,
 	pub reindex_every_n_seconds: Option<i32>,
