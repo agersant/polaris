@@ -24,7 +24,7 @@ pub struct MiscSettings {
 	pub prefix_url: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Preferences {
 	pub lastfm_username: Option<String>,
 	pub web_theme_base: Option<String>,
