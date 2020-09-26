@@ -52,7 +52,7 @@ jobs:
     - name: Install
       run: sudo --preserve-env=PATH make install
     - name: Run Polaris
-      run: /usr/local/bin/polaris && sleep 5s
+      run: sudo /usr/local/bin/polaris && sleep 5s
     - name: Make a request
       run: curl -f http://localhost:5050
     - name: Stop Polaris
