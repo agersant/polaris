@@ -1,5 +1,7 @@
 .PHONY: all build clean preview preview-system preview-xdg list-paths install install-bin install-data install-system install-xdg uninstall uninstall-bin uninstall-data uninstall-system uninstall-xdg
 
+UID := $(shell id -u)
+
 %-system: PREFIX ?= /usr/local
 %-system: EXEC_PREFIX ?= $(PREFIX)
 %-system: BINDIR ?= $(EXEC_PREFIX)/bin
@@ -24,14 +26,15 @@ endif
 %-xdg: XDG_DATA_HOME ?= $(HOME)/.local/share
 %-xdg: BINDIR ?= $(HOME)/.local/bin
 %-xdg: DATADIR ?= $(XDG_DATA_HOME)/polaris
-%-xdg: CACHEDIR ?= $(XDG_PID_DIR)
+%-xdg: CACHEDIR ?= $(XDG_CACHE_HOME)/polaris
+%-xdg: PIDDIR ?= $(XDG_PID_DIR)
 %-xdg: POLARIS_BIN_PATH = $(BINDIR)/polaris
-%-xdg: export POLARIS_WEB_DIR =  $(DATADIR)/web
+%-xdg: export POLARIS_WEB_DIR = $(DATADIR)/web
 %-xdg: export POLARIS_SWAGGER_DIR =  $(DATADIR)/swagger
 %-xdg: export POLARIS_DB_DIR = $(DATADIR)
 %-xdg: export POLARIS_LOG_DIR = $(CACHEDIR)
 %-xdg: export POLARIS_CACHE_DIR = $(CACHEDIR)
-%-xdg: export POLARIS_PID_DIR = $(CACHEDIR)
+%-xdg: export POLARIS_PID_DIR = $(PIDDIR)
 
 # Build
 
