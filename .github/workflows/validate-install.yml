@@ -18,14 +18,14 @@ jobs:
         curl -L -o web.zip https://github.com/agersant/polaris-web/releases/latest/download/web.zip
         unzip web.zip
     - name: Read Polaris Version
-      run: echo ::set-env name=POLARIS_VERSION::${GITHUB_REF}
+      run: echo ::set-env name=POLARIS_VERSION::${GITHUB_REF:10}
     - name: Build Archive
       run: res/unix/release_script.sh
-    - name: Store Upload URL
+    - name: Upload packaged release
       uses: actions/upload-artifact@v1
       with:
         name: linux-release
-        path: ./release/*.tar.gz
+        path: release
 
   validate_linux_system_install:
     name: Linux System Install
@@ -38,7 +38,7 @@ jobs:
       with:
         name: linux-release
     - name: Extract release
-      run: tar -xzvf linux-release/*.tar.gz --strip-components=1
+      run: tar -xzvf linux-release/release/*.tar.gz --strip-components=1
     - name: Preview Install
       run: make preview
 
@@ -53,6 +53,6 @@ jobs:
       with:
         name: linux-release
     - name: Extract release
-      run: tar -xzvf linux-release/*.tar.gz --strip-components=1
+      run: tar -xzvf linux-release/release/*.tar.gz --strip-components=1
     - name: Preview Install
       run: make preview-xdg
