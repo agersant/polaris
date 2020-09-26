@@ -23,9 +23,9 @@ XDG_BINDIR ?= $(HOME)/.local/bin
 XDG_DATADIR ?= $(XDG_DATA_HOME)/polaris
 XDG_CACHEDIR ?= $(XDG_CACHE_HOME)/polaris
 ifdef $(XDG_RUNTIME_DIR)
-XDG_PID_DIR ?= $(XDG_RUNTIME_DIR)/polaris
+XDG_PIDDIR ?= $(XDG_RUNTIME_DIR)/polaris
 else
-XDG_PID_DIR ?= /tmp/polaris-$(UID)
+XDG_PIDDIR ?= /tmp/polaris-$(UID)
 endif
 %-xdg: POLARIS_BIN_PATH := $(XDG_BINDIR)/polaris
 %-xdg: export POLARIS_WEB_DIR := $(XDG_DATADIR)/web
