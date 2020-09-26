@@ -7,13 +7,13 @@
 %-system: DATADIR ?= $(DATAROOTDIR)
 %-system: LOCALSTATEDIR ?= $(PREFIX)/var
 %-system: RUNSTATEDIR ?= $(LOCALSTATEDIR)/run
-%-system: POLARIS_BIN_PATH := $(BINDIR)/polaris
-%-system: export POLARIS_WEB_DIR :=  $(DATADIR)/polaris/web
-%-system: export POLARIS_SWAGGER_DIR :=  $(DATADIR)/polaris/swagger
-%-system: export POLARIS_DB_DIR := $(LOCALSTATEDIR)/lib/polaris
-%-system: export POLARIS_LOG_DIR := $(LOCALSTATEDIR)/log/polaris
-%-system: export POLARIS_CACHE_DIR := $(LOCALSTATEDIR)/cache/polaris
-%-system: export POLARIS_PID_DIR := $(RUNSTATEDIR)/polaris
+%-system: POLARIS_BIN_PATH = $(BINDIR)/polaris
+%-system: export POLARIS_WEB_DIR =  $(DATADIR)/polaris/web
+%-system: export POLARIS_SWAGGER_DIR =  $(DATADIR)/polaris/swagger
+%-system: export POLARIS_DB_DIR = $(LOCALSTATEDIR)/lib/polaris
+%-system: export POLARIS_LOG_DIR = $(LOCALSTATEDIR)/log/polaris
+%-system: export POLARIS_CACHE_DIR = $(LOCALSTATEDIR)/cache/polaris
+%-system: export POLARIS_PID_DIR = $(RUNSTATEDIR)/polaris
 
 ifdef $(XDG_RUNTIME_DIR)
 XDG_PID_DIR ?= $(XDG_RUNTIME_DIR)/polaris
@@ -25,13 +25,13 @@ endif
 %-xdg: BINDIR ?= $(HOME)/.local/bin
 %-xdg: DATADIR ?= $(XDG_DATA_HOME)/polaris
 %-xdg: CACHEDIR ?= $(XDG_PID_DIR)
-%-xdg: POLARIS_BIN_PATH := $(BINDIR)/polaris
-%-xdg: export POLARIS_WEB_DIR :=  $(DATADIR)/web
-%-xdg: export POLARIS_SWAGGER_DIR :=  $(DATADIR)/swagger
-%-xdg: export POLARIS_DB_DIR := $(DATADIR)
-%-xdg: export POLARIS_LOG_DIR := $(CACHEDIR)
-%-xdg: export POLARIS_CACHE_DIR := $(CACHEDIR)
-%-xdg: export POLARIS_PID_DIR := $(CACHEDIR)
+%-xdg: POLARIS_BIN_PATH = $(BINDIR)/polaris
+%-xdg: export POLARIS_WEB_DIR =  $(DATADIR)/web
+%-xdg: export POLARIS_SWAGGER_DIR =  $(DATADIR)/swagger
+%-xdg: export POLARIS_DB_DIR = $(DATADIR)
+%-xdg: export POLARIS_LOG_DIR = $(CACHEDIR)
+%-xdg: export POLARIS_CACHE_DIR = $(CACHEDIR)
+%-xdg: export POLARIS_PID_DIR = $(CACHEDIR)
 
 # Build
 
