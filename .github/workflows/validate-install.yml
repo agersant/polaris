@@ -50,9 +50,9 @@ jobs:
         profile: minimal
         default: true
     - name: Install
-      run: make install
+      run: sudo make install
     - name: Uninstall
-      run: make uninstall
+      run: sudo make uninstall
 
   validate_linux_xdg_install:
     name: Linux XDG Install
