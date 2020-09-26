@@ -75,10 +75,6 @@ install-data:
 	install -d $(POLARIS_SWAGGER_DIR)
 	cp -rT ./web $(POLARIS_WEB_DIR)
 	cp -rT ./swagger $(POLARIS_SWAGGER_DIR)
-	mkdir -p $(POLARIS_DB_DIR)
-	mkdir -p $(POLARIS_LOG_DIR)
-	mkdir -p $(POLARIS_CACHE_DIR)
-	mkdir -p $(POLARIS_PID_DIR)
 
 # Uninstall
 
@@ -90,9 +86,9 @@ uninstall-bin:
 	rm $(POLARIS_BIN_PATH)
 
 uninstall-data:
-	rm -r $(POLARIS_WEB_DIR)
-	rm -r $(POLARIS_SWAGGER_DIR)
-	rm -r $(POLARIS_DB_DIR)
-	rm -r $(POLARIS_LOG_DIR)
-	rm -r $(POLARIS_CACHE_DIR)
-	rm -r $(POLARIS_PID_DIR)
+	rm -rf $(POLARIS_WEB_DIR)
+	rm -rf $(POLARIS_SWAGGER_DIR)
+	rm -rf $(POLARIS_DB_DIR)
+	rm -rf $(POLARIS_LOG_DIR)
+	rm -rf $(POLARIS_CACHE_DIR)
+	rm -rf $(POLARIS_PID_DIR)
