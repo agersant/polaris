@@ -30,7 +30,7 @@ jobs:
   validate_linux_system_install:
     name: Linux System Install
     runs-on: ubuntu-latest
-    needs: create_linux_release
+    needs: package_linux_release
 
     steps:
     - name: Download release
@@ -45,7 +45,7 @@ jobs:
   validate_linux_xdg_install:
     name: Linux XDG Install
     runs-on: ubuntu-latest
-    needs: create_linux_release
+    needs: package_linux_release
 
     steps:
     - name: Download release
