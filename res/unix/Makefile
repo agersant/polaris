@@ -2,39 +2,38 @@
 
 UID := $(shell id -u)
 
-%-system: PREFIX ?= /usr/local
-%-system: EXEC_PREFIX ?= $(PREFIX)
-%-system: BINDIR ?= $(EXEC_PREFIX)/bin
-%-system: DATAROOTDIR ?= $(PREFIX)/share
-%-system: DATADIR ?= $(DATAROOTDIR)
-%-system: LOCALSTATEDIR ?= $(PREFIX)/var
-%-system: RUNSTATEDIR ?= $(LOCALSTATEDIR)/run
-%-system: POLARIS_BIN_PATH = $(BINDIR)/polaris
-%-system: export POLARIS_WEB_DIR =  $(DATADIR)/polaris/web
-%-system: export POLARIS_SWAGGER_DIR =  $(DATADIR)/polaris/swagger
-%-system: export POLARIS_DB_DIR = $(LOCALSTATEDIR)/lib/polaris
-%-system: export POLARIS_LOG_DIR = $(LOCALSTATEDIR)/log/polaris
-%-system: export POLARIS_CACHE_DIR = $(LOCALSTATEDIR)/cache/polaris
-%-system: export POLARIS_PID_DIR = $(RUNSTATEDIR)/polaris
+PREFIX ?= /usr/local
+EXEC_PREFIX ?= $(PREFIX)
+BINDIR ?= $(EXEC_PREFIX)/bin
+DATAROOTDIR ?= $(PREFIX)/share
+DATADIR ?= $(DATAROOTDIR)
+LOCALSTATEDIR ?= $(PREFIX)/var
+RUNSTATEDIR ?= $(LOCALSTATEDIR)/run
+%-system: POLARIS_BIN_PATH := $(BINDIR)/polaris
+%-system: export POLARIS_WEB_DIR :=  $(DATADIR)/polaris/web
+%-system: export POLARIS_SWAGGER_DIR :=  $(DATADIR)/polaris/swagger
+%-system: export POLARIS_DB_DIR := $(LOCALSTATEDIR)/lib/polaris
+%-system: export POLARIS_LOG_DIR := $(LOCALSTATEDIR)/log/polaris
+%-system: export POLARIS_CACHE_DIR := $(LOCALSTATEDIR)/cache/polaris
+%-system: export POLARIS_PID_DIR := $(RUNSTATEDIR)/polaris
 
+XDG_CACHE_HOME ?= $(HOME)/.cache
+XDG_DATA_HOME ?= $(HOME)/.local/share
+XDG_BINDIR ?= $(HOME)/.local/bin
+XDG_DATADIR ?= $(XDG_DATA_HOME)/polaris
+XDG_CACHEDIR ?= $(XDG_CACHE_HOME)/polaris
 ifdef $(XDG_RUNTIME_DIR)
 XDG_PID_DIR ?= $(XDG_RUNTIME_DIR)/polaris
 else
 XDG_PID_DIR ?= /tmp/polaris-$(UID)
 endif
-%-xdg: XDG_CACHE_HOME ?= $(HOME)/.cache
-%-xdg: XDG_DATA_HOME ?= $(HOME)/.local/share
-%-xdg: BINDIR ?= $(HOME)/.local/bin
-%-xdg: DATADIR ?= $(XDG_DATA_HOME)/polaris
-%-xdg: CACHEDIR ?= $(XDG_CACHE_HOME)/polaris
-%-xdg: PIDDIR ?= $(XDG_PID_DIR)
-%-xdg: POLARIS_BIN_PATH = $(BINDIR)/polaris
-%-xdg: export POLARIS_WEB_DIR = $(DATADIR)/web
-%-xdg: export POLARIS_SWAGGER_DIR =  $(DATADIR)/swagger
-%-xdg: export POLARIS_DB_DIR = $(DATADIR)
-%-xdg: export POLARIS_LOG_DIR = $(CACHEDIR)
-%-xdg: export POLARIS_CACHE_DIR = $(CACHEDIR)
-%-xdg: export POLARIS_PID_DIR = $(PIDDIR)
+%-xdg: POLARIS_BIN_PATH := $(XDG_BINDIR)/polaris
+%-xdg: export POLARIS_WEB_DIR := $(XDG_DATADIR)/web
+%-xdg: export POLARIS_SWAGGER_DIR := $(XDG_DATADIR)/swagger
+%-xdg: export POLARIS_DB_DIR := $(XDG_DATADIR)
+%-xdg: export POLARIS_LOG_DIR := $(XDG_CACHEDIR)
+%-xdg: export POLARIS_CACHE_DIR := $(XDG_CACHEDIR)
+%-xdg: export POLARIS_PID_DIR := $(XDG_PIDDIR)
 
 # Build
 
