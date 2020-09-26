@@ -75,6 +75,10 @@ install-data:
 	install -d $(POLARIS_SWAGGER_DIR)
 	cp -rT ./web $(POLARIS_WEB_DIR)
 	cp -rT ./swagger $(POLARIS_SWAGGER_DIR)
+	mkdir -p $(POLARIS_DB_DIR)
+	mkdir -p $(POLARIS_LOG_DIR)
+	mkdir -p $(POLARIS_CACHE_DIR)
+	mkdir -p $(POLARIS_PID_DIR)
 
 # Uninstall
 
