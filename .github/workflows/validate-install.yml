@@ -42,6 +42,12 @@ jobs:
       run: tar -xzvf *.tar.gz --strip-components=1
     - name: Preview Install
       run: make preview
+    - name: Preview Install w/ Custom Prefix
+      run: make preview PREFIX=/some/random/prefix
+    - name: Install
+      run: make install
+    - name: Uninstall
+      run: make uninstall
 
   validate_linux_xdg_install:
     name: Linux XDG Install
@@ -58,3 +64,9 @@ jobs:
       run: tar -xzvf *.tar.gz --strip-components=1
     - name: Preview Install
       run: make preview-xdg
+    - name: Preview Install w/ Custom XDG_DATA_HOME
+      run: make preview-xdg XDG_DATA_HOME=/my/own/xdg/home
+    - name: Install
+      run: make install-xdg
+    - name: Uninstall
+      run: make uninstall-xdg
