@@ -44,6 +44,11 @@ jobs:
       run: make preview
     - name: Preview Install w/ Custom Prefix
       run: make preview PREFIX=/some/random/prefix
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        profile: minimal
+        default: true
     - name: Install
       run: make install
     - name: Uninstall
@@ -66,6 +71,11 @@ jobs:
       run: make preview-xdg
     - name: Preview Install w/ Custom XDG_DATA_HOME
       run: make preview-xdg XDG_DATA_HOME=/my/own/xdg/home
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        profile: minimal
+        default: true
     - name: Install
       run: make install-xdg
     - name: Uninstall
