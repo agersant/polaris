@@ -51,6 +51,12 @@ jobs:
         default: true
     - name: Install
       run: sudo --preserve-env=PATH make install
+    - name: Run Polaris
+      run: /usr/local/bin/polaris && sleep 5s
+    - name: Make a request
+      run: curl -f http://localhost:5050
+    - name: Stop Polaris
+      run: killall polaris
     - name: Uninstall
       run: sudo make uninstall
 
@@ -78,5 +84,11 @@ jobs:
         default: true
     - name: Install
       run: make install-xdg
+    - name: Run Polaris
+      run: $HOME/.local/bin/polaris && sleep 5s
+    - name: Make a request
+      run: curl -f http://localhost:5050
+    - name: Stop Polaris
+      run: killall polaris
     - name: Uninstall
       run: make uninstall-xdg
