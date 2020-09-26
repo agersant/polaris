@@ -22,7 +22,7 @@ jobs:
     - name: Build Archive
       run: res/unix/release_script.sh
     - name: Upload packaged release
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v2
       with:
         name: linux-release
         path: release
@@ -34,11 +34,12 @@ jobs:
 
     steps:
     - name: Download release
-      uses: actions/download-artifact@v1
+      uses: actions/download-artifact@v2
       with:
         name: linux-release
+        path: .
     - name: Extract release
-      run: tar -xzvf linux-release/release/*.tar.gz --strip-components=1
+      run: tar -xzvf release/*.tar.gz --strip-components=1
     - name: Preview Install
       run: make preview
 
@@ -49,10 +50,11 @@ jobs:
 
     steps:
     - name: Download release
-      uses: actions/download-artifact@v1
+      uses: actions/download-artifact@v2
       with:
         name: linux-release
+        path: .
     - name: Extract release
-      run: tar -xzvf linux-release/release/*.tar.gz --strip-components=1
+      run: tar -xzvf release/*.tar.gz --strip-components=1
     - name: Preview Install
       run: make preview-xdg
