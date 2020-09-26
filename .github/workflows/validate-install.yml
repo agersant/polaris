@@ -1,0 +1,60 @@
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+name: Validate Install
+
+jobs:
+
+  package_linux_release:
+    name: Package Linux Release
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Polaris
+      uses: actions/checkout@v1
+    - name: Download Polaris Web
+      run: |
+        curl -L -o web.zip https://github.com/agersant/polaris-web/releases/latest/download/web.zip
+        unzip web.zip
+    - name: Read Polaris Version
+      run: echo ::set-env name=POLARIS_VERSION::${GITHUB_REF}
+    - name: Build Archive
+      run: res/unix/release_script.sh
+    - name: Store Upload URL
+      uses: actions/upload-artifact@v1
+      with:
+        name: linux-release
+        path: ./release/*.tar.gz
+
+  validate_linux_system_install:
+    name: Linux System Install
+    runs-on: ubuntu-latest
+    needs: create_linux_release
+
+    steps:
+    - name: Download release
+      uses: actions/download-artifact@v1
+      with:
+        name: linux-release
+    - name: Extract release
+      run: tar -xzvf linux-release/*.tar.gz --strip-components=1
+    - name: Preview Install
+      run: make preview
+
+  validate_linux_xdg_install:
+    name: Linux XDG Install
+    runs-on: ubuntu-latest
+    needs: create_linux_release
+
+    steps:
+    - name: Download release
+      uses: actions/download-artifact@v1
+      with:
+        name: linux-release
+    - name: Extract release
+      run: tar -xzvf linux-release/*.tar.gz --strip-components=1
+    - name: Preview Install
+      run: make preview-xdg
