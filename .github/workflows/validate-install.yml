@@ -1,8 +1,6 @@
 on:
   pull_request:
   push:
-    branches:
-      - master
 
 name: Validate Install
 
