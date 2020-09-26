@@ -39,7 +39,7 @@ jobs:
         name: linux-release
         path: .
     - name: Extract release
-      run: tar -xzvf release/*.tar.gz --strip-components=1
+      run: tar -xzvf *.tar.gz --strip-components=1
     - name: Preview Install
       run: make preview
 
@@ -55,6 +55,6 @@ jobs:
         name: linux-release
         path: .
     - name: Extract release
-      run: tar -xzvf release/*.tar.gz --strip-components=1
+      run: tar -xzvf *.tar.gz --strip-components=1
     - name: Preview Install
       run: make preview-xdg
