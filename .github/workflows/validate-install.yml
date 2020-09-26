@@ -50,7 +50,7 @@ jobs:
         profile: minimal
         default: true
     - name: Install
-      run: sudo make install
+      run: sudo --preserve-env make install
     - name: Uninstall
       run: sudo make uninstall
 
