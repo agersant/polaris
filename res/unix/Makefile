@@ -31,8 +31,8 @@ install-bin: build
 install-data:
 	install -d $(POLARIS_WEB_DIR)
 	install -d $(POLARIS_SWAGGER_DIR)
-	cp -r ./web $(POLARIS_WEB_DIR)
-	cp -r ./swagger $(POLARIS_SWAGGER_DIR)
+	cp -rT ./web $(POLARIS_WEB_DIR)
+	cp -rT ./swagger $(POLARIS_SWAGGER_DIR)
 
 clean:
 	cargo clean
