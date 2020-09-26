@@ -56,7 +56,7 @@ jobs:
     - name: Make a request
       run: curl -f http://localhost:5050
     - name: Stop Polaris
-      run: killall polaris
+      run: kill -KILL $(cat /usr/local/var/run/polaris/polaris.pid)
     - name: Uninstall
       run: sudo make uninstall
 
@@ -89,6 +89,6 @@ jobs:
     - name: Make a request
       run: curl -f http://localhost:5050
     - name: Stop Polaris
-      run: killall polaris
+      run: kill -KILL $(cat /tmp/polaris-1001/polaris.pid)
     - name: Uninstall
       run: make uninstall-xdg
