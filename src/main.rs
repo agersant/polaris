@@ -137,8 +137,8 @@ fn main() -> Result<()> {
 	options.optopt("", "log", "set the path to the log file", "FILE");
 	options.optopt("", "pid", "set the path to the pid file", "FILE");
 	options.optopt(
-		"l",
-		"log",
+		"",
+		"log-level",
 		"set the log level to a value between 0 (off) and 3 (debug)",
 		"LEVEL",
 	);
@@ -161,7 +161,7 @@ fn main() -> Result<()> {
 		return Ok(());
 	}
 
-	let log_level = match matches.opt_str("l").as_ref().map(String::as_ref) {
+	let log_level = match matches.opt_str("log-level").as_ref().map(String::as_ref) {
 		Some("0") => LevelFilter::Off,
 		Some("1") => LevelFilter::Error,
 		Some("2") => LevelFilter::Info,
