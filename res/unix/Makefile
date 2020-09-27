@@ -1,4 +1,4 @@
-.PHONY: all build clean preview preview-system preview-xdg list-paths install install-bin install-data install-system install-xdg uninstall uninstall-bin uninstall-data uninstall-system uninstall-xdg
+.PHONY: all build build-system build-xdg cargo-build clean preview preview-system preview-xdg list-paths install install-bin install-data install-system install-xdg uninstall uninstall-bin uninstall-data uninstall-system uninstall-xdg
 
 UID := $(shell id -u)
 
@@ -37,9 +37,12 @@ endif
 
 # Build
 
-all: build
+build-system: cargo-build
+build-xdg: cargo-build
+build: build-system
+all: build-system
 
-build:
+cargo-build:
 	cargo build --release
 
 clean:
