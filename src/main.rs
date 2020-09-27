@@ -14,8 +14,6 @@ use log::error;
 #[cfg(unix)]
 use sd_notify::{self, NotifyState};
 #[cfg(unix)]
-use std::fs::File;
-#[cfg(unix)]
 use std::io::prelude::*;
 #[cfg(unix)]
 use unix_daemonize::{daemonize_redirect, ChdirMode};
@@ -24,6 +22,7 @@ use anyhow::*;
 use getopts::Options;
 use log::info;
 use simplelog::{LevelFilter, SimpleLogger, TermLogger, TerminalMode};
+use std::fs;
 use std::path::Path;
 
 mod config;
@@ -62,7 +61,7 @@ fn daemonize(options: &getopts::Matches) -> Result<()> {
 	let mut pid_path = Path::new(option_env!("POLARIS_PID_DIR").unwrap_or(".")).to_owned();
 	fs::create_dir_all(&pid_path)?;
 	pid_path.push("polaris.pid");
-	let mut file = File::create(pid_path)?;
+	let mut file = fs::File::create(pid_path)?;
 	file.write_all(pid.to_string().as_bytes())?;
 	Ok(())
 }
@@ -160,7 +159,7 @@ fn main() -> Result<()> {
 	let db_path = db_path
 		.map(|n| Path::new(n.as_str()).to_path_buf())
 		.unwrap_or(default_db_path);
-	std::fs::create_dir_all(&db_path.parent().unwrap())?;
+	fs::create_dir_all(&db_path.parent().unwrap())?;
 	let db = db::DB::new(&db_path)?;
 
 	// Parse config
@@ -191,7 +190,7 @@ fn main() -> Result<()> {
 	let web_dir_path = web_dir_name
 		.map(|n| Path::new(n.as_str()).to_path_buf())
 		.unwrap_or(default_web_dir);
-	std::fs::create_dir_all(&web_dir_path)?;
+	fs::create_dir_all(&web_dir_path)?;
 	info!("Static files location is {}", web_dir_path.display());
 	let web_url = format!("/{}", &prefix_url);
 	info!("Mounting web client files on {}", web_url);
@@ -205,7 +204,7 @@ fn main() -> Result<()> {
 	let swagger_dir_path = swagger_dir_name
 		.map(|n| Path::new(n.as_str()).to_path_buf())
 		.unwrap_or(default_swagger_dir);
-	std::fs::create_dir_all(&swagger_dir_path)?;
+	fs::create_dir_all(&swagger_dir_path)?;
 	info!("Swagger files location is {}", swagger_dir_path.display());
 	let swagger_url = format!("/{}swagger", &prefix_url);
 	info!("Mounting swagger files on {}", swagger_url);
@@ -213,7 +212,7 @@ fn main() -> Result<()> {
 	// Thumbnails manager
 	let mut thumbnails_path = Path::new(option_env!("POLARIS_CACHE_DIR").unwrap_or(".")).to_owned();
 	thumbnails_path.push("thumbnails");
-	std::fs::create_dir_all(&thumbnails_path)?;
+	fs::create_dir_all(&thumbnails_path)?;
 	let thumbnails_manager = thumbnails::ThumbnailsManager::new(&thumbnails_path);
 
 	// Start server
