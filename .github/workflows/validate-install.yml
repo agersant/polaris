@@ -18,7 +18,7 @@ jobs:
         curl -L -o web.zip https://github.com/agersant/polaris-web/releases/latest/download/web.zip
         unzip web.zip
     - name: Set Polaris Version
-      run: echo ::set-env name=POLARIS_VERSION::CI
+      run: echo ::set-env name=POLARIS_VERSION::0.0
     - name: Build Archive
       run: res/unix/release_script.sh
     - name: Upload packaged release
@@ -112,7 +112,7 @@ jobs:
         default: true
     - name: Set Polaris Version
       shell: bash
-      run: echo ::set-env name=POLARIS_VERSION::CI
+      run: echo ::set-env name=POLARIS_VERSION::0.0
     - name: Build Installer
       run: res/windows/release_script
     - name: Upload packaged release
