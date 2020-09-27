@@ -52,10 +52,6 @@ default_features = false
 features = ["json", "serve"]
 optional = true
 
-[target.'cfg(windows)'.dependencies]
-app_dirs = "1.1.1"
-uuid = "0.8"
-
 [target.'cfg(windows)'.dependencies.winapi]
 version = "0.3.3"
 features = ["winuser", "libloaderapi", "shellapi", "errhandlingapi"]

@@ -10,6 +10,10 @@ index-flame-graph.html
 # Local config for quick iteration
 TestConfig.toml
 
-# Release process artefacts (usually runs on CI)
+# Runtime artifacts
+*.sqlite
+thumbnails
+
+# Release process artifacts (usually runs on CI)
 release
 *.res

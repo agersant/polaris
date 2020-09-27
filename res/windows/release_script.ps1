@@ -8,6 +8,13 @@ $rc_exe = Join-Path "C:\Program Files (x86)\Windows Kits\10\bin\10.0.18362.0\x64
 
 ""
 "Compiling executable"
+$script:INSTALL_DIR = '$env:LOCALAPPDATA\Permafrost\Polaris'
+$env:POLARIS_WEB_DIR = '$INSTALL_DIR\web'
+$env:POLARIS_SWAGGER_DIR = '$INSTALL_DIR\swagger'
+$env:POLARIS_DB_DIR = '$INSTALL_DIR'
+$env:POLARIS_LOG_DIR = '$INSTALL_DIR'
+$env:POLARIS_CACHE_DIR = '$INSTALL_DIR'
+$env:POLARIS_PID_DIR = '$INSTALL_DIR'
 cargo rustc --release --features "ui" -- -C link-args="/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup res\windows\application\application.res"
 cargo rustc --release -- -o ".\target\release\polaris-cli.exe" -C link-args="res\windows\application\application.res"
 

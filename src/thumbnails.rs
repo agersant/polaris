@@ -1,4 +1,3 @@
-use crate::directories::{Directories, PolarisDirectories};
 use anyhow::*;
 use image;
 use image::imageops::FilterType;
