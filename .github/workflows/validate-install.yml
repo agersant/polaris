@@ -93,54 +93,54 @@ jobs:
     - name: Uninstall
       run: make uninstall-xdg
 
-    package_windows_release:
-      name: Package Windows Release
-      runs-on: windows-latest
+  package_windows_release:
+    name: Package Windows Release
+    runs-on: windows-latest
 
-      steps:
-      - name: Checkout Polaris
-        uses: actions/checkout@v1
-      - name: Download Polaris Web
-        run: |
-          curl -L -o web.zip https://github.com/agersant/polaris-web/releases/latest/download/web.zip
-          unzip web.zip
-      - name: Install Rust Toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          profile: minimal
-          default: true
-      - name: Read Polaris Version
-        shell: bash
-        run: echo ::set-env name=POLARIS_VERSION::CI
-      - name: Build Installer
-        run: res/windows/release_script
-      - name: Upload packaged release
-        uses: actions/upload-artifact@v2
-        with:
-          name: windows-release
-          path: release
+    steps:
+    - name: Checkout Polaris
+      uses: actions/checkout@v1
+    - name: Download Polaris Web
+      run: |
+        curl -L -o web.zip https://github.com/agersant/polaris-web/releases/latest/download/web.zip
+        unzip web.zip
+    - name: Install Rust Toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        profile: minimal
+        default: true
+    - name: Read Polaris Version
+      shell: bash
+      run: echo ::set-env name=POLARIS_VERSION::CI
+    - name: Build Installer
+      run: res/windows/release_script
+    - name: Upload packaged release
+      uses: actions/upload-artifact@v2
+      with:
+        name: windows-release
+        path: release
 
-    validate_windows_install:
-      name: Windows System Install
-      runs-on: windows-latest
-      needs: package_windows_release
+  validate_windows_install:
+    name: Windows System Install
+    runs-on: windows-latest
+    needs: package_windows_release
 
-      steps:
-      - name: Download release
-        uses: actions/download-artifact@v2
-        with:
-          name: windows-release
-          path: .
-      - name: Install
-        run: msiexec /i Polaris_CI.msi /qn
-      - name: Run Polaris
-        run: |
-          start %LOCALAPPDATA%/Permafrost/Polaris/polaris-cli.exe
-          sleep 5
-      - name: Make a request
-        run: curl -f http://localhost:5050
-      - name: Stop Polaris
-        run: taskkill /IM polaris-cli.exe
-      - name: Uninstall
-        run: msiexec /x Polaris_CI.msi /qn
+    steps:
+    - name: Download release
+      uses: actions/download-artifact@v2
+      with:
+        name: windows-release
+        path: .
+    - name: Install
+      run: msiexec /i Polaris_CI.msi /qn
+    - name: Run Polaris
+      run: |
+        start %LOCALAPPDATA%/Permafrost/Polaris/polaris-cli.exe
+        sleep 5
+    - name: Make a request
+      run: curl -f http://localhost:5050
+    - name: Stop Polaris
+      run: taskkill /IM polaris-cli.exe
+    - name: Uninstall
+      run: msiexec /x Polaris_CI.msi /qn
