@@ -4,6 +4,8 @@ use thiserror::Error;
 pub enum APIError {
 	#[error("Incorrect Credentials")]
 	IncorrectCredentials,
+	#[error("Cannot remove own admin privilege")]
+	OwnAdminPrivilegeRemoval,
 	#[error("Unspecified")]
 	Unspecified,
 }

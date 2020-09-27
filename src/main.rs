@@ -202,6 +202,11 @@ fn main() -> Result<()> {
 	let swagger_url = format!("/{}swagger", &prefix_url);
 	info!("Mounting swagger files on {}", swagger_url);
 
+	// Thumbnails manager
+	let mut thumbnails_path = utils::get_data_root()?;
+	thumbnails_path.push("thumbnails");
+	let thumbnails_manager = thumbnails::ThumbnailsManager::new(thumbnails_path.as_path());
+
 	// Start server
 	info!("Starting up server");
 	let port: u16 = matches
@@ -221,6 +226,7 @@ fn main() -> Result<()> {
 			swagger_dir_path,
 			db_server,
 			index,
+			thumbnails_manager,
 		);
 	});
 

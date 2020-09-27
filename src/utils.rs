@@ -14,6 +14,7 @@ pub use crate::match_ignore_case;
 
 #[derive(Debug, PartialEq)]
 pub enum AudioFormat {
+	APE,
 	FLAC,
 	MP3,
 	MP4,
@@ -33,6 +34,7 @@ pub fn get_audio_format(path: &Path) -> Option<AudioFormat> {
 		_ => return None,
 	};
 	match extension.to_lowercase().as_str() {
+		"ape" => Some(AudioFormat::APE),
 		"flac" => Some(AudioFormat::FLAC),
 		"mp3" => Some(AudioFormat::MP3),
 		"m4a" => Some(AudioFormat::MP4),

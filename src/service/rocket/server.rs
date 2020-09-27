@@ -7,6 +7,7 @@ use std::path::PathBuf;
 use super::api;
 use crate::db::DB;
 use crate::index::Index;
+use crate::thumbnails::ThumbnailsManager;
 
 pub fn get_server(
 	port: u16,
@@ -18,6 +19,7 @@ pub fn get_server(
 	swagger_dir_path: &PathBuf,
 	db: DB,
 	command_sender: Index,
+	thumbnails_manager: ThumbnailsManager,
 ) -> Result<rocket::Rocket> {
 	let mut config = rocket::Config::build(Environment::Production)
 		.log_level(LoggingLevel::Normal)
@@ -35,6 +37,7 @@ pub fn get_server(
 	Ok(rocket::custom(config)
 		.manage(db)
 		.manage(command_sender)
+		.manage(thumbnails_manager)
 		.mount(&api_url, api::get_routes())
 		.mount(
 			&swagger_url,
@@ -56,6 +59,7 @@ pub fn run(
 	swagger_dir_path: PathBuf,
 	db: DB,
 	command_sender: Index,
+	thumbnails_manager: ThumbnailsManager,
 ) -> Result<()> {
 	let server = get_server(
 		port,
@@ -67,6 +71,7 @@ pub fn run(
 		&swagger_dir_path,
 		db,
 		command_sender,
+		thumbnails_manager,
 	)?;
 	server.launch();
 	Ok(())

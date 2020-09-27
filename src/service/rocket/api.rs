@@ -22,7 +22,7 @@ use crate::playlist;
 use crate::service::constants::*;
 use crate::service::dto;
 use crate::service::error::APIError;
-use crate::thumbnails;
+use crate::thumbnails::{ThumbnailOptions, ThumbnailsManager};
 use crate::user;
 use crate::vfs::VFSSource;
 
@@ -61,7 +61,8 @@ impl<'r> rocket::response::Responder<'r> for APIError {
 	fn respond_to(self, _: &rocket::request::Request<'_>) -> rocket::response::Result<'r> {
 		let status = match self {
 			APIError::IncorrectCredentials => rocket::http::Status::Unauthorized,
-			_ => rocket::http::Status::InternalServerError,
+			APIError::OwnAdminPrivilegeRemoval => rocket::http::Status::Conflict,
+			APIError::Unspecified => rocket::http::Status::InternalServerError,
 		};
 		rocket::response::Response::build().status(status).ok()
 	}
@@ -216,19 +217,23 @@ fn get_settings(db: State<'_, DB>, _admin_rights: AdminRights) -> Result<Json<Co
 }
 
 #[put("/settings", data = "<config>")]
-fn put_settings(db: State<'_, DB>, admin_rights: AdminRights, config: Json<Config>) -> Result<()> {
+fn put_settings(
+	db: State<'_, DB>,
+	admin_rights: AdminRights,
+	config: Json<Config>,
+) -> Result<(), APIError> {
 	// Do not let users remove their own admin rights
-	let mut sanitized_config = config.clone();
-	if let Some(users) = &mut sanitized_config.users {
-		for user in users.iter_mut() {
-			if let Some(auth) = &admin_rights.auth {
-				if auth.username == user.name {
-					user.admin = true;
+	if let Some(auth) = &admin_rights.auth {
+		if let Some(users) = &config.users {
+			for user in users {
+				if auth.username == user.name && !user.admin {
+					return Err(APIError::OwnAdminPrivilegeRemoval);
 				}
 			}
 		}
 	}
-	config::amend(&db, &sanitized_config)?;
+
+	config::amend(&db, &config)?;
 	Ok(())
 }
 
@@ -329,12 +334,18 @@ fn audio(db: State<'_, DB>, _auth: Auth, path: VFSPathBuf) -> Result<serve::Rang
 }
 
 #[get("/thumbnail/<path>?<pad>")]
-fn thumbnail(db: State<'_, DB>, _auth: Auth, path: VFSPathBuf, pad: Option<bool>) -> Result<File> {
+fn thumbnail(
+	db: State<'_, DB>,
+	thumbnails_manager: State<'_, ThumbnailsManager>,
+	_auth: Auth,
+	path: VFSPathBuf,
+	pad: Option<bool>,
+) -> Result<File> {
 	let vfs = db.get_vfs()?;
 	let image_path = vfs.virtual_to_real(&path.into() as &PathBuf)?;
-	let mut options = thumbnails::Options::default();
+	let mut options = ThumbnailOptions::default();
 	options.pad_to_square = pad.unwrap_or(options.pad_to_square);
-	let thumbnail_path = thumbnails::get_thumbnail(&image_path, &options)?;
+	let thumbnail_path = thumbnails_manager.get_thumbnail(&image_path, &options)?;
 	let file = File::open(thumbnail_path)?;
 	Ok(file)
 }

@@ -29,13 +29,14 @@ pub struct SongTags {
 #[cfg_attr(feature = "profile-index", flame)]
 pub fn read(path: &Path) -> Option<SongTags> {
 	let data = match utils::get_audio_format(path) {
+		Some(AudioFormat::APE) => Some(read_ape(path)),
 		Some(AudioFormat::FLAC) => Some(read_flac(path)),
 		Some(AudioFormat::MP3) => Some(read_id3(path)),
 		Some(AudioFormat::MP4) => Some(read_mp4(path)),
 		Some(AudioFormat::MPC) => Some(read_ape(path)),
 		Some(AudioFormat::OGG) => Some(read_vorbis(path)),
 		Some(AudioFormat::OPUS) => Some(read_opus(path)),
-		_ => None,
+		None => None,
 	};
 	match data {
 		Some(Ok(d)) => Some(d),
@@ -260,7 +261,7 @@ fn read_mp4(path: &Path) -> Result<SongTags> {
 	tags.album = tag.album().map(|v| v.to_string());
 	tags.title = tag.title().map(|v| v.to_string());
 	tags.duration = tag.duration().map(|v| v as u32);
-	tags.disc_number = tag.disk_number().0.and_then(|d| Some(d as u32));
+	tags.disc_number = tag.disc_number().0.and_then(|d| Some(d as u32));
 	tags.track_number = tag.track_number().0.and_then(|d| Some(d as u32));
 	tags.year = tag.year().and_then(|v| v.parse::<i32>().ok());
 
@@ -309,6 +310,10 @@ fn test_read_metadata() {
 	);
 	assert_eq!(
 		read(Path::new("test-data/formats/sample.opus")).unwrap(),
+		sample_tags
+	);
+	assert_eq!(
+		read(Path::new("test-data/formats/sample.ape")).unwrap(),
 		sample_tags
 	);
 }
