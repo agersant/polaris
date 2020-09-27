@@ -69,7 +69,7 @@ install-system: install-bin install-data
 install-xdg: install-bin install-data
 install: install-system
 
-install-bin: build
+install-bin: cargo-build
 	install -Dm755 ./target/release/polaris $(POLARIS_BIN_PATH)
 
 install-data:
