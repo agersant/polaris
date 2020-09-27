@@ -153,12 +153,13 @@ fn main() -> Result<()> {
 
 	// Init DB
 	info!("Starting up database");
-	let mut default_db_path = Path::new(option_env!("POLARIS_DB_DIR").unwrap_or(".")).to_owned();
-	default_db_path.push("db.sqlite");
-	let db_path = matches.opt_str("d");
-	let db_path = db_path
-		.map(|n| Path::new(n.as_str()).to_path_buf())
-		.unwrap_or(default_db_path);
+	let db_path = if let Some(path) = matches.opt_str("d") {
+		Path::new(path.as_str()).to_path_buf()
+	} else {
+		let mut path = Path::new(option_env!("POLARIS_DB_DIR").unwrap_or(".")).to_owned();
+		path.push("db.sqlite");
+		path
+	};
 	fs::create_dir_all(&db_path.parent().unwrap())?;
 	let db = db::DB::new(&db_path)?;
 
@@ -184,8 +185,7 @@ fn main() -> Result<()> {
 	info!("Mounting API on {}", api_url);
 
 	// Web client mount target
-	let mut default_web_dir = Path::new(option_env!("POLARIS_WEB_DIR").unwrap_or(".")).to_owned();
-	default_web_dir.push("web");
+	let default_web_dir = Path::new(option_env!("POLARIS_WEB_DIR").unwrap_or("web")).to_owned();
 	let web_dir_name = matches.opt_str("w");
 	let web_dir_path = web_dir_name
 		.map(|n| Path::new(n.as_str()).to_path_buf())
@@ -196,10 +196,8 @@ fn main() -> Result<()> {
 	info!("Mounting web client files on {}", web_url);
 
 	// Swagger files mount target
-	let mut default_swagger_dir =
-		Path::new(option_env!("POLARIS_SWAGGER_DIR").unwrap_or(".")).to_owned();
-	default_swagger_dir.push("docs");
-	default_swagger_dir.push("swagger");
+	let default_swagger_dir =
+		Path::new(option_env!("POLARIS_SWAGGER_DIR").unwrap_or("docs/swagger")).to_owned();
 	let swagger_dir_name = matches.opt_str("s");
 	let swagger_dir_path = swagger_dir_name
 		.map(|n| Path::new(n.as_str()).to_path_buf())
