@@ -6,8 +6,7 @@ echo "Copying package files"
 cp -r web docs/swagger src migrations test-data Cargo.toml Cargo.lock res/unix/Makefile release/tmp/polaris
 
 echo "Creating tarball"
-POLARIS_VERSION=$(grep -m 1 ^version Cargo.toml | awk '{print $3}' | tr -d '"\r\n')
-tar -zc -C release/tmp -f release/Polaris_$POLARIS_VERSION.tar.gz polaris
+tar -zc -C release/tmp -f release/polaris.tar.gz polaris
 
 echo "Cleaning up"
 rm -rf release/tmp

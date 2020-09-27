@@ -25,7 +25,7 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: linux-release
-        path: release
+        path: release/polaris.tar.gz
 
   validate_linux_system_install:
     name: Linux System Install
@@ -39,7 +39,7 @@ jobs:
         name: linux-release
         path: .
     - name: Extract release
-      run: tar -xzvf *.tar.gz --strip-components=1
+      run: tar -xzvf polaris.tar.gz --strip-components=1
     - name: Preview Install
       run: make preview
     - name: Preview Install w/ Custom Prefix
@@ -72,7 +72,7 @@ jobs:
         name: linux-release
         path: .
     - name: Extract release
-      run: tar -xzvf *.tar.gz --strip-components=1
+      run: tar -xzvf polaris.tar.gz --strip-components=1
     - name: Preview Install
       run: make preview-xdg
     - name: Preview Install w/ Custom XDG_DATA_HOME
@@ -122,7 +122,7 @@ jobs:
         path: release
 
   validate_windows_install:
-    name: Windows System Install
+    name: Windows Install
     runs-on: windows-latest
     needs: package_windows_release
 
@@ -133,7 +133,7 @@ jobs:
         name: windows-release
         path: .
     - name: Install
-      run: msiexec /i Polaris_CI.msi /qn
+      run: msiexec /i polaris.msi /qn
     - name: Run Polaris
       run: |
         start %LOCALAPPDATA%/Permafrost/Polaris/polaris-cli.exe
@@ -143,4 +143,4 @@ jobs:
     - name: Stop Polaris
       run: taskkill /IM polaris-cli.exe
     - name: Uninstall
-      run: msiexec /x Polaris_CI.msi /qn
+      run: msiexec /x polaris.msi /qn

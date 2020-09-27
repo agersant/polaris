@@ -1,7 +1,5 @@
-Get-ChildItem "Cargo.toml" | ForEach-Object {
-  $conf = $_ | Get-Content -raw
-  $conf -match 'version\s+=\s+"(.*)"' | out-null
-  $script:POLARIS_VERSION = $matches[1]
+if (!(Test-Path env:POLARIS_VERSION)) {
+  throw "POLARIS_VERSION environment variable is not defined"
 }
 
 "Compiling resource file"
@@ -46,7 +44,7 @@ $candle_exe = Join-Path $env:WIX bin\candle.exe
 & $candle_exe -wx -ext WixUtilExtension -arch x64 -out .\release\tmp\installer.wixobj .\res\windows\installer\installer.wxs
 
 $light_exe = Join-Path $env:WIX bin\light.exe
-& $light_exe -dWebUIDir=".\release\tmp\web" -dSwaggerUIDir=".\release\tmp\swagger" -wx -ext WixUtilExtension -ext WixUIExtension -spdb -sw1076 -sice:ICE38 -sice:ICE64 -out .\release\Polaris_$POLARIS_VERSION.msi .\release\tmp\installer.wixobj .\release\tmp\web_ui_fragment.wixobj  .\release\tmp\swagger_ui_fragment.wixobj
+& $light_exe -dWebUIDir=".\release\tmp\web" -dSwaggerUIDir=".\release\tmp\swagger" -wx -ext WixUtilExtension -ext WixUIExtension -spdb -sw1076 -sice:ICE38 -sice:ICE64 -out .\release\polaris.msi .\release\tmp\installer.wixobj .\release\tmp\web_ui_fragment.wixobj  .\release\tmp\swagger_ui_fragment.wixobj
 
 "Cleaning up"
 Remove-Item -Recurse .\release\tmp
