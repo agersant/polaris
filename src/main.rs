@@ -51,7 +51,7 @@ fn daemonize(options: &getopts::Matches) -> Result<()> {
 		return Ok(());
 	}
 
-	let log_path = matches
+	let log_path = options
 		.opt_str("log")
 		.map(PathBuf::from)
 		.unwrap_or_else(|| {
@@ -66,7 +66,7 @@ fn daemonize(options: &getopts::Matches) -> Result<()> {
 		Err(e) => bail!("Daemonize error: {:#?}", e),
 	};
 
-	let pid_path = matches
+	let pid_path = options
 		.opt_str("pid")
 		.map(PathBuf::from)
 		.unwrap_or_else(|| {
