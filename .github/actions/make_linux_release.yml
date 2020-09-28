@@ -12,8 +12,6 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Checkout Polaris
-      uses: actions/checkout@v1
     - name: Download Polaris Web
       run: |
         curl -L -o web.zip https://github.com/agersant/polaris-web/releases/latest/download/web.zip
