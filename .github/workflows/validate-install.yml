@@ -97,26 +97,16 @@ jobs:
     steps:
     - name: Checkout Polaris
       uses: actions/checkout@v1
-    - name: Download Polaris Web
-      run: |
-        curl -L -o web.zip https://github.com/agersant/polaris-web/releases/latest/download/web.zip
-        unzip web.zip
-    - name: Install Rust Toolchain
-      uses: actions-rs/toolchain@v1
+    - name: Make release
+      uses: ./.github/actions/make-windows-release
       with:
-        toolchain: nightly
-        profile: minimal
-        default: true
-    - name: Set Polaris Version
-      shell: bash
-      run: echo ::set-env name=POLARIS_VERSION::0.0
-    - name: Build Installer
-      run: res/windows/release_script
+        version-number: '0.0'
+        output-file: polaris.msi
     - name: Upload packaged release
       uses: actions/upload-artifact@v2
       with:
         name: windows-release
-        path: release
+        path: polaris.msi
 
   validate_windows_install:
     name: Windows Install

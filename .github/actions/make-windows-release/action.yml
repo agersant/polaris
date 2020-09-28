@@ -1,0 +1,34 @@
+name: 'Make a Windows Release'
+description: 'Creates archive containing files to install Polaris on on a Windows system'
+inputs:
+  version-number:
+    description: 'Polaris version number'
+    required: true
+    default: '0.0'
+  output-file:
+    description: 'File path where the resulting installer should be stored'
+    required: false
+    default: 'polaris.msi'
+runs:
+  using: "composite"
+  steps:
+    - name: Download Polaris Web
+      run: |
+        curl -L -o web.zip https://github.com/agersant/polaris-web/releases/latest/download/web.zip
+        unzip web.zip
+      shell: bash
+    - name: Install Rust Toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        profile: minimal
+        default: true
+    - name: Set Polaris Version
+      run: echo ::set-env name=POLARIS_VERSION::${{ inputs.version-number }}
+      shell: bash
+    - name: Build Installer
+      run: res/windows/release_script
+      shell: pwsh
+    - name: Copy installer to output location
+      run: cp release/polaris.msi ${{ inputs.output-file }}
+      shell: bash
