@@ -43,6 +43,12 @@ jobs:
     - name: Read Polaris Version
       shell: bash
       run: echo ::set-env name=POLARIS_VERSION::${GITHUB_REF:10}
+    - name: Install Rust Toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        profile: minimal
+        default: true
     - name: Make release
       uses: ./.github/actions/make-windows-release
       with:

@@ -17,12 +17,6 @@ runs:
         curl -L -o web.zip https://github.com/agersant/polaris-web/releases/latest/download/web.zip
         unzip web.zip
       shell: bash
-    - name: Install Rust Toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: nightly
-        profile: minimal
-        default: true
     - name: Set Polaris Version
       run: echo ::set-env name=POLARIS_VERSION::${{ inputs.version-number }}
       shell: bash

@@ -97,6 +97,12 @@ jobs:
     steps:
     - name: Checkout Polaris
       uses: actions/checkout@v1
+    - name: Install Rust Toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        profile: minimal
+        default: true
     - name: Make release
       uses: ./.github/actions/make-windows-release
       with:
