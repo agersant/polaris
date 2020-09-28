@@ -80,14 +80,13 @@ jobs:
     steps:
     - name: Checkout Polaris
       uses: actions/checkout@v1
-    - name: Download Polaris Web
-      run: |
-        curl -L -o web.zip https://github.com/agersant/polaris-web/releases/latest/download/web.zip
-        unzip web.zip
     - name: Read Polaris Version
       run: echo ::set-env name=POLARIS_VERSION::${GITHUB_REF:10}
-    - name: Build Archive
-      run: res/unix/release_script.sh
+    - name: Make release
+      uses: ./.github/actions/make-linux-release
+      with:
+        version-number: ${{ env.POLARIS_VERSION }}
+        output-file: polaris.tar.gz
     - name: Retrieve Upload URL
       uses: actions/download-artifact@v1
       with:
@@ -100,6 +99,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ env.UPLOAD_URL }}
-        asset_path: ./release/polaris.tar.gz
+        asset_path: polaris.tar.gz
         asset_name: Polaris_${{ env.POLARIS_VERSION }}.tar.gz
         asset_content_type: application/gzip
