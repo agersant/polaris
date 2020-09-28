@@ -1,0 +1,26 @@
+name: 'Make a Linux Release'
+description: 'Creates archive containing files to install Polaris on on a Linux system'
+inputs:
+  version-number:
+    description: 'Polaris version number'
+    required: true
+    default: '0.0'
+  output-file:
+    description: 'File path where the resulting archive should be stored'
+    required: false
+    default: 'polaris.tar.gz'
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout Polaris
+      uses: actions/checkout@v1
+    - name: Download Polaris Web
+      run: |
+        curl -L -o web.zip https://github.com/agersant/polaris-web/releases/latest/download/web.zip
+        unzip web.zip
+    - name: Set Polaris version
+      run: echo ::set-env name=POLARIS_VERSION::${{ inputs.version-number }}
+    - name: Build archive
+      run: res/unix/release_script.sh
+    - name: Copy archive to output location
+      run: cp release/polaris.tar.gz ${{ inputs.output-file }}

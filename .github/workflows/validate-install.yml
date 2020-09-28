@@ -11,21 +11,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Polaris
-      uses: actions/checkout@v1
-    - name: Download Polaris Web
-      run: |
-        curl -L -o web.zip https://github.com/agersant/polaris-web/releases/latest/download/web.zip
-        unzip web.zip
-    - name: Set Polaris Version
-      run: echo ::set-env name=POLARIS_VERSION::0.0
-    - name: Build Archive
-      run: res/unix/release_script.sh
+    - name: Make release
+      uses: .github/actions/make_linux_release@v1
+      with:
+        version-number: '0.0'
+        output-file: polaris.tar.gz
     - name: Upload packaged release
       uses: actions/upload-artifact@v2
       with:
         name: linux-release
-        path: release/polaris.tar.gz
+        path: polaris.tar.gz
 
   validate_linux_system_install:
     name: Linux System Install
