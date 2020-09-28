@@ -16,9 +16,13 @@ runs:
       run: |
         curl -L -o web.zip https://github.com/agersant/polaris-web/releases/latest/download/web.zip
         unzip web.zip
+      shell: bash
     - name: Set Polaris version
       run: echo ::set-env name=POLARIS_VERSION::${{ inputs.version-number }}
+      shell: bash
     - name: Build archive
       run: res/unix/release_script.sh
+      shell: bash
     - name: Copy archive to output location
       run: cp release/polaris.tar.gz ${{ inputs.output-file }}
+      shell: bash
