@@ -22,17 +22,10 @@ You can now start Polaris from the start menu or from your desktop, Polaris will
 
 #### Polaris installation
 1. Download the [latest release]((https://github.com/agersant/polaris/releases/latest)) of Polaris (you want the .tar.gz file)
-2. Extract the polaris archive in a directory and open a terminal in that directory
-3. If you would like to customize the directories used by the installation process, you can specify any number of the following environment variables: `PREFIX`, `EXEC_PREFIX`, `DATAROOTDIR`, `DATADIR`, `LOCALSTATEDIR` and `RUNSTATEDIR`. Refer to the [Make manual](https://www.gnu.org/software/make/manual/html_node/Directory-Variables.html#Directory-Variables) for details on how these are used.
-4. Execute `make install` (this may take several minutes)
+2. Extract the Polaris archive in a directory and open a terminal in that directory
+3. To install Polaris within your home directory, execute `make install-xdg`. This installation follows the [XDG Base Directory Specification](https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html). You can use `make preview-xdg` to see which directories the install process would use.
+4. If you prefer a system-wide install, execute `make install` (without the `-xdg` suffix). If you use `sudo` to perform such a system install, you may need the `-E` option so that your sudo user find the Rust binaries: `sudo -E make install`. This installation follows the [GNU Standard Installation Directories](https://www.gnu.org/prep/standards/html_node/Directory-Variables.html). You can use `make preview` to see which directories the install process would use.
 
-Using default install paths, the Polaris footprint on your system will be:
-- The `polaris` executable in `/usr/local/bin`
-- A handful of static files in `/usr/local/share/polaris`
-- A database file containing your settings and music index in `usr/local/var/lib/polaris`
-- A log file in `usr/local/var/log/polaris`
-- Album art thumbnails in `usr/local/var/cache/polaris`
-- A PID file in `usr/local/var/run/polaris`
 
 From here, you might want to adjust your system to run Polaris on login using Systemd, Cron or whichever method your distribution endorses.
 
