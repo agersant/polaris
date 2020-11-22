@@ -245,27 +245,18 @@ fn read_flac(path: &Path) -> Result<SongTags> {
 
 #[cfg_attr(feature = "profile-index", flame)]
 fn read_mp4(path: &Path) -> Result<SongTags> {
-	let tag = mp4ameta::Tag::read_from_path(path)?;
-	let mut tags = SongTags {
-		artist: None,
-		album_artist: None,
-		album: None,
-		title: None,
-		duration: None,
-		disc_number: None,
-		track_number: None,
-		year: None,
-	};
-	tags.artist = tag.artist().map(|v| v.to_string());
-	tags.album_artist = tag.album_artist().map(|v| v.to_string());
-	tags.album = tag.album().map(|v| v.to_string());
-	tags.title = tag.title().map(|v| v.to_string());
-	tags.duration = tag.duration().map(|v| v as u32);
-	tags.disc_number = tag.disc_number().0.and_then(|d| Some(d as u32));
-	tags.track_number = tag.track_number().0.and_then(|d| Some(d as u32));
-	tags.year = tag.year().and_then(|v| v.parse::<i32>().ok());
+	let mut tag = mp4ameta::Tag::read_from_path(path)?;
 
-	Ok(tags)
+	Ok(SongTags {
+		artist: tag.take_artist(),
+		album_artist: tag.take_album_artist(),
+		album: tag.take_album(),
+		title: tag.take_title(),
+		duration: tag.duration().map(|v| v as u32),
+		disc_number: tag.disc_number().map(|d| d as u32),
+		track_number: tag.track_number().map(|d| d as u32),
+		year: tag.year().and_then(|v| v.parse::<i32>().ok()),
+	})
 }
 
 #[test]
