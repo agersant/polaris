@@ -223,6 +223,12 @@ impl IndexUpdater {
 				directory_artist = tags.artist.as_ref().cloned();
 			}
 
+			let artwork_path = if tags.artwork {
+				Some(file_path_string.to_owned())
+			} else {
+				artwork.as_ref().cloned()
+			};
+
 			let song = NewSong {
 				path: file_path_string.to_owned(),
 				parent: path_string.to_owned(),
@@ -234,7 +240,7 @@ impl IndexUpdater {
 				album_artist: tags.album_artist,
 				album: tags.album,
 				year: tags.year,
-				artwork: artwork.as_ref().cloned(),
+				artwork: artwork_path,
 			};
 
 			self.push_song(song)?;

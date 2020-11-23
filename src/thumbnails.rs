@@ -1,5 +1,4 @@
 use anyhow::*;
-use image;
 use image::imageops::FilterType;
 use image::{DynamicImage, GenericImage, GenericImageView, ImageBuffer, ImageOutputFormat};
 use std::cmp;
@@ -7,6 +6,8 @@ use std::collections::hash_map::DefaultHasher;
 use std::fs::{DirBuilder, File};
 use std::hash::{Hash, Hasher};
 use std::path::*;
+
+use crate::artwork;
 
 pub struct ThumbnailsManager {
 	thumbnails_path: PathBuf,
@@ -88,7 +89,7 @@ fn generate_thumbnail(
 	image_path: &Path,
 	thumbnailoptions: &ThumbnailOptions,
 ) -> Result<DynamicImage> {
-	let source_image = image::open(image_path)?;
+	let source_image = artwork::read_artwork(image_path)?;
 	let (source_width, source_height) = source_image.dimensions();
 	let largest_dimension = cmp::max(source_width, source_height);
 	let out_dimension = cmp::min(thumbnailoptions.max_dimension, largest_dimension);

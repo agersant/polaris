@@ -24,6 +24,7 @@ pub struct SongTags {
 	pub album_artist: Option<String>,
 	pub album: Option<String>,
 	pub year: Option<i32>,
+	pub artwork: bool,
 }
 
 #[cfg_attr(feature = "profile-index", flame)]
@@ -83,6 +84,7 @@ fn read_id3(path: &Path) -> Result<SongTags> {
 		.map(|y| y as i32)
 		.or_else(|| tag.date_released().and_then(|d| Some(d.year)))
 		.or_else(|| tag.date_recorded().and_then(|d| Some(d.year)));
+	let artwork = tag.pictures().count() > 0;
 
 	Ok(SongTags {
 		artist,
@@ -93,6 +95,7 @@ fn read_id3(path: &Path) -> Result<SongTags> {
 		disc_number,
 		track_number,
 		year,
+		artwork,
 	})
 }
 
@@ -143,6 +146,7 @@ fn read_ape(path: &Path) -> Result<SongTags> {
 		disc_number,
 		track_number,
 		year,
+		artwork: false,
 	})
 }
 
@@ -160,6 +164,7 @@ fn read_vorbis(path: &Path) -> Result<SongTags> {
 		disc_number: None,
 		track_number: None,
 		year: None,
+		artwork: false,
 	};
 
 	for (key, value) in source.comment_hdr.comment_list {
@@ -193,6 +198,7 @@ fn read_opus(path: &Path) -> Result<SongTags> {
 		disc_number: None,
 		track_number: None,
 		year: None,
+		artwork: false,
 	};
 
 	for (key, value) in headers.comments.user_comments {
@@ -240,6 +246,7 @@ fn read_flac(path: &Path) -> Result<SongTags> {
 		disc_number,
 		track_number: vorbis.track(),
 		year,
+		artwork: false,
 	})
 }
 
@@ -256,6 +263,7 @@ fn read_mp4(path: &Path) -> Result<SongTags> {
 		disc_number: tag.disc_number().map(|d| d as u32),
 		track_number: tag.track_number().map(|d| d as u32),
 		year: tag.year().and_then(|v| v.parse::<i32>().ok()),
+		artwork: tag.artwork().is_some(),
 	})
 }
 
@@ -270,6 +278,7 @@ fn test_read_metadata() {
 		album: Some("TEST ALBUM".into()),
 		duration: None,
 		year: Some(2016),
+		artwork: false,
 	};
 	let flac_sample_tag = SongTags {
 		duration: Some(0),
