@@ -22,10 +22,17 @@ fn read_ape_artwork(_: &Path) -> Result<DynamicImage> {
 	Err(crate::Error::msg("Embedded ape artworks not yet supported"))
 }
 
-fn read_flac_artwork(_: &Path) -> Result<DynamicImage> {
-	Err(crate::Error::msg(
-		"Embedded flac artworks are not yet supported",
-	))
+fn read_flac_artwork(path: &Path) -> Result<DynamicImage> {
+	let tag = metaflac::Tag::read_from_path(path)?;
+
+	if let Some(p) = tag.pictures().next() {
+		return Ok(image::load_from_memory(&p.data)?);
+	}
+
+	Err(crate::Error::msg(format!(
+		"Embedded flac artwork not found for file: {}",
+		path.display()
+	)))
 }
 
 fn read_id3_artwork(path: &Path) -> Result<DynamicImage> {

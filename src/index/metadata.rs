@@ -236,6 +236,7 @@ fn read_flac(path: &Path) -> Result<SongTags> {
 		}
 		_ => None,
 	};
+	let artwork = tag.pictures().count() > 0;
 
 	Ok(SongTags {
 		artist: vorbis.artist().map(|v| v[0].clone()),
@@ -246,7 +247,7 @@ fn read_flac(path: &Path) -> Result<SongTags> {
 		disc_number,
 		track_number: vorbis.track(),
 		year,
-		artwork: false,
+		artwork,
 	})
 }
 
