@@ -317,4 +317,29 @@ fn test_read_metadata() {
 		read(Path::new("test-data/formats/sample.ape")).unwrap(),
 		sample_tags
 	);
+
+	let flac_artwork_tag = SongTags {
+		has_artwork: true,
+		..flac_sample_tag
+	};
+	let mp3_artwork_tag = SongTags {
+		has_artwork: true,
+		..mp3_sample_tag
+	};
+	let m4a_artwork_tag = SongTags {
+		has_artwork: true,
+		..m4a_sample_tag
+	};
+	assert_eq!(
+		read(Path::new("test-data/artwork/sample.mp3")).unwrap(),
+		mp3_artwork_tag
+	);
+	assert_eq!(
+		read(Path::new("test-data/artwork/sample.flac")).unwrap(),
+		flac_artwork_tag
+	);
+	assert_eq!(
+		read(Path::new("test-data/artwork/sample.m4a")).unwrap(),
+		m4a_artwork_tag
+	);
 }
