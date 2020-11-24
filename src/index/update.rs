@@ -223,7 +223,7 @@ impl IndexUpdater {
 				directory_artist = tags.artist.as_ref().cloned();
 			}
 
-			let artwork_path = if tags.artwork {
+			let artwork_path = if tags.has_artwork {
 				Some(file_path_string.to_owned())
 			} else {
 				artwork.as_ref().cloned()

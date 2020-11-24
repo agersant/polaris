@@ -51,9 +51,8 @@ fn read_id3_artwork(path: &Path) -> Result<DynamicImage> {
 fn read_mp4_artwork(path: &Path) -> Result<DynamicImage> {
 	let tag = mp4ameta::Tag::read_from_path(path)?;
 
-	match tag.artwork() {
-		Some(mp4ameta::Data::Jpeg(v)) => Ok(image::load_from_memory(v)?),
-		Some(mp4ameta::Data::Png(v)) => Ok(image::load_from_memory(v)?),
+	match tag.artwork().and_then(|d| d.image_data()) {
+		Some(v) => Ok(image::load_from_memory(v)?),
 		_ => Err(crate::Error::msg(format!(
 			"Embedded mp4 artwork not found for file: {}",
 			path.display()
