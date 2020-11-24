@@ -114,7 +114,7 @@ impl IndexUpdater {
 		));
 
 		// Find artwork
-		let artwork = {
+		let mut directory_artwork = {
 			#[cfg(feature = "profile-index")]
 			let _guard = flame::start_guard("artwork");
 			self.get_artwork(path).unwrap_or(None)
@@ -226,8 +226,12 @@ impl IndexUpdater {
 			let artwork_path = if tags.has_artwork {
 				Some(file_path_string.to_owned())
 			} else {
-				artwork.as_ref().cloned()
+				directory_artwork.as_ref().cloned()
 			};
+
+			if directory_artwork.is_none() {
+				directory_artwork = artwork_path.as_ref().cloned();
+			}
 
 			let song = NewSong {
 				path: file_path_string.to_owned(),
@@ -261,7 +265,7 @@ impl IndexUpdater {
 			NewDirectory {
 				path: path_string.to_owned(),
 				parent: parent_string,
-				artwork,
+				artwork: directory_artwork,
 				album: directory_album,
 				artist: directory_artist,
 				year: directory_year,
