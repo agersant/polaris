@@ -24,6 +24,7 @@ pub struct SongTags {
 	pub album_artist: Option<String>,
 	pub album: Option<String>,
 	pub year: Option<i32>,
+	pub has_artwork: bool,
 }
 
 #[cfg_attr(feature = "profile-index", flame)]
@@ -83,6 +84,7 @@ fn read_id3(path: &Path) -> Result<SongTags> {
 		.map(|y| y as i32)
 		.or_else(|| tag.date_released().and_then(|d| Some(d.year)))
 		.or_else(|| tag.date_recorded().and_then(|d| Some(d.year)));
+	let has_artwork = tag.pictures().count() > 0;
 
 	Ok(SongTags {
 		artist,
@@ -93,6 +95,7 @@ fn read_id3(path: &Path) -> Result<SongTags> {
 		disc_number,
 		track_number,
 		year,
+		has_artwork,
 	})
 }
 
@@ -143,6 +146,7 @@ fn read_ape(path: &Path) -> Result<SongTags> {
 		disc_number,
 		track_number,
 		year,
+		has_artwork: false,
 	})
 }
 
@@ -160,6 +164,7 @@ fn read_vorbis(path: &Path) -> Result<SongTags> {
 		disc_number: None,
 		track_number: None,
 		year: None,
+		has_artwork: false,
 	};
 
 	for (key, value) in source.comment_hdr.comment_list {
@@ -193,6 +198,7 @@ fn read_opus(path: &Path) -> Result<SongTags> {
 		disc_number: None,
 		track_number: None,
 		year: None,
+		has_artwork: false,
 	};
 
 	for (key, value) in headers.comments.user_comments {
@@ -230,6 +236,7 @@ fn read_flac(path: &Path) -> Result<SongTags> {
 		}
 		_ => None,
 	};
+	let has_artwork = tag.pictures().count() > 0;
 
 	Ok(SongTags {
 		artist: vorbis.artist().map(|v| v[0].clone()),
@@ -240,6 +247,7 @@ fn read_flac(path: &Path) -> Result<SongTags> {
 		disc_number,
 		track_number: vorbis.track(),
 		year,
+		has_artwork,
 	})
 }
 
@@ -256,6 +264,7 @@ fn read_mp4(path: &Path) -> Result<SongTags> {
 		disc_number: tag.disc_number().map(|d| d as u32),
 		track_number: tag.track_number().map(|d| d as u32),
 		year: tag.year().and_then(|v| v.parse::<i32>().ok()),
+		has_artwork: tag.artwork().is_some(),
 	})
 }
 
@@ -270,6 +279,7 @@ fn test_read_metadata() {
 		album: Some("TEST ALBUM".into()),
 		duration: None,
 		year: Some(2016),
+		has_artwork: false,
 	};
 	let flac_sample_tag = SongTags {
 		duration: Some(0),
@@ -306,5 +316,30 @@ fn test_read_metadata() {
 	assert_eq!(
 		read(Path::new("test-data/formats/sample.ape")).unwrap(),
 		sample_tags
+	);
+
+	let flac_artwork_tag = SongTags {
+		has_artwork: true,
+		..flac_sample_tag
+	};
+	let mp3_artwork_tag = SongTags {
+		has_artwork: true,
+		..mp3_sample_tag
+	};
+	let m4a_artwork_tag = SongTags {
+		has_artwork: true,
+		..m4a_sample_tag
+	};
+	assert_eq!(
+		read(Path::new("test-data/artwork/sample.mp3")).unwrap(),
+		mp3_artwork_tag
+	);
+	assert_eq!(
+		read(Path::new("test-data/artwork/sample.flac")).unwrap(),
+		flac_artwork_tag
+	);
+	assert_eq!(
+		read(Path::new("test-data/artwork/sample.m4a")).unwrap(),
+		m4a_artwork_tag
 	);
 }

@@ -34,6 +34,7 @@ mod lastfm;
 mod playlist;
 mod service;
 
+mod artwork;
 mod thumbnails;
 mod ui;
 mod user;
