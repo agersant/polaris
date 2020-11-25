@@ -200,6 +200,13 @@ impl IndexUpdater {
 			.filter_map(song_metadata)
 			.collect::<Vec<_>>();
 
+		if directory_artwork.is_none() {
+			directory_artwork = song_tags
+				.iter()
+				.find(|(_, t)| t.has_artwork)
+				.map(|(p, _)| p.to_owned());
+		}
+
 		for (file_path_string, tags) in song_tags {
 			if tags.year.is_some() {
 				inconsistent_directory_year |=
@@ -228,10 +235,6 @@ impl IndexUpdater {
 			} else {
 				directory_artwork.as_ref().cloned()
 			};
-
-			if directory_artwork.is_none() {
-				directory_artwork = artwork_path.as_ref().cloned();
-			}
 
 			let song = NewSong {
 				path: file_path_string.to_owned(),
