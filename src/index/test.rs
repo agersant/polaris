@@ -76,14 +76,6 @@ fn test_embedded_artwork() {
 
 	assert_eq!(songs.len(), 1);
 	let song = &songs[0];
-	assert_eq!(song.path, song_path.to_string_lossy().as_ref());
-	assert_eq!(song.track_number, Some(7));
-	assert_eq!(song.disc_number, None);
-	assert_eq!(song.title, Some("なぜ (Why?)".to_owned()));
-	assert_eq!(song.artist, Some("Tobokegao".to_owned()));
-	assert_eq!(song.album_artist, None);
-	assert_eq!(song.album, Some("Picnic".to_owned()));
-	assert_eq!(song.year, Some(2016));
 	assert_eq!(song.artwork, Some(song_path.to_string_lossy().into_owned()));
 }
 
