@@ -6,14 +6,13 @@ edition = "2018"
 
 [features]
 default = ["service-rocket"]
-ui = []
+ui = ["uuid", "winapi"]
 profile-index = ["flame", "flamer"]
 service-rocket = ["rocket", "rocket_contrib"]
 
 [dependencies]
 anyhow = "1.0.31"
 ape = "0.3.0"
-app_dirs = "1.1.1"
 base64 = "0.12.1"
 crossbeam-channel = "0.4"
 diesel = { version = "1.4.4", features = ["sqlite", "r2d2"] }
@@ -54,11 +53,8 @@ features = ["json", "serve"]
 optional = true
 
 [target.'cfg(windows)'.dependencies]
-uuid = "0.8"
-
-[target.'cfg(windows)'.dependencies.winapi]
-version = "0.3.3"
-features = ["winuser", "libloaderapi", "shellapi", "errhandlingapi"]
+uuid = { version="0.8", optional = true }
+winapi = { version = "0.3.3", features = ["winuser", "libloaderapi", "shellapi", "errhandlingapi"], optional = true }
 
 [target.'cfg(unix)'.dependencies]
 sd-notify = "0.1.0"

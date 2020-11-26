@@ -3,7 +3,6 @@ use diesel::r2d2::{self, ConnectionManager, PooledConnection};
 use diesel::sqlite::SqliteConnection;
 use diesel::RunQueryDsl;
 use diesel_migrations;
-use log::info;
 use std::path::Path;
 
 mod schema;
@@ -42,7 +41,6 @@ impl diesel::r2d2::CustomizeConnection<SqliteConnection, diesel::r2d2::Error>
 
 impl DB {
 	pub fn new(path: &Path) -> Result<DB> {
-		info!("Database file path: {}", path.to_string_lossy());
 		let manager = ConnectionManager::<SqliteConnection>::new(path.to_string_lossy());
 		let pool = diesel::r2d2::Pool::builder()
 			.connection_customizer(Box::new(ConnectionCustomizer {}))

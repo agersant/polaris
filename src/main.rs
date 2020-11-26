@@ -14,8 +14,6 @@ use log::error;
 #[cfg(unix)]
 use sd_notify::{self, NotifyState};
 #[cfg(unix)]
-use std::fs::File;
-#[cfg(unix)]
 use std::io::prelude::*;
 #[cfg(unix)]
 use unix_daemonize::{daemonize_redirect, ChdirMode};
@@ -24,7 +22,8 @@ use anyhow::*;
 use getopts::Options;
 use log::info;
 use simplelog::{LevelFilter, SimpleLogger, TermLogger, TerminalMode};
-use std::path::Path;
+use std::fs;
+use std::path::PathBuf;
 
 mod config;
 mod db;
@@ -52,15 +51,33 @@ fn daemonize(options: &getopts::Matches) -> Result<()> {
 	if options.opt_present("f") {
 		return Ok(());
 	}
-	let mut log_file = utils::get_data_root()?;
-	log_file.push("polaris.log");
-	let pid = match daemonize_redirect(Some(&log_file), Some(&log_file), ChdirMode::NoChdir) {
+
+	let log_path = options
+		.opt_str("log")
+		.map(PathBuf::from)
+		.unwrap_or_else(|| {
+			let mut path = PathBuf::from(option_env!("POLARIS_LOG_DIR").unwrap_or("."));
+			path.push("polaris.log");
+			path
+		});
+	fs::create_dir_all(&log_path.parent().unwrap())?;
+
+	let pid = match daemonize_redirect(Some(&log_path), Some(&log_path), ChdirMode::NoChdir) {
 		Ok(p) => p,
 		Err(e) => bail!("Daemonize error: {:#?}", e),
 	};
-	let mut pid_path = utils::get_data_root()?;
-	pid_path.push("polaris.pid");
-	let mut file = File::create(pid_path)?;
+
+	let pid_path = options
+		.opt_str("pid")
+		.map(PathBuf::from)
+		.unwrap_or_else(|| {
+			let mut path = PathBuf::from(option_env!("POLARIS_PID_DIR").unwrap_or("."));
+			path.push("polaris.pid");
+			path
+		});
+	fs::create_dir_all(&pid_path.parent().unwrap())?;
+
+	let mut file = fs::File::create(pid_path)?;
 	file.write_all(pid.to_string().as_bytes())?;
 	Ok(())
 }
@@ -113,8 +130,16 @@ fn main() -> Result<()> {
 	options.optopt("w", "web", "set the path to web client files", "DIRECTORY");
 	options.optopt("s", "swagger", "set the path to swagger files", "DIRECTORY");
 	options.optopt(
-		"l",
-		"log",
+		"",
+		"cache",
+		"set the directory to use as cache",
+		"DIRECTORY",
+	);
+	options.optopt("", "log", "set the path to the log file", "FILE");
+	options.optopt("", "pid", "set the path to the pid file", "FILE");
+	options.optopt(
+		"",
+		"log-level",
 		"set the log level to a value between 0 (off) and 3 (debug)",
 		"LEVEL",
 	);
@@ -137,7 +162,7 @@ fn main() -> Result<()> {
 		return Ok(());
 	}
 
-	let log_level = match matches.opt_str("l").as_ref().map(String::as_ref) {
+	let log_level = match matches.opt_str("log-level").as_ref().map(String::as_ref) {
 		Some("0") => LevelFilter::Off,
 		Some("1") => LevelFilter::Error,
 		Some("2") => LevelFilter::Info,
@@ -151,60 +176,73 @@ fn main() -> Result<()> {
 	daemonize(&matches)?;
 
 	// Init DB
-	info!("Starting up database");
-	let db_path = matches.opt_str("d");
-	let mut default_db_path = utils::get_data_root()?;
-	default_db_path.push("db.sqlite");
-	let db_path = db_path
-		.map(|n| Path::new(n.as_str()).to_path_buf())
-		.unwrap_or(default_db_path);
+	let db_path = matches.opt_str("d").map(PathBuf::from).unwrap_or_else(|| {
+		let mut path = PathBuf::from(option_env!("POLARIS_DB_DIR").unwrap_or("."));
+		path.push("db.sqlite");
+		path
+	});
+	fs::create_dir_all(&db_path.parent().unwrap())?;
+	info!("Database file path is {}", db_path.display());
 	let db = db::DB::new(&db_path)?;
 
 	// Parse config
-	info!("Parsing configuration");
-	let config_file_name = matches.opt_str("c");
-	let config_file_path = config_file_name.map(|p| Path::new(p.as_str()).to_path_buf());
-	if let Some(path) = config_file_path {
-		let config = config::parse_toml_file(&path)?;
-		info!("Applying configuration");
+	if let Some(config_path) = matches.opt_str("c").map(PathBuf::from) {
+		let config = config::parse_toml_file(&config_path)?;
+		info!("Applying configuration from {}", config_path.display());
 		config::amend(&db, &config)?;
 	}
 	let auth_secret = config::get_auth_secret(&db)?;
 
-	// Init index
-	info!("Initializing index");
-	let index = index::builder(db.clone()).periodic_updates(true).build();
-
-	// API mount target
-	let api_url = "/api".to_owned();
-	info!("Mounting API on {}", api_url);
-
-	// Web client mount target
-	let web_dir_name = matches.opt_str("w");
-	let mut default_web_dir = utils::get_data_root()?;
-	default_web_dir.push("web");
-	let web_dir_path = web_dir_name
-		.map(|n| Path::new(n.as_str()).to_path_buf())
-		.unwrap_or(default_web_dir);
+	// Locate web client files
+	let web_dir_path = match matches
+		.opt_str("w")
+		.or(option_env!("POLARIS_WEB_DIR").map(String::from))
+	{
+		Some(s) => PathBuf::from(s),
+		None => [".", "web"].iter().collect(),
+	};
+	fs::create_dir_all(&web_dir_path)?;
 	info!("Static files location is {}", web_dir_path.display());
-	let web_url = "/".to_owned();
-	info!("Mounting web client files on {}", web_url);
 
-	// Swagger files mount target
-	let swagger_dir_name = matches.opt_str("s");
-	let mut default_swagger_dir = utils::get_data_root()?;
-	default_swagger_dir.push("swagger");
-	let swagger_dir_path = swagger_dir_name
-		.map(|n| Path::new(n.as_str()).to_path_buf())
-		.unwrap_or(default_swagger_dir);
+	// Locate swagger files
+	let swagger_dir_path = match matches
+		.opt_str("s")
+		.or(option_env!("POLARIS_SWAGGER_DIR").map(String::from))
+	{
+		Some(s) => PathBuf::from(s),
+		None => [".", "docs", "swagger"].iter().collect(),
+	};
+	fs::create_dir_all(&swagger_dir_path)?;
 	info!("Swagger files location is {}", swagger_dir_path.display());
+
+	// Initialize thumbnails manager
+	let mut thumbnails_path = PathBuf::from(
+		matches
+			.opt_str("cache")
+			.or(option_env!("POLARIS_CACHE_DIR").map(String::from))
+			.unwrap_or(".".to_owned()),
+	);
+	thumbnails_path.push("thumbnails");
+	fs::create_dir_all(&thumbnails_path)?;
+	info!("Thumbnails location is {}", thumbnails_path.display());
+	let thumbnails_manager = thumbnails::ThumbnailsManager::new(&thumbnails_path);
+
+	// Endpoints
+	let api_url = "/api".to_owned();
 	let swagger_url = "/swagger".to_owned();
+	let web_url = "/".to_owned();
+	info!("Mounting API on {}", api_url);
+	info!("Mounting web client files on {}", web_url);
 	info!("Mounting swagger files on {}", swagger_url);
 
-	// Thumbnails manager
-	let mut thumbnails_path = utils::get_data_root()?;
-	thumbnails_path.push("thumbnails");
-	let thumbnails_manager = thumbnails::ThumbnailsManager::new(thumbnails_path.as_path());
+	// Init index
+	let index = index::builder(db.clone()).periodic_updates(true).build();
+
+	// Start DDNS updates
+	let db_ddns = db.clone();
+	std::thread::spawn(move || {
+		ddns::run(&db_ddns);
+	});
 
 	// Start server
 	info!("Starting up server");
@@ -227,12 +265,6 @@ fn main() -> Result<()> {
 			index,
 			thumbnails_manager,
 		);
-	});
-
-	// Start DDNS updates
-	let db_ddns = db.clone();
-	std::thread::spawn(move || {
-		ddns::run(&db_ddns);
 	});
 
 	// Send readiness notification

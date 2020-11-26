@@ -1,0 +1,139 @@
+on:
+  pull_request:
+  push:
+
+name: Validate Install
+
+jobs:
+
+  package_linux_release:
+    name: Package Linux Release
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Polaris
+      uses: actions/checkout@v1
+    - name: Make release
+      uses: ./.github/actions/make-linux-release
+      with:
+        version-number: '0.0'
+        output-file: polaris.tar.gz
+    - name: Upload packaged release
+      uses: actions/upload-artifact@v2
+      with:
+        name: linux-release
+        path: polaris.tar.gz
+
+  validate_linux_system_install:
+    name: Linux System Install
+    runs-on: ubuntu-latest
+    needs: package_linux_release
+
+    steps:
+    - name: Download release
+      uses: actions/download-artifact@v2
+      with:
+        name: linux-release
+        path: .
+    - name: Extract release
+      run: tar -xzvf polaris.tar.gz --strip-components=1
+    - name: Preview Install
+      run: make preview
+    - name: Preview Install w/ Custom Prefix
+      run: make preview PREFIX=/some/random/prefix
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        profile: minimal
+        default: true
+    - name: Install
+      run: sudo --preserve-env=PATH make install
+    - name: Run Polaris
+      run: sudo /usr/local/bin/polaris && sleep 5s
+    - name: Make a request
+      run: curl -f http://localhost:5050
+    - name: Stop Polaris
+      run: sudo kill -KILL $(cat /usr/local/var/run/polaris/polaris.pid)
+    - name: Uninstall
+      run: sudo make uninstall
+
+  validate_linux_xdg_install:
+    name: Linux XDG Install
+    runs-on: ubuntu-latest
+    needs: package_linux_release
+
+    steps:
+    - name: Download release
+      uses: actions/download-artifact@v2
+      with:
+        name: linux-release
+        path: .
+    - name: Extract release
+      run: tar -xzvf polaris.tar.gz --strip-components=1
+    - name: Preview Install
+      run: make preview-xdg
+    - name: Preview Install w/ Custom XDG_DATA_HOME
+      run: make preview-xdg XDG_DATA_HOME=/my/own/xdg/home
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        profile: minimal
+        default: true
+    - name: Install
+      run: make install-xdg
+    - name: Run Polaris
+      run: $HOME/.local/bin/polaris && sleep 5s
+    - name: Make a request
+      run: curl -f http://localhost:5050
+    - name: Stop Polaris
+      run: kill -KILL $(cat /tmp/polaris-1001/polaris.pid)
+    - name: Uninstall
+      run: make uninstall-xdg
+
+  package_windows_release:
+    name: Package Windows Release
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout Polaris
+      uses: actions/checkout@v1
+    - name: Install Rust Toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        profile: minimal
+        default: true
+    - name: Make release
+      uses: ./.github/actions/make-windows-release
+      with:
+        version-number: '0.0'
+        output-file: polaris.msi
+    - name: Upload packaged release
+      uses: actions/upload-artifact@v2
+      with:
+        name: windows-release
+        path: polaris.msi
+
+  validate_windows_install:
+    name: Windows Install
+    runs-on: windows-latest
+    needs: package_windows_release
+
+    steps:
+    - name: Download release
+      uses: actions/download-artifact@v2
+      with:
+        name: windows-release
+        path: .
+    - name: Install
+      run: msiexec /i polaris.msi /qn
+    - name: Run Polaris
+      run: |
+        start $env:LOCALAPPDATA/Permafrost/Polaris/polaris-cli.exe
+        sleep 5
+    - name: Make a request
+      run: curl -f http://localhost:5050
+    - name: Stop Polaris
+      run: taskkill /IM polaris-cli.exe
+    - name: Uninstall
+      run: msiexec /x polaris.msi /qn

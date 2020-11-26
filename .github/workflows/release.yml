@@ -13,7 +13,7 @@ jobs:
 
     steps:
     - name: Read Polaris Version
-      run: echo ::set-env name=POLARIS_VERSION::${GITHUB_REF:10}
+      run: echo "POLARIS_VERSION=${GITHUB_REF:10}" >> $GITHUB_ENV
     - name: Create Github Release
       id: create_release
       uses: actions/create-release@v1.0.0
@@ -40,35 +40,30 @@ jobs:
     steps:
     - name: Checkout Polaris
       uses: actions/checkout@v1
-    - name: Download Polaris Web
-      run: |
-        curl -L -o web.zip https://github.com/agersant/polaris-web/releases/latest/download/web.zip
-        unzip web.zip
+    - name: Read Polaris Version
+      shell: bash
+      run: echo "POLARIS_VERSION=${GITHUB_REF:10}" >> $GITHUB_ENV
     - name: Install Rust Toolchain
       uses: actions-rs/toolchain@v1
       with:
         toolchain: nightly
         profile: minimal
         default: true
-    - name: Read Polaris Version
-      shell: bash
-      run: echo ::set-env name=POLARIS_VERSION::${GITHUB_REF:10}
-    - name: Build Installer
-      run: res/windows/release_script
-    - name: Retrieve Upload URL
-      uses: actions/download-artifact@v1
+    - name: Make release
+      uses: ./.github/actions/make-windows-release
       with:
-        name: release
+        version-number: ${{ env.POLARIS_VERSION }}
+        output-file: polaris.msi
     - name: Read Upload URL
       shell: bash
-      run: echo ::set-env name=UPLOAD_URL::$(cat release/upload-url)
+      run: echo "UPLOAD_URL=$(cat release/upload-url)" >> $GITHUB_ENV
     - name: Upload Installer To Github Release
       uses: actions/upload-release-asset@v1.0.1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ env.UPLOAD_URL }}
-        asset_path: ./release/Polaris_${{ env.POLARIS_VERSION }}.msi
+        asset_path: polaris.msi
         asset_name: Polaris_${{ env.POLARIS_VERSION }}.msi
         asset_content_type: application/x-msi
 
@@ -80,26 +75,25 @@ jobs:
     steps:
     - name: Checkout Polaris
       uses: actions/checkout@v1
-    - name: Download Polaris Web
-      run: |
-        curl -L -o web.zip https://github.com/agersant/polaris-web/releases/latest/download/web.zip
-        unzip web.zip
     - name: Read Polaris Version
-      run: echo ::set-env name=POLARIS_VERSION::${GITHUB_REF:10}
-    - name: Build Archive
-      run: res/unix/release_script.sh
+      run: echo "POLARIS_VERSION=${GITHUB_REF:10}" >> $GITHUB_ENV
+    - name: Make release
+      uses: ./.github/actions/make-linux-release
+      with:
+        version-number: ${{ env.POLARIS_VERSION }}
+        output-file: polaris.tar.gz
     - name: Retrieve Upload URL
       uses: actions/download-artifact@v1
       with:
         name: release
     - name: Read Upload URL
-      run: echo ::set-env name=UPLOAD_URL::$(cat release/upload-url)
+      run: echo "UPLOAD_URL=$(cat release/upload-url)" >> $GITHUB_ENV
     - name: Upload To Github Release
       uses: actions/upload-release-asset@v1.0.1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ env.UPLOAD_URL }}
-        asset_path: ./release/Polaris_${{ env.POLARIS_VERSION }}.tar.gz
+        asset_path: polaris.tar.gz
         asset_name: Polaris_${{ env.POLARIS_VERSION }}.tar.gz
         asset_content_type: application/gzip
