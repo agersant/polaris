@@ -21,7 +21,6 @@ pub struct MiscSettings {
 	pub auth_secret: Vec<u8>,
 	pub index_sleep_duration_seconds: i32,
 	pub index_album_art_pattern: String,
-	pub prefix_url: String,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -43,7 +42,6 @@ pub struct Config {
 	pub album_art_pattern: Option<String>,
 	pub reindex_every_n_seconds: Option<i32>,
 	pub mount_dirs: Option<Vec<MountPoint>>,
-	pub prefix_url: Option<String>,
 	pub users: Option<Vec<ConfigUser>>,
 	pub ydns: Option<DDNSConfig>,
 }
@@ -82,22 +80,16 @@ pub fn read(db: &DB) -> Result<Config> {
 		album_art_pattern: None,
 		reindex_every_n_seconds: None,
 		mount_dirs: None,
-		prefix_url: None,
 		users: None,
 		ydns: None,
 	};
 
-	let (art_pattern, sleep_duration, url) = misc_settings
-		.select((
-			index_album_art_pattern,
-			index_sleep_duration_seconds,
-			prefix_url,
-		))
+	let (art_pattern, sleep_duration) = misc_settings
+		.select((index_album_art_pattern, index_sleep_duration_seconds))
 		.get_result(&connection)?;
 
 	config.album_art_pattern = Some(art_pattern);
 	config.reindex_every_n_seconds = Some(sleep_duration);
-	config.prefix_url = if url != "" { Some(url) } else { None };
 
 	let mount_dirs;
 	{
@@ -226,12 +218,6 @@ pub fn amend(db: &DB, new_config: &Config) -> Result<()> {
 			.execute(&connection)?;
 	}
 
-	if let Some(ref prefix_url) = new_config.prefix_url {
-		diesel::update(misc_settings::table)
-			.set(misc_settings::prefix_url.eq(prefix_url))
-			.execute(&connection)?;
-	}
-
 	Ok(())
 }
 
@@ -302,7 +288,6 @@ fn test_amend() {
 	let initial_config = Config {
 		album_art_pattern: Some("file\\.png".into()),
 		reindex_every_n_seconds: Some(123),
-		prefix_url: None,
 		mount_dirs: Some(vec![MountPoint {
 			source: "C:\\Music".into(),
 			name: "root".into(),
@@ -318,7 +303,6 @@ fn test_amend() {
 	let new_config = Config {
 		album_art_pattern: Some("🖼️\\.jpg".into()),
 		reindex_every_n_seconds: None,
-		prefix_url: Some("polaris".into()),
 		mount_dirs: Some(vec![MountPoint {
 			source: "/home/music".into(),
 			name: "🎵📁".into(),
@@ -358,7 +342,6 @@ fn test_amend_preserve_password_hashes() {
 	let initial_config = Config {
 		album_art_pattern: None,
 		reindex_every_n_seconds: None,
-		prefix_url: None,
 		mount_dirs: None,
 		users: Some(vec![ConfigUser {
 			name: "Teddy🐻".into(),
@@ -381,7 +364,6 @@ fn test_amend_preserve_password_hashes() {
 	let new_config = Config {
 		album_art_pattern: None,
 		reindex_every_n_seconds: None,
-		prefix_url: None,
 		mount_dirs: None,
 		users: Some(vec![
 			ConfigUser {
@@ -421,7 +403,6 @@ fn test_amend_ignore_blank_users() {
 		let config = Config {
 			album_art_pattern: None,
 			reindex_every_n_seconds: None,
-			prefix_url: None,
 			mount_dirs: None,
 			users: Some(vec![ConfigUser {
 				name: "".into(),
@@ -441,7 +422,6 @@ fn test_amend_ignore_blank_users() {
 		let config = Config {
 			album_art_pattern: None,
 			reindex_every_n_seconds: None,
-			prefix_url: None,
 			mount_dirs: None,
 			users: Some(vec![ConfigUser {
 				name: "Teddy🐻".into(),
@@ -467,7 +447,6 @@ fn test_toggle_admin() {
 	let initial_config = Config {
 		album_art_pattern: None,
 		reindex_every_n_seconds: None,
-		prefix_url: None,
 		mount_dirs: None,
 		users: Some(vec![ConfigUser {
 			name: "Teddy🐻".into(),
@@ -487,7 +466,6 @@ fn test_toggle_admin() {
 	let new_config = Config {
 		album_art_pattern: None,
 		reindex_every_n_seconds: None,
-		prefix_url: None,
 		mount_dirs: None,
 		users: Some(vec![ConfigUser {
 			name: "Teddy🐻".into(),
@@ -512,7 +490,6 @@ fn test_preferences_read_write() {
 	let initial_config = Config {
 		album_art_pattern: None,
 		reindex_every_n_seconds: None,
-		prefix_url: None,
 		mount_dirs: None,
 		users: Some(vec![ConfigUser {
 			name: "Teddy🐻".into(),

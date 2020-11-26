@@ -827,9 +827,6 @@
                             "$ref": "#/components/schemas/MountPoint"
                         }
                     },
-                    "prefix_url": {
-                        "type": "string"
-                    },
                     "users": {
                         "type": "array",
                         "items": {

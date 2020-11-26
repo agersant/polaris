@@ -33,7 +33,6 @@ pub trait TestService {
 	fn complete_initial_setup(&mut self) {
 		let configuration = config::Config {
 			album_art_pattern: None,
-			prefix_url: None,
 			reindex_every_n_seconds: None,
 			ydns: None,
 			users: Some(vec![config::ConfigUser {

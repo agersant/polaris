@@ -114,7 +114,7 @@ impl IndexUpdater {
 		));
 
 		// Find artwork
-		let artwork = {
+		let mut directory_artwork = {
 			#[cfg(feature = "profile-index")]
 			let _guard = flame::start_guard("artwork");
 			self.get_artwork(path).unwrap_or(None)
@@ -200,6 +200,13 @@ impl IndexUpdater {
 			.filter_map(song_metadata)
 			.collect::<Vec<_>>();
 
+		if directory_artwork.is_none() {
+			directory_artwork = song_tags
+				.iter()
+				.find(|(_, t)| t.has_artwork)
+				.map(|(p, _)| p.to_owned());
+		}
+
 		for (file_path_string, tags) in song_tags {
 			if tags.year.is_some() {
 				inconsistent_directory_year |=
@@ -223,6 +230,12 @@ impl IndexUpdater {
 				directory_artist = tags.artist.as_ref().cloned();
 			}
 
+			let artwork_path = if tags.has_artwork {
+				Some(file_path_string.to_owned())
+			} else {
+				directory_artwork.as_ref().cloned()
+			};
+
 			let song = NewSong {
 				path: file_path_string.to_owned(),
 				parent: path_string.to_owned(),
@@ -234,7 +247,7 @@ impl IndexUpdater {
 				album_artist: tags.album_artist,
 				album: tags.album,
 				year: tags.year,
-				artwork: artwork.as_ref().cloned(),
+				artwork: artwork_path,
 			};
 
 			self.push_song(song)?;
@@ -255,7 +268,7 @@ impl IndexUpdater {
 			NewDirectory {
 				path: path_string.to_owned(),
 				parent: parent_string,
-				artwork,
+				artwork: directory_artwork,
 				album: directory_album,
 				artist: directory_artist,
 				year: directory_year,

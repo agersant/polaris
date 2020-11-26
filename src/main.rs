@@ -33,6 +33,7 @@ mod lastfm;
 mod playlist;
 mod service;
 
+mod artwork;
 mod thumbnails;
 mod ui;
 mod user;
@@ -190,7 +191,6 @@ fn main() -> Result<()> {
 		info!("Applying configuration from {}", config_path.display());
 		config::amend(&db, &config)?;
 	}
-	let config = config::read(&db)?;
 	let auth_secret = config::get_auth_secret(&db)?;
 
 	// Locate web client files
@@ -228,10 +228,9 @@ fn main() -> Result<()> {
 	let thumbnails_manager = thumbnails::ThumbnailsManager::new(&thumbnails_path);
 
 	// Endpoints
-	let prefix_url = config.prefix_url.unwrap_or_else(|| "".to_string());
-	let api_url = format!("/{}api", &prefix_url);
-	let swagger_url = format!("/{}swagger", &prefix_url);
-	let web_url = format!("/{}", &prefix_url);
+	let api_url = "/api".to_owned();
+	let swagger_url = "/swagger".to_owned();
+	let web_url = "/".to_owned();
 	info!("Mounting API on {}", api_url);
 	info!("Mounting web client files on {}", web_url);
 	info!("Mounting swagger files on {}", swagger_url);

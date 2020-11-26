@@ -57,6 +57,29 @@ fn test_metadata() {
 }
 
 #[test]
+fn test_embedded_artwork() {
+	let mut song_path = PathBuf::new();
+	song_path.push("test-data");
+	song_path.push("small-collection");
+	song_path.push("Tobokegao");
+	song_path.push("Picnic");
+	song_path.push("07 - なぜ (Why).mp3");
+
+	let db = db::get_test_db("artwork.sqlite");
+	update(&db).unwrap();
+
+	let connection = db.connect().unwrap();
+	let songs: Vec<Song> = songs::table
+		.filter(songs::title.eq("なぜ (Why?)"))
+		.load(&connection)
+		.unwrap();
+
+	assert_eq!(songs.len(), 1);
+	let song = &songs[0];
+	assert_eq!(song.artwork, Some(song_path.to_string_lossy().into_owned()));
+}
+
+#[test]
 fn test_browse_top_level() {
 	let mut root_path = PathBuf::new();
 	root_path.push("root");

@@ -26,7 +26,6 @@ table! {
 		auth_secret -> Binary,
 		index_sleep_duration_seconds -> Integer,
 		index_album_art_pattern -> Text,
-		prefix_url -> Text,
 	}
 }
 
