@@ -169,7 +169,6 @@ fn main() -> Result<()> {
 		info!("Applying configuration");
 		config::amend(&db, &config)?;
 	}
-	let config = config::read(&db)?;
 	let auth_secret = config::get_auth_secret(&db)?;
 
 	// Init index
@@ -177,8 +176,7 @@ fn main() -> Result<()> {
 	let index = index::builder(db.clone()).periodic_updates(true).build();
 
 	// API mount target
-	let prefix_url = config.prefix_url.unwrap_or_else(|| "".to_string());
-	let api_url = format!("/{}api", &prefix_url);
+	let api_url = "/api".to_owned();
 	info!("Mounting API on {}", api_url);
 
 	// Web client mount target
@@ -189,7 +187,7 @@ fn main() -> Result<()> {
 		.map(|n| Path::new(n.as_str()).to_path_buf())
 		.unwrap_or(default_web_dir);
 	info!("Static files location is {}", web_dir_path.display());
-	let web_url = format!("/{}", &prefix_url);
+	let web_url = "/".to_owned();
 	info!("Mounting web client files on {}", web_url);
 
 	// Swagger files mount target
@@ -200,7 +198,7 @@ fn main() -> Result<()> {
 		.map(|n| Path::new(n.as_str()).to_path_buf())
 		.unwrap_or(default_swagger_dir);
 	info!("Swagger files location is {}", swagger_dir_path.display());
-	let swagger_url = format!("/{}swagger", &prefix_url);
+	let swagger_url = "/swagger".to_owned();
 	info!("Mounting swagger files on {}", swagger_url);
 
 	// Thumbnails manager
