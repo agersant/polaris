@@ -85,10 +85,7 @@ pub fn read(db: &DB) -> Result<Config> {
 	};
 
 	let (art_pattern, sleep_duration) = misc_settings
-		.select((
-			index_album_art_pattern,
-			index_sleep_duration_seconds,
-		))
+		.select((index_album_art_pattern, index_sleep_duration_seconds))
 		.get_result(&connection)?;
 
 	config.album_art_pattern = Some(art_pattern);
