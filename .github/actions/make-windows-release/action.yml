@@ -18,7 +18,7 @@ runs:
         unzip web.zip
       shell: bash
     - name: Set Polaris Version
-      run: echo ::set-env name=POLARIS_VERSION::${{ inputs.version-number }}
+      run: echo "POLARIS_VERSION=${{ inputs.version-number }}" >> $GITHUB_ENV
       shell: bash
     - name: Build Installer
       run: res/windows/release_script
