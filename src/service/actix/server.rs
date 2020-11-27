@@ -1,6 +1,4 @@
-use actix_web::{
-	client::Client, dev::Server, rt::System, web, web::ServiceConfig, App, HttpResponse, HttpServer,
-};
+use actix_web::{rt::System, web, web::ServiceConfig, App, HttpServer};
 use anyhow::*;
 use std::path::{Path, PathBuf};
 
@@ -10,7 +8,6 @@ use crate::index::Index;
 use crate::thumbnails::ThumbnailsManager;
 
 pub fn make_config(
-	port: u16,
 	auth_secret: Vec<u8>,
 	api_url: String,
 	web_url: String,
@@ -63,7 +60,6 @@ pub fn run(
 
 	let _server = HttpServer::new(move || {
 		App::new().configure(make_config(
-			port,
 			Vec::from(auth_secret.clone()),
 			api_url.to_owned(),
 			web_url.to_owned(),

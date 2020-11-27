@@ -1,4 +1,4 @@
-use actix_web::{client::Client, dev::Server, rt::System, App, HttpServer};
+use actix_web::{client::Client, rt::System, App, HttpServer};
 use http::response::Response;
 use http::{HeaderMap, HeaderValue};
 use serde::de::DeserializeOwned;
@@ -16,7 +16,6 @@ use crate::thumbnails::ThumbnailsManager;
 
 pub struct ActixTestService {
 	port: u16,
-	server: Server,
 }
 
 pub type ServiceType = ActixTestService;
@@ -61,7 +60,6 @@ impl TestService for ActixTestService {
 			let system = System::new("http-server");
 			let server = HttpServer::new(move || {
 				let config = server::make_config(
-					port,
 					Vec::from(auth_secret.clone()),
 					"/api".to_owned(),
 					"/".to_owned(),
@@ -80,8 +78,8 @@ impl TestService for ActixTestService {
 			system.run()
 		});
 
-		let server = rx.recv().unwrap();
-		ActixTestService { server, port }
+		let _server = rx.recv().unwrap();
+		ActixTestService { port }
 	}
 
 	fn get(&mut self, url: &str) -> Response<()> {

@@ -1,7 +1,4 @@
-use actix_web::{
-	client::Client, dev::Server, get, rt::System, web, web::Json, web::ServiceConfig, App,
-	HttpRequest, HttpResponse, HttpServer,
-};
+use actix_web::{get, web::Json, web::ServiceConfig};
 
 use crate::service::constants::*;
 use crate::service::dto;
