@@ -75,7 +75,6 @@ impl TestService for ActixTestService {
 				App::new().configure(config)
 			})
 			.bind(address)?
-			.shutdown_timeout(60) // <- Set shutdown timeout to 60 seconds
 			.run();
 			let _ = tx.send(server);
 			system.run()
