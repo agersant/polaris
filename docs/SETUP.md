@@ -29,7 +29,7 @@ You can now start Polaris from the start menu or from your desktop, Polaris will
 
 From here, you might want to adjust your system to run Polaris on login using Systemd, Cron or whichever method your distribution endorses.
 
-If you want to uninstall Polaris, execute `make uninstall` from the extracted archive's directory. This will delete all the files and directories listed above **including your Polaris database**. If you customized the install process by specifying environment variables like `PREFIX`, make sure they are set to the same values when running `make uninstall`.
+If you want to uninstall Polaris, execute `make uninstall-xdg` from the extracted archive's directory (or `make uninstall` if you made a system-wide install). This will delete all the files and directories listed above **including your Polaris database**. If you customized the install process by specifying environment variables like `PREFIX`, make sure they are set to the same values when running the uninstall command.
 
 ### In a docker container
 
