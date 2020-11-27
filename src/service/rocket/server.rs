@@ -2,7 +2,7 @@ use anyhow::*;
 use rocket;
 use rocket::config::{Environment, LoggingLevel};
 use rocket_contrib::serve::{Options, StaticFiles};
-use std::path::PathBuf;
+use std::path::Path;
 
 use super::api;
 use crate::db::DB;
@@ -14,9 +14,9 @@ pub fn get_server(
 	auth_secret: &[u8],
 	api_url: &str,
 	web_url: &str,
-	web_dir_path: &PathBuf,
+	web_dir_path: &Path,
 	swagger_url: &str,
-	swagger_dir_path: &PathBuf,
+	swagger_dir_path: &Path,
 	db: DB,
 	command_sender: Index,
 	thumbnails_manager: ThumbnailsManager,
@@ -52,11 +52,11 @@ pub fn get_server(
 pub fn run(
 	port: u16,
 	auth_secret: &[u8],
-	api_url: String,
-	web_url: String,
-	web_dir_path: PathBuf,
-	swagger_url: String,
-	swagger_dir_path: PathBuf,
+	api_url: &str,
+	web_url: &str,
+	web_dir_path: &Path,
+	swagger_url: &str,
+	swagger_dir_path: &Path,
 	db: DB,
 	command_sender: Index,
 	thumbnails_manager: ThumbnailsManager,
@@ -64,11 +64,11 @@ pub fn run(
 	let server = get_server(
 		port,
 		auth_secret,
-		&api_url,
-		&web_url,
-		&web_dir_path,
-		&swagger_url,
-		&swagger_dir_path,
+		api_url,
+		web_url,
+		web_dir_path,
+		swagger_url,
+		swagger_dir_path,
 		db,
 		command_sender,
 		thumbnails_manager,

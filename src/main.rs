@@ -228,9 +228,9 @@ fn main() -> Result<()> {
 	let thumbnails_manager = thumbnails::ThumbnailsManager::new(&thumbnails_path);
 
 	// Endpoints
-	let api_url = "/api".to_owned();
-	let swagger_url = "/swagger".to_owned();
-	let web_url = "/".to_owned();
+	let api_url = "/api";
+	let swagger_url = "/swagger";
+	let web_url = "/";
 	info!("Mounting API on {}", api_url);
 	info!("Mounting web client files on {}", web_url);
 	info!("Mounting swagger files on {}", swagger_url);
@@ -258,9 +258,9 @@ fn main() -> Result<()> {
 			&auth_secret,
 			api_url,
 			web_url,
-			web_dir_path,
+			&web_dir_path,
 			swagger_url,
-			swagger_dir_path,
+			&swagger_dir_path,
 			db_server,
 			index,
 			thumbnails_manager,
