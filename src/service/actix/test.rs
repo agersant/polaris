@@ -1,23 +1,48 @@
-use actix_web::client::Client;
-use actix_web::rt::System;
+use actix_web::{client::Client, dev::Server, rt::System, web, App, HttpResponse, HttpServer};
 use http::response::Response;
 use http::{HeaderMap, HeaderValue};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use std::sync::mpsc;
+use std::thread;
 
 use crate::service::test::TestService;
 
-pub struct ActixTestService {}
+pub struct ActixTestService {
+	port: u16,
+	server: Server,
+}
 
 pub type ServiceType = ActixTestService;
 
+impl ActixTestService {
+	fn build_url(&self, endpoint: &str) -> String {
+		format!("http://localhost:{}{}", self.port, endpoint)
+	}
+}
+
 impl TestService for ActixTestService {
 	fn new(_db_name: &str) -> Self {
-		ActixTestService {}
+		let port = 8080;
+		let address = format!("localhost:{}", port);
+		let (tx, rx) = mpsc::channel();
+		thread::spawn(move || {
+			let system = System::new("http-server");
+			let server =
+				HttpServer::new(|| App::new().route("/", web::get().to(|| HttpResponse::Ok())))
+					.bind(address)?
+					.shutdown_timeout(60) // <- Set shutdown timeout to 60 seconds
+					.run();
+			let _ = tx.send(server);
+			system.run()
+		});
+
+		let server = rx.recv().unwrap();
+		ActixTestService { server, port }
 	}
 
 	fn get(&mut self, url: &str) -> Response<()> {
-		let url = url.to_owned();
+		let url = self.build_url(url);
 		System::new("main").block_on(async move {
 			let client = Client::default();
 			let request = client.get(url).send();
@@ -31,7 +56,7 @@ impl TestService for ActixTestService {
 	}
 
 	fn get_bytes(&mut self, url: &str, headers: &HeaderMap<HeaderValue>) -> Response<Vec<u8>> {
-		let url = url.to_owned();
+		let url = self.build_url(url);
 		let headers = headers.clone();
 		System::new("main").block_on(async move {
 			let client = Client::default();
@@ -51,7 +76,7 @@ impl TestService for ActixTestService {
 	}
 
 	fn post(&mut self, url: &str) -> Response<()> {
-		let url = url.to_owned();
+		let url = self.build_url(url);
 		System::new("main").block_on(async move {
 			let client = Client::default();
 			let request = client.post(url).send();
@@ -65,7 +90,7 @@ impl TestService for ActixTestService {
 	}
 
 	fn delete(&mut self, url: &str) -> Response<()> {
-		let url = url.to_owned();
+		let url = self.build_url(url);
 		System::new("main").block_on(async move {
 			let client = Client::default();
 			let request = client.delete(url).send();
@@ -79,7 +104,7 @@ impl TestService for ActixTestService {
 	}
 
 	fn get_json<T: DeserializeOwned>(&mut self, url: &str) -> Response<T> {
-		let url = url.to_owned();
+		let url = self.build_url(url);
 		System::new("main").block_on(async move {
 			let client = Client::default();
 			let request = client.get(url).send();
@@ -94,7 +119,7 @@ impl TestService for ActixTestService {
 	}
 
 	fn put_json<T: Serialize>(&mut self, url: &str, payload: &T) -> Response<()> {
-		let url = url.to_owned();
+		let url = self.build_url(url);
 		System::new("main").block_on(async move {
 			let client = Client::default();
 			let request = client.put(url).send(); //.send_json(payload); TODO lifetime issues
@@ -108,7 +133,7 @@ impl TestService for ActixTestService {
 	}
 
 	fn post_json<T: Serialize>(&mut self, url: &str, payload: &T) -> Response<()> {
-		let url = url.to_owned();
+		let url = self.build_url(url);
 		System::new("main").block_on(async move {
 			let client = Client::default();
 			let request = client.post(url).send(); //.send_json(payload); TODO lifetime issues
