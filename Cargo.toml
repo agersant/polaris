@@ -8,10 +8,11 @@ edition = "2018"
 default = ["service-actix"]
 ui = ["uuid", "winapi"]
 profile-index = ["flame", "flamer"]
-service-actix = ["actix-web"]
+service-actix = ["actix", "actix-web", "futures"]
 service-rocket = ["rocket", "rocket_contrib"]
 
 [dependencies]
+actix = { version = "0.10", optional = true }
 actix-web = { version = "3", optional = true }
 anyhow = "1.0.31"
 ape = "0.3.0"
@@ -21,6 +22,7 @@ diesel = { version = "1.4.4", features = ["sqlite", "r2d2"] }
 diesel_migrations = { version = "1.4", features = ["sqlite"] }
 flame = { version = "0.2.2", optional = true }
 flamer = { version = "0.4", optional = true }
+futures = { version = "0.3.8", optional = true }
 getopts = "0.2.15"
 id3 = "0.5.1"
 image = "0.23.4"

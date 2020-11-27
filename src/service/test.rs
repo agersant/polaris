@@ -11,6 +11,9 @@ use crate::service::constants::*;
 use crate::service::dto;
 use crate::{config, index, vfs};
 
+#[cfg(feature = "service-actix")]
+pub use crate::service::actix::test::ServiceType;
+
 #[cfg(feature = "service-rocket")]
 pub use crate::service::rocket::test::ServiceType;
 
