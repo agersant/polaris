@@ -5,12 +5,14 @@ authors = ["Antoine Gersant <antoine.gersant@lesforges.org>"]
 edition = "2018"
 
 [features]
-default = ["service-rocket"]
+default = ["service-actix"]
 ui = ["uuid", "winapi"]
 profile-index = ["flame", "flamer"]
+service-actix = ["actix-web"]
 service-rocket = ["rocket", "rocket_contrib"]
 
 [dependencies]
+actix-web = { version = "3", optional = true }
 anyhow = "1.0.31"
 ape = "0.3.0"
 base64 = "0.12.1"
