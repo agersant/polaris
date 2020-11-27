@@ -9,6 +9,7 @@ use std::path::*;
 
 use crate::artwork;
 
+#[derive(Clone)]
 pub struct ThumbnailsManager {
 	thumbnails_path: PathBuf,
 }

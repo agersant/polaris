@@ -91,10 +91,8 @@ fn test_service_index() {
 #[test]
 fn test_service_swagger_index() {
 	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
-	assert_eq!(
-		service.get("/swagger").status(),
-		StatusCode::PERMANENT_REDIRECT
-	);
+	let status = service.get("/swagger").status();
+	assert!(status == StatusCode::PERMANENT_REDIRECT || status == StatusCode::FOUND);
 }
 
 #[test]

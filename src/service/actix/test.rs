@@ -1,12 +1,18 @@
-use actix_web::{client::Client, dev::Server, rt::System, web, App, HttpResponse, HttpServer};
+use actix_web::{client::Client, dev::Server, rt::System, App, HttpServer};
 use http::response::Response;
 use http::{HeaderMap, HeaderValue};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use std::fs;
+use std::path::PathBuf;
 use std::sync::mpsc;
 use std::thread;
 
+use super::server;
+use crate::db::DB;
+use crate::index;
 use crate::service::test::TestService;
+use crate::thumbnails::ThumbnailsManager;
 
 pub struct ActixTestService {
 	port: u16,
@@ -22,17 +28,55 @@ impl ActixTestService {
 }
 
 impl TestService for ActixTestService {
-	fn new(_db_name: &str) -> Self {
-		let port = 8080;
+	fn new(db_name: &str) -> Self {
+		let port = 5050;
 		let address = format!("localhost:{}", port);
+
+		let mut db_path = PathBuf::new();
+		db_path.push("test-output");
+		fs::create_dir_all(&db_path).unwrap();
+
+		db_path.push(format!("{}.sqlite", db_name));
+		if db_path.exists() {
+			fs::remove_file(&db_path).unwrap();
+		}
+
+		let db = DB::new(&db_path).unwrap();
+
+		let web_dir_path = PathBuf::from("web");
+		let mut swagger_dir_path = PathBuf::from("docs");
+		swagger_dir_path.push("swagger");
+		let index = index::builder(db.clone()).periodic_updates(false).build();
+
+		let mut thumbnails_path = PathBuf::new();
+		thumbnails_path.push("test-output");
+		thumbnails_path.push("thumbnails");
+		thumbnails_path.push(db_name);
+		let thumbnails_manager = ThumbnailsManager::new(thumbnails_path.as_path());
+
+		let auth_secret: [u8; 32] = [0; 32];
+
 		let (tx, rx) = mpsc::channel();
 		thread::spawn(move || {
 			let system = System::new("http-server");
-			let server =
-				HttpServer::new(|| App::new().route("/", web::get().to(|| HttpResponse::Ok())))
-					.bind(address)?
-					.shutdown_timeout(60) // <- Set shutdown timeout to 60 seconds
-					.run();
+			let server = HttpServer::new(move || {
+				let config = server::make_config(
+					port,
+					Vec::from(auth_secret.clone()),
+					"/api".to_owned(),
+					"/".to_owned(),
+					web_dir_path.clone(),
+					"/swagger".to_owned(),
+					swagger_dir_path.clone(),
+					db.clone(),
+					index.clone(),
+					thumbnails_manager.clone(),
+				);
+				App::new().configure(config)
+			})
+			.bind(address)?
+			.shutdown_timeout(60) // <- Set shutdown timeout to 60 seconds
+			.run();
 			let _ = tx.send(server);
 			system.run()
 		});
