@@ -32,35 +32,6 @@ pub fn make_config(
 				.index_file("index.html"),
 		);
 	}
-
-	/*
-	let mut config = rocket::Config::build(Environment::Production)
-		.log_level(LoggingLevel::Normal)
-		.port(port)
-		.keep_alive(0)
-		.finalize()?;
-
-	let encoded = base64::encode(auth_secret);
-	config.set_secret_key(encoded)?;
-
-	let swagger_routes_rank = 0;
-	let web_routes_rank = swagger_routes_rank + 1;
-	let static_file_options = Options::Index | Options::NormalizeDirs;
-
-	Ok(rocket::custom(config)
-		.manage(db)
-		.manage(command_sender)
-		.manage(thumbnails_manager)
-		.mount(&api_url, api::get_routes())
-		.mount(
-			&swagger_url,
-			StaticFiles::new(swagger_dir_path, static_file_options).rank(swagger_routes_rank),
-		)
-		.mount(
-			&web_url,
-			StaticFiles::new(web_dir_path, static_file_options).rank(web_routes_rank),
-		))
-		*/
 }
 
 pub fn run(
