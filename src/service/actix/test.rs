@@ -1,6 +1,5 @@
 use actix_web;
 use actix_web::client::Client;
-use futures::executor::block_on;
 use http::response::Response;
 use http::{HeaderMap, HeaderValue};
 use serde::de::DeserializeOwned;
@@ -22,7 +21,7 @@ impl TestService for ActixTestService {
 		actix_rt::System::new("main").block_on(async move {
 			let client = Client::default();
 			let request = client.get(url).send();
-			let client_response = block_on(request).unwrap();
+			let client_response = request.await.unwrap();
 			// TODO response headers
 			Response::builder()
 				.status(client_response.status().as_u16())
@@ -41,8 +40,8 @@ impl TestService for ActixTestService {
 				request.headers_mut().insert(name.clone(), value.clone())
 			}
 			let request = request.send();
-			let mut client_response = block_on(request).unwrap();
-			let body = block_on(client_response.body()).unwrap();
+			let mut client_response = request.await.unwrap();
+			let body = client_response.body().await.unwrap();
 			// TODO response headers
 			Response::builder()
 				.status(client_response.status().as_u16())
@@ -56,7 +55,7 @@ impl TestService for ActixTestService {
 		actix_rt::System::new("main").block_on(async move {
 			let client = Client::default();
 			let request = client.post(url).send();
-			let client_response = block_on(request).unwrap();
+			let client_response = request.await.unwrap();
 			// TODO response headers
 			Response::builder()
 				.status(client_response.status().as_u16())
@@ -70,7 +69,7 @@ impl TestService for ActixTestService {
 		actix_rt::System::new("main").block_on(async move {
 			let client = Client::default();
 			let request = client.delete(url).send();
-			let client_response = block_on(request).unwrap();
+			let client_response = request.await.unwrap();
 			// TODO response headers
 			Response::builder()
 				.status(client_response.status().as_u16())
@@ -84,8 +83,8 @@ impl TestService for ActixTestService {
 		actix_rt::System::new("main").block_on(async move {
 			let client = Client::default();
 			let request = client.get(url).send();
-			let mut client_response = block_on(request).unwrap();
-			let body = block_on(client_response.json()).unwrap();
+			let mut client_response = request.await.unwrap();
+			let body = client_response.json().await.unwrap();
 			// TODO response headers
 			Response::builder()
 				.status(client_response.status().as_u16())
@@ -99,7 +98,7 @@ impl TestService for ActixTestService {
 		actix_rt::System::new("main").block_on(async move {
 			let client = Client::default();
 			let request = client.put(url).send(); //.send_json(payload); TODO lifetime issues
-			let client_response = block_on(request).unwrap();
+			let client_response = request.await.unwrap();
 			// TODO response headers
 			Response::builder()
 				.status(client_response.status().as_u16())
@@ -113,7 +112,7 @@ impl TestService for ActixTestService {
 		actix_rt::System::new("main").block_on(async move {
 			let client = Client::default();
 			let request = client.post(url).send(); //.send_json(payload); TODO lifetime issues
-			let client_response = block_on(request).unwrap();
+			let client_response = request.await.unwrap();
 			// TODO response headers
 			Response::builder()
 				.status(client_response.status().as_u16())
