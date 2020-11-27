@@ -120,9 +120,10 @@ impl TestService for ActixTestService {
 
 	fn put_json<T: Serialize>(&mut self, url: &str, payload: &T) -> Response<()> {
 		let url = self.build_url(url);
+		let payload = serde_json::to_string(payload).unwrap();
 		System::new("main").block_on(async move {
 			let client = Client::default();
-			let request = client.put(url).send(); //.send_json(payload); TODO lifetime issues
+			let request = client.put(url).send_body(payload);
 			let client_response = request.await.unwrap();
 			// TODO response headers
 			Response::builder()
@@ -134,9 +135,10 @@ impl TestService for ActixTestService {
 
 	fn post_json<T: Serialize>(&mut self, url: &str, payload: &T) -> Response<()> {
 		let url = self.build_url(url);
+		let payload = serde_json::to_string(payload).unwrap();
 		System::new("main").block_on(async move {
 			let client = Client::default();
-			let request = client.post(url).send(); //.send_json(payload); TODO lifetime issues
+			let request = client.post(url).send_body(payload);
 			let client_response = request.await.unwrap();
 			// TODO response headers
 			Response::builder()
