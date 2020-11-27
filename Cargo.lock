@@ -2410,7 +2410,6 @@ dependencies = [
 name = "polaris"
 version = "0.12.4"
 dependencies = [
- "actix-rt",
  "actix-web",
  "anyhow",
  "ape",
