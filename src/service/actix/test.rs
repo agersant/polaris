@@ -1,4 +1,3 @@
-use actix_web;
 use actix_web::client::Client;
 use actix_web::rt::System;
 use http::response::Response;
