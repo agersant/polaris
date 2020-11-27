@@ -4,6 +4,7 @@ use actix_web::{
 use anyhow::*;
 use std::path::{Path, PathBuf};
 
+use super::api;
 use crate::db::DB;
 use crate::index::Index;
 use crate::thumbnails::ThumbnailsManager;
@@ -21,6 +22,7 @@ pub fn make_config(
 	thumbnails_manager: ThumbnailsManager,
 ) -> impl FnOnce(&mut ServiceConfig) + Clone {
 	move |cfg: &mut ServiceConfig| {
+		cfg.service(web::scope(&api_url).configure(api::make_config()));
 		cfg.service(
 			actix_files::Files::new(&swagger_url, swagger_dir_path)
 				.redirect_to_slash_directory()

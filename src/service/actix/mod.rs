@@ -1,3 +1,5 @@
+mod api;
+
 pub mod server;
 
 #[cfg(test)]
