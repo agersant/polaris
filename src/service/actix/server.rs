@@ -77,6 +77,9 @@ pub fn run(
 ) -> Result<()> {
 	let system = System::new("http-server");
 
+	// TODO group all these params into a struct
+	// TODO figure out why we need so much cloning
+
 	let auth_secret = Vec::from(auth_secret);
 	let address = format!("localhost:{}", port);
 	let api_url = api_url.to_owned();

@@ -25,6 +25,8 @@ const TEST_MOUNT_SOURCE: &str = "test-data/small-collection";
 
 pub trait TestService {
 	fn new(db_name: &str) -> Self;
+
+	// TODO consider using https://docs.rs/http/0.2.1/http/request/index.html to avoid having all these similar methods
 	fn get(&mut self, url: &str) -> Response<()>;
 	fn get_bytes(&mut self, url: &str, headers: &HeaderMap<HeaderValue>) -> Response<Vec<u8>>;
 	fn post(&mut self, url: &str) -> Response<()>;
