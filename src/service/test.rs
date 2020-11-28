@@ -32,7 +32,7 @@ pub trait TestService {
 	fn post(&mut self, url: &str) -> Response<()>;
 	fn delete(&mut self, url: &str) -> Response<()>;
 	fn get_json<T: DeserializeOwned>(&mut self, url: &str) -> Response<T>;
-	fn put_json<T: Serialize>(&mut self, url: &str, payload: &T) -> Response<()>;
+	fn put_json<T: Serialize + 'static>(&mut self, url: &str, payload: T) -> Response<()>;
 	fn post_json<T: Serialize>(&mut self, url: &str, payload: &T) -> Response<()>;
 
 	fn complete_initial_setup(&mut self) {
@@ -50,7 +50,7 @@ pub trait TestService {
 				source: TEST_MOUNT_SOURCE.into(),
 			}]),
 		};
-		self.put_json("/api/settings", &configuration);
+		self.put_json("/api/settings", configuration);
 	}
 
 	fn login(&mut self) {
@@ -149,7 +149,7 @@ fn test_service_settings() {
 	assert_eq!(response.status(), StatusCode::OK);
 
 	let configuration = config::Config::default();
-	let response = service.put_json("/api/settings", &configuration);
+	let response = service.put_json("/api/settings", configuration);
 	assert_eq!(response.status(), StatusCode::OK);
 }
 
@@ -165,7 +165,7 @@ fn test_service_settings_cannot_unadmin_self() {
 		password: "".into(),
 		admin: false,
 	}]);
-	let response = service.put_json("/api/settings", &configuration);
+	let response = service.put_json("/api/settings", configuration);
 	assert_eq!(response.status(), StatusCode::CONFLICT);
 }
 
@@ -178,7 +178,7 @@ fn test_service_preferences() {
 	assert_eq!(response.status(), StatusCode::OK);
 
 	let preferences = config::Preferences::default();
-	let response = service.put_json("/api/preferences", &preferences);
+	let response = service.put_json("/api/preferences", preferences);
 	assert_eq!(response.status(), StatusCode::OK);
 }
 
@@ -376,7 +376,7 @@ fn test_service_playlists() {
 	let my_playlist = dto::SavePlaylistInput {
 		tracks: my_songs.iter().map(|s| s.path.clone()).collect(),
 	};
-	service.put_json("/api/playlist/my_playlist", &my_playlist);
+	service.put_json("/api/playlist/my_playlist", my_playlist);
 
 	let response = service.get_json::<Vec<dto::ListPlaylistsEntry>>("/api/playlists");
 	let playlists = response.body();

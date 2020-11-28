@@ -1,4 +1,4 @@
-use actix_web::{rt::System, web, web::Data, web::ServiceConfig, App, HttpServer};
+use actix_web::{rt::System, web, web::ServiceConfig, App, HttpServer};
 use anyhow::*;
 use std::path::{Path, PathBuf};
 

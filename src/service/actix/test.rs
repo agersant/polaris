@@ -159,12 +159,11 @@ impl TestService for ActixTestService {
 		})
 	}
 
-	fn put_json<T: Serialize>(&mut self, url: &str, payload: &T) -> Response<()> {
+	fn put_json<T: Serialize + 'static>(&mut self, url: &str, payload: T) -> Response<()> {
 		let url = self.build_url(url);
-		let payload = serde_json::to_string(payload).unwrap();
 		System::new("main").block_on(async move {
 			let client = Client::default();
-			let request = client.put(url).send_body(payload);
+			let request = client.put(url).send_json(&payload);
 			let client_response = request.await.unwrap();
 			// TODO response headers
 			Response::builder()

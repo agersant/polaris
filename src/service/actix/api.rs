@@ -1,5 +1,8 @@
-use actix_web::{get, http::StatusCode, web::Data, web::Json, web::ServiceConfig, ResponseError};
+use actix_web::{
+	get, http::StatusCode, put, web::Data, web::Json, web::ServiceConfig, ResponseError,
+};
 
+use crate::config::{self, Config};
 use crate::db::DB;
 use crate::service::{constants::*, dto, error::*};
 use crate::user;
@@ -8,6 +11,7 @@ pub fn make_config() -> impl FnOnce(&mut ServiceConfig) + Clone {
 	move |cfg: &mut ServiceConfig| {
 		cfg.service(version);
 		cfg.service(initial_setup);
+		cfg.service(put_settings);
 	}
 }
 
@@ -36,4 +40,26 @@ async fn initial_setup(db: Data<DB>) -> Result<Json<dto::InitialSetup>, APIError
 		has_any_users: user::count(&db)? > 0,
 	};
 	Ok(Json(initial_setup))
+}
+
+#[put("/settings")]
+async fn put_settings(db: Data<DB>, config: Json<Config>) -> Result<&'static str, APIError> {
+	// TODO config should be a dto type
+
+	// TODO permissions
+
+	// Do not let users remove their own admin rights
+	// TODO
+	// if let Some(auth) = &admin_rights.auth {
+	// 	if let Some(users) = &config.users {
+	// 		for user in users {
+	// 			if auth.username == user.name && !user.admin {
+	// 				return Err(APIError::OwnAdminPrivilegeRemoval);
+	// 			}
+	// 		}
+	// 	}
+	// }
+	dbg!("put_settings");
+	config::amend(&db, &config)?;
+	Ok("")
 }
