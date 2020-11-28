@@ -21,6 +21,7 @@ pub fn make_config(
 	move |cfg: &mut ServiceConfig| {
 		cfg.app_data(web::Data::new(db))
 			.app_data(web::Data::new(command_sender))
+			.app_data(web::Data::new(thumbnails_manager))
 			.service(web::scope(&api_url).configure(api::make_config()))
 			.service(
 				actix_files::Files::new(&swagger_url, swagger_dir_path)

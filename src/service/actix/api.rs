@@ -17,6 +17,7 @@ use crate::index::{self, Index};
 use crate::lastfm;
 use crate::playlist;
 use crate::service::{constants::*, dto, error::*};
+use crate::thumbnails::{ThumbnailOptions, ThumbnailsManager};
 use crate::user;
 use crate::vfs::VFSSource;
 
@@ -38,6 +39,7 @@ pub fn make_config() -> impl FnOnce(&mut ServiceConfig) + Clone {
 			.service(search_root)
 			.service(search)
 			.service(audio)
+			.service(thumbnail)
 			.service(list_playlists)
 			.service(save_playlist)
 			.service(read_playlist)
@@ -55,6 +57,7 @@ impl ResponseError for APIError {
 			APIError::IncorrectCredentials => StatusCode::UNAUTHORIZED,
 			APIError::OwnAdminPrivilegeRemoval => StatusCode::CONFLICT,
 			APIError::AudioFileIOError => StatusCode::NOT_FOUND,
+			APIError::ThumbnailFileIOError => StatusCode::NOT_FOUND,
 			APIError::LastFMLinkContentBase64DecodeError => StatusCode::BAD_REQUEST,
 			APIError::LastFMLinkContentEncodingError => StatusCode::BAD_REQUEST,
 			APIError::Unspecified => StatusCode::INTERNAL_SERVER_ERROR,
@@ -260,6 +263,24 @@ async fn audio(db: Data<DB>, _auth: Auth, path: web::Path<PathBuf>) -> Result<Na
 	Ok(named_file)
 }
 
+#[get("/thumbnail/{path:.*}")]
+async fn thumbnail(
+	db: Data<DB>,
+	thumbnails_manager: Data<ThumbnailsManager>,
+	_auth: Auth,
+	path: web::Path<PathBuf>,
+	options_input: web::Query<dto::ThumbnailOptions>,
+) -> Result<NamedFile, APIError> {
+	let vfs = db.get_vfs()?;
+	let image_path = vfs.virtual_to_real(&(path.0).into() as &PathBuf)?;
+	let mut options = ThumbnailOptions::default();
+	options.pad_to_square = options_input.pad.unwrap_or(options.pad_to_square);
+	let thumbnail_path = thumbnails_manager.get_thumbnail(&image_path, &options)?;
+	let named_file =
+		NamedFile::open(&thumbnail_path).map_err(|_| APIError::ThumbnailFileIOError)?;
+	Ok(named_file)
+}
+
 #[get("/playlists")]
 async fn list_playlists(
 	db: Data<DB>,
@@ -329,11 +350,11 @@ async fn lastfm_scrobble(
 	Ok(HttpResponse::new(StatusCode::OK))
 }
 
-#[get("/lastfm/link?<token>&<content>")]
+#[get("/lastfm/link")]
 async fn lastfm_link(
 	db: Data<DB>,
 	auth: Auth,
-	web::Query(payload): web::Query<dto::LastFMLink>,
+	payload: web::Query<dto::LastFMLink>,
 ) -> Result<HttpResponse, APIError> {
 	lastfm::link(&db, &auth.username, &payload.token)?;
 

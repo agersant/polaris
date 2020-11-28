@@ -8,6 +8,8 @@ pub enum APIError {
 	OwnAdminPrivilegeRemoval,
 	#[error("Audio file could not be opened")]
 	AudioFileIOError,
+	#[error("Thumbnail file could not be opened")]
+	ThumbnailFileIOError,
 	#[error("Could not decode content as base64 after linking last.fm account")]
 	LastFMLinkContentBase64DecodeError,
 	#[error("Could not decode content as UTF-8 after linking last.fm account")]

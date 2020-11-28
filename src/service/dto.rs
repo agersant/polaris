@@ -17,6 +17,11 @@ pub struct AuthCredentials {
 	pub password: String,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct ThumbnailOptions {
+	pub pad: Option<bool>,
+}
+
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct ListPlaylistsEntry {
 	pub name: String,
