@@ -29,7 +29,7 @@ impl ActixTestService {
 
 impl TestService for ActixTestService {
 	fn new(db_name: &str) -> Self {
-		let port = 5050;
+		let port = 5050; // TODO unique port numbers, tests are interfering with each other
 		let address = format!("localhost:{}", port);
 
 		let mut db_path = PathBuf::new();
