@@ -73,7 +73,7 @@ fn read_opus(_: &Path) -> Result<DynamicImage> {
 }
 
 #[test]
-fn test_read_artowork() {
+fn test_read_artwork() {
 	let ext_img = image::open("test-data/artwork/Folder.png")
 		.unwrap()
 		.to_rgb8();
