@@ -2466,6 +2466,7 @@ dependencies = [
  "diesel_migrations",
  "flame",
  "flamer",
+ "futures-util",
  "getopts",
  "http 0.2.1",
  "id3",

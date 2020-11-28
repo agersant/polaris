@@ -1,6 +1,11 @@
+use actix_web::error::{ErrorInternalServerError, ErrorUnauthorized};
 use actix_web::{
-	get, http::StatusCode, put, web::Data, web::Json, web::ServiceConfig, ResponseError,
+	dev::Payload, get, http::StatusCode, put, web::Data, web::Json, web::ServiceConfig,
+	FromRequest, HttpRequest, ResponseError,
 };
+use futures_util::future::{err, ok, Ready};
+use std::future::Future;
+use std::pin::Pin;
 
 use crate::config::{self, Config};
 use crate::db::DB;
@@ -9,9 +14,9 @@ use crate::user;
 
 pub fn make_config() -> impl FnOnce(&mut ServiceConfig) + Clone {
 	move |cfg: &mut ServiceConfig| {
-		cfg.service(version);
-		cfg.service(initial_setup);
-		cfg.service(put_settings);
+		cfg.service(version)
+			.service(initial_setup)
+			.service(put_settings);
 	}
 }
 
@@ -22,6 +27,56 @@ impl ResponseError for APIError {
 			APIError::OwnAdminPrivilegeRemoval => StatusCode::CONFLICT,
 			APIError::Unspecified => StatusCode::INTERNAL_SERVER_ERROR,
 		}
+	}
+}
+
+struct Auth {
+	username: String,
+}
+
+impl FromRequest for Auth {
+	type Error = actix_web::Error;
+	type Future = Ready<Result<Self, Self::Error>>;
+	type Config = ();
+
+	fn from_request(request: &HttpRequest, _payload: &mut Payload) -> Self::Future {
+		ok(Auth {
+			username: "TODO".to_owned(),
+		})
+	}
+}
+
+struct AdminRights {
+	auth: Option<Auth>,
+}
+
+impl FromRequest for AdminRights {
+	type Error = actix_web::Error;
+	type Future = Pin<Box<dyn Future<Output = Result<Self, Self::Error>>>>;
+	type Config = ();
+
+	fn from_request(request: &HttpRequest, payload: &mut Payload) -> Self::Future {
+		let db = match request.app_data::<DB>() {
+			Some(db) => db.clone(),
+			None => return Box::pin(err(ErrorInternalServerError(APIError::Unspecified))),
+		};
+
+		match user::count(&db) {
+			Err(_) => return Box::pin(err(ErrorInternalServerError(APIError::Unspecified))),
+			Ok(0) => return Box::pin(ok(AdminRights { auth: None })),
+			_ => (),
+		};
+
+		let auth_future = Auth::from_request(request, payload);
+
+		Box::pin(async move {
+			let auth = auth_future.await?;
+			match user::is_admin(&db, &auth.username) {
+				Err(_) => Err(ErrorInternalServerError(APIError::Unspecified)),
+				Ok(true) => Ok(AdminRights { auth: Some(auth) }),
+				Ok(false) => Err(ErrorUnauthorized(APIError::Unspecified)),
+			}
+		})
 	}
 }
 
@@ -43,22 +98,26 @@ async fn initial_setup(db: Data<DB>) -> Result<Json<dto::InitialSetup>, APIError
 }
 
 #[put("/settings")]
-async fn put_settings(db: Data<DB>, config: Json<Config>) -> Result<&'static str, APIError> {
+async fn put_settings(
+	admin_rights: AdminRights,
+	db: Data<DB>,
+	config: Json<Config>,
+) -> Result<&'static str, APIError> {
 	// TODO config should be a dto type
 
 	// TODO permissions
 
 	// Do not let users remove their own admin rights
-	// TODO
-	// if let Some(auth) = &admin_rights.auth {
-	// 	if let Some(users) = &config.users {
-	// 		for user in users {
-	// 			if auth.username == user.name && !user.admin {
-	// 				return Err(APIError::OwnAdminPrivilegeRemoval);
-	// 			}
-	// 		}
-	// 	}
-	// }
+	if let Some(auth) = &admin_rights.auth {
+		if let Some(users) = &config.users {
+			for user in users {
+				if auth.username == user.name && !user.admin {
+					return Err(APIError::OwnAdminPrivilegeRemoval);
+				}
+			}
+		}
+	}
+
 	config::amend(&db, &config)?;
 	Ok("")
 }
