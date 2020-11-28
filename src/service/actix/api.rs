@@ -59,7 +59,6 @@ async fn put_settings(db: Data<DB>, config: Json<Config>) -> Result<&'static str
 	// 		}
 	// 	}
 	// }
-	dbg!("put_settings");
 	config::amend(&db, &config)?;
 	Ok("")
 }
