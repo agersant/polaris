@@ -29,6 +29,7 @@ pub struct ActixTestService {
 	port: u16,
 	system_runner: SystemRunner,
 	client: Client,
+	// TODO extract cookies after each request and send them back (ugh)
 }
 
 pub type ServiceType = ActixTestService;

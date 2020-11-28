@@ -76,6 +76,7 @@ pub fn run(
 	})
 	.bind(address)?
 	.run();
+	// TODO investigate why it takes two Ctrl+C to shutdown
 	system.run()?;
 	Ok(())
 }
