@@ -331,7 +331,7 @@ fn test_service_search() {
 }
 
 #[test]
-fn test_service_serve() {
+fn test_service_audio() {
 	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
 	service.complete_initial_setup();
 	service.login();

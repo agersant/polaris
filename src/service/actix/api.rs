@@ -1,3 +1,4 @@
+use actix_files::NamedFile;
 use actix_web::error::{ErrorInternalServerError, ErrorUnauthorized};
 use actix_web::{
 	delete, dev::Payload, get, http::StatusCode, post, put, web, web::Data, web::Json,
@@ -17,6 +18,7 @@ use crate::lastfm;
 use crate::playlist;
 use crate::service::{constants::*, dto, error::*};
 use crate::user;
+use crate::vfs::VFSSource;
 
 pub fn make_config() -> impl FnOnce(&mut ServiceConfig) + Clone {
 	move |cfg: &mut ServiceConfig| {
@@ -35,6 +37,7 @@ pub fn make_config() -> impl FnOnce(&mut ServiceConfig) + Clone {
 			.service(recent)
 			.service(search_root)
 			.service(search)
+			.service(audio)
 			.service(list_playlists)
 			.service(save_playlist)
 			.service(read_playlist)
@@ -51,6 +54,7 @@ impl ResponseError for APIError {
 		match self {
 			APIError::IncorrectCredentials => StatusCode::UNAUTHORIZED,
 			APIError::OwnAdminPrivilegeRemoval => StatusCode::CONFLICT,
+			APIError::AudioFileIOError => StatusCode::NOT_FOUND,
 			APIError::LastFMLinkContentBase64DecodeError => StatusCode::BAD_REQUEST,
 			APIError::LastFMLinkContentEncodingError => StatusCode::BAD_REQUEST,
 			APIError::Unspecified => StatusCode::INTERNAL_SERVER_ERROR,
@@ -246,6 +250,14 @@ async fn search(
 ) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
 	let result = index::search(&db, &query)?;
 	Ok(Json(result))
+}
+
+#[get("/audio/{path:.*}")]
+async fn audio(db: Data<DB>, _auth: Auth, path: web::Path<PathBuf>) -> Result<NamedFile, APIError> {
+	let vfs = db.get_vfs()?;
+	let real_path = vfs.virtual_to_real(&(path.0).into() as &PathBuf)?;
+	let named_file = NamedFile::open(&real_path).map_err(|_| APIError::AudioFileIOError)?;
+	Ok(named_file)
 }
 
 #[get("/playlists")]

@@ -110,11 +110,11 @@ impl TestService for ActixTestService {
 		self.system_runner.block_on(async move {
 			let request = client.get(url).send();
 			let client_response = request.await.unwrap();
-			// TODO response headers
-			Response::builder()
-				.status(client_response.status().as_u16())
-				.body(())
-				.unwrap()
+			let mut response = Response::builder().status(client_response.status().as_u16());
+			for (name, value) in client_response.headers() {
+				response = response.header(name, value);
+			}
+			response.body(()).unwrap()
 		})
 	}
 
@@ -130,11 +130,11 @@ impl TestService for ActixTestService {
 			let request = request.send();
 			let mut client_response = request.await.unwrap();
 			let body = client_response.body().await.unwrap();
-			// TODO response headers
-			Response::builder()
-				.status(client_response.status().as_u16())
-				.body(body[..].into())
-				.unwrap()
+			let mut response = Response::builder().status(client_response.status().as_u16());
+			for (name, value) in client_response.headers() {
+				response = response.header(name, value);
+			}
+			response.body(body[..].into()).unwrap()
 		})
 	}
 
@@ -144,11 +144,11 @@ impl TestService for ActixTestService {
 		self.system_runner.block_on(async move {
 			let request = client.post(url).send();
 			let client_response = request.await.unwrap();
-			// TODO response headers
-			Response::builder()
-				.status(client_response.status().as_u16())
-				.body(())
-				.unwrap()
+			let mut response = Response::builder().status(client_response.status().as_u16());
+			for (name, value) in client_response.headers() {
+				response = response.header(name, value);
+			}
+			response.body(()).unwrap()
 		})
 	}
 
@@ -158,11 +158,11 @@ impl TestService for ActixTestService {
 		self.system_runner.block_on(async move {
 			let request = client.delete(url).send();
 			let client_response = request.await.unwrap();
-			// TODO response headers
-			Response::builder()
-				.status(client_response.status().as_u16())
-				.body(())
-				.unwrap()
+			let mut response = Response::builder().status(client_response.status().as_u16());
+			for (name, value) in client_response.headers() {
+				response = response.header(name, value);
+			}
+			response.body(()).unwrap()
 		})
 	}
 
@@ -173,11 +173,11 @@ impl TestService for ActixTestService {
 			let request = client.get(url).send();
 			let mut client_response = request.await.unwrap();
 			let body = client_response.json().await.unwrap();
-			// TODO response headers
-			Response::builder()
-				.status(client_response.status().as_u16())
-				.body(body)
-				.unwrap()
+			let mut response = Response::builder().status(client_response.status().as_u16());
+			for (name, value) in client_response.headers() {
+				response = response.header(name, value);
+			}
+			response.body(body).unwrap()
 		})
 	}
 
@@ -187,11 +187,11 @@ impl TestService for ActixTestService {
 		self.system_runner.block_on(async move {
 			let request = client.put(url).send_json(&payload);
 			let client_response = request.await.unwrap();
-			// TODO response headers
-			Response::builder()
-				.status(client_response.status().as_u16())
-				.body(())
-				.unwrap()
+			let mut response = Response::builder().status(client_response.status().as_u16());
+			for (name, value) in client_response.headers() {
+				response = response.header(name, value);
+			}
+			response.body(()).unwrap()
 		})
 	}
 
@@ -202,11 +202,11 @@ impl TestService for ActixTestService {
 		self.system_runner.block_on(async move {
 			let request = client.post(url).send_body(payload);
 			let client_response = request.await.unwrap();
-			// TODO response headers
-			Response::builder()
-				.status(client_response.status().as_u16())
-				.body(())
-				.unwrap()
+			let mut response = Response::builder().status(client_response.status().as_u16());
+			for (name, value) in client_response.headers() {
+				response = response.header(name, value);
+			}
+			response.body(()).unwrap()
 		})
 	}
 }
