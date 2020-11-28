@@ -199,6 +199,8 @@ fn test_service_trigger_index() {
 	assert_eq!(entries.len(), 3);
 }
 
+// TODO test auth via HTTP header
+
 #[test]
 fn test_service_auth() {
 	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
