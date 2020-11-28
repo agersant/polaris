@@ -1,4 +1,4 @@
-use actix_web::{rt::System, web, web::ServiceConfig, App, HttpServer};
+use actix_web::{rt::System, web, web::Data, web::ServiceConfig, App, HttpServer};
 use anyhow::*;
 use std::path::{Path, PathBuf};
 
@@ -19,6 +19,7 @@ pub fn make_config(
 	thumbnails_manager: ThumbnailsManager,
 ) -> impl FnOnce(&mut ServiceConfig) + Clone {
 	move |cfg: &mut ServiceConfig| {
+		cfg.app_data(web::Data::new(db));
 		cfg.service(web::scope(&api_url).configure(api::make_config()));
 		cfg.service(
 			actix_files::Files::new(&swagger_url, swagger_dir_path)
