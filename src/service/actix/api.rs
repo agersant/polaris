@@ -24,6 +24,10 @@ use crate::thumbnails::{ThumbnailOptions, ThumbnailsManager};
 use crate::user;
 use crate::vfs::VFSSource;
 
+// TODO Use async instead of long blocking operations:
+// - Thumnbail generation
+// - Everything that touches DB
+
 pub fn make_config() -> impl FnOnce(&mut ServiceConfig) + Clone {
 	move |cfg: &mut ServiceConfig| {
 		cfg.service(version)
