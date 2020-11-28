@@ -5,6 +5,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::fs;
 use std::path::PathBuf;
+use std::sync::Mutex;
 use std::thread;
 
 use super::server;
@@ -12,6 +13,17 @@ use crate::db::DB;
 use crate::index;
 use crate::service::test::TestService;
 use crate::thumbnails::ThumbnailsManager;
+
+lazy_static! {
+	static ref NEXT_PORT_NUMBER: Mutex<u16> = Mutex::new(5000);
+}
+
+fn get_next_port_number() -> u16 {
+	let mut port = NEXT_PORT_NUMBER.lock().unwrap();
+	let old_port = *port;
+	*port += 1;
+	old_port
+}
 
 pub struct ActixTestService {
 	port: u16,
@@ -29,7 +41,7 @@ impl ActixTestService {
 
 impl TestService for ActixTestService {
 	fn new(db_name: &str) -> Self {
-		let port = 5050; // TODO unique port numbers, tests are interfering with each other
+		let port = get_next_port_number();
 		let address = format!("localhost:{}", port);
 
 		let mut db_path = PathBuf::new();

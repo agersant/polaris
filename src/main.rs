@@ -18,6 +18,9 @@ use std::io::prelude::*;
 #[cfg(unix)]
 use unix_daemonize::{daemonize_redirect, ChdirMode};
 
+#[macro_use]
+extern crate lazy_static;
+
 use anyhow::*;
 use getopts::Options;
 use log::info;
