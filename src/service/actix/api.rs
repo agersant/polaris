@@ -119,5 +119,5 @@ async fn put_settings(
 	}
 
 	config::amend(&db, &config)?;
-	Ok("")
+	Ok("") // TODO This looks sketchy
 }
