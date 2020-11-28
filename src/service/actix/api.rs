@@ -30,6 +30,7 @@ impl ResponseError for APIError {
 	}
 }
 
+#[derive(Debug)]
 struct Auth {
 	username: String,
 }
@@ -46,6 +47,7 @@ impl FromRequest for Auth {
 	}
 }
 
+#[derive(Debug)]
 struct AdminRights {
 	auth: Option<Auth>,
 }
@@ -56,7 +58,7 @@ impl FromRequest for AdminRights {
 	type Config = ();
 
 	fn from_request(request: &HttpRequest, payload: &mut Payload) -> Self::Future {
-		let db = match request.app_data::<DB>() {
+		let db = match request.app_data::<Data<DB>>() {
 			Some(db) => db.clone(),
 			None => return Box::pin(err(ErrorInternalServerError(APIError::Unspecified))),
 		};
@@ -104,8 +106,6 @@ async fn put_settings(
 	config: Json<Config>,
 ) -> Result<&'static str, APIError> {
 	// TODO config should be a dto type
-
-	// TODO permissions
 
 	// Do not let users remove their own admin rights
 	if let Some(auth) = &admin_rights.auth {
