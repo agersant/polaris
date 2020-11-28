@@ -1,9 +1,11 @@
 use actix_files::NamedFile;
 use actix_web::error::{ErrorInternalServerError, ErrorUnauthorized};
 use actix_web::{
-	delete, dev::Payload, get, http::StatusCode, post, put, web, web::Data, web::Json,
-	web::ServiceConfig, FromRequest, HttpRequest, HttpResponse, ResponseError,
+	delete, dev::HttpResponseBuilder, dev::Payload, get, http::StatusCode, post, put, web,
+	web::Data, web::Json, web::ServiceConfig, FromRequest, HttpRequest, HttpResponse,
+	ResponseError,
 };
+use cookie::{self, Cookie};
 use futures_util::future::{err, ok, Ready};
 use percent_encoding::percent_decode_str;
 use std::future::Future;
@@ -119,6 +121,34 @@ impl FromRequest for AdminRights {
 	}
 }
 
+fn add_session_cookies(builder: &mut HttpResponseBuilder, username: &str, is_admin: bool) -> () {
+	let duration = time::Duration::days(1);
+
+	let session_cookie = Cookie::build(COOKIE_SESSION, username.to_owned())
+		.same_site(cookie::SameSite::Lax)
+		.http_only(true)
+		.max_age(duration)
+		.finish();
+
+	let username_cookie = Cookie::build(COOKIE_USERNAME, username.to_owned())
+		.same_site(cookie::SameSite::Lax)
+		.http_only(false)
+		.max_age(duration)
+		.path("/")
+		.finish();
+
+	let is_admin_cookie = Cookie::build(COOKIE_ADMIN, format!("{}", is_admin))
+		.same_site(cookie::SameSite::Lax)
+		.http_only(false)
+		.max_age(duration)
+		.path("/")
+		.finish();
+
+	builder.cookie(session_cookie);
+	builder.cookie(username_cookie);
+	builder.cookie(is_admin_cookie);
+}
+
 #[get("/version")]
 async fn version() -> Json<dto::Version> {
 	let current_version = dto::Version {
@@ -194,15 +224,14 @@ async fn trigger_index(
 async fn login(
 	db: Data<DB>,
 	credentials: Json<dto::AuthCredentials>,
-	// mut cookies: Cookies<'_>,
 ) -> Result<HttpResponse, APIError> {
 	if !user::auth(&db, &credentials.username, &credentials.password)? {
 		return Err(APIError::IncorrectCredentials);
 	}
 	let is_admin = user::is_admin(&db, &credentials.username)?;
-	// TODO implement
-	// add_session_cookies(&mut cookies, &credentials.username, is_admin);
-	Ok(HttpResponse::Ok().finish())
+	let mut response = HttpResponse::Ok();
+	add_session_cookies(&mut response, &credentials.username, is_admin);
+	Ok(response.finish())
 }
 
 #[get("/browse")]

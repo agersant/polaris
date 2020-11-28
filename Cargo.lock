@@ -2495,7 +2495,7 @@ dependencies = [
  "serde_json",
  "simplelog",
  "thiserror",
- "time 0.1.44",
+ "time 0.2.23",
  "toml 0.5.7",
  "unix-daemonize",
  "url 2.2.0",

@@ -17,6 +17,7 @@ actix-web = { version = "3", optional = true }
 anyhow = "1.0.31"
 ape = "0.3.0"
 base64 = "0.12.1"
+cookie = "0.14"
 crossbeam-channel = "0.4"
 diesel = { version = "1.4.4", features = ["sqlite", "r2d2"] }
 diesel_migrations = { version = "1.4", features = ["sqlite"] }
@@ -48,7 +49,7 @@ serde_derive = "1.0.111"
 serde_json = "1.0.53"
 simplelog = "0.8.0"
 thiserror = "1.0.19"
-time = "0.1"
+time = "0.2"
 toml = "0.5"
 url = "2.1"
 
