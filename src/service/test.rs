@@ -33,7 +33,7 @@ pub trait TestService {
 	fn delete(&mut self, url: &str) -> Response<()>;
 	fn get_json<T: DeserializeOwned>(&mut self, url: &str) -> Response<T>;
 	fn put_json<T: Serialize + 'static>(&mut self, url: &str, payload: T) -> Response<()>;
-	fn post_json<T: Serialize>(&mut self, url: &str, payload: &T) -> Response<()>;
+	fn post_json<T: Serialize + 'static>(&mut self, url: &str, payload: T) -> Response<()>;
 
 	fn complete_initial_setup(&mut self) {
 		let configuration = config::Config {
@@ -58,7 +58,7 @@ pub trait TestService {
 			username: TEST_USERNAME.into(),
 			password: TEST_PASSWORD.into(),
 		};
-		self.post_json("/api/auth", &credentials);
+		self.post_json("/api/auth", credentials);
 	}
 
 	fn index(&mut self) {
@@ -211,22 +211,28 @@ fn test_service_auth() {
 			username: "garbage".into(),
 			password: "garbage".into(),
 		};
-		assert!(service.post_json("/api/auth", &credentials).status() == StatusCode::UNAUTHORIZED);
+		assert_eq!(
+			service.post_json("/api/auth", credentials).status(),
+			StatusCode::UNAUTHORIZED
+		);
 	}
 	{
 		let credentials = dto::AuthCredentials {
 			username: TEST_USERNAME.into(),
 			password: "garbage".into(),
 		};
-		assert!(service.post_json("/api/auth", &credentials).status() == StatusCode::UNAUTHORIZED);
+		assert_eq!(
+			service.post_json("/api/auth", credentials).status(),
+			StatusCode::UNAUTHORIZED
+		);
 	}
 	{
 		let credentials = dto::AuthCredentials {
 			username: TEST_USERNAME.into(),
 			password: TEST_PASSWORD.into(),
 		};
-		let response = service.post_json("/api/auth", &credentials);
-		assert!(response.status() == StatusCode::OK);
+		let response = service.post_json("/api/auth", credentials);
+		assert_eq!(response.status(), StatusCode::OK);
 		let cookies: Vec<Cookie> = response
 			.headers()
 			.get_all(SET_COOKIE)

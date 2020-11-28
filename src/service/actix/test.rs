@@ -195,12 +195,11 @@ impl TestService for ActixTestService {
 		})
 	}
 
-	fn post_json<T: Serialize>(&mut self, url: &str, payload: &T) -> Response<()> {
+	fn post_json<T: Serialize + 'static>(&mut self, url: &str, payload: T) -> Response<()> {
 		let url = self.build_url(url);
-		let payload = serde_json::to_string(payload).unwrap();
 		let client = self.client.clone();
 		self.system_runner.block_on(async move {
-			let request = client.post(url).send_body(payload);
+			let request = client.post(url).send_json(&payload);
 			let client_response = request.await.unwrap();
 			let mut response = Response::builder().status(client_response.status().as_u16());
 			for (name, value) in client_response.headers() {

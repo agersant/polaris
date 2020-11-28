@@ -30,6 +30,7 @@ pub fn make_config() -> impl FnOnce(&mut ServiceConfig) + Clone {
 			.service(get_preferences)
 			.service(put_preferences)
 			.service(trigger_index)
+			.service(login)
 			.service(browse_root)
 			.service(browse)
 			.service(flatten_root)
@@ -187,6 +188,21 @@ async fn trigger_index(
 ) -> Result<HttpResponse, APIError> {
 	index.trigger_reindex();
 	Ok(HttpResponse::new(StatusCode::OK))
+}
+
+#[post("/auth")]
+async fn login(
+	db: Data<DB>,
+	credentials: Json<dto::AuthCredentials>,
+	// mut cookies: Cookies<'_>,
+) -> Result<HttpResponse, APIError> {
+	if !user::auth(&db, &credentials.username, &credentials.password)? {
+		return Err(APIError::IncorrectCredentials);
+	}
+	let is_admin = user::is_admin(&db, &credentials.username)?;
+	// TODO implement
+	// add_session_cookies(&mut cookies, &credentials.username, is_admin);
+	Ok(HttpResponse::Ok().finish())
 }
 
 #[get("/browse")]
