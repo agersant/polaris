@@ -329,6 +329,7 @@ fn test_service_search() {
 		_ => panic!(),
 	}
 }
+
 #[test]
 fn test_service_serve() {
 	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
