@@ -19,18 +19,19 @@ pub fn make_config(
 	thumbnails_manager: ThumbnailsManager,
 ) -> impl FnOnce(&mut ServiceConfig) + Clone {
 	move |cfg: &mut ServiceConfig| {
-		cfg.app_data(web::Data::new(db));
-		cfg.service(web::scope(&api_url).configure(api::make_config()));
-		cfg.service(
-			actix_files::Files::new(&swagger_url, swagger_dir_path)
-				.redirect_to_slash_directory()
-				.index_file("index.html"),
-		);
-		cfg.service(
-			actix_files::Files::new(&web_url, web_dir_path)
-				.redirect_to_slash_directory()
-				.index_file("index.html"),
-		);
+		cfg.app_data(web::Data::new(db))
+			.app_data(web::Data::new(command_sender))
+			.service(web::scope(&api_url).configure(api::make_config()))
+			.service(
+				actix_files::Files::new(&swagger_url, swagger_dir_path)
+					.redirect_to_slash_directory()
+					.index_file("index.html"),
+			)
+			.service(
+				actix_files::Files::new(&web_url, web_dir_path)
+					.redirect_to_slash_directory()
+					.index_file("index.html"),
+			);
 	}
 }
 

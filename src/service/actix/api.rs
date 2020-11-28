@@ -1,14 +1,16 @@
 use actix_web::error::{ErrorInternalServerError, ErrorUnauthorized};
 use actix_web::{
-	dev::Payload, get, http::StatusCode, put, web::Data, web::Json, web::ServiceConfig,
+	dev::Payload, get, http::StatusCode, post, put, web, web::Data, web::Json, web::ServiceConfig,
 	FromRequest, HttpRequest, ResponseError,
 };
 use futures_util::future::{err, ok, Ready};
 use std::future::Future;
+use std::path::PathBuf;
 use std::pin::Pin;
 
 use crate::config::{self, Config};
 use crate::db::DB;
+use crate::index::{self, Index};
 use crate::service::{constants::*, dto, error::*};
 use crate::user;
 
@@ -16,7 +18,16 @@ pub fn make_config() -> impl FnOnce(&mut ServiceConfig) + Clone {
 	move |cfg: &mut ServiceConfig| {
 		cfg.service(version)
 			.service(initial_setup)
-			.service(put_settings);
+			.service(put_settings)
+			.service(trigger_index)
+			.service(browse_root)
+			.service(browse)
+			.service(flatten_root)
+			.service(flatten)
+			.service(random)
+			.service(recent)
+			.service(search_root)
+			.service(search);
 	}
 }
 
@@ -40,9 +51,10 @@ impl FromRequest for Auth {
 	type Future = Ready<Result<Self, Self::Error>>;
 	type Config = ();
 
-	fn from_request(request: &HttpRequest, _payload: &mut Payload) -> Self::Future {
+	fn from_request(_request: &HttpRequest, _payload: &mut Payload) -> Self::Future {
+		// TODO implement!!
 		ok(Auth {
-			username: "TODO".to_owned(),
+			username: "test_user".to_owned(),
 		})
 	}
 }
@@ -120,4 +132,79 @@ async fn put_settings(
 
 	config::amend(&db, &config)?;
 	Ok("") // TODO This looks sketchy
+}
+
+#[post("/trigger_index")]
+async fn trigger_index(
+	index: Data<Index>,
+	_admin_rights: AdminRights,
+) -> Result<&'static str, APIError> {
+	index.trigger_reindex();
+	Ok("") // TODO This looks sketchy
+}
+
+#[get("/browse")]
+async fn browse_root(
+	db: Data<DB>,
+	_auth: Auth,
+) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
+	let result = index::browse(&db, &PathBuf::new())?;
+	Ok(Json(result))
+}
+
+#[get("/browse/{path:.*}")]
+async fn browse(
+	db: Data<DB>,
+	_auth: Auth,
+	path: web::Path<PathBuf>,
+) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
+	let result = index::browse(&db, &(path.0).into() as &PathBuf)?;
+	Ok(Json(result))
+}
+
+#[get("/flatten")]
+async fn flatten_root(db: Data<DB>, _auth: Auth) -> Result<Json<Vec<index::Song>>, APIError> {
+	let result = index::flatten(&db, &PathBuf::new())?;
+	Ok(Json(result))
+}
+
+#[get("/flatten/{path:.*}")]
+async fn flatten(
+	db: Data<DB>,
+	_auth: Auth,
+	path: web::Path<PathBuf>,
+) -> Result<Json<Vec<index::Song>>, APIError> {
+	let result = index::flatten(&db, &(path.0).into() as &PathBuf)?;
+	Ok(Json(result))
+}
+
+#[get("/random")]
+async fn random(db: Data<DB>, _auth: Auth) -> Result<Json<Vec<index::Directory>>, APIError> {
+	let result = index::get_random_albums(&db, 20)?;
+	Ok(Json(result))
+}
+
+#[get("/recent")]
+async fn recent(db: Data<DB>, _auth: Auth) -> Result<Json<Vec<index::Directory>>, APIError> {
+	let result = index::get_recent_albums(&db, 20)?;
+	Ok(Json(result))
+}
+
+#[get("/search")]
+async fn search_root(
+	db: Data<DB>,
+	_auth: Auth,
+) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
+	let result = index::search(&db, "")?;
+	Ok(Json(result))
+}
+
+#[get("/search/{query}")]
+async fn search(
+	db: Data<DB>,
+	_auth: Auth,
+	query: web::Path<String>,
+) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
+	let result = index::search(&db, &query)?;
+	Ok(Json(result))
 }
