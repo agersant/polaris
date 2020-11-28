@@ -2,11 +2,12 @@ use actix_files::NamedFile;
 use actix_web::error::{ErrorInternalServerError, ErrorUnauthorized};
 use actix_web::{
 	delete, dev::HttpResponseBuilder, dev::Payload, get, http::StatusCode, post, put, web,
-	web::Data, web::Json, web::ServiceConfig, FromRequest, HttpRequest, HttpResponse,
+	web::Data, web::Json, web::ServiceConfig, FromRequest, HttpMessage, HttpRequest, HttpResponse,
 	ResponseError,
 };
+use actix_web_httpauth::extractors::basic::BasicAuth;
 use cookie::{self, Cookie};
-use futures_util::future::{err, ok, Ready};
+use futures_util::future::{err, ok};
 use percent_encoding::percent_decode_str;
 use std::future::Future;
 use std::path::PathBuf;
@@ -75,13 +76,39 @@ struct Auth {
 
 impl FromRequest for Auth {
 	type Error = actix_web::Error;
-	type Future = Ready<Result<Self, Self::Error>>;
+	type Future = Pin<Box<dyn Future<Output = Result<Self, Self::Error>>>>;
 	type Config = ();
 
-	fn from_request(_request: &HttpRequest, _payload: &mut Payload) -> Self::Future {
-		// TODO implement!!
-		ok(Auth {
-			username: "test_user".to_owned(),
+	fn from_request(request: &HttpRequest, payload: &mut Payload) -> Self::Future {
+		let db = match request.app_data::<Data<DB>>() {
+			Some(db) => db.clone(),
+			None => return Box::pin(err(ErrorInternalServerError(APIError::Unspecified))),
+		};
+
+		if let Some(session_cookie) = request.cookie(COOKIE_SESSION) {
+			let exists = match user::exists(&db, session_cookie.value()) {
+				Ok(e) => e,
+				Err(_) => return Box::pin(err(ErrorInternalServerError(APIError::Unspecified))),
+			};
+			if !exists {
+				return Box::pin(err(ErrorUnauthorized(APIError::Unspecified)));
+			}
+			return Box::pin(ok(Auth {
+				username: session_cookie.value().to_owned(),
+			}));
+		}
+
+		let auth_future = BasicAuth::from_request(request, payload);
+		Box::pin(async move {
+			let auth = auth_future.await?;
+			let username = auth.user_id().as_ref();
+			let password = auth.password().map(|s| s.as_ref()).unwrap_or("");
+			if user::auth(&db, username, password).unwrap_or(false) {
+				return Ok(Auth {
+					username: username.to_owned(),
+				});
+			}
+			Err(ErrorUnauthorized(APIError::Unspecified))
 		})
 	}
 }
@@ -121,6 +148,7 @@ impl FromRequest for AdminRights {
 	}
 }
 
+// TODO needs to add session cookies in response to auth header (expected by mobile client!!)
 fn add_session_cookies(builder: &mut HttpResponseBuilder, username: &str, is_admin: bool) -> () {
 	let duration = time::Duration::days(1);
 
@@ -144,7 +172,7 @@ fn add_session_cookies(builder: &mut HttpResponseBuilder, username: &str, is_adm
 		.path("/")
 		.finish();
 
-	builder.cookie(session_cookie);
+	builder.cookie(session_cookie); // TODO should be private encrypted cookie
 	builder.cookie(username_cookie);
 	builder.cookie(is_admin_cookie);
 }
