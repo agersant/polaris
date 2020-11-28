@@ -143,7 +143,7 @@ async fn put_settings(
 	admin_rights: AdminRights,
 	db: Data<DB>,
 	config: Json<Config>,
-) -> Result<&'static str, APIError> {
+) -> Result<HttpResponse, APIError> {
 	// TODO config should be a dto type
 
 	// Do not let users remove their own admin rights
@@ -158,7 +158,7 @@ async fn put_settings(
 	}
 
 	config::amend(&db, &config)?;
-	Ok("") // TODO This looks sketchy
+	Ok(HttpResponse::new(StatusCode::OK))
 }
 
 #[get("/preferences")]
@@ -172,18 +172,18 @@ async fn put_preferences(
 	db: Data<DB>,
 	auth: Auth,
 	preferences: Json<Preferences>,
-) -> Result<&'static str, APIError> {
+) -> Result<HttpResponse, APIError> {
 	config::write_preferences(&db, &auth.username, &preferences)?;
-	Ok("") // TODO This looks sketchy
+	Ok(HttpResponse::new(StatusCode::OK))
 }
 
 #[post("/trigger_index")]
 async fn trigger_index(
 	index: Data<Index>,
 	_admin_rights: AdminRights,
-) -> Result<&'static str, APIError> {
+) -> Result<HttpResponse, APIError> {
 	index.trigger_reindex();
-	Ok("") // TODO This looks sketchy
+	Ok(HttpResponse::new(StatusCode::OK))
 }
 
 #[get("/browse")]
@@ -280,9 +280,9 @@ async fn save_playlist(
 	auth: Auth,
 	name: web::Path<String>,
 	playlist: Json<dto::SavePlaylistInput>,
-) -> Result<&'static str, APIError> {
+) -> Result<HttpResponse, APIError> {
 	playlist::save_playlist(&name, &auth.username, &playlist.tracks, &db)?;
-	Ok("") // TODO This looks sketchy
+	Ok(HttpResponse::new(StatusCode::OK))
 }
 
 #[get("/playlist/{name}")]
@@ -300,9 +300,9 @@ async fn delete_playlist(
 	db: Data<DB>,
 	auth: Auth,
 	name: web::Path<String>,
-) -> Result<&'static str, APIError> {
+) -> Result<HttpResponse, APIError> {
 	playlist::delete_playlist(&name, &auth.username, &db)?;
-	Ok("") // TODO This looks sketchy
+	Ok(HttpResponse::new(StatusCode::OK))
 }
 
 #[put("/lastfm/now_playing/<path>")]
@@ -310,11 +310,11 @@ async fn lastfm_now_playing(
 	db: Data<DB>,
 	auth: Auth,
 	path: web::Path<String>,
-) -> Result<&'static str, APIError> {
+) -> Result<HttpResponse, APIError> {
 	if user::is_lastfm_linked(&db, &auth.username) {
 		lastfm::now_playing(&db, &auth.username, &(path.0).into() as &PathBuf)?;
 	}
-	Ok("") // TODO This looks sketchy
+	Ok(HttpResponse::new(StatusCode::OK))
 }
 
 #[post("/lastfm/scrobble/<path>")]
@@ -322,11 +322,11 @@ async fn lastfm_scrobble(
 	db: Data<DB>,
 	auth: Auth,
 	path: web::Path<String>,
-) -> Result<&'static str, APIError> {
+) -> Result<HttpResponse, APIError> {
 	if user::is_lastfm_linked(&db, &auth.username) {
 		lastfm::scrobble(&db, &auth.username, &(path.0).into() as &PathBuf)?;
 	}
-	Ok("") // TODO This looks sketchy
+	Ok(HttpResponse::new(StatusCode::OK))
 }
 
 #[get("/lastfm/link?<token>&<content>")]
@@ -354,7 +354,7 @@ async fn lastfm_link(
 }
 
 #[delete("/lastfm/link")]
-async fn lastfm_unlink(db: Data<DB>, auth: Auth) -> Result<&'static str, APIError> {
+async fn lastfm_unlink(db: Data<DB>, auth: Auth) -> Result<HttpResponse, APIError> {
 	lastfm::unlink(&db, &auth.username)?;
-	Ok("") // TODO This looks sketchy
+	Ok(HttpResponse::new(StatusCode::OK))
 }
