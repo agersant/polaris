@@ -62,7 +62,7 @@ pub trait TestService {
 	}
 
 	fn index(&mut self) {
-		assert!(self.post("/api/trigger_index").status() == StatusCode::OK);
+		assert_eq!(self.post("/api/trigger_index").status(), StatusCode::OK);
 
 		loop {
 			let response = self.get_json::<Vec<index::CollectionFile>>("/api/browse");
