@@ -35,6 +35,7 @@ metaflac = "0.2.3"
 mp3-duration = "0.1.9"
 mp4ameta = "0.7.1"
 opus_headers = "0.1.2"
+percent-encoding = "2.1"
 pbkdf2 = "0.4"
 rand = "0.7"
 rayon = "1.3"
@@ -66,7 +67,6 @@ sd-notify = "0.1.0"
 unix-daemonize = "0.1.2"
 
 [dev-dependencies]
-percent-encoding = "2.1"
 cookie = "0.14.0"
 http = "0.2.1"
 

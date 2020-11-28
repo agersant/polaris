@@ -6,6 +6,10 @@ pub enum APIError {
 	IncorrectCredentials,
 	#[error("Cannot remove own admin privilege")]
 	OwnAdminPrivilegeRemoval,
+	#[error("Could not decode content as base64 after linking last.fm account")]
+	LastFMLinkContentBase64DecodeError,
+	#[error("Could not decode content as UTF-8 after linking last.fm account")]
+	LastFMLinkContentEncodingError,
 	#[error("Unspecified")]
 	Unspecified,
 }

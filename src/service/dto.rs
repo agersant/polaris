@@ -26,3 +26,9 @@ pub struct ListPlaylistsEntry {
 pub struct SavePlaylistInput {
 	pub tracks: Vec<String>,
 }
+
+#[derive(Serialize, Deserialize)]
+pub struct LastFMLink {
+	pub token: String,
+	pub content: String,
+}

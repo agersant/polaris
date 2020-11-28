@@ -1,16 +1,20 @@
 use actix_web::error::{ErrorInternalServerError, ErrorUnauthorized};
 use actix_web::{
-	dev::Payload, get, http::StatusCode, post, put, web, web::Data, web::Json, web::ServiceConfig,
-	FromRequest, HttpRequest, ResponseError,
+	delete, dev::Payload, get, http::StatusCode, post, put, web, web::Data, web::Json,
+	web::ServiceConfig, FromRequest, HttpRequest, HttpResponse, ResponseError,
 };
 use futures_util::future::{err, ok, Ready};
+use percent_encoding::percent_decode_str;
 use std::future::Future;
 use std::path::PathBuf;
 use std::pin::Pin;
+use std::str;
 
-use crate::config::{self, Config};
+use crate::config::{self, Config, Preferences};
 use crate::db::DB;
 use crate::index::{self, Index};
+use crate::lastfm;
+use crate::playlist;
 use crate::service::{constants::*, dto, error::*};
 use crate::user;
 
@@ -18,7 +22,10 @@ pub fn make_config() -> impl FnOnce(&mut ServiceConfig) + Clone {
 	move |cfg: &mut ServiceConfig| {
 		cfg.service(version)
 			.service(initial_setup)
+			.service(get_settings)
 			.service(put_settings)
+			.service(get_preferences)
+			.service(put_preferences)
 			.service(trigger_index)
 			.service(browse_root)
 			.service(browse)
@@ -27,7 +34,15 @@ pub fn make_config() -> impl FnOnce(&mut ServiceConfig) + Clone {
 			.service(random)
 			.service(recent)
 			.service(search_root)
-			.service(search);
+			.service(search)
+			.service(list_playlists)
+			.service(save_playlist)
+			.service(read_playlist)
+			.service(delete_playlist)
+			.service(lastfm_now_playing)
+			.service(lastfm_scrobble)
+			.service(lastfm_link)
+			.service(lastfm_unlink);
 	}
 }
 
@@ -36,6 +51,8 @@ impl ResponseError for APIError {
 		match self {
 			APIError::IncorrectCredentials => StatusCode::UNAUTHORIZED,
 			APIError::OwnAdminPrivilegeRemoval => StatusCode::CONFLICT,
+			APIError::LastFMLinkContentBase64DecodeError => StatusCode::BAD_REQUEST,
+			APIError::LastFMLinkContentEncodingError => StatusCode::BAD_REQUEST,
 			APIError::Unspecified => StatusCode::INTERNAL_SERVER_ERROR,
 		}
 	}
@@ -111,6 +128,12 @@ async fn initial_setup(db: Data<DB>) -> Result<Json<dto::InitialSetup>, APIError
 	Ok(Json(initial_setup))
 }
 
+#[get("/settings")]
+async fn get_settings(db: Data<DB>, _admin_rights: AdminRights) -> Result<Json<Config>, APIError> {
+	let config = config::read(&db)?;
+	Ok(Json(config))
+}
+
 #[put("/settings")]
 async fn put_settings(
 	admin_rights: AdminRights,
@@ -131,6 +154,22 @@ async fn put_settings(
 	}
 
 	config::amend(&db, &config)?;
+	Ok("") // TODO This looks sketchy
+}
+
+#[get("/preferences")]
+async fn get_preferences(db: Data<DB>, auth: Auth) -> Result<Json<Preferences>, APIError> {
+	let preferences = config::read_preferences(&db, &auth.username)?;
+	Ok(Json(preferences))
+}
+
+#[put("/preferences")]
+async fn put_preferences(
+	db: Data<DB>,
+	auth: Auth,
+	preferences: Json<Preferences>,
+) -> Result<&'static str, APIError> {
+	config::write_preferences(&db, &auth.username, &preferences)?;
 	Ok("") // TODO This looks sketchy
 }
 
@@ -207,4 +246,103 @@ async fn search(
 ) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
 	let result = index::search(&db, &query)?;
 	Ok(Json(result))
+}
+
+#[get("/playlists")]
+async fn list_playlists(
+	db: Data<DB>,
+	auth: Auth,
+) -> Result<Json<Vec<dto::ListPlaylistsEntry>>, APIError> {
+	let playlist_names = playlist::list_playlists(&auth.username, &db)?;
+	let playlists: Vec<dto::ListPlaylistsEntry> = playlist_names
+		.into_iter()
+		.map(|p| dto::ListPlaylistsEntry { name: p })
+		.collect();
+
+	Ok(Json(playlists))
+}
+
+#[put("/playlist/{name}")]
+async fn save_playlist(
+	db: Data<DB>,
+	auth: Auth,
+	name: web::Path<String>,
+	playlist: Json<dto::SavePlaylistInput>,
+) -> Result<&'static str, APIError> {
+	playlist::save_playlist(&name, &auth.username, &playlist.tracks, &db)?;
+	Ok("") // TODO This looks sketchy
+}
+
+#[get("/playlist/{name}")]
+async fn read_playlist(
+	db: Data<DB>,
+	auth: Auth,
+	name: web::Path<String>,
+) -> Result<Json<Vec<index::Song>>, APIError> {
+	let songs = playlist::read_playlist(&name, &auth.username, &db)?;
+	Ok(Json(songs))
+}
+
+#[delete("/playlist/{name}")]
+async fn delete_playlist(
+	db: Data<DB>,
+	auth: Auth,
+	name: web::Path<String>,
+) -> Result<&'static str, APIError> {
+	playlist::delete_playlist(&name, &auth.username, &db)?;
+	Ok("") // TODO This looks sketchy
+}
+
+#[put("/lastfm/now_playing/<path>")]
+async fn lastfm_now_playing(
+	db: Data<DB>,
+	auth: Auth,
+	path: web::Path<String>,
+) -> Result<&'static str, APIError> {
+	if user::is_lastfm_linked(&db, &auth.username) {
+		lastfm::now_playing(&db, &auth.username, &(path.0).into() as &PathBuf)?;
+	}
+	Ok("") // TODO This looks sketchy
+}
+
+#[post("/lastfm/scrobble/<path>")]
+async fn lastfm_scrobble(
+	db: Data<DB>,
+	auth: Auth,
+	path: web::Path<String>,
+) -> Result<&'static str, APIError> {
+	if user::is_lastfm_linked(&db, &auth.username) {
+		lastfm::scrobble(&db, &auth.username, &(path.0).into() as &PathBuf)?;
+	}
+	Ok("") // TODO This looks sketchy
+}
+
+#[get("/lastfm/link?<token>&<content>")]
+async fn lastfm_link(
+	db: Data<DB>,
+	auth: Auth,
+	web::Query(payload): web::Query<dto::LastFMLink>,
+) -> Result<HttpResponse, APIError> {
+	lastfm::link(&db, &auth.username, &payload.token)?;
+
+	// Percent decode
+	let base64_content = percent_decode_str(&payload.content).decode_utf8_lossy();
+
+	// Base64 decode
+	let popup_content = base64::decode(base64_content.as_bytes())
+		.map_err(|_| APIError::LastFMLinkContentBase64DecodeError)?;
+
+	// UTF-8 decode
+	let popup_content_string =
+		str::from_utf8(&popup_content).map_err(|_| APIError::LastFMLinkContentEncodingError)?;
+
+	Ok(HttpResponse::build(StatusCode::OK)
+		.content_type("text/html; charset=utf-8")
+		.body(popup_content_string.to_owned()))
+}
+
+#[delete("/lastfm/link")]
+async fn lastfm_unlink(db: Data<DB>, auth: Auth) -> Result<&'static str, APIError> {
+	lastfm::unlink(&db, &auth.username)?;
+	Ok("") // TODO This looks sketchy
 }
