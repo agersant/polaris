@@ -52,12 +52,9 @@ impl<T: Serialize> Payload for T {
 pub trait TestService {
 	fn new(db_name: &str) -> Self;
 	fn request_builder(&self) -> &protocol::RequestBuilder;
-	fn process_void<T: Payload>(&mut self, request: &Request<T>) -> Response<()>;
-	fn process_bytes<T: Payload>(&mut self, request: &Request<T>) -> Response<Vec<u8>>;
-	fn process_json<T: Payload, U: DeserializeOwned>(
-		&mut self,
-		request: &Request<T>,
-	) -> Response<U>;
+	fn process<T: Payload>(&mut self, request: &Request<T>) -> Response<()>;
+	fn fetch_bytes<T: Payload>(&mut self, request: &Request<T>) -> Response<Vec<u8>>;
+	fn fetch_json<T: Payload, U: DeserializeOwned>(&mut self, request: &Request<T>) -> Response<U>;
 
 	fn complete_initial_setup(&mut self) {
 		let configuration = config::Config {
@@ -75,24 +72,24 @@ pub trait TestService {
 			}]),
 		};
 		let request = self.request_builder().put_settings(configuration);
-		let response = self.process_void(&request);
+		let response = self.process(&request);
 		assert_eq!(response.status(), StatusCode::OK);
 	}
 
 	fn login(&mut self) {
 		let request = self.request_builder().login(TEST_USERNAME, TEST_PASSWORD);
-		let response = self.process_void(&request);
+		let response = self.process(&request);
 		assert_eq!(response.status(), StatusCode::OK);
 	}
 
 	fn index(&mut self) {
 		let request = self.request_builder().trigger_index();
-		let response = self.process_void(&request);
+		let response = self.process(&request);
 		assert_eq!(response.status(), StatusCode::OK);
 
 		loop {
 			let browse_request = self.request_builder().browse(Path::new(""));
-			let response = self.process_json::<(), Vec<index::CollectionFile>>(&browse_request);
+			let response = self.fetch_json::<(), Vec<index::CollectionFile>>(&browse_request);
 			let entries = response.body();
 			if entries.len() > 0 {
 				break;
@@ -102,7 +99,7 @@ pub trait TestService {
 
 		loop {
 			let flatten_request = self.request_builder().flatten(Path::new(""));
-			let response = self.process_json::<_, Vec<index::Song>>(&flatten_request);
+			let response = self.fetch_json::<_, Vec<index::Song>>(&flatten_request);
 			let entries = response.body();
 			if entries.len() > 0 {
 				break;
@@ -116,14 +113,14 @@ pub trait TestService {
 fn test_service_index() {
 	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
 	let request = service.request_builder().web_index();
-	let _response = service.process_bytes(&request);
+	let _response = service.fetch_bytes(&request);
 }
 
 #[test]
 fn test_service_swagger_index() {
 	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
 	let request = service.request_builder().swagger_index();
-	let response = service.process_bytes(&request);
+	let response = service.fetch_bytes(&request);
 	assert_eq!(response.status(), StatusCode::OK);
 }
 
@@ -131,7 +128,7 @@ fn test_service_swagger_index() {
 fn test_service_version() {
 	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
 	let request = service.request_builder().version();
-	let response = service.process_json::<_, dto::Version>(&request);
+	let response = service.fetch_json::<_, dto::Version>(&request);
 	assert_eq!(response.status(), StatusCode::OK);
 	let version = response.body();
 	assert_eq!(version, &dto::Version { major: 5, minor: 0 });
@@ -142,7 +139,7 @@ fn test_service_initial_setup() {
 	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
 	let request = service.request_builder().initial_setup();
 	{
-		let response = service.process_json::<_, dto::InitialSetup>(&request);
+		let response = service.fetch_json::<_, dto::InitialSetup>(&request);
 		assert_eq!(response.status(), StatusCode::OK);
 		let initial_setup = response.body();
 		assert_eq!(
@@ -154,7 +151,7 @@ fn test_service_initial_setup() {
 	}
 	service.complete_initial_setup();
 	{
-		let response = service.process_json::<_, dto::InitialSetup>(&request);
+		let response = service.fetch_json::<_, dto::InitialSetup>(&request);
 		assert_eq!(response.status(), StatusCode::OK);
 		let initial_setup = response.body();
 		assert_eq!(
@@ -173,18 +170,18 @@ fn test_service_settings() {
 
 	let get_settings = service.request_builder().get_settings();
 
-	let response = service.process_void(&get_settings);
+	let response = service.process(&get_settings);
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 
 	service.login();
 
-	let response = service.process_json::<_, config::Config>(&get_settings);
+	let response = service.fetch_json::<_, config::Config>(&get_settings);
 	assert_eq!(response.status(), StatusCode::OK);
 
 	let put_settings = service
 		.request_builder()
 		.put_settings(config::Config::default());
-	let response = service.process_void(&put_settings);
+	let response = service.process(&put_settings);
 	assert_eq!(response.status(), StatusCode::OK);
 }
 
@@ -201,7 +198,7 @@ fn test_service_settings_cannot_unadmin_self() {
 		admin: false,
 	}]);
 	let request = service.request_builder().put_settings(configuration);
-	let response = service.process_void(&request);
+	let response = service.process(&request);
 	assert_eq!(response.status(), StatusCode::CONFLICT);
 }
 
@@ -212,13 +209,13 @@ fn test_service_preferences() {
 	service.login();
 
 	let request = service.request_builder().get_preferences();
-	let response = service.process_json::<_, config::Preferences>(&request);
+	let response = service.fetch_json::<_, config::Preferences>(&request);
 	assert_eq!(response.status(), StatusCode::OK);
 
 	let request = service
 		.request_builder()
 		.put_preferences(config::Preferences::default());
-	let response = service.process_void(&request);
+	let response = service.process(&request);
 	assert_eq!(response.status(), StatusCode::OK);
 }
 
@@ -230,13 +227,13 @@ fn test_service_trigger_index() {
 
 	let request = service.request_builder().random();
 
-	let response = service.process_json::<_, Vec<index::Directory>>(&request);
+	let response = service.fetch_json::<_, Vec<index::Directory>>(&request);
 	let entries = response.body();
 	assert_eq!(entries.len(), 0);
 
 	service.index();
 
-	let response = service.process_json::<_, Vec<index::Directory>>(&request);
+	let response = service.fetch_json::<_, Vec<index::Directory>>(&request);
 	let entries = response.body();
 	assert_eq!(entries.len(), 3);
 }
@@ -248,19 +245,19 @@ fn test_service_auth() {
 
 	{
 		let request = service.request_builder().login("garbage", "garbage");
-		let response = service.process_void(&request);
+		let response = service.process(&request);
 		assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 	}
 	{
 		let request = service.request_builder().login(TEST_USERNAME, "garbage");
-		let response = service.process_void(&request);
+		let response = service.process(&request);
 		assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 	}
 	{
 		let request = service
 			.request_builder()
 			.login(TEST_USERNAME, TEST_PASSWORD);
-		let response = service.process_void(&request);
+		let response = service.process(&request);
 		assert_eq!(response.status(), StatusCode::OK);
 
 		let cookies: Vec<Cookie> = response
@@ -284,7 +281,7 @@ fn test_service_browse() {
 
 	{
 		let request = service.request_builder().browse(&PathBuf::new());
-		let response = service.process_json::<_, Vec<index::CollectionFile>>(&request);
+		let response = service.fetch_json::<_, Vec<index::CollectionFile>>(&request);
 		assert_eq!(response.status(), StatusCode::OK);
 		let entries = response.body();
 		assert_eq!(entries.len(), 1);
@@ -297,7 +294,7 @@ fn test_service_browse() {
 		path.push("Hunted");
 		let request = service.request_builder().browse(&path);
 
-		let response = service.process_json::<_, Vec<index::CollectionFile>>(&request);
+		let response = service.fetch_json::<_, Vec<index::CollectionFile>>(&request);
 		assert_eq!(response.status(), StatusCode::OK);
 		let entries = response.body();
 		assert_eq!(entries.len(), 5);
@@ -313,7 +310,7 @@ fn test_service_flatten() {
 
 	{
 		let request = service.request_builder().flatten(&PathBuf::new());
-		let response = service.process_json::<_, Vec<index::Song>>(&request);
+		let response = service.fetch_json::<_, Vec<index::Song>>(&request);
 		assert_eq!(response.status(), StatusCode::OK);
 		let entries = response.body();
 		assert_eq!(entries.len(), 13);
@@ -321,7 +318,7 @@ fn test_service_flatten() {
 
 	{
 		let request = service.request_builder().flatten(Path::new("collection"));
-		let response = service.process_json::<_, Vec<index::Song>>(&request);
+		let response = service.fetch_json::<_, Vec<index::Song>>(&request);
 		assert_eq!(response.status(), StatusCode::OK);
 		let entries = response.body();
 		assert_eq!(entries.len(), 13);
@@ -336,7 +333,7 @@ fn test_service_random() {
 	service.index();
 
 	let request = service.request_builder().random();
-	let response = service.process_json::<_, Vec<index::Directory>>(&request);
+	let response = service.fetch_json::<_, Vec<index::Directory>>(&request);
 	assert_eq!(response.status(), StatusCode::OK);
 	let entries = response.body();
 	assert_eq!(entries.len(), 3);
@@ -350,7 +347,7 @@ fn test_service_recent() {
 	service.index();
 
 	let request = service.request_builder().recent();
-	let response = service.process_json::<_, Vec<index::Directory>>(&request);
+	let response = service.fetch_json::<_, Vec<index::Directory>>(&request);
 	assert_eq!(response.status(), StatusCode::OK);
 	let entries = response.body();
 	assert_eq!(entries.len(), 3);
@@ -365,13 +362,13 @@ fn test_service_search() {
 
 	{
 		let request = service.request_builder().search("");
-		let response = service.process_json::<_, Vec<index::CollectionFile>>(&request);
+		let response = service.fetch_json::<_, Vec<index::CollectionFile>>(&request);
 		assert_eq!(response.status(), StatusCode::OK);
 	}
 
 	{
 		let request = service.request_builder().search("door");
-		let response = service.process_json::<_, Vec<index::CollectionFile>>(&request);
+		let response = service.fetch_json::<_, Vec<index::CollectionFile>>(&request);
 		let results = response.body();
 		assert_eq!(results.len(), 1);
 		match results[0] {
@@ -397,7 +394,7 @@ fn test_service_audio() {
 
 	{
 		let request = service.request_builder().audio(&path);
-		let response = service.process_bytes(&request);
+		let response = service.fetch_bytes(&request);
 		assert_eq!(response.status(), StatusCode::OK);
 		assert_eq!(response.body().len(), 24_142);
 	}
@@ -406,7 +403,7 @@ fn test_service_audio() {
 		let mut request = service.request_builder().audio(&path);
 		let headers = request.headers_mut();
 		headers.append(RANGE, HeaderValue::from_str("bytes=100-299").unwrap());
-		let response = service.process_bytes(&request);
+		let response = service.fetch_bytes(&request);
 		assert_eq!(response.status(), StatusCode::PARTIAL_CONTENT);
 		assert_eq!(response.body().len(), 200);
 		assert_eq!(response.headers().get(CONTENT_LENGTH).unwrap(), "200");
@@ -428,7 +425,7 @@ fn test_service_thumbnail() {
 
 	let pad = None;
 	let request = service.request_builder().thumbnail(&path, pad);
-	let response = service.process_bytes(&request);
+	let response = service.fetch_bytes(&request);
 	assert_eq!(response.status(), StatusCode::OK);
 }
 
@@ -445,7 +442,7 @@ fn test_service_playlists() {
 	let playlist_name = "my_playlist";
 	let my_songs = {
 		let request = service.request_builder().flatten(&PathBuf::new());
-		let response = service.process_json::<_, Vec<index::Song>>(&request);
+		let response = service.fetch_json::<_, Vec<index::Song>>(&request);
 		assert_eq!(response.status(), StatusCode::OK);
 		let mut my_songs = response.into_body();
 		my_songs.pop();
@@ -455,7 +452,7 @@ fn test_service_playlists() {
 
 	// Verify no existing playlists
 	{
-		let response = service.process_json::<_, Vec<dto::ListPlaylistsEntry>>(&list_playlists);
+		let response = service.fetch_json::<_, Vec<dto::ListPlaylistsEntry>>(&list_playlists);
 		assert_eq!(response.status(), StatusCode::OK);
 		let playlists = response.body();
 		assert_eq!(playlists.len(), 0);
@@ -469,13 +466,13 @@ fn test_service_playlists() {
 		let request = service
 			.request_builder()
 			.save_playlist(playlist_name, my_playlist);
-		let response = service.process_void(&request);
+		let response = service.process(&request);
 		assert_eq!(response.status(), StatusCode::OK);
 	}
 
 	// Verify new playlist is listed
 	{
-		let response = service.process_json::<_, Vec<dto::ListPlaylistsEntry>>(&list_playlists);
+		let response = service.fetch_json::<_, Vec<dto::ListPlaylistsEntry>>(&list_playlists);
 		assert_eq!(response.status(), StatusCode::OK);
 		let playlists = response.body();
 		assert_eq!(
@@ -489,7 +486,7 @@ fn test_service_playlists() {
 	// Verify content of new playlist
 	{
 		let request = service.request_builder().read_playlist(playlist_name);
-		let response = service.process_json::<_, Vec<index::Song>>(&request);
+		let response = service.fetch_json::<_, Vec<index::Song>>(&request);
 		assert_eq!(response.status(), StatusCode::OK);
 		let songs = response.body();
 		assert_eq!(songs, &my_songs);
@@ -498,13 +495,13 @@ fn test_service_playlists() {
 	// Delete playlist
 	{
 		let request = service.request_builder().delete_playlist(playlist_name);
-		let response = service.process_void(&request);
+		let response = service.process(&request);
 		assert_eq!(response.status(), StatusCode::OK);
 	}
 
 	// Verify updated listing
 	{
-		let response = service.process_json::<_, Vec<dto::ListPlaylistsEntry>>(&list_playlists);
+		let response = service.fetch_json::<_, Vec<dto::ListPlaylistsEntry>>(&list_playlists);
 		let playlists = response.body();
 		assert_eq!(playlists.len(), 0);
 	}

@@ -19,7 +19,7 @@ pub struct RocketTestService {
 pub type ServiceType = RocketTestService;
 
 impl RocketTestService {
-	fn process<T: Payload>(&mut self, request: &Request<T>) -> (LocalResponse, Builder) {
+	fn process_internal<T: Payload>(&mut self, request: &Request<T>) -> (LocalResponse, Builder) {
 		let rocket_response = {
 			let url = request.uri().to_string();
 			let mut rocket_request = match *request.method() {
@@ -112,22 +112,19 @@ impl TestService for RocketTestService {
 		&self.request_builder
 	}
 
-	fn process_void<T: Payload>(&mut self, request: &Request<T>) -> Response<()> {
-		let (_, builder) = self.process(request);
+	fn process<T: Payload>(&mut self, request: &Request<T>) -> Response<()> {
+		let (_, builder) = self.process_internal(request);
 		builder.body(()).unwrap()
 	}
 
-	fn process_bytes<T: Payload>(&mut self, request: &Request<T>) -> Response<Vec<u8>> {
-		let (mut rocket_response, builder) = self.process(request);
+	fn fetch_bytes<T: Payload>(&mut self, request: &Request<T>) -> Response<Vec<u8>> {
+		let (mut rocket_response, builder) = self.process_internal(request);
 		let body = rocket_response.body().unwrap().into_bytes().unwrap();
 		builder.body(body).unwrap()
 	}
 
-	fn process_json<T: Payload, U: DeserializeOwned>(
-		&mut self,
-		request: &Request<T>,
-	) -> Response<U> {
-		let (mut rocket_response, builder) = self.process(request);
+	fn fetch_json<T: Payload, U: DeserializeOwned>(&mut self, request: &Request<T>) -> Response<U> {
+		let (mut rocket_response, builder) = self.process_internal(request);
 		let body = rocket_response.body_string().unwrap();
 		let body = serde_json::from_str(&body).unwrap();
 		builder.body(body).unwrap()
