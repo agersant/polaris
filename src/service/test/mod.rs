@@ -30,16 +30,6 @@ pub trait Payload {
 	fn send(&self) -> GenericPayload;
 }
 
-// Ideally we want this but conflicting impl :(
-// impl Payload for () {
-// 	fn send(self) -> GenericPayload {
-// 		GenericPayload {
-// 			content_type: None,
-// 			content: None,
-// 		}
-// 	}
-// }
-
 impl<T: Serialize> Payload for T {
 	fn send(&self) -> GenericPayload {
 		GenericPayload {
