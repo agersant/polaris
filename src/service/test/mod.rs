@@ -21,30 +21,15 @@ const TEST_PASSWORD: &str = "test_password";
 const TEST_MOUNT_NAME: &str = "collection";
 const TEST_MOUNT_SOURCE: &str = "test-data/small-collection";
 
-pub struct GenericPayload {
-	pub content_type: Option<&'static str>,
-	pub content: Option<Vec<u8>>,
-}
-
-pub trait Payload {
-	fn send(&self) -> GenericPayload;
-}
-
-impl<T: Serialize> Payload for T {
-	fn send(&self) -> GenericPayload {
-		GenericPayload {
-			content_type: Some("application/json"),
-			content: Some(serde_json::to_string(self).unwrap().as_bytes().into()),
-		}
-	}
-}
-
 pub trait TestService {
 	fn new(db_name: &str) -> Self;
 	fn request_builder(&self) -> &protocol::RequestBuilder;
-	fn fetch<T: Payload>(&mut self, request: &Request<T>) -> Response<()>;
-	fn fetch_bytes<T: Payload>(&mut self, request: &Request<T>) -> Response<Vec<u8>>;
-	fn fetch_json<T: Payload, U: DeserializeOwned>(&mut self, request: &Request<T>) -> Response<U>;
+	fn fetch<T: Serialize>(&mut self, request: &Request<T>) -> Response<()>;
+	fn fetch_bytes<T: Serialize>(&mut self, request: &Request<T>) -> Response<Vec<u8>>;
+	fn fetch_json<T: Serialize, U: DeserializeOwned>(
+		&mut self,
+		request: &Request<T>,
+	) -> Response<U>;
 
 	fn complete_initial_setup(&mut self) {
 		let configuration = config::Config {

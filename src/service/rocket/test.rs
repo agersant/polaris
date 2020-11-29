@@ -2,13 +2,14 @@ use http::{header::HeaderName, method::Method, response::Builder, HeaderValue, R
 use rocket;
 use rocket::local::{Client, LocalResponse};
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use std::fs;
 use std::path::PathBuf;
 
 use super::server;
 use crate::db::DB;
 use crate::index;
-use crate::service::test::{protocol, Payload, TestService};
+use crate::service::test::{protocol, TestService};
 use crate::thumbnails::ThumbnailsManager;
 
 pub struct RocketTestService {
@@ -19,7 +20,7 @@ pub struct RocketTestService {
 pub type ServiceType = RocketTestService;
 
 impl RocketTestService {
-	fn process_internal<T: Payload>(&mut self, request: &Request<T>) -> (LocalResponse, Builder) {
+	fn process_internal<T: Serialize>(&mut self, request: &Request<T>) -> (LocalResponse, Builder) {
 		let rocket_response = {
 			let url = request.uri().to_string();
 			let mut rocket_request = match *request.method() {
@@ -29,22 +30,21 @@ impl RocketTestService {
 				Method::DELETE => self.client.delete(url),
 				_ => unimplemented!(),
 			};
+
 			for (name, value) in request.headers() {
 				rocket_request.add_header(rocket::http::Header::new(
 					name.as_str().to_owned(),
 					value.to_str().unwrap().to_owned(),
 				));
 			}
-			let payload = request.body().send();
-			if let Some(content_type) = payload.content_type {
-				if let Some(content_type) = rocket::http::ContentType::parse_flexible(content_type)
-				{
-					rocket_request.add_header(content_type);
-				}
-			}
-			if let Some(content) = payload.content {
-				rocket_request.set_body(content);
-			}
+
+			let payload = request.body();
+			let body = serde_json::to_string(payload).unwrap();
+			rocket_request.set_body(body);
+
+			let content_type = rocket::http::ContentType::JSON;
+			rocket_request.add_header(content_type);
+
 			rocket_request.dispatch()
 		};
 
@@ -112,18 +112,21 @@ impl TestService for RocketTestService {
 		&self.request_builder
 	}
 
-	fn fetch<T: Payload>(&mut self, request: &Request<T>) -> Response<()> {
+	fn fetch<T: Serialize>(&mut self, request: &Request<T>) -> Response<()> {
 		let (_, builder) = self.process_internal(request);
 		builder.body(()).unwrap()
 	}
 
-	fn fetch_bytes<T: Payload>(&mut self, request: &Request<T>) -> Response<Vec<u8>> {
+	fn fetch_bytes<T: Serialize>(&mut self, request: &Request<T>) -> Response<Vec<u8>> {
 		let (mut rocket_response, builder) = self.process_internal(request);
 		let body = rocket_response.body().unwrap().into_bytes().unwrap();
 		builder.body(body).unwrap()
 	}
 
-	fn fetch_json<T: Payload, U: DeserializeOwned>(&mut self, request: &Request<T>) -> Response<U> {
+	fn fetch_json<T: Serialize, U: DeserializeOwned>(
+		&mut self,
+		request: &Request<T>,
+	) -> Response<U> {
 		let (mut rocket_response, builder) = self.process_internal(request);
 		let body = rocket_response.body_string().unwrap();
 		let body = serde_json::from_str(&body).unwrap();
