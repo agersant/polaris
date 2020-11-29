@@ -112,7 +112,7 @@ impl TestService for RocketTestService {
 		&self.request_builder
 	}
 
-	fn process<T: Payload>(&mut self, request: &Request<T>) -> Response<()> {
+	fn fetch<T: Payload>(&mut self, request: &Request<T>) -> Response<()> {
 		let (_, builder) = self.process_internal(request);
 		builder.body(()).unwrap()
 	}

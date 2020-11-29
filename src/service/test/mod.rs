@@ -42,7 +42,7 @@ impl<T: Serialize> Payload for T {
 pub trait TestService {
 	fn new(db_name: &str) -> Self;
 	fn request_builder(&self) -> &protocol::RequestBuilder;
-	fn process<T: Payload>(&mut self, request: &Request<T>) -> Response<()>;
+	fn fetch<T: Payload>(&mut self, request: &Request<T>) -> Response<()>;
 	fn fetch_bytes<T: Payload>(&mut self, request: &Request<T>) -> Response<Vec<u8>>;
 	fn fetch_json<T: Payload, U: DeserializeOwned>(&mut self, request: &Request<T>) -> Response<U>;
 
@@ -62,19 +62,19 @@ pub trait TestService {
 			}]),
 		};
 		let request = self.request_builder().put_settings(configuration);
-		let response = self.process(&request);
+		let response = self.fetch(&request);
 		assert_eq!(response.status(), StatusCode::OK);
 	}
 
 	fn login(&mut self) {
 		let request = self.request_builder().login(TEST_USERNAME, TEST_PASSWORD);
-		let response = self.process(&request);
+		let response = self.fetch(&request);
 		assert_eq!(response.status(), StatusCode::OK);
 	}
 
 	fn index(&mut self) {
 		let request = self.request_builder().trigger_index();
-		let response = self.process(&request);
+		let response = self.fetch(&request);
 		assert_eq!(response.status(), StatusCode::OK);
 
 		loop {
@@ -160,7 +160,7 @@ fn test_service_settings() {
 
 	let get_settings = service.request_builder().get_settings();
 
-	let response = service.process(&get_settings);
+	let response = service.fetch(&get_settings);
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 
 	service.login();
@@ -171,7 +171,7 @@ fn test_service_settings() {
 	let put_settings = service
 		.request_builder()
 		.put_settings(config::Config::default());
-	let response = service.process(&put_settings);
+	let response = service.fetch(&put_settings);
 	assert_eq!(response.status(), StatusCode::OK);
 }
 
@@ -188,7 +188,7 @@ fn test_service_settings_cannot_unadmin_self() {
 		admin: false,
 	}]);
 	let request = service.request_builder().put_settings(configuration);
-	let response = service.process(&request);
+	let response = service.fetch(&request);
 	assert_eq!(response.status(), StatusCode::CONFLICT);
 }
 
@@ -205,7 +205,7 @@ fn test_service_preferences() {
 	let request = service
 		.request_builder()
 		.put_preferences(config::Preferences::default());
-	let response = service.process(&request);
+	let response = service.fetch(&request);
 	assert_eq!(response.status(), StatusCode::OK);
 }
 
@@ -235,19 +235,19 @@ fn test_service_auth() {
 
 	{
 		let request = service.request_builder().login("garbage", "garbage");
-		let response = service.process(&request);
+		let response = service.fetch(&request);
 		assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 	}
 	{
 		let request = service.request_builder().login(TEST_USERNAME, "garbage");
-		let response = service.process(&request);
+		let response = service.fetch(&request);
 		assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 	}
 	{
 		let request = service
 			.request_builder()
 			.login(TEST_USERNAME, TEST_PASSWORD);
-		let response = service.process(&request);
+		let response = service.fetch(&request);
 		assert_eq!(response.status(), StatusCode::OK);
 
 		let cookies: Vec<Cookie> = response
@@ -448,7 +448,7 @@ fn test_service_playlists() {
 		let request = service
 			.request_builder()
 			.save_playlist(playlist_name, my_playlist);
-		let response = service.process(&request);
+		let response = service.fetch(&request);
 		assert_eq!(response.status(), StatusCode::OK);
 	}
 
@@ -477,7 +477,7 @@ fn test_service_playlists() {
 	// Delete playlist
 	{
 		let request = service.request_builder().delete_playlist(playlist_name);
-		let response = service.process(&request);
+		let response = service.fetch(&request);
 		assert_eq!(response.status(), StatusCode::OK);
 	}
 
