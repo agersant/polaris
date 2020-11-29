@@ -288,12 +288,8 @@ fn test_service_browse() {
 	}
 
 	{
-		let mut path = PathBuf::new();
-		path.push("collection");
-		path.push("Khemmis");
-		path.push("Hunted");
+		let path: PathBuf = ["collection", "Khemmis", "Hunted"].iter().collect();
 		let request = service.request_builder().browse(&path);
-
 		let response = service.fetch_json::<_, Vec<index::CollectionFile>>(&request);
 		assert_eq!(response.status(), StatusCode::OK);
 		let entries = response.body();
@@ -386,11 +382,9 @@ fn test_service_audio() {
 	service.login();
 	service.index();
 
-	let mut path = PathBuf::new();
-	path.push("collection");
-	path.push("Khemmis");
-	path.push("Hunted");
-	path.push("02 - Candlelight.mp3");
+	let path: PathBuf = ["collection", "Khemmis", "Hunted", "02 - Candlelight.mp3"]
+		.iter()
+		.collect();
 
 	{
 		let request = service.request_builder().audio(&path);
@@ -417,11 +411,9 @@ fn test_service_thumbnail() {
 	service.login();
 	service.index();
 
-	let mut path = PathBuf::new();
-	path.push("collection");
-	path.push("Khemmis");
-	path.push("Hunted");
-	path.push("Folder.jpg");
+	let path: PathBuf = ["collection", "Khemmis", "Hunted", "Folder.jpg"]
+		.iter()
+		.collect();
 
 	let pad = None;
 	let request = service.request_builder().thumbnail(&path, pad);
