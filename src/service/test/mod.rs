@@ -1,6 +1,6 @@
 use cookie::Cookie;
 use http::header::*;
-use http::{HeaderMap, HeaderValue, Response, StatusCode};
+use http::{method::Method, HeaderValue, Request, Response, StatusCode};
 use percent_encoding::{percent_encode, NON_ALPHANUMERIC};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -20,8 +20,42 @@ const TEST_PASSWORD: &str = "test_password";
 const TEST_MOUNT_NAME: &str = "collection";
 const TEST_MOUNT_SOURCE: &str = "test-data/small-collection";
 
+pub struct GenericPayload {
+	pub content_type: Option<&'static str>,
+	pub content: Option<Vec<u8>>,
+}
+
+pub trait Payload {
+	fn send(&self) -> GenericPayload;
+}
+
+// Ideally we want this but conflicting impl :(
+// impl Payload for () {
+// 	fn send(self) -> GenericPayload {
+// 		GenericPayload {
+// 			content_type: None,
+// 			content: None,
+// 		}
+// 	}
+// }
+
+impl<T: Serialize> Payload for T {
+	fn send(&self) -> GenericPayload {
+		GenericPayload {
+			content_type: Some("application/json"),
+			content: Some(serde_json::to_string(self).unwrap().as_bytes().into()),
+		}
+	}
+}
+
 pub trait TestService {
 	fn new(db_name: &str) -> Self;
+	fn process_void<T: Payload>(&mut self, request: &Request<T>) -> Response<()>;
+	fn process_bytes<T: Payload>(&mut self, request: &Request<T>) -> Response<Vec<u8>>;
+	fn process_json<T: Payload, U: DeserializeOwned>(
+		&mut self,
+		request: &Request<T>,
+	) -> Response<U>;
 	fn get(&mut self, url: &str) -> Response<()>;
 	fn get_bytes(&mut self, url: &str, headers: &HeaderMap<HeaderValue>) -> Response<Vec<u8>>;
 	fn post(&mut self, url: &str) -> Response<()>;
@@ -45,7 +79,13 @@ pub trait TestService {
 				source: TEST_MOUNT_SOURCE.into(),
 			}]),
 		};
-		self.put_json("/api/settings", &configuration);
+		let request = Request::builder()
+			.method(Method::PUT)
+			.uri("/api/settings")
+			.body(&configuration)
+			.unwrap();
+		let response = self.process_void(&request);
+		assert_eq!(response.status(), StatusCode::OK);
 	}
 
 	fn login(&mut self) {
@@ -53,14 +93,26 @@ pub trait TestService {
 			username: TEST_USERNAME.into(),
 			password: TEST_PASSWORD.into(),
 		};
-		self.post_json("/api/auth", &credentials);
+		let request = Request::builder()
+			.method(Method::POST)
+			.uri("/api/auth")
+			.body(&credentials)
+			.unwrap();
+		let response = self.process_void(&request);
+		assert_eq!(response.status(), StatusCode::OK);
 	}
 
 	fn index(&mut self) {
 		assert!(self.post("/api/trigger_index").status() == StatusCode::OK);
 
+		let browse_request = Request::builder()
+			.method(Method::GET)
+			.uri("/api/browse")
+			.body(())
+			.unwrap();
+
 		loop {
-			let response = self.get_json::<Vec<index::CollectionFile>>("/api/browse");
+			let response = self.process_json::<(), Vec<index::CollectionFile>>(&browse_request);
 			let entries = response.body();
 			if entries.len() > 0 {
 				break;
@@ -68,8 +120,14 @@ pub trait TestService {
 			std::thread::sleep(Duration::from_secs(1));
 		}
 
+		let flatten_request = Request::builder()
+			.method(Method::GET)
+			.uri("/api/flatten")
+			.body(())
+			.unwrap();
+
 		loop {
-			let response = self.get_json::<Vec<index::Song>>("/api/flatten");
+			let response = self.process_json::<_, Vec<index::Song>>(&flatten_request);
 			let entries = response.body();
 			if entries.len() > 0 {
 				break;
