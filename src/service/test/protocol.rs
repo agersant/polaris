@@ -101,9 +101,7 @@ impl RequestBuilder {
 
 	pub fn browse(&self, path: &Path) -> Request<()> {
 		let path = path.to_string_lossy();
-		let path = percent_encode(path.as_ref().as_bytes(), NON_ALPHANUMERIC);
-		let uri = format!("/api/browse/{}", path);
-
+		let uri = format!("/api/browse/{}", url_encode(path.as_ref()));
 		Request::builder()
 			.method(Method::GET)
 			.uri(uri)
@@ -113,9 +111,7 @@ impl RequestBuilder {
 
 	pub fn flatten(&self, path: &Path) -> Request<()> {
 		let path = path.to_string_lossy();
-		let path = percent_encode(path.as_ref().as_bytes(), NON_ALPHANUMERIC);
-		let uri = format!("/api/flatten/{}", path);
-
+		let uri = format!("/api/flatten/{}", url_encode(path.as_ref()));
 		Request::builder()
 			.method(Method::GET)
 			.uri(uri)
@@ -140,9 +136,7 @@ impl RequestBuilder {
 	}
 
 	pub fn search(&self, query: &str) -> Request<()> {
-		let query = percent_encode(query.as_bytes(), NON_ALPHANUMERIC);
-		let uri = format!("/api/search/{}", query);
-
+		let uri = format!("/api/search/{}", url_encode(query));
 		Request::builder()
 			.method(Method::GET)
 			.uri(uri)
@@ -152,8 +146,7 @@ impl RequestBuilder {
 
 	pub fn audio(&self, path: &Path) -> Request<()> {
 		let path = path.to_string_lossy();
-		let path = percent_encode(path.as_ref().as_bytes(), NON_ALPHANUMERIC);
-		let uri = format!("/api/audio/{}", path);
+		let uri = format!("/api/audio/{}", url_encode(path.as_ref()));
 		Request::builder()
 			.method(Method::GET)
 			.uri(uri)
@@ -163,8 +156,7 @@ impl RequestBuilder {
 
 	pub fn thumbnail(&self, path: &Path, pad: Option<bool>) -> Request<()> {
 		let path = path.to_string_lossy();
-		let path = percent_encode(path.as_ref().as_bytes(), NON_ALPHANUMERIC);
-		let mut uri = format!("/api/thumbnail/{}", path);
+		let mut uri = format!("/api/thumbnail/{}", url_encode(path.as_ref()));
 		match pad {
 			Some(true) => uri.push_str("?pad=true"),
 			Some(false) => uri.push_str("?pad=false"),
@@ -190,8 +182,7 @@ impl RequestBuilder {
 		name: &str,
 		playlist: dto::SavePlaylistInput,
 	) -> Request<dto::SavePlaylistInput> {
-		let name = percent_encode(name.as_bytes(), NON_ALPHANUMERIC);
-		let uri = format!("/api/playlist/{}", name);
+		let uri = format!("/api/playlist/{}", url_encode(name));
 		Request::builder()
 			.method(Method::PUT)
 			.uri(uri)
@@ -200,8 +191,7 @@ impl RequestBuilder {
 	}
 
 	pub fn read_playlist(&self, name: &str) -> Request<()> {
-		let name = percent_encode(name.as_bytes(), NON_ALPHANUMERIC);
-		let uri = format!("/api/playlist/{}", name);
+		let uri = format!("/api/playlist/{}", url_encode(name));
 		Request::builder()
 			.method(Method::GET)
 			.uri(uri)
@@ -210,12 +200,15 @@ impl RequestBuilder {
 	}
 
 	pub fn delete_playlist(&self, name: &str) -> Request<()> {
-		let name = percent_encode(name.as_bytes(), NON_ALPHANUMERIC);
-		let uri = format!("/api/playlist/{}", name);
+		let uri = format!("/api/playlist/{}", url_encode(name));
 		Request::builder()
 			.method(Method::DELETE)
 			.uri(uri)
 			.body(())
 			.unwrap()
 	}
+}
+
+fn url_encode(input: &str) -> String {
+	percent_encode(input.as_bytes(), NON_ALPHANUMERIC).to_string()
 }
