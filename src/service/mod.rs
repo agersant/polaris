@@ -1,7 +1,7 @@
 use crate::db::DB;
 use crate::index::Index;
 use crate::thumbnails::ThumbnailsManager;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 mod dto;
 mod error;
@@ -28,48 +28,71 @@ pub struct Context {
 }
 
 pub struct ContextBuilder {
-	context: Context,
+	port: u16,
+	auth_secret: Vec<u8>,
+	web_dir_path: PathBuf,
+	swagger_dir_path: PathBuf,
+	thumbnails_dir_path: PathBuf,
+	web_url: String,
+	swagger_url: String,
+	api_url: String,
+	index: Index,
+	db: DB,
 }
 
 impl ContextBuilder {
-	pub fn new(db: DB, index: Index, thumbnails_manager: ThumbnailsManager) -> Self {
+	pub fn new(db: DB, index: Index) -> Self {
 		Self {
-			context: Context {
-				port: 5050,
-				auth_secret: [0; 32].into(),
-				api_url: "/api".to_owned(),
-				swagger_url: "/swagger".to_owned(),
-				web_url: "/".to_owned(),
-				web_dir_path: PathBuf::new(),
-				swagger_dir_path: PathBuf::new(),
-				db,
-				index,
-				thumbnails_manager,
-			},
+			port: 5050,
+			auth_secret: [0; 32].into(),
+			api_url: "/api".to_owned(),
+			swagger_url: "/swagger".to_owned(),
+			web_url: "/".to_owned(),
+			web_dir_path: Path::new("web").into(),
+			swagger_dir_path: Path::new("swagger").into(),
+			thumbnails_dir_path: Path::new("thumbnails").into(),
+			index,
+			db,
 		}
 	}
 
 	pub fn build(self) -> Context {
-		self.context
+		Context {
+			port: self.port,
+			auth_secret: self.auth_secret,
+			api_url: self.api_url,
+			swagger_url: self.swagger_url,
+			web_url: self.web_url,
+			web_dir_path: self.web_dir_path,
+			swagger_dir_path: self.swagger_dir_path,
+			thumbnails_manager: ThumbnailsManager::new(self.thumbnails_dir_path),
+			index: self.index,
+			db: self.db,
+		}
 	}
 
 	pub fn port(mut self, port: u16) -> Self {
-		self.context.port = port;
+		self.port = port;
 		self
 	}
 
 	pub fn auth_secret(mut self, secret: Vec<u8>) -> Self {
-		self.context.auth_secret = secret;
+		self.auth_secret = secret;
 		self
 	}
 
 	pub fn web_dir_path(mut self, path: PathBuf) -> Self {
-		self.context.web_dir_path = path;
+		self.web_dir_path = path;
 		self
 	}
 
 	pub fn swagger_dir_path(mut self, path: PathBuf) -> Self {
-		self.context.swagger_dir_path = path;
+		self.swagger_dir_path = path;
+		self
+	}
+
+	pub fn thumbnails_dir_path(mut self, path: PathBuf) -> Self {
+		self.thumbnails_dir_path = path;
 		self
 	}
 }

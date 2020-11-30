@@ -3,7 +3,7 @@ use image::imageops::FilterType;
 use image::{DynamicImage, GenericImage, GenericImageView, ImageBuffer, ImageOutputFormat};
 use std::cmp;
 use std::collections::hash_map::DefaultHasher;
-use std::fs::{DirBuilder, File};
+use std::fs::{self, File};
 use std::hash::{Hash, Hasher};
 use std::path::*;
 
@@ -14,10 +14,8 @@ pub struct ThumbnailsManager {
 }
 
 impl ThumbnailsManager {
-	pub fn new(thumbnails_path: &Path) -> ThumbnailsManager {
-		ThumbnailsManager {
-			thumbnails_path: thumbnails_path.to_owned(),
-		}
+	pub fn new(thumbnails_path: PathBuf) -> ThumbnailsManager {
+		ThumbnailsManager { thumbnails_path }
 	}
 
 	pub fn get_thumbnail(
@@ -29,13 +27,6 @@ impl ThumbnailsManager {
 			Some(path) => Ok(path),
 			None => self.create_thumbnail(image_path, thumbnailoptions),
 		}
-	}
-
-	fn create_thumbnails_directory(&self) -> Result<()> {
-		let mut dir_builder = DirBuilder::new();
-		dir_builder.recursive(true);
-		dir_builder.create(self.thumbnails_path.as_path())?;
-		Ok(())
 	}
 
 	fn get_thumbnail_path(
@@ -70,7 +61,7 @@ impl ThumbnailsManager {
 		let thumbnail = generate_thumbnail(image_path, thumbnailoptions)?;
 		let quality = 80;
 
-		self.create_thumbnails_directory()?;
+		fs::create_dir_all(&self.thumbnails_path)?;
 		let path = self.get_thumbnail_path(image_path, thumbnailoptions);
 		let mut out_file = File::create(&path)?;
 		thumbnail.write_to(&mut out_file, ImageOutputFormat::Jpeg(quality))?;

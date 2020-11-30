@@ -216,16 +216,14 @@ fn main() -> Result<()> {
 	info!("Swagger files location is {}", swagger_dir_path.display());
 
 	// Initialize thumbnails manager
-	let mut thumbnails_path = PathBuf::from(
+	let mut thumbnails_dir_path = PathBuf::from(
 		matches
 			.opt_str("cache")
 			.or(option_env!("POLARIS_CACHE_DIR").map(String::from))
 			.unwrap_or(".".to_owned()),
 	);
-	thumbnails_path.push("thumbnails");
-	fs::create_dir_all(&thumbnails_path)?;
-	info!("Thumbnails location is {}", thumbnails_path.display());
-	let thumbnails_manager = thumbnails::ThumbnailsManager::new(&thumbnails_path);
+	thumbnails_dir_path.push("thumbnails");
+	info!("Thumbnails location is {}", thumbnails_dir_path.display());
 
 	// Init index
 	let index = index::builder(db.clone()).periodic_updates(true).build();
@@ -244,11 +242,12 @@ fn main() -> Result<()> {
 		.parse()
 		.with_context(|| "Invalid port number")?;
 
-	let context = service::ContextBuilder::new(db, index, thumbnails_manager)
+	let context = service::ContextBuilder::new(db, index)
 		.port(port)
 		.auth_secret(auth_secret.into())
 		.web_dir_path(web_dir_path)
 		.swagger_dir_path(swagger_dir_path)
+		.thumbnails_dir_path(thumbnails_dir_path)
 		.build();
 
 	std::thread::spawn(move || {

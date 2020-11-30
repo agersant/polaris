@@ -10,7 +10,6 @@ use crate::db::DB;
 use crate::index;
 use crate::service;
 use crate::service::test::{protocol, TestService};
-use crate::thumbnails::ThumbnailsManager;
 
 pub struct RocketTestService {
 	client: Client,
@@ -76,14 +75,14 @@ impl TestService for RocketTestService {
 
 		let index = index::builder(db.clone()).periodic_updates(false).build();
 
-		let thumbnails_path: PathBuf = ["test-output", "thumbnails", unique_db_name]
-			.iter()
-			.collect();
-		let thumbnails_manager = ThumbnailsManager::new(&thumbnails_path);
-
-		let context = service::ContextBuilder::new(db, index, thumbnails_manager)
+		let context = service::ContextBuilder::new(db, index)
 			.web_dir_path(Path::new("web").into())
 			.swagger_dir_path(["docs", "swagger"].iter().collect())
+			.thumbnails_dir_path(
+				["test-output", "thumbnails", unique_db_name]
+					.iter()
+					.collect(),
+			)
 			.build();
 
 		let server = service::get_server(context).unwrap();
