@@ -243,17 +243,16 @@ fn main() -> Result<()> {
 		.unwrap_or_else(|| "5050".to_owned())
 		.parse()
 		.with_context(|| "Invalid port number")?;
-	let db_server = db.clone();
+
+	let context = service::ContextBuilder::new(db, index, thumbnails_manager)
+		.port(port)
+		.auth_secret(auth_secret.into())
+		.web_dir_path(web_dir_path)
+		.swagger_dir_path(swagger_dir_path)
+		.build();
+
 	std::thread::spawn(move || {
-		let _ = service::server::run(
-			port,
-			&auth_secret,
-			&web_dir_path,
-			&swagger_dir_path,
-			db_server,
-			index,
-			thumbnails_manager,
-		);
+		let _ = service::run(context);
 	});
 
 	// Send readiness notification

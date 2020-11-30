@@ -4,11 +4,11 @@ use rocket::local::{Client, LocalResponse};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use super::server;
 use crate::db::DB;
 use crate::index;
+use crate::service;
 use crate::service::test::{protocol, TestService};
 use crate::thumbnails::ThumbnailsManager;
 
@@ -74,29 +74,19 @@ impl TestService for RocketTestService {
 
 		let db = DB::new(&db_path).unwrap();
 
-		let web_dir_path = PathBuf::from("web");
-		let mut swagger_dir_path = PathBuf::from("docs");
-		swagger_dir_path.push("swagger");
 		let index = index::builder(db.clone()).periodic_updates(false).build();
 
-		let mut thumbnails_path = PathBuf::new();
-		thumbnails_path.push("test-output");
-		thumbnails_path.push("thumbnails");
-		thumbnails_path.push(unique_db_name);
-		let thumbnails_manager = ThumbnailsManager::new(thumbnails_path.as_path());
+		let thumbnails_path: PathBuf = ["test-output", "thumbnails", unique_db_name]
+			.iter()
+			.collect();
+		let thumbnails_manager = ThumbnailsManager::new(&thumbnails_path);
 
-		let auth_secret: [u8; 32] = [0; 32];
+		let context = service::ContextBuilder::new(db, index, thumbnails_manager)
+			.web_dir_path(Path::new("web").into())
+			.swagger_dir_path(["docs", "swagger"].iter().collect())
+			.build();
 
-		let server = server::get_server(
-			5050,
-			&auth_secret,
-			&web_dir_path,
-			&swagger_dir_path,
-			db,
-			index,
-			thumbnails_manager,
-		)
-		.unwrap();
+		let server = service::get_server(context).unwrap();
 		let client = Client::new(server).unwrap();
 		let request_builder = protocol::RequestBuilder::new();
 		RocketTestService {
