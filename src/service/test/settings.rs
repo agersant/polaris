@@ -7,7 +7,7 @@ use crate::service::test::{constants::*, ServiceType, TestService};
 fn test_get_settings_requires_auth() {
 	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
 	service.complete_initial_setup();
-	service.login();
+
 	let request = service.request_builder().get_settings();
 	let response = service.fetch(&request);
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
@@ -18,6 +18,7 @@ fn test_get_settings_requires_admin() {
 	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
 	service.complete_initial_setup();
 	service.login();
+
 	let request = service.request_builder().get_settings();
 	let response = service.fetch(&request);
 	assert_eq!(response.status(), StatusCode::FORBIDDEN);
