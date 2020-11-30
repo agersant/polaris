@@ -90,10 +90,7 @@ impl TestService for RocketTestService {
 		let server = server::get_server(
 			5050,
 			&auth_secret,
-			"/api",
-			"/",
 			&web_dir_path,
-			"/swagger",
 			&swagger_dir_path,
 			db,
 			index,

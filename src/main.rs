@@ -227,14 +227,6 @@ fn main() -> Result<()> {
 	info!("Thumbnails location is {}", thumbnails_path.display());
 	let thumbnails_manager = thumbnails::ThumbnailsManager::new(&thumbnails_path);
 
-	// Endpoints
-	let api_url = "/api";
-	let swagger_url = "/swagger";
-	let web_url = "/";
-	info!("Mounting API on {}", api_url);
-	info!("Mounting web client files on {}", web_url);
-	info!("Mounting swagger files on {}", swagger_url);
-
 	// Init index
 	let index = index::builder(db.clone()).periodic_updates(true).build();
 
@@ -256,10 +248,7 @@ fn main() -> Result<()> {
 		let _ = service::server::run(
 			port,
 			&auth_secret,
-			api_url,
-			web_url,
 			&web_dir_path,
-			swagger_url,
 			&swagger_dir_path,
 			db_server,
 			index,

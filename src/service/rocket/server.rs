@@ -12,10 +12,7 @@ use crate::thumbnails::ThumbnailsManager;
 pub fn get_server(
 	port: u16,
 	auth_secret: &[u8],
-	api_url: &str,
-	web_url: &str,
 	web_dir_path: &Path,
-	swagger_url: &str,
 	swagger_dir_path: &Path,
 	db: DB,
 	command_sender: Index,
@@ -38,13 +35,13 @@ pub fn get_server(
 		.manage(db)
 		.manage(command_sender)
 		.manage(thumbnails_manager)
-		.mount(&api_url, api::get_routes())
+		.mount("/api", api::get_routes())
 		.mount(
-			&swagger_url,
+			"/swagger",
 			StaticFiles::new(swagger_dir_path, static_file_options).rank(swagger_routes_rank),
 		)
 		.mount(
-			&web_url,
+			"/web",
 			StaticFiles::new(web_dir_path, static_file_options).rank(web_routes_rank),
 		))
 }
@@ -52,10 +49,7 @@ pub fn get_server(
 pub fn run(
 	port: u16,
 	auth_secret: &[u8],
-	api_url: &str,
-	web_url: &str,
 	web_dir_path: &Path,
-	swagger_url: &str,
 	swagger_dir_path: &Path,
 	db: DB,
 	command_sender: Index,
@@ -64,10 +58,7 @@ pub fn run(
 	let server = get_server(
 		port,
 		auth_secret,
-		api_url,
-		web_url,
 		web_dir_path,
-		swagger_url,
 		swagger_dir_path,
 		db,
 		command_sender,
