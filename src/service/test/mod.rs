@@ -38,17 +38,32 @@ pub trait TestService {
 			album_art_pattern: None,
 			reindex_every_n_seconds: None,
 			ydns: None,
-			users: Some(vec![config::ConfigUser {
-				name: TEST_USERNAME.into(),
-				password: TEST_PASSWORD.into(),
-				admin: true,
-			}]),
+			users: Some(vec![
+				config::ConfigUser {
+					name: TEST_USERNAME_ADMIN.into(),
+					password: TEST_PASSWORD_ADMIN.into(),
+					admin: true,
+				},
+				config::ConfigUser {
+					name: TEST_USERNAME.into(),
+					password: TEST_PASSWORD.into(),
+					admin: false,
+				},
+			]),
 			mount_dirs: Some(vec![vfs::MountPoint {
 				name: TEST_MOUNT_NAME.into(),
 				source: TEST_MOUNT_SOURCE.into(),
 			}]),
 		};
 		let request = self.request_builder().put_settings(configuration);
+		let response = self.fetch(&request);
+		assert_eq!(response.status(), StatusCode::OK);
+	}
+
+	fn login_admin(&mut self) {
+		let request = self
+			.request_builder()
+			.login(TEST_USERNAME_ADMIN, TEST_PASSWORD_ADMIN);
 		let response = self.fetch(&request);
 		assert_eq!(response.status(), StatusCode::OK);
 	}

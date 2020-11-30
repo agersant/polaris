@@ -13,7 +13,7 @@ fn test_service_settings() {
 	let response = service.fetch(&get_settings);
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 
-	service.login();
+	service.login_admin();
 
 	let response = service.fetch_json::<_, config::Config>(&get_settings);
 	assert_eq!(response.status(), StatusCode::OK);
@@ -29,11 +29,11 @@ fn test_service_settings() {
 fn test_service_settings_cannot_unadmin_self() {
 	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
 	service.complete_initial_setup();
-	service.login();
+	service.login_admin();
 
 	let mut configuration = config::Config::default();
 	configuration.users = Some(vec![config::ConfigUser {
-		name: TEST_USERNAME.into(),
+		name: TEST_USERNAME_ADMIN.into(),
 		password: "".into(),
 		admin: false,
 	}]);

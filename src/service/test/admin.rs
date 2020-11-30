@@ -5,17 +5,15 @@ use crate::service::dto;
 use crate::service::test::{constants::*, ServiceType, TestService};
 
 #[test]
-fn test_service_version() {
+fn test_returns_api_version() {
 	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
 	let request = service.request_builder().version();
 	let response = service.fetch_json::<_, dto::Version>(&request);
 	assert_eq!(response.status(), StatusCode::OK);
-	let version = response.body();
-	assert_eq!(version, &dto::Version { major: 5, minor: 0 });
 }
 
 #[test]
-fn test_service_initial_setup() {
+fn test_initial_setup_golden_path() {
 	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
 	let request = service.request_builder().initial_setup();
 	{
@@ -44,10 +42,10 @@ fn test_service_initial_setup() {
 }
 
 #[test]
-fn test_service_trigger_index() {
+fn test_trigger_index_golden_path() {
 	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
 	service.complete_initial_setup();
-	service.login();
+	service.login_admin();
 
 	let request = service.request_builder().random();
 
@@ -60,4 +58,14 @@ fn test_service_trigger_index() {
 	let response = service.fetch_json::<_, Vec<index::Directory>>(&request);
 	let entries = response.body();
 	assert_eq!(entries.len(), 3);
+}
+
+#[test]
+fn test_trigger_index_requires_admin() {
+	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	service.complete_initial_setup();
+	service.login();
+	let request = service.request_builder().trigger_index();
+	let response = service.fetch(&request);
+	assert_eq!(response.status(), StatusCode::FORBIDDEN);
 }
