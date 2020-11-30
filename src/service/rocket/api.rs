@@ -18,7 +18,6 @@ use crate::db::DB;
 use crate::index::{self, Index, QueryError};
 use crate::lastfm;
 use crate::playlist::{self, PlaylistError};
-use crate::service::constants::*;
 use crate::service::dto;
 use crate::service::error::APIError;
 use crate::thumbnails::{ThumbnailOptions, ThumbnailsManager};
@@ -96,20 +95,20 @@ struct Auth {
 fn add_session_cookies(cookies: &mut Cookies, username: &str, is_admin: bool) -> () {
 	let duration = Duration::days(1);
 
-	let session_cookie = Cookie::build(COOKIE_SESSION, username.to_owned())
+	let session_cookie = Cookie::build(dto::COOKIE_SESSION, username.to_owned())
 		.same_site(rocket::http::SameSite::Lax)
 		.http_only(true)
 		.max_age(duration)
 		.finish();
 
-	let username_cookie = Cookie::build(COOKIE_USERNAME, username.to_owned())
+	let username_cookie = Cookie::build(dto::COOKIE_USERNAME, username.to_owned())
 		.same_site(rocket::http::SameSite::Lax)
 		.http_only(false)
 		.max_age(duration)
 		.path("/")
 		.finish();
 
-	let is_admin_cookie = Cookie::build(COOKIE_ADMIN, format!("{}", is_admin))
+	let is_admin_cookie = Cookie::build(dto::COOKIE_ADMIN, format!("{}", is_admin))
 		.same_site(rocket::http::SameSite::Lax)
 		.http_only(false)
 		.max_age(duration)
@@ -131,7 +130,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for Auth {
 			_ => return Outcome::Failure((Status::InternalServerError, ())),
 		};
 
-		if let Some(u) = cookies.get_private(COOKIE_SESSION) {
+		if let Some(u) = cookies.get_private(dto::COOKIE_SESSION) {
 			let exists = match user::exists(db.deref().deref(), u.value()) {
 				Ok(e) => e,
 				Err(_) => return Outcome::Failure((Status::InternalServerError, ())),
@@ -217,8 +216,8 @@ impl From<VFSPathBuf> for PathBuf {
 #[get("/version")]
 fn version() -> Json<dto::Version> {
 	let current_version = dto::Version {
-		major: API_MAJOR_VERSION,
-		minor: API_MINOR_VERSION,
+		major: dto::API_MAJOR_VERSION,
+		minor: dto::API_MINOR_VERSION,
 	};
 	Json(current_version)
 }

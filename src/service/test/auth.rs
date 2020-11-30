@@ -2,7 +2,7 @@ use cookie::Cookie;
 use headers::{self, HeaderMapExt};
 use http::{Response, StatusCode};
 
-use crate::service::constants::*;
+use crate::service::dto;
 use crate::service::test::{constants::*, ServiceType, TestService};
 use crate::unique_db_name;
 
@@ -13,9 +13,9 @@ fn validate_cookies<T>(response: &Response<T>) {
 		.iter()
 		.map(|c| Cookie::parse(c.to_str().unwrap()).unwrap())
 		.collect();
-	assert!(cookies.iter().any(|c| c.name() == COOKIE_SESSION));
-	assert!(cookies.iter().any(|c| c.name() == COOKIE_USERNAME));
-	assert!(cookies.iter().any(|c| c.name() == COOKIE_ADMIN));
+	assert!(cookies.iter().any(|c| c.name() == dto::COOKIE_SESSION));
+	assert!(cookies.iter().any(|c| c.name() == dto::COOKIE_USERNAME));
+	assert!(cookies.iter().any(|c| c.name() == dto::COOKIE_ADMIN));
 }
 
 #[test]
