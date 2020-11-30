@@ -4,6 +4,7 @@ use http::{Response, StatusCode};
 
 use crate::service::constants::*;
 use crate::service::test::{constants::*, ServiceType, TestService};
+use crate::unique_db_name;
 
 fn validate_cookies<T>(response: &Response<T>) {
 	let cookies: Vec<Cookie> = response
@@ -19,7 +20,7 @@ fn validate_cookies<T>(response: &Response<T>) {
 
 #[test]
 fn test_login_rejects_bad_username() {
-	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	let mut service = ServiceType::new(&unique_db_name!());
 	service.complete_initial_setup();
 
 	let request = service.request_builder().login("garbage", TEST_PASSWORD);
@@ -29,7 +30,7 @@ fn test_login_rejects_bad_username() {
 
 #[test]
 fn test_login_rejects_bad_password() {
-	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	let mut service = ServiceType::new(&unique_db_name!());
 	service.complete_initial_setup();
 
 	let request = service.request_builder().login(TEST_USERNAME, "garbage");
@@ -39,7 +40,7 @@ fn test_login_rejects_bad_password() {
 
 #[test]
 fn test_login_golden_path() {
-	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	let mut service = ServiceType::new(&unique_db_name!());
 	service.complete_initial_setup();
 
 	let request = service
@@ -53,7 +54,7 @@ fn test_login_golden_path() {
 
 #[test]
 fn test_authentication_via_http_header_rejects_bad_username() {
-	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	let mut service = ServiceType::new(&unique_db_name!());
 	service.complete_initial_setup();
 
 	let mut request = service.request_builder().random();
@@ -66,7 +67,7 @@ fn test_authentication_via_http_header_rejects_bad_username() {
 
 #[test]
 fn test_authentication_via_http_header_rejects_bad_password() {
-	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	let mut service = ServiceType::new(&unique_db_name!());
 	service.complete_initial_setup();
 
 	let mut request = service.request_builder().random();
@@ -79,7 +80,7 @@ fn test_authentication_via_http_header_rejects_bad_password() {
 
 #[test]
 fn test_authentication_via_http_header_golden_path() {
-	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	let mut service = ServiceType::new(&unique_db_name!());
 	service.complete_initial_setup();
 
 	let mut request = service.request_builder().random();

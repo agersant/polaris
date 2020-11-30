@@ -2,10 +2,11 @@ use http::{header, HeaderValue, StatusCode};
 use std::path::PathBuf;
 
 use crate::service::test::{constants::*, ServiceType, TestService};
+use crate::unique_db_name;
 
 #[test]
 fn test_audio_requires_auth() {
-	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	let mut service = ServiceType::new(&unique_db_name!());
 
 	let path: PathBuf = [TEST_MOUNT_NAME, "Khemmis", "Hunted", "02 - Candlelight.mp3"]
 		.iter()
@@ -18,7 +19,7 @@ fn test_audio_requires_auth() {
 
 #[test]
 fn test_audio_golden_path() {
-	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	let mut service = ServiceType::new(&unique_db_name!());
 	service.complete_initial_setup();
 	service.login_admin();
 	service.index();
@@ -36,7 +37,7 @@ fn test_audio_golden_path() {
 
 #[test]
 fn test_audio_partial_content() {
-	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	let mut service = ServiceType::new(&unique_db_name!());
 	service.complete_initial_setup();
 	service.login_admin();
 	service.index();
@@ -64,7 +65,7 @@ fn test_audio_partial_content() {
 
 #[test]
 fn test_audio_bad_path_returns_not_found() {
-	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	let mut service = ServiceType::new(&unique_db_name!());
 	service.complete_initial_setup();
 	service.login();
 
@@ -77,7 +78,7 @@ fn test_audio_bad_path_returns_not_found() {
 
 #[test]
 fn test_thumbnail_requires_auth() {
-	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	let mut service = ServiceType::new(&unique_db_name!());
 
 	let path: PathBuf = [TEST_MOUNT_NAME, "Khemmis", "Hunted", "Folder.jpg"]
 		.iter()
@@ -91,7 +92,7 @@ fn test_thumbnail_requires_auth() {
 
 #[test]
 fn test_thumbnail_golden_path() {
-	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	let mut service = ServiceType::new(&unique_db_name!());
 	service.complete_initial_setup();
 	service.login_admin();
 	service.index();
@@ -109,7 +110,7 @@ fn test_thumbnail_golden_path() {
 
 #[test]
 fn test_thumbnail_bad_path_returns_not_found() {
-	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	let mut service = ServiceType::new(&unique_db_name!());
 	service.complete_initial_setup();
 	service.login();
 

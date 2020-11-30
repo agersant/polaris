@@ -2,10 +2,11 @@ use http::StatusCode;
 
 use crate::config;
 use crate::service::test::{constants::*, ServiceType, TestService};
+use crate::unique_db_name;
 
 #[test]
 fn test_get_settings_requires_auth() {
-	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	let mut service = ServiceType::new(&unique_db_name!());
 	service.complete_initial_setup();
 
 	let request = service.request_builder().get_settings();
@@ -15,7 +16,7 @@ fn test_get_settings_requires_auth() {
 
 #[test]
 fn test_get_settings_requires_admin() {
-	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	let mut service = ServiceType::new(&unique_db_name!());
 	service.complete_initial_setup();
 	service.login();
 
@@ -26,7 +27,7 @@ fn test_get_settings_requires_admin() {
 
 #[test]
 fn test_get_settings_golden_path() {
-	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	let mut service = ServiceType::new(&unique_db_name!());
 	service.complete_initial_setup();
 	service.login_admin();
 
@@ -37,7 +38,7 @@ fn test_get_settings_golden_path() {
 
 #[test]
 fn test_put_settings_requires_auth() {
-	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	let mut service = ServiceType::new(&unique_db_name!());
 	service.complete_initial_setup();
 	let request = service
 		.request_builder()
@@ -48,7 +49,7 @@ fn test_put_settings_requires_auth() {
 
 #[test]
 fn test_put_settings_requires_admin() {
-	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	let mut service = ServiceType::new(&unique_db_name!());
 	service.complete_initial_setup();
 	service.login();
 	let request = service
@@ -60,7 +61,7 @@ fn test_put_settings_requires_admin() {
 
 #[test]
 fn test_put_settings_golden_path() {
-	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	let mut service = ServiceType::new(&unique_db_name!());
 	service.complete_initial_setup();
 	service.login_admin();
 
@@ -73,7 +74,7 @@ fn test_put_settings_golden_path() {
 
 #[test]
 fn test_put_settings_cannot_unadmin_self() {
-	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	let mut service = ServiceType::new(&unique_db_name!());
 	service.complete_initial_setup();
 	service.login_admin();
 

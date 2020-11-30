@@ -1,11 +1,12 @@
 use http::StatusCode;
 
 use crate::config;
-use crate::service::test::{constants::*, ServiceType, TestService};
+use crate::service::test::{ServiceType, TestService};
+use crate::unique_db_name;
 
 #[test]
 fn test_get_preferences_requires_auth() {
-	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	let mut service = ServiceType::new(&unique_db_name!());
 	let request = service.request_builder().get_preferences();
 	let response = service.fetch(&request);
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
@@ -13,7 +14,7 @@ fn test_get_preferences_requires_auth() {
 
 #[test]
 fn test_get_preferences_golden_path() {
-	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	let mut service = ServiceType::new(&unique_db_name!());
 	service.complete_initial_setup();
 	service.login();
 
@@ -24,7 +25,7 @@ fn test_get_preferences_golden_path() {
 
 #[test]
 fn test_put_preferences_requires_auth() {
-	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	let mut service = ServiceType::new(&unique_db_name!());
 	let request = service
 		.request_builder()
 		.put_preferences(config::Preferences::default());
@@ -34,7 +35,7 @@ fn test_put_preferences_requires_auth() {
 
 #[test]
 fn test_put_preferences_golden_path() {
-	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	let mut service = ServiceType::new(&unique_db_name!());
 	service.complete_initial_setup();
 	service.login();
 

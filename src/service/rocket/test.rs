@@ -62,12 +62,12 @@ impl RocketTestService {
 }
 
 impl TestService for RocketTestService {
-	fn new(db_name: &str) -> Self {
+	fn new(unique_db_name: &str) -> Self {
 		let mut db_path = PathBuf::new();
 		db_path.push("test-output");
 		fs::create_dir_all(&db_path).unwrap();
 
-		db_path.push(format!("{}.sqlite", db_name));
+		db_path.push(format!("{}.sqlite", unique_db_name));
 		if db_path.exists() {
 			fs::remove_file(&db_path).unwrap();
 		}
@@ -82,7 +82,7 @@ impl TestService for RocketTestService {
 		let mut thumbnails_path = PathBuf::new();
 		thumbnails_path.push("test-output");
 		thumbnails_path.push("thumbnails");
-		thumbnails_path.push(db_name);
+		thumbnails_path.push(unique_db_name);
 		let thumbnails_manager = ThumbnailsManager::new(thumbnails_path.as_path());
 
 		let auth_secret: [u8; 32] = [0; 32];

@@ -2,11 +2,12 @@ use http::StatusCode;
 
 use crate::index;
 use crate::service::dto;
-use crate::service::test::{constants::*, ServiceType, TestService};
+use crate::service::test::{ServiceType, TestService};
+use crate::unique_db_name;
 
 #[test]
 fn test_returns_api_version() {
-	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	let mut service = ServiceType::new(&unique_db_name!());
 	let request = service.request_builder().version();
 	let response = service.fetch_json::<_, dto::Version>(&request);
 	assert_eq!(response.status(), StatusCode::OK);
@@ -14,7 +15,7 @@ fn test_returns_api_version() {
 
 #[test]
 fn test_initial_setup_golden_path() {
-	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	let mut service = ServiceType::new(&unique_db_name!());
 	let request = service.request_builder().initial_setup();
 	{
 		let response = service.fetch_json::<_, dto::InitialSetup>(&request);
@@ -43,7 +44,7 @@ fn test_initial_setup_golden_path() {
 
 #[test]
 fn test_trigger_index_golden_path() {
-	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	let mut service = ServiceType::new(&unique_db_name!());
 	service.complete_initial_setup();
 	service.login_admin();
 
@@ -62,7 +63,7 @@ fn test_trigger_index_golden_path() {
 
 #[test]
 fn test_trigger_index_requires_auth() {
-	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	let mut service = ServiceType::new(&unique_db_name!());
 	service.complete_initial_setup();
 	let request = service.request_builder().trigger_index();
 	let response = service.fetch(&request);
@@ -71,7 +72,7 @@ fn test_trigger_index_requires_auth() {
 
 #[test]
 fn test_trigger_index_requires_admin() {
-	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	let mut service = ServiceType::new(&unique_db_name!());
 	service.complete_initial_setup();
 	service.login();
 	let request = service.request_builder().trigger_index();

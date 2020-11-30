@@ -23,8 +23,18 @@ use crate::{config, index, vfs};
 #[cfg(feature = "service-rocket")]
 pub use crate::service::rocket::test::ServiceType;
 
+#[macro_export]
+macro_rules! unique_db_name {
+	() => {{
+		let file_name = file!();
+		let file_name = file_name.replace("/", "-");
+		let file_name = file_name.replace("\\", "-");
+		format!("{}-line-{}", file_name, line!())
+		}};
+}
+
 pub trait TestService {
-	fn new(db_name: &str) -> Self;
+	fn new(unique_db_name: &str) -> Self;
 	fn request_builder(&self) -> &protocol::RequestBuilder;
 	fn fetch<T: Serialize>(&mut self, request: &Request<T>) -> Response<()>;
 	fn fetch_bytes<T: Serialize>(&mut self, request: &Request<T>) -> Response<Vec<u8>>;
