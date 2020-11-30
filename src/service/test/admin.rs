@@ -61,6 +61,15 @@ fn test_trigger_index_golden_path() {
 }
 
 #[test]
+fn test_trigger_index_requires_auth() {
+	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	service.complete_initial_setup();
+	let request = service.request_builder().trigger_index();
+	let response = service.fetch(&request);
+	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[test]
 fn test_trigger_index_requires_admin() {
 	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
 	service.complete_initial_setup();
