@@ -15,8 +15,7 @@ use time::Duration;
 use super::serve;
 use crate::config::{self, Config, Preferences};
 use crate::db::DB;
-use crate::index;
-use crate::index::Index;
+use crate::index::{self, Index, QueryError};
 use crate::lastfm;
 use crate::playlist::{self, PlaylistError};
 use crate::service::constants::*;
@@ -77,6 +76,15 @@ impl From<PlaylistError> for APIError {
 			PlaylistError::PlaylistNotFound => APIError::PlaylistNotFound,
 			PlaylistError::UserNotFound => APIError::UserNotFound,
 			PlaylistError::Unspecified => APIError::Unspecified,
+		}
+	}
+}
+
+impl From<QueryError> for APIError {
+	fn from(error: QueryError) -> APIError {
+		match error {
+			QueryError::VFSPathNotFound => APIError::VFSPathNotFound,
+			QueryError::Unspecified => APIError::Unspecified,
 		}
 	}
 }
@@ -293,7 +301,7 @@ fn browse(
 	db: State<'_, DB>,
 	_auth: Auth,
 	path: VFSPathBuf,
-) -> Result<Json<Vec<index::CollectionFile>>> {
+) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
 	let result = index::browse(db.deref().deref(), &path.into() as &PathBuf)?;
 	Ok(Json(result))
 }
@@ -305,7 +313,11 @@ fn flatten_root(db: State<'_, DB>, _auth: Auth) -> Result<Json<Vec<index::Song>>
 }
 
 #[get("/flatten/<path>")]
-fn flatten(db: State<'_, DB>, _auth: Auth, path: VFSPathBuf) -> Result<Json<Vec<index::Song>>> {
+fn flatten(
+	db: State<'_, DB>,
+	_auth: Auth,
+	path: VFSPathBuf,
+) -> Result<Json<Vec<index::Song>>, APIError> {
 	let result = index::flatten(db.deref().deref(), &path.into() as &PathBuf)?;
 	Ok(Json(result))
 }
