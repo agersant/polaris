@@ -63,6 +63,19 @@ fn test_audio_partial_content() {
 }
 
 #[test]
+fn test_audio_bad_path_returns_not_found() {
+	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	service.complete_initial_setup();
+	service.login();
+
+	let path: PathBuf = ["not_my_collection"].iter().collect();
+
+	let request = service.request_builder().audio(&path);
+	let response = service.fetch(&request);
+	assert_eq!(response.status(), StatusCode::NOT_FOUND);
+}
+
+#[test]
 fn test_thumbnail_requires_auth() {
 	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
 
@@ -80,8 +93,9 @@ fn test_thumbnail_requires_auth() {
 fn test_thumbnail_golden_path() {
 	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
 	service.complete_initial_setup();
-	service.login();
+	service.login_admin();
 	service.index();
+	service.login();
 
 	let path: PathBuf = ["collection", "Khemmis", "Hunted", "Folder.jpg"]
 		.iter()
@@ -91,4 +105,18 @@ fn test_thumbnail_golden_path() {
 	let request = service.request_builder().thumbnail(&path, pad);
 	let response = service.fetch_bytes(&request);
 	assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[test]
+fn test_thumbnail_bad_path_returns_not_found() {
+	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	service.complete_initial_setup();
+	service.login();
+
+	let path: PathBuf = ["not_my_collection"].iter().collect();
+
+	let pad = None;
+	let request = service.request_builder().thumbnail(&path, pad);
+	let response = service.fetch(&request);
+	assert_eq!(response.status(), StatusCode::NOT_FOUND);
 }
