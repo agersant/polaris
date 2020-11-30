@@ -18,7 +18,7 @@ use crate::db::DB;
 use crate::index;
 use crate::index::Index;
 use crate::lastfm;
-use crate::playlist;
+use crate::playlist::{self, PlaylistError};
 use crate::service::constants::*;
 use crate::service::dto;
 use crate::service::error::APIError;
@@ -63,9 +63,21 @@ impl<'r> rocket::response::Responder<'r> for APIError {
 			APIError::IncorrectCredentials => rocket::http::Status::Unauthorized,
 			APIError::OwnAdminPrivilegeRemoval => rocket::http::Status::Conflict,
 			APIError::VFSPathNotFound => rocket::http::Status::NotFound,
+			APIError::UserNotFound => rocket::http::Status::NotFound,
+			APIError::PlaylistNotFound => rocket::http::Status::NotFound,
 			APIError::Unspecified => rocket::http::Status::InternalServerError,
 		};
 		rocket::response::Response::build().status(status).ok()
+	}
+}
+
+impl From<PlaylistError> for APIError {
+	fn from(error: PlaylistError) -> APIError {
+		match error {
+			PlaylistError::PlaylistNotFound => APIError::PlaylistNotFound,
+			PlaylistError::UserNotFound => APIError::UserNotFound,
+			PlaylistError::Unspecified => APIError::Unspecified,
+		}
 	}
 }
 
@@ -382,13 +394,17 @@ fn save_playlist(
 }
 
 #[get("/playlist/<name>")]
-fn read_playlist(db: State<'_, DB>, auth: Auth, name: String) -> Result<Json<Vec<index::Song>>> {
+fn read_playlist(
+	db: State<'_, DB>,
+	auth: Auth,
+	name: String,
+) -> Result<Json<Vec<index::Song>>, APIError> {
 	let songs = playlist::read_playlist(&name, &auth.username, db.deref().deref())?;
 	Ok(Json(songs))
 }
 
 #[delete("/playlist/<name>")]
-fn delete_playlist(db: State<'_, DB>, auth: Auth, name: String) -> Result<()> {
+fn delete_playlist(db: State<'_, DB>, auth: Auth, name: String) -> Result<(), APIError> {
 	playlist::delete_playlist(&name, &auth.username, db.deref().deref())?;
 	Ok(())
 }

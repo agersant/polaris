@@ -8,6 +8,10 @@ pub enum APIError {
 	OwnAdminPrivilegeRemoval,
 	#[error("Path not found in virtual filesystem")]
 	VFSPathNotFound,
+	#[error("User not found")]
+	UserNotFound,
+	#[error("Playlist not found")]
+	PlaylistNotFound,
 	#[error("Unspecified")]
 	Unspecified,
 }

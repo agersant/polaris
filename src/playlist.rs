@@ -5,6 +5,7 @@ use diesel::prelude::*;
 use diesel::sql_types;
 use diesel::BelongingToDsl;
 use std::path::Path;
+use thiserror::Error;
 
 #[cfg(test)]
 use crate::db;
@@ -12,6 +13,22 @@ use crate::db::DB;
 use crate::db::{playlist_songs, playlists, users};
 use crate::index::{self, Song};
 use crate::vfs::VFSSource;
+
+#[derive(Error, Debug)]
+pub enum PlaylistError {
+	#[error("User not found")]
+	UserNotFound,
+	#[error("Playlist not found")]
+	PlaylistNotFound,
+	#[error("Unspecified")]
+	Unspecified,
+}
+
+impl From<anyhow::Error> for PlaylistError {
+	fn from(_: anyhow::Error) -> Self {
+		PlaylistError::Unspecified
+	}
+}
 
 #[derive(Insertable)]
 #[table_name = "playlists"]
@@ -47,29 +64,36 @@ pub struct NewPlaylistSong {
 	ordering: i32,
 }
 
-pub fn list_playlists(owner: &str, db: &DB) -> Result<Vec<String>> {
+pub fn list_playlists(owner: &str, db: &DB) -> Result<Vec<String>, PlaylistError> {
 	let connection = db.connect()?;
 
-	let user: User;
-	{
+	let user: User = {
 		use self::users::dsl::*;
-		user = users
+		users
 			.filter(name.eq(owner))
 			.select((id,))
-			.first(&connection)?;
-	}
+			.first(&connection)
+			.optional()
+			.map_err(anyhow::Error::new)?
+			.ok_or(PlaylistError::UserNotFound)?
+	};
 
 	{
 		use self::playlists::dsl::*;
 		let found_playlists: Vec<String> = Playlist::belonging_to(&user)
 			.select(name)
-			.load(&connection)?;
+			.load(&connection)
+			.map_err(anyhow::Error::new)?;
 		Ok(found_playlists)
 	}
 }
 
-pub fn save_playlist(playlist_name: &str, owner: &str, content: &[String], db: &DB) -> Result<()> {
-	let user: User;
+pub fn save_playlist(
+	playlist_name: &str,
+	owner: &str,
+	content: &[String],
+	db: &DB,
+) -> Result<(), PlaylistError> {
 	let new_playlist: NewPlaylist;
 	let playlist: Playlist;
 	let vfs = db.get_vfs()?;
@@ -78,13 +102,16 @@ pub fn save_playlist(playlist_name: &str, owner: &str, content: &[String], db: &
 		let connection = db.connect()?;
 
 		// Find owner
-		{
+		let user: User = {
 			use self::users::dsl::*;
-			user = users
+			users
 				.filter(name.eq(owner))
 				.select((id,))
-				.get_result(&connection)?;
-		}
+				.first(&connection)
+				.optional()
+				.map_err(anyhow::Error::new)?
+				.ok_or(PlaylistError::UserNotFound)?
+		};
 
 		// Create playlist
 		new_playlist = NewPlaylist {
@@ -94,14 +121,16 @@ pub fn save_playlist(playlist_name: &str, owner: &str, content: &[String], db: &
 
 		diesel::insert_into(playlists::table)
 			.values(&new_playlist)
-			.execute(&connection)?;
+			.execute(&connection)
+			.map_err(anyhow::Error::new)?;
 
-		{
+		playlist = {
 			use self::playlists::dsl::*;
-			playlist = playlists
+			playlists
 				.select((id, owner))
 				.filter(name.eq(playlist_name).and(owner.eq(user.id)))
-				.get_result(&connection)?;
+				.get_result(&connection)
+				.map_err(anyhow::Error::new)?
 		}
 	}
 
@@ -125,48 +154,58 @@ pub fn save_playlist(playlist_name: &str, owner: &str, content: &[String], db: &
 
 	{
 		let connection = db.connect()?;
-		connection.transaction::<_, diesel::result::Error, _>(|| {
-			// Delete old content (if any)
-			let old_songs = PlaylistSong::belonging_to(&playlist);
-			diesel::delete(old_songs).execute(&connection)?;
+		connection
+			.transaction::<_, diesel::result::Error, _>(|| {
+				// Delete old content (if any)
+				let old_songs = PlaylistSong::belonging_to(&playlist);
+				diesel::delete(old_songs).execute(&connection)?;
 
-			// Insert content
-			diesel::insert_into(playlist_songs::table)
-				.values(&new_songs)
-				.execute(&*connection)?; // TODO https://github.com/diesel-rs/diesel/issues/1822
-			Ok(())
-		})?;
+				// Insert content
+				diesel::insert_into(playlist_songs::table)
+					.values(&new_songs)
+					.execute(&*connection)?; // TODO https://github.com/diesel-rs/diesel/issues/1822
+				Ok(())
+			})
+			.map_err(anyhow::Error::new)?;
 	}
 
 	Ok(())
 }
 
-pub fn read_playlist(playlist_name: &str, owner: &str, db: &DB) -> Result<Vec<Song>> {
+pub fn read_playlist(
+	playlist_name: &str,
+	owner: &str,
+	db: &DB,
+) -> Result<Vec<Song>, PlaylistError> {
 	let vfs = db.get_vfs()?;
 	let songs: Vec<Song>;
 
 	{
 		let connection = db.connect()?;
-		let user: User;
-		let playlist: Playlist;
 
 		// Find owner
-		{
+		let user: User = {
 			use self::users::dsl::*;
-			user = users
+			users
 				.filter(name.eq(owner))
 				.select((id,))
-				.get_result(&connection)?;
-		}
+				.first(&connection)
+				.optional()
+				.map_err(anyhow::Error::new)?
+				.ok_or(PlaylistError::UserNotFound)?
+		};
 
 		// Find playlist
-		{
+		let playlist: Playlist = {
 			use self::playlists::dsl::*;
-			playlist = playlists
+			playlists
 				.select((id, owner))
 				.filter(name.eq(playlist_name).and(owner.eq(user.id)))
-				.get_result(&connection)?;
-		}
+				.get_result(&connection)
+				.optional()
+				.map_err(anyhow::Error::new)?
+				.ok_or(PlaylistError::PlaylistNotFound)?
+		};
 
 		// Select songs. Not using Diesel because we need to LEFT JOIN using a custom column
 		let query = diesel::sql_query(
@@ -179,7 +218,7 @@ pub fn read_playlist(playlist_name: &str, owner: &str, db: &DB) -> Result<Vec<So
 		"#,
 		);
 		let query = query.clone().bind::<sql_types::Integer, _>(playlist.id);
-		songs = query.get_results(&connection)?;
+		songs = query.get_results(&connection).map_err(anyhow::Error::new)?;
 	}
 
 	// Map real path to virtual paths
@@ -191,25 +230,31 @@ pub fn read_playlist(playlist_name: &str, owner: &str, db: &DB) -> Result<Vec<So
 	Ok(virtual_songs)
 }
 
-pub fn delete_playlist(playlist_name: &str, owner: &str, db: &DB) -> Result<()> {
+pub fn delete_playlist(playlist_name: &str, owner: &str, db: &DB) -> Result<(), PlaylistError> {
 	let connection = db.connect()?;
 
-	let user: User;
-	{
+	let user: User = {
 		use self::users::dsl::*;
-		user = users
+		users
 			.filter(name.eq(owner))
 			.select((id,))
-			.first(&connection)?;
-	}
+			.first(&connection)
+			.optional()
+			.map_err(anyhow::Error::new)?
+			.ok_or(PlaylistError::UserNotFound)?
+	};
 
 	{
 		use self::playlists::dsl::*;
 		let q = Playlist::belonging_to(&user).filter(name.eq(playlist_name));
-		diesel::delete(q).execute(&connection)?;
+		match diesel::delete(q)
+			.execute(&connection)
+			.map_err(anyhow::Error::new)?
+		{
+			0 => Err(PlaylistError::PlaylistNotFound),
+			_ => Ok(()),
+		}
 	}
-
-	Ok(())
 }
 
 #[test]
