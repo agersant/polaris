@@ -44,6 +44,18 @@ fn test_browse_directory() {
 }
 
 #[test]
+fn test_browse_bad_directory() {
+	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	service.complete_initial_setup();
+	service.login();
+
+	let path: PathBuf = ["not_my_collection"].iter().collect();
+	let request = service.request_builder().browse(&path);
+	let response = service.fetch(&request);
+	assert_eq!(response.status(), StatusCode::NOT_FOUND);
+}
+
+#[test]
 fn test_flatten_requires_auth() {
 	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
 	let request = service.request_builder().flatten(&PathBuf::new());
@@ -79,6 +91,18 @@ fn test_flatten_directory() {
 	assert_eq!(response.status(), StatusCode::OK);
 	let entries = response.body();
 	assert_eq!(entries.len(), 13);
+}
+
+#[test]
+fn test_flatten_bad_directory() {
+	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	service.complete_initial_setup();
+	service.login();
+
+	let path: PathBuf = ["not_my_collection"].iter().collect();
+	let request = service.request_builder().flatten(&path);
+	let response = service.fetch(&request);
+	assert_eq!(response.status(), StatusCode::NOT_FOUND);
 }
 
 #[test]
