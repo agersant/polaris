@@ -5,6 +5,8 @@ use diesel::prelude::*;
 use diesel::sql_types;
 use diesel::BelongingToDsl;
 use std::path::Path;
+#[cfg(test)]
+use std::path::PathBuf;
 use thiserror::Error;
 
 #[cfg(test)]
@@ -317,12 +319,9 @@ fn test_fill_playlist() {
 	assert_eq!(songs[0].title, Some("Above The Water".to_owned()));
 	assert_eq!(songs[13].title, Some("Above The Water".to_owned()));
 
-	use std::path::PathBuf;
-	let mut first_song_path = PathBuf::new();
-	first_song_path.push("root");
-	first_song_path.push("Khemmis");
-	first_song_path.push("Hunted");
-	first_song_path.push("01 - Above The Water.mp3");
+	let first_song_path: PathBuf = ["root", "Khemmis", "Hunted", "01 - Above The Water.mp3"]
+		.iter()
+		.collect();
 	assert_eq!(songs[0].path, first_song_path.to_str().unwrap());
 
 	// Save again to verify that we don't dupe the content
