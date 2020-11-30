@@ -4,8 +4,6 @@ use crate::index;
 use crate::service::dto;
 use crate::service::test::{constants::*, ServiceType, TestService};
 
-const TEST_PLAYLIST_NAME: &str = "my_playlist";
-
 #[test]
 fn test_list_playlists_requires_auth() {
 	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
