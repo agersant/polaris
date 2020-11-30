@@ -6,6 +6,8 @@ pub enum APIError {
 	IncorrectCredentials,
 	#[error("Cannot remove own admin privilege")]
 	OwnAdminPrivilegeRemoval,
+	#[error("Path not found in virtual filesystem")]
+	VFSPathNotFound,
 	#[error("Unspecified")]
 	Unspecified,
 }

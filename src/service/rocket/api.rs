@@ -62,6 +62,7 @@ impl<'r> rocket::response::Responder<'r> for APIError {
 		let status = match self {
 			APIError::IncorrectCredentials => rocket::http::Status::Unauthorized,
 			APIError::OwnAdminPrivilegeRemoval => rocket::http::Status::Conflict,
+			APIError::VFSPathNotFound => rocket::http::Status::NotFound,
 			APIError::Unspecified => rocket::http::Status::InternalServerError,
 		};
 		rocket::response::Response::build().status(status).ok()
@@ -326,10 +327,16 @@ fn search(
 }
 
 #[get("/audio/<path>")]
-fn audio(db: State<'_, DB>, _auth: Auth, path: VFSPathBuf) -> Result<serve::RangeResponder<File>> {
+fn audio(
+	db: State<'_, DB>,
+	_auth: Auth,
+	path: VFSPathBuf,
+) -> Result<serve::RangeResponder<File>, APIError> {
 	let vfs = db.get_vfs()?;
-	let real_path = vfs.virtual_to_real(&path.into() as &PathBuf)?;
-	let file = File::open(&real_path)?;
+	let real_path = vfs
+		.virtual_to_real(&path.into() as &PathBuf)
+		.map_err(|_| APIError::VFSPathNotFound)?;
+	let file = File::open(&real_path).map_err(|_| APIError::Unspecified)?;
 	Ok(serve::RangeResponder::new(file))
 }
 
@@ -340,13 +347,15 @@ fn thumbnail(
 	_auth: Auth,
 	path: VFSPathBuf,
 	pad: Option<bool>,
-) -> Result<File> {
+) -> Result<File, APIError> {
 	let vfs = db.get_vfs()?;
-	let image_path = vfs.virtual_to_real(&path.into() as &PathBuf)?;
+	let image_path = vfs
+		.virtual_to_real(&path.into() as &PathBuf)
+		.map_err(|_| APIError::VFSPathNotFound)?;
 	let mut options = ThumbnailOptions::default();
 	options.pad_to_square = pad.unwrap_or(options.pad_to_square);
 	let thumbnail_path = thumbnails_manager.get_thumbnail(&image_path, &options)?;
-	let file = File::open(thumbnail_path)?;
+	let file = File::open(thumbnail_path).map_err(|_| APIError::Unspecified)?;
 	Ok(file)
 }
 
