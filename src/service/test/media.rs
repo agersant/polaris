@@ -7,7 +7,7 @@ use crate::service::test::{constants::*, ServiceType, TestService};
 fn test_audio_requires_auth() {
 	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
 
-	let path: PathBuf = ["collection", "Khemmis", "Hunted", "02 - Candlelight.mp3"]
+	let path: PathBuf = [TEST_MOUNT_NAME, "Khemmis", "Hunted", "02 - Candlelight.mp3"]
 		.iter()
 		.collect();
 
@@ -24,7 +24,7 @@ fn test_audio_golden_path() {
 	service.index();
 	service.login();
 
-	let path: PathBuf = ["collection", "Khemmis", "Hunted", "02 - Candlelight.mp3"]
+	let path: PathBuf = [TEST_MOUNT_NAME, "Khemmis", "Hunted", "02 - Candlelight.mp3"]
 		.iter()
 		.collect();
 
@@ -42,7 +42,7 @@ fn test_audio_partial_content() {
 	service.index();
 	service.login();
 
-	let path: PathBuf = ["collection", "Khemmis", "Hunted", "02 - Candlelight.mp3"]
+	let path: PathBuf = [TEST_MOUNT_NAME, "Khemmis", "Hunted", "02 - Candlelight.mp3"]
 		.iter()
 		.collect();
 
@@ -79,7 +79,7 @@ fn test_audio_bad_path_returns_not_found() {
 fn test_thumbnail_requires_auth() {
 	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
 
-	let path: PathBuf = ["collection", "Khemmis", "Hunted", "Folder.jpg"]
+	let path: PathBuf = [TEST_MOUNT_NAME, "Khemmis", "Hunted", "Folder.jpg"]
 		.iter()
 		.collect();
 
@@ -97,7 +97,7 @@ fn test_thumbnail_golden_path() {
 	service.index();
 	service.login();
 
-	let path: PathBuf = ["collection", "Khemmis", "Hunted", "Folder.jpg"]
+	let path: PathBuf = [TEST_MOUNT_NAME, "Khemmis", "Hunted", "Folder.jpg"]
 		.iter()
 		.collect();
 

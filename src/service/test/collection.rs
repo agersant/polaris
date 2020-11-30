@@ -35,7 +35,7 @@ fn test_browse_directory() {
 	service.index();
 	service.login();
 
-	let path: PathBuf = ["collection", "Khemmis", "Hunted"].iter().collect();
+	let path: PathBuf = [TEST_MOUNT_NAME, "Khemmis", "Hunted"].iter().collect();
 	let request = service.request_builder().browse(&path);
 	let response = service.fetch_json::<_, Vec<index::CollectionFile>>(&request);
 	assert_eq!(response.status(), StatusCode::OK);
@@ -86,7 +86,9 @@ fn test_flatten_directory() {
 	service.index();
 	service.login();
 
-	let request = service.request_builder().flatten(Path::new("collection"));
+	let request = service
+		.request_builder()
+		.flatten(Path::new(TEST_MOUNT_NAME));
 	let response = service.fetch_json::<_, Vec<index::Song>>(&request);
 	assert_eq!(response.status(), StatusCode::OK);
 	let entries = response.body();
