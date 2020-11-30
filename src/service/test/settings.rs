@@ -4,29 +4,74 @@ use crate::config;
 use crate::service::test::{constants::*, ServiceType, TestService};
 
 #[test]
-fn test_service_settings() {
+fn test_get_settings_requires_auth() {
 	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
 	service.complete_initial_setup();
-
-	let get_settings = service.request_builder().get_settings();
-
-	let response = service.fetch(&get_settings);
+	service.login();
+	let request = service.request_builder().get_settings();
+	let response = service.fetch(&request);
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+}
 
+#[test]
+fn test_get_settings_requires_admin() {
+	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	service.complete_initial_setup();
+	service.login();
+	let request = service.request_builder().get_settings();
+	let response = service.fetch(&request);
+	assert_eq!(response.status(), StatusCode::FORBIDDEN);
+}
+
+#[test]
+fn test_get_settings_golden_path() {
+	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	service.complete_initial_setup();
 	service.login_admin();
 
-	let response = service.fetch_json::<_, config::Config>(&get_settings);
-	assert_eq!(response.status(), StatusCode::OK);
-
-	let put_settings = service
-		.request_builder()
-		.put_settings(config::Config::default());
-	let response = service.fetch(&put_settings);
+	let request = service.request_builder().get_settings();
+	let response = service.fetch_json::<_, config::Config>(&request);
 	assert_eq!(response.status(), StatusCode::OK);
 }
 
 #[test]
-fn test_service_settings_cannot_unadmin_self() {
+fn test_put_settings_requires_auth() {
+	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	service.complete_initial_setup();
+	let request = service
+		.request_builder()
+		.put_settings(config::Config::default());
+	let response = service.fetch(&request);
+	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[test]
+fn test_put_settings_requires_admin() {
+	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	service.complete_initial_setup();
+	service.login();
+	let request = service
+		.request_builder()
+		.put_settings(config::Config::default());
+	let response = service.fetch(&request);
+	assert_eq!(response.status(), StatusCode::FORBIDDEN);
+}
+
+#[test]
+fn test_put_settings_golden_path() {
+	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
+	service.complete_initial_setup();
+	service.login_admin();
+
+	let request = service
+		.request_builder()
+		.put_settings(config::Config::default());
+	let response = service.fetch(&request);
+	assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[test]
+fn test_put_settings_cannot_unadmin_self() {
 	let mut service = ServiceType::new(&format!("{}{}", TEST_DB_PREFIX, line!()));
 	service.complete_initial_setup();
 	service.login_admin();
