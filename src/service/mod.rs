@@ -34,19 +34,17 @@ pub struct ContextBuilder {
 	web_dir_path: Option<PathBuf>,
 	swagger_dir_path: Option<PathBuf>,
 	cache_dir_path: Option<PathBuf>,
-	index: Index,
 	db: DB,
 }
 
 impl ContextBuilder {
-	pub fn new(db: DB, index: Index) -> Self {
+	pub fn new(db: DB) -> Self {
 		Self {
 			port: None,
 			auth_secret: [0; 32].into(),
 			web_dir_path: None,
 			swagger_dir_path: None,
 			cache_dir_path: None,
-			index,
 			db,
 		}
 	}
@@ -79,7 +77,7 @@ impl ContextBuilder {
 			web_dir_path,
 			swagger_dir_path,
 			thumbnails_manager: ThumbnailsManager::new(thumbnails_dir_path),
-			index: self.index,
+			index: Index::new(self.db.clone()),
 			db: self.db,
 		})
 	}

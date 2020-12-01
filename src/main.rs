@@ -137,16 +137,13 @@ fn main() -> Result<()> {
 	}
 	let auth_secret = config::get_auth_secret(&db)?;
 
-	// Init index
-	let index = index::builder(db.clone()).periodic_updates(true).build();
-
 	// Start DDNS updates
 	let db_ddns = db.clone();
 	std::thread::spawn(move || {
 		ddns::run(&db_ddns);
 	});
 
-	let mut context_builder = service::ContextBuilder::new(db, index).auth_secret(auth_secret);
+	let mut context_builder = service::ContextBuilder::new(db).auth_secret(auth_secret);
 	if let Some(port) = cli_options.port {
 		context_builder = context_builder.port(port);
 	}
@@ -166,6 +163,8 @@ fn main() -> Result<()> {
 		"Thumbnails files location is {:#?}",
 		context.thumbnails_manager.get_directory()
 	);
+
+	context.index.begin_periodic_updates();
 
 	// Start server
 	info!("Starting up server");

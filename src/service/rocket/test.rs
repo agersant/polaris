@@ -7,7 +7,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::db::DB;
-use crate::index;
 use crate::service;
 use crate::service::test::{protocol, TestService};
 
@@ -72,9 +71,7 @@ impl TestService for RocketTestService {
 
 		let db = DB::new(&db_path).unwrap();
 
-		let index = index::builder(db.clone()).periodic_updates(false).build();
-
-		let context = service::ContextBuilder::new(db, index)
+		let context = service::ContextBuilder::new(db)
 			.web_dir_path(Path::new("web").into())
 			.swagger_dir_path(["docs", "swagger"].iter().collect())
 			.cache_dir_path(["test-output", test_name].iter().collect())

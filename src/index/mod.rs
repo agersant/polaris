@@ -22,46 +22,6 @@ pub use self::query::*;
 pub use self::types::*;
 pub use self::update::*;
 
-pub fn builder(db: DB) -> IndexBuilder {
-	IndexBuilder {
-		db: db,
-		periodic_updates: true,
-	}
-}
-
-pub struct IndexBuilder {
-	db: DB,
-	periodic_updates: bool,
-}
-
-impl IndexBuilder {
-	pub fn periodic_updates(mut self, enabled: bool) -> IndexBuilder {
-		self.periodic_updates = enabled;
-		self
-	}
-
-	pub fn build(self) -> Index {
-		let index = Index {
-			pending_reindex: Arc::new((Mutex::new(false), Condvar::new())),
-			db: self.db.clone(),
-		};
-
-		let commands_index = index.clone();
-		std::thread::spawn(move || {
-			commands_index.process_commands();
-		});
-
-		if self.periodic_updates {
-			let auto_index = index.clone();
-			std::thread::spawn(move || {
-				auto_index.automatic_reindex();
-			});
-		}
-
-		index
-	}
-}
-
 #[derive(Clone)]
 pub struct Index {
 	db: DB,
@@ -69,11 +29,32 @@ pub struct Index {
 }
 
 impl Index {
+	pub fn new(db: DB) -> Self {
+		let index = Self {
+			pending_reindex: Arc::new((Mutex::new(false), Condvar::new())),
+			db,
+		};
+
+		let commands_index = index.clone();
+		std::thread::spawn(move || {
+			commands_index.process_commands();
+		});
+
+		index
+	}
+
 	pub fn trigger_reindex(&self) {
 		let (lock, cvar) = &*self.pending_reindex;
 		let mut pending_reindex = lock.lock().unwrap();
 		*pending_reindex = true;
 		cvar.notify_one();
+	}
+
+	pub fn begin_periodic_updates(&self) {
+		let auto_index = self.clone();
+		std::thread::spawn(move || {
+			auto_index.automatic_reindex();
+		});
 	}
 
 	fn process_commands(&self) {
