@@ -123,6 +123,7 @@ fn main() -> Result<()> {
 		context_builder = context_builder.port(port);
 	}
 	if let Some(path) = cli_options.config_file_path {
+		info!("Config file location is {:#?}", path);
 		context_builder = context_builder.config_file_path(path);
 	}
 	if let Some(path) = cli_options.database_file_path {
@@ -137,9 +138,8 @@ fn main() -> Result<()> {
 	if let Some(path) = cli_options.cache_dir_path {
 		context_builder = context_builder.cache_dir_path(path);
 	}
-	let context = context_builder.build()?;
 
-	// Print useful debug info
+	let context = context_builder.build()?;
 	info!("Database file location is {:#?}", context.db.location());
 	info!("Web client files location is {:#?}", context.web_dir_path);
 	info!("Swagger files location is {:#?}", context.swagger_dir_path);

@@ -62,7 +62,6 @@ impl ContextBuilder {
 
 		if let Some(config_path) = self.config_file_path {
 			let config = config::parse_toml_file(&config_path)?;
-			// TODO print that config is being applied (+ path)
 			config::amend(&db, &config)?;
 		}
 		let auth_secret = config::get_auth_secret(&db)?;
