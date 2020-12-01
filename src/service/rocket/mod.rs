@@ -29,14 +29,14 @@ pub fn get_server(context: service::Context) -> Result<rocket::Rocket> {
 		.manage(context.db)
 		.manage(context.index)
 		.manage(context.thumbnails_manager)
-		.mount("/api", api::get_routes())
+		.mount(&context.api_url, api::get_routes())
 		.mount(
-			"/swagger",
+			&context.swagger_url,
 			StaticFiles::new(context.swagger_dir_path, static_file_options)
 				.rank(swagger_routes_rank),
 		)
 		.mount(
-			"/web",
+			&context.web_url,
 			StaticFiles::new(context.web_dir_path, static_file_options).rank(web_routes_rank),
 		))
 }

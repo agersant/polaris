@@ -10,12 +10,18 @@ use std::path::*;
 use crate::artwork;
 
 pub struct ThumbnailsManager {
-	thumbnails_path: PathBuf,
+	thumbnails_dir_path: PathBuf,
 }
 
 impl ThumbnailsManager {
-	pub fn new(thumbnails_path: PathBuf) -> ThumbnailsManager {
-		ThumbnailsManager { thumbnails_path }
+	pub fn new(thumbnails_dir_path: PathBuf) -> ThumbnailsManager {
+		ThumbnailsManager {
+			thumbnails_dir_path,
+		}
+	}
+
+	pub fn get_directory(&self) -> &Path {
+		&self.thumbnails_dir_path
 	}
 
 	pub fn get_thumbnail(
@@ -35,7 +41,7 @@ impl ThumbnailsManager {
 		thumbnailoptions: &ThumbnailOptions,
 	) -> PathBuf {
 		let hash = hash(image_path, thumbnailoptions);
-		let mut thumbnail_path = self.thumbnails_path.clone();
+		let mut thumbnail_path = self.thumbnails_dir_path.clone();
 		thumbnail_path.push(format!("{}.jpg", hash.to_string()));
 		thumbnail_path
 	}
@@ -61,7 +67,7 @@ impl ThumbnailsManager {
 		let thumbnail = generate_thumbnail(image_path, thumbnailoptions)?;
 		let quality = 80;
 
-		fs::create_dir_all(&self.thumbnails_path)?;
+		fs::create_dir_all(&self.thumbnails_dir_path)?;
 		let path = self.get_thumbnail_path(image_path, thumbnailoptions);
 		let mut out_file = File::create(&path)?;
 		thumbnail.write_to(&mut out_file, ImageOutputFormat::Jpeg(quality))?;

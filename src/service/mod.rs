@@ -1,7 +1,8 @@
 use crate::db::DB;
 use crate::index::Index;
 use crate::thumbnails::ThumbnailsManager;
-use std::path::{Path, PathBuf};
+use std::fs;
+use std::path::PathBuf;
 
 mod dto;
 mod error;
@@ -28,14 +29,11 @@ pub struct Context {
 }
 
 pub struct ContextBuilder {
-	port: u16,
+	port: Option<u16>,
 	auth_secret: Vec<u8>,
-	web_dir_path: PathBuf,
-	swagger_dir_path: PathBuf,
-	thumbnails_dir_path: PathBuf,
-	web_url: String,
-	swagger_url: String,
-	api_url: String,
+	web_dir_path: Option<PathBuf>,
+	swagger_dir_path: Option<PathBuf>,
+	cache_dir_path: Option<PathBuf>,
 	index: Index,
 	db: DB,
 }
@@ -43,36 +41,51 @@ pub struct ContextBuilder {
 impl ContextBuilder {
 	pub fn new(db: DB, index: Index) -> Self {
 		Self {
-			port: 5050,
+			port: None,
 			auth_secret: [0; 32].into(),
-			api_url: "/api".to_owned(),
-			swagger_url: "/swagger".to_owned(),
-			web_url: "/".to_owned(),
-			web_dir_path: Path::new("web").into(),
-			swagger_dir_path: Path::new("swagger").into(),
-			thumbnails_dir_path: Path::new("thumbnails").into(),
+			web_dir_path: None,
+			swagger_dir_path: None,
+			cache_dir_path: None,
 			index,
 			db,
 		}
 	}
 
-	pub fn build(self) -> Context {
-		Context {
-			port: self.port,
+	pub fn build(self) -> anyhow::Result<Context> {
+		let web_dir_path = self
+			.web_dir_path
+			.or(option_env!("POLARIS_WEB_DIR").map(PathBuf::from))
+			.unwrap_or([".", "web"].iter().collect());
+		fs::create_dir_all(&web_dir_path)?;
+
+		let swagger_dir_path = self
+			.swagger_dir_path
+			.or(option_env!("POLARIS_SWAGGER_DIR").map(PathBuf::from))
+			.unwrap_or([".", "docs", "swagger"].iter().collect());
+		fs::create_dir_all(&swagger_dir_path)?;
+
+		let mut thumbnails_dir_path = self
+			.cache_dir_path
+			.or(option_env!("POLARIS_CACHE_DIR").map(PathBuf::from))
+			.unwrap_or(PathBuf::from(".").to_owned());
+		thumbnails_dir_path.push("thumbnails");
+
+		Ok(Context {
+			port: self.port.unwrap_or(5050),
 			auth_secret: self.auth_secret,
-			api_url: self.api_url,
-			swagger_url: self.swagger_url,
-			web_url: self.web_url,
-			web_dir_path: self.web_dir_path,
-			swagger_dir_path: self.swagger_dir_path,
-			thumbnails_manager: ThumbnailsManager::new(self.thumbnails_dir_path),
+			api_url: "/api".to_owned(),
+			swagger_url: "/swagger".to_owned(),
+			web_url: "/".to_owned(),
+			web_dir_path,
+			swagger_dir_path,
+			thumbnails_manager: ThumbnailsManager::new(thumbnails_dir_path),
 			index: self.index,
 			db: self.db,
-		}
+		})
 	}
 
 	pub fn port(mut self, port: u16) -> Self {
-		self.port = port;
+		self.port = Some(port);
 		self
 	}
 
@@ -82,17 +95,17 @@ impl ContextBuilder {
 	}
 
 	pub fn web_dir_path(mut self, path: PathBuf) -> Self {
-		self.web_dir_path = path;
+		self.web_dir_path = Some(path);
 		self
 	}
 
 	pub fn swagger_dir_path(mut self, path: PathBuf) -> Self {
-		self.swagger_dir_path = path;
+		self.swagger_dir_path = Some(path);
 		self
 	}
 
-	pub fn thumbnails_dir_path(mut self, path: PathBuf) -> Self {
-		self.thumbnails_dir_path = path;
+	pub fn cache_dir_path(mut self, path: PathBuf) -> Self {
+		self.cache_dir_path = Some(path);
 		self
 	}
 }

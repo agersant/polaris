@@ -62,11 +62,10 @@ impl RocketTestService {
 
 impl TestService for RocketTestService {
 	fn new(test_name: &str) -> Self {
-		let mut db_path = PathBuf::new();
-		db_path.push("test-output");
+		let mut db_path: PathBuf = ["test-output", test_name].iter().collect();
 		fs::create_dir_all(&db_path).unwrap();
+		db_path.push("db.sqlite");
 
-		db_path.push(format!("{}.sqlite", test_name));
 		if db_path.exists() {
 			fs::remove_file(&db_path).unwrap();
 		}
@@ -78,8 +77,9 @@ impl TestService for RocketTestService {
 		let context = service::ContextBuilder::new(db, index)
 			.web_dir_path(Path::new("web").into())
 			.swagger_dir_path(["docs", "swagger"].iter().collect())
-			.thumbnails_dir_path(["test-output", "thumbnails", test_name].iter().collect())
-			.build();
+			.cache_dir_path(["test-output", test_name].iter().collect())
+			.build()
+			.unwrap();
 
 		let server = service::get_server(context).unwrap();
 		let client = Client::new(server).unwrap();
