@@ -49,7 +49,7 @@ fn daemonize(
 		return Ok(());
 	}
 
-	let log_path = log_file_path.unwrap_or_else(|| {
+	let log_path = log_file_path.clone().unwrap_or_else(|| {
 		let mut path = PathBuf::from(option_env!("POLARIS_LOG_DIR").unwrap_or("."));
 		path.push("polaris.log");
 		path
@@ -61,7 +61,7 @@ fn daemonize(
 		Err(e) => bail!("Daemonize error: {:#?}", e),
 	};
 
-	let pid_path = pid_file_path.unwrap_or_else(|| {
+	let pid_path = pid_file_path.clone().unwrap_or_else(|| {
 		let mut path = PathBuf::from(option_env!("POLARIS_PID_DIR").unwrap_or("."));
 		path.push("polaris.pid");
 		path
