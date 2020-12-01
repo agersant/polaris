@@ -9,15 +9,6 @@ extern crate diesel_migrations;
 #[macro_use]
 extern crate flamer;
 
-#[cfg(unix)]
-use log::error;
-#[cfg(unix)]
-use sd_notify::{self, NotifyState};
-#[cfg(unix)]
-use std::io::prelude::*;
-#[cfg(unix)]
-use unix_daemonize::{daemonize_redirect, ChdirMode};
-
 use anyhow::*;
 use log::info;
 use simplelog::{LevelFilter, SimpleLogger, TermLogger, TerminalMode};
@@ -46,9 +37,13 @@ fn log_config() -> simplelog::Config {
 #[cfg(unix)]
 fn daemonize(
 	foreground: bool,
-	pid_file_path: &Option<PathBuf>,
-	log_file_path: &Option<PathBuf>,
+	pid_file_path: &Option<std::path::PathBuf>,
+	log_file_path: &Option<std::path::PathBuf>,
 ) -> Result<()> {
+	use std::fs;
+	use std::path::PathBuf;
+	use unix_daemonize::{daemonize_redirect, ChdirMode};
+
 	if foreground {
 		return Ok(());
 	}
@@ -79,8 +74,11 @@ fn daemonize(
 
 #[cfg(unix)]
 fn notify_ready() {
+	use log::error;
+	use sd_notify;
+
 	if let Ok(true) = sd_notify::booted() {
-		if let Err(e) = sd_notify::notify(true, &[NotifyState::Ready]) {
+		if let Err(e) = sd_notify::notify(true, &[sd_notify::NotifyState::Ready]) {
 			error!("Unable to send ready notification: {}", e);
 		}
 	}
