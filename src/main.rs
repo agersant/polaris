@@ -69,7 +69,6 @@ fn daemonize(
 
 #[cfg(unix)]
 fn notify_ready() {
-	use log::error;
 	if let Ok(true) = sd_notify::booted() {
 		if let Err(e) = sd_notify::notify(true, &[sd_notify::NotifyState::Ready]) {
 			error!("Unable to send ready notification: {}", e);
@@ -95,7 +94,7 @@ fn init_logging(cli_options: &options::CLIOptions) -> Result<()> {
 	if prefer_term_logger {
 		match TermLogger::init(log_level, log_config.clone(), TerminalMode::Stdout) {
 			Ok(_) => return Ok(()),
-			Err(e) => error!("Error starting simple logger: {}", e),
+			Err(e) => error!("Error starting terminal logger: {}", e),
 		}
 	}
 	SimpleLogger::init(log_level, log_config)?;
