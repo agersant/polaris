@@ -10,7 +10,7 @@ extern crate diesel_migrations;
 extern crate flamer;
 
 use anyhow::*;
-use log::info;
+use log::{error, info};
 use simplelog::{LevelFilter, SimpleLogger, TermLogger, TerminalMode};
 
 mod artwork;
@@ -27,12 +27,6 @@ mod ui;
 mod user;
 mod utils;
 mod vfs;
-
-fn log_config() -> simplelog::Config {
-	simplelog::ConfigBuilder::new()
-		.set_location_level(LevelFilter::Error)
-		.build()
-}
 
 #[cfg(unix)]
 fn daemonize(
@@ -76,7 +70,6 @@ fn daemonize(
 #[cfg(unix)]
 fn notify_ready() {
 	use log::error;
-
 	if let Ok(true) = sd_notify::booted() {
 		if let Err(e) = sd_notify::notify(true, &[sd_notify::NotifyState::Ready]) {
 			error!("Unable to send ready notification: {}", e);
@@ -86,6 +79,28 @@ fn notify_ready() {
 
 #[cfg(not(unix))]
 fn notify_ready() {}
+
+fn init_logging(cli_options: &options::CLIOptions) -> Result<()> {
+	let log_level = cli_options.log_level.unwrap_or(LevelFilter::Info);
+	let log_config = simplelog::ConfigBuilder::new()
+		.set_location_level(LevelFilter::Error)
+		.build();
+
+	#[cfg(unix)]
+	let prefer_term_logger = cli_options.foreground;
+
+	#[cfg(not(unix))]
+	let prefer_term_logger = true;
+
+	if prefer_term_logger {
+		match TermLogger::init(log_level, log_config.clone(), TerminalMode::Stdout) {
+			Ok(_) => return Ok(()),
+			Err(e) => error!("Error starting simple logger: {}", e),
+		}
+	}
+	SimpleLogger::init(log_level, log_config)?;
+	Ok(())
+}
 
 fn main() -> Result<()> {
 	// Parse CLI options
@@ -107,13 +122,7 @@ fn main() -> Result<()> {
 		&cli_options.log_file_path,
 	)?;
 
-	let log_level = cli_options.log_level.unwrap_or(LevelFilter::Info);
-	// TODO validate that this works on Linux when running without -f
-	if TermLogger::init(log_level, log_config(), TerminalMode::Stdout).is_err() {
-		if let Err(e) = SimpleLogger::init(log_level, log_config()) {
-			bail!("Error starting simple logger: {}", e);
-		}
-	};
+	init_logging(&cli_options)?;
 
 	// Create service context
 	let mut context_builder = service::ContextBuilder::new();
