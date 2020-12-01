@@ -6,7 +6,6 @@ use serde::Serialize;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::db::DB;
 use crate::service;
 use crate::service::test::{protocol, TestService};
 
@@ -69,9 +68,8 @@ impl TestService for RocketTestService {
 			fs::remove_file(&db_path).unwrap();
 		}
 
-		let db = DB::new(&db_path).unwrap();
-
-		let context = service::ContextBuilder::new(db)
+		let context = service::ContextBuilder::new()
+			.database_file_path(db_path)
 			.web_dir_path(Path::new("web").into())
 			.swagger_dir_path(["docs", "swagger"].iter().collect())
 			.cache_dir_path(["test-output", test_name].iter().collect())

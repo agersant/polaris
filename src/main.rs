@@ -21,8 +21,6 @@ use unix_daemonize::{daemonize_redirect, ChdirMode};
 use anyhow::*;
 use log::info;
 use simplelog::{LevelFilter, SimpleLogger, TermLogger, TerminalMode};
-use std::fs;
-use std::path::PathBuf;
 
 mod artwork;
 mod config;
@@ -119,38 +117,29 @@ fn main() -> Result<()> {
 		}
 	};
 
-	// Init DB
-	let db_path = cli_options.database_file_path.clone().unwrap_or_else(|| {
-		let mut path = PathBuf::from(option_env!("POLARIS_DB_DIR").unwrap_or("."));
-		path.push("db.sqlite");
-		path
-	});
-	fs::create_dir_all(&db_path.parent().unwrap())?;
-	info!("Database file path is {}", db_path.display());
-	let db = db::DB::new(&db_path)?;
-
-	// Parse config
-	if let Some(config_path) = cli_options.config_file_path.clone() {
-		let config = config::parse_toml_file(&config_path)?;
-		info!("Applying configuration from {}", config_path.display());
-		config::amend(&db, &config)?;
-	}
-	let auth_secret = config::get_auth_secret(&db)?;
-
-	let mut context_builder = service::ContextBuilder::new(db).auth_secret(auth_secret);
+	// Create service context
+	let mut context_builder = service::ContextBuilder::new();
 	if let Some(port) = cli_options.port {
 		context_builder = context_builder.port(port);
 	}
-	if let Some(web_dir_path) = cli_options.web_dir_path {
-		context_builder = context_builder.web_dir_path(web_dir_path);
+	if let Some(path) = cli_options.config_file_path {
+		context_builder = context_builder.config_file_path(path);
 	}
-	if let Some(swagger_dir_path) = cli_options.swagger_dir_path {
-		context_builder = context_builder.swagger_dir_path(swagger_dir_path);
+	if let Some(path) = cli_options.database_file_path {
+		context_builder = context_builder.database_file_path(path);
 	}
-	if let Some(cache_dir_path) = cli_options.cache_dir_path {
-		context_builder = context_builder.cache_dir_path(cache_dir_path);
+	if let Some(path) = cli_options.web_dir_path {
+		context_builder = context_builder.web_dir_path(path);
+	}
+	if let Some(path) = cli_options.swagger_dir_path {
+		context_builder = context_builder.swagger_dir_path(path);
+	}
+	if let Some(path) = cli_options.cache_dir_path {
+		context_builder = context_builder.cache_dir_path(path);
 	}
 	let context = context_builder.build()?;
+
+	// Print useful debug info
 	info!("Web client files location is {:#?}", context.web_dir_path);
 	info!("Swagger files location is {:#?}", context.swagger_dir_path);
 	info!(
@@ -158,6 +147,7 @@ fn main() -> Result<()> {
 		context.thumbnails_manager.get_directory()
 	);
 
+	// Begin collection scans
 	context.index.begin_periodic_updates();
 
 	// Start DDNS updates

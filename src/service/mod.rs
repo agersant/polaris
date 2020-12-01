@@ -4,6 +4,8 @@ use crate::thumbnails::ThumbnailsManager;
 use std::fs;
 use std::path::PathBuf;
 
+use crate::config;
+
 mod dto;
 mod error;
 
@@ -30,26 +32,42 @@ pub struct Context {
 
 pub struct ContextBuilder {
 	port: Option<u16>,
-	auth_secret: Vec<u8>,
+	config_file_path: Option<PathBuf>,
+	database_file_path: Option<PathBuf>,
 	web_dir_path: Option<PathBuf>,
 	swagger_dir_path: Option<PathBuf>,
 	cache_dir_path: Option<PathBuf>,
-	db: DB,
 }
 
 impl ContextBuilder {
-	pub fn new(db: DB) -> Self {
+	pub fn new() -> Self {
 		Self {
 			port: None,
-			auth_secret: [0; 32].into(),
+			config_file_path: None,
+			database_file_path: None,
 			web_dir_path: None,
 			swagger_dir_path: None,
 			cache_dir_path: None,
-			db,
 		}
 	}
 
 	pub fn build(self) -> anyhow::Result<Context> {
+		let db_path = self.database_file_path.unwrap_or_else(|| {
+			let mut path = PathBuf::from(option_env!("POLARIS_DB_DIR").unwrap_or("."));
+			path.push("db.sqlite");
+			path
+		});
+		fs::create_dir_all(&db_path.parent().unwrap())?;
+		// TODO display db path
+		let db = DB::new(&db_path)?;
+
+		if let Some(config_path) = self.config_file_path {
+			let config = config::parse_toml_file(&config_path)?;
+			// TODO print that config is being applied (+ path)
+			config::amend(&db, &config)?;
+		}
+		let auth_secret = config::get_auth_secret(&db)?;
+
 		let web_dir_path = self
 			.web_dir_path
 			.or(option_env!("POLARIS_WEB_DIR").map(PathBuf::from))
@@ -70,15 +88,15 @@ impl ContextBuilder {
 
 		Ok(Context {
 			port: self.port.unwrap_or(5050),
-			auth_secret: self.auth_secret,
+			auth_secret,
 			api_url: "/api".to_owned(),
 			swagger_url: "/swagger".to_owned(),
 			web_url: "/".to_owned(),
 			web_dir_path,
 			swagger_dir_path,
 			thumbnails_manager: ThumbnailsManager::new(thumbnails_dir_path),
-			index: Index::new(self.db.clone()),
-			db: self.db,
+			index: Index::new(db.clone()),
+			db,
 		})
 	}
 
@@ -87,8 +105,13 @@ impl ContextBuilder {
 		self
 	}
 
-	pub fn auth_secret(mut self, secret: Vec<u8>) -> Self {
-		self.auth_secret = secret;
+	pub fn config_file_path(mut self, path: PathBuf) -> Self {
+		self.config_file_path = Some(path);
+		self
+	}
+
+	pub fn database_file_path(mut self, path: PathBuf) -> Self {
+		self.database_file_path = Some(path);
 		self
 	}
 
