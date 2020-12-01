@@ -58,7 +58,6 @@ impl ContextBuilder {
 			path
 		});
 		fs::create_dir_all(&db_path.parent().unwrap())?;
-		// TODO display db path
 		let db = DB::new(&db_path)?;
 
 		if let Some(config_path) = self.config_file_path {

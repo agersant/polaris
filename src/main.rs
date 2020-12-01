@@ -140,6 +140,7 @@ fn main() -> Result<()> {
 	let context = context_builder.build()?;
 
 	// Print useful debug info
+	info!("Database file location is {:#?}", context.db.location());
 	info!("Web client files location is {:#?}", context.web_dir_path);
 	info!("Swagger files location is {:#?}", context.swagger_dir_path);
 	info!(
