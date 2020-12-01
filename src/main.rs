@@ -41,6 +41,7 @@ fn daemonize(
 	log_file_path: &Option<std::path::PathBuf>,
 ) -> Result<()> {
 	use std::fs;
+	use std::io::Write;
 	use std::path::PathBuf;
 	use unix_daemonize::{daemonize_redirect, ChdirMode};
 
@@ -75,7 +76,6 @@ fn daemonize(
 #[cfg(unix)]
 fn notify_ready() {
 	use log::error;
-	use sd_notify;
 
 	if let Ok(true) = sd_notify::booted() {
 		if let Err(e) = sd_notify::notify(true, &[sd_notify::NotifyState::Ready]) {
