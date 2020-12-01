@@ -4,13 +4,10 @@ use rocket::local::{Client, LocalResponse};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use super::server;
-use crate::db::DB;
-use crate::index;
+use crate::service;
 use crate::service::test::{protocol, TestService};
-use crate::thumbnails::ThumbnailsManager;
 
 pub struct RocketTestService {
 	client: Client,
@@ -62,44 +59,24 @@ impl RocketTestService {
 }
 
 impl TestService for RocketTestService {
-	fn new(unique_db_name: &str) -> Self {
-		let mut db_path = PathBuf::new();
-		db_path.push("test-output");
+	fn new(test_name: &str) -> Self {
+		let mut db_path: PathBuf = ["test-output", test_name].iter().collect();
 		fs::create_dir_all(&db_path).unwrap();
+		db_path.push("db.sqlite");
 
-		db_path.push(format!("{}.sqlite", unique_db_name));
 		if db_path.exists() {
 			fs::remove_file(&db_path).unwrap();
 		}
 
-		let db = DB::new(&db_path).unwrap();
+		let context = service::ContextBuilder::new()
+			.database_file_path(db_path)
+			.web_dir_path(Path::new("web").into())
+			.swagger_dir_path(["docs", "swagger"].iter().collect())
+			.cache_dir_path(["test-output", test_name].iter().collect())
+			.build()
+			.unwrap();
 
-		let web_dir_path = PathBuf::from("web");
-		let mut swagger_dir_path = PathBuf::from("docs");
-		swagger_dir_path.push("swagger");
-		let index = index::builder(db.clone()).periodic_updates(false).build();
-
-		let mut thumbnails_path = PathBuf::new();
-		thumbnails_path.push("test-output");
-		thumbnails_path.push("thumbnails");
-		thumbnails_path.push(unique_db_name);
-		let thumbnails_manager = ThumbnailsManager::new(thumbnails_path.as_path());
-
-		let auth_secret: [u8; 32] = [0; 32];
-
-		let server = server::get_server(
-			5050,
-			&auth_secret,
-			"/api",
-			"/",
-			&web_dir_path,
-			"/swagger",
-			&swagger_dir_path,
-			db,
-			index,
-			thumbnails_manager,
-		)
-		.unwrap();
+		let server = service::get_server(context).unwrap();
 		let client = Client::new(server).unwrap();
 		let request_builder = protocol::RequestBuilder::new();
 		RocketTestService {

@@ -2,7 +2,6 @@ use anyhow::*;
 use core::ops::Deref;
 use diesel;
 use diesel::prelude::*;
-use log::info;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -61,7 +60,6 @@ impl Config {
 }
 
 pub fn parse_toml_file(path: &path::Path) -> Result<Config> {
-	info!("Config file path: {}", path.to_string_lossy());
 	let mut config_file = fs::File::open(path)?;
 	let mut config_file_content = String::new();
 	config_file.read_to_string(&mut config_file_content)?;

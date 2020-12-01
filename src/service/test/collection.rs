@@ -3,11 +3,11 @@ use std::path::{Path, PathBuf};
 
 use crate::index;
 use crate::service::test::{constants::*, ServiceType, TestService};
-use crate::unique_db_name;
+use crate::test_name;
 
 #[test]
 fn test_browse_requires_auth() {
-	let mut service = ServiceType::new(&unique_db_name!());
+	let mut service = ServiceType::new(&test_name!());
 	let request = service.request_builder().browse(&PathBuf::new());
 	let response = service.fetch(&request);
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
@@ -15,7 +15,7 @@ fn test_browse_requires_auth() {
 
 #[test]
 fn test_browse_root() {
-	let mut service = ServiceType::new(&unique_db_name!());
+	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login_admin();
 	service.index();
@@ -30,7 +30,7 @@ fn test_browse_root() {
 
 #[test]
 fn test_browse_directory() {
-	let mut service = ServiceType::new(&unique_db_name!());
+	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login_admin();
 	service.index();
@@ -46,7 +46,7 @@ fn test_browse_directory() {
 
 #[test]
 fn test_browse_bad_directory() {
-	let mut service = ServiceType::new(&unique_db_name!());
+	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login();
 
@@ -58,7 +58,7 @@ fn test_browse_bad_directory() {
 
 #[test]
 fn test_flatten_requires_auth() {
-	let mut service = ServiceType::new(&unique_db_name!());
+	let mut service = ServiceType::new(&test_name!());
 	let request = service.request_builder().flatten(&PathBuf::new());
 	let response = service.fetch(&request);
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
@@ -66,7 +66,7 @@ fn test_flatten_requires_auth() {
 
 #[test]
 fn test_flatten_root() {
-	let mut service = ServiceType::new(&unique_db_name!());
+	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login_admin();
 	service.index();
@@ -81,7 +81,7 @@ fn test_flatten_root() {
 
 #[test]
 fn test_flatten_directory() {
-	let mut service = ServiceType::new(&unique_db_name!());
+	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login_admin();
 	service.index();
@@ -98,7 +98,7 @@ fn test_flatten_directory() {
 
 #[test]
 fn test_flatten_bad_directory() {
-	let mut service = ServiceType::new(&unique_db_name!());
+	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login();
 
@@ -110,7 +110,7 @@ fn test_flatten_bad_directory() {
 
 #[test]
 fn test_random_requires_auth() {
-	let mut service = ServiceType::new(&unique_db_name!());
+	let mut service = ServiceType::new(&test_name!());
 	let request = service.request_builder().random();
 	let response = service.fetch(&request);
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
@@ -118,7 +118,7 @@ fn test_random_requires_auth() {
 
 #[test]
 fn test_random() {
-	let mut service = ServiceType::new(&unique_db_name!());
+	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login_admin();
 	service.index();
@@ -133,7 +133,7 @@ fn test_random() {
 
 #[test]
 fn test_recent_requires_auth() {
-	let mut service = ServiceType::new(&unique_db_name!());
+	let mut service = ServiceType::new(&test_name!());
 	let request = service.request_builder().recent();
 	let response = service.fetch(&request);
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
@@ -141,7 +141,7 @@ fn test_recent_requires_auth() {
 
 #[test]
 fn test_recent() {
-	let mut service = ServiceType::new(&unique_db_name!());
+	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login_admin();
 	service.index();
@@ -156,7 +156,7 @@ fn test_recent() {
 
 #[test]
 fn test_search_requires_auth() {
-	let mut service = ServiceType::new(&unique_db_name!());
+	let mut service = ServiceType::new(&test_name!());
 	let request = service.request_builder().search("");
 	let response = service.fetch(&request);
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
@@ -164,7 +164,7 @@ fn test_search_requires_auth() {
 
 #[test]
 fn test_search_without_query() {
-	let mut service = ServiceType::new(&unique_db_name!());
+	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login();
 
@@ -175,7 +175,7 @@ fn test_search_without_query() {
 
 #[test]
 fn test_search_with_query() {
-	let mut service = ServiceType::new(&unique_db_name!());
+	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login_admin();
 	service.index();
