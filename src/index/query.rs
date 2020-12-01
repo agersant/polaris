@@ -11,6 +11,20 @@ use crate::db::{directories, songs, DB};
 use crate::index::*;
 use crate::vfs::VFSSource;
 
+#[derive(thiserror::Error, Debug)]
+pub enum QueryError {
+	#[error("VFS path not found")]
+	VFSPathNotFound,
+	#[error("Unspecified")]
+	Unspecified,
+}
+
+impl From<anyhow::Error> for QueryError {
+	fn from(_: anyhow::Error) -> Self {
+		QueryError::Unspecified
+	}
+}
+
 no_arg_sql_function!(
 	random,
 	sql_types::Integer,
@@ -47,7 +61,7 @@ fn virtualize_directory(vfs: &VFS, mut directory: Directory) -> Option<Directory
 	Some(directory)
 }
 
-pub fn browse<P>(db: &DB, virtual_path: P) -> Result<Vec<CollectionFile>>
+pub fn browse<P>(db: &DB, virtual_path: P) -> Result<Vec<CollectionFile>, QueryError>
 where
 	P: AsRef<Path>,
 {
@@ -59,20 +73,24 @@ where
 		// Browse top-level
 		let real_directories: Vec<Directory> = directories::table
 			.filter(directories::parent.is_null())
-			.load(&connection)?;
+			.load(&connection)
+			.map_err(anyhow::Error::new)?;
 		let virtual_directories = real_directories
 			.into_iter()
 			.filter_map(|s| virtualize_directory(&vfs, s));
 		output.extend(virtual_directories.map(CollectionFile::Directory));
 	} else {
 		// Browse sub-directory
-		let real_path = vfs.virtual_to_real(virtual_path)?;
+		let real_path = vfs
+			.virtual_to_real(virtual_path)
+			.map_err(|_| QueryError::VFSPathNotFound)?;
 		let real_path_string = real_path.as_path().to_string_lossy().into_owned();
 
 		let real_directories: Vec<Directory> = directories::table
 			.filter(directories::parent.eq(&real_path_string))
 			.order(sql::<sql_types::Bool>("path COLLATE NOCASE ASC"))
-			.load(&connection)?;
+			.load(&connection)
+			.map_err(anyhow::Error::new)?;
 		let virtual_directories = real_directories
 			.into_iter()
 			.filter_map(|s| virtualize_directory(&vfs, s));
@@ -81,7 +99,8 @@ where
 		let real_songs: Vec<Song> = songs::table
 			.filter(songs::parent.eq(&real_path_string))
 			.order(sql::<sql_types::Bool>("path COLLATE NOCASE ASC"))
-			.load(&connection)?;
+			.load(&connection)
+			.map_err(anyhow::Error::new)?;
 		let virtual_songs = real_songs
 			.into_iter()
 			.filter_map(|s| virtualize_song(&vfs, s));
@@ -91,7 +110,7 @@ where
 	Ok(output)
 }
 
-pub fn flatten<P>(db: &DB, virtual_path: P) -> Result<Vec<Song>>
+pub fn flatten<P>(db: &DB, virtual_path: P) -> Result<Vec<Song>, QueryError>
 where
 	P: AsRef<Path>,
 {
@@ -100,7 +119,9 @@ where
 	let connection = db.connect()?;
 
 	let real_songs: Vec<Song> = if virtual_path.as_ref().parent() != None {
-		let real_path = vfs.virtual_to_real(virtual_path)?;
+		let real_path = vfs
+			.virtual_to_real(virtual_path)
+			.map_err(|_| QueryError::VFSPathNotFound)?;
 		let song_path_filter = {
 			let mut path_buf = real_path.clone();
 			path_buf.push("%");
@@ -109,9 +130,13 @@ where
 		songs
 			.filter(path.like(&song_path_filter))
 			.order(path)
-			.load(&connection)?
+			.load(&connection)
+			.map_err(anyhow::Error::new)?
 	} else {
-		songs.order(path).load(&connection)?
+		songs
+			.order(path)
+			.load(&connection)
+			.map_err(anyhow::Error::new)?
 	};
 
 	let virtual_songs = real_songs

@@ -9,60 +9,49 @@ extern crate diesel_migrations;
 #[macro_use]
 extern crate flamer;
 
-#[cfg(unix)]
-use log::error;
-#[cfg(unix)]
-use sd_notify::{self, NotifyState};
-#[cfg(unix)]
-use std::io::prelude::*;
-#[cfg(unix)]
-use unix_daemonize::{daemonize_redirect, ChdirMode};
-
+#[cfg(all(text, feature = "service-actix"))]
 #[macro_use]
 extern crate lazy_static;
 
 use anyhow::*;
-use getopts::Options;
-use log::info;
+use log::{error, info};
 use simplelog::{LevelFilter, SimpleLogger, TermLogger, TerminalMode};
-use std::fs;
-use std::path::PathBuf;
 
+mod artwork;
 mod config;
 mod db;
 mod ddns;
 mod index;
 mod lastfm;
+mod options;
 mod playlist;
 mod service;
-
-mod artwork;
 mod thumbnails;
 mod ui;
 mod user;
 mod utils;
 mod vfs;
 
-fn log_config() -> simplelog::Config {
-	simplelog::ConfigBuilder::new()
-		.set_location_level(LevelFilter::Error)
-		.build()
-}
-
 #[cfg(unix)]
-fn daemonize(options: &getopts::Matches) -> Result<()> {
-	if options.opt_present("f") {
+fn daemonize(
+	foreground: bool,
+	pid_file_path: &Option<std::path::PathBuf>,
+	log_file_path: &Option<std::path::PathBuf>,
+) -> Result<()> {
+	use std::fs;
+	use std::io::Write;
+	use std::path::PathBuf;
+	use unix_daemonize::{daemonize_redirect, ChdirMode};
+
+	if foreground {
 		return Ok(());
 	}
 
-	let log_path = options
-		.opt_str("log")
-		.map(PathBuf::from)
-		.unwrap_or_else(|| {
-			let mut path = PathBuf::from(option_env!("POLARIS_LOG_DIR").unwrap_or("."));
-			path.push("polaris.log");
-			path
-		});
+	let log_path = log_file_path.clone().unwrap_or_else(|| {
+		let mut path = PathBuf::from(option_env!("POLARIS_LOG_DIR").unwrap_or("."));
+		path.push("polaris.log");
+		path
+	});
 	fs::create_dir_all(&log_path.parent().unwrap())?;
 
 	let pid = match daemonize_redirect(Some(&log_path), Some(&log_path), ChdirMode::NoChdir) {
@@ -70,14 +59,11 @@ fn daemonize(options: &getopts::Matches) -> Result<()> {
 		Err(e) => bail!("Daemonize error: {:#?}", e),
 	};
 
-	let pid_path = options
-		.opt_str("pid")
-		.map(PathBuf::from)
-		.unwrap_or_else(|| {
-			let mut path = PathBuf::from(option_env!("POLARIS_PID_DIR").unwrap_or("."));
-			path.push("polaris.pid");
-			path
-		});
+	let pid_path = pid_file_path.clone().unwrap_or_else(|| {
+		let mut path = PathBuf::from(option_env!("POLARIS_PID_DIR").unwrap_or("."));
+		path.push("polaris.pid");
+		path
+	});
 	fs::create_dir_all(&pid_path.parent().unwrap())?;
 
 	let mut file = fs::File::create(pid_path)?;
@@ -86,35 +72,9 @@ fn daemonize(options: &getopts::Matches) -> Result<()> {
 }
 
 #[cfg(unix)]
-fn init_log(log_level: LevelFilter, options: &getopts::Matches) -> Result<()> {
-	if options.opt_present("f") {
-		if let Err(e) = TermLogger::init(log_level, log_config(), TerminalMode::Stdout) {
-			println!("Error starting terminal logger: {}", e);
-		} else {
-			return Ok(());
-		}
-	}
-
-	if let Err(e) = SimpleLogger::init(log_level, log_config()) {
-		bail!("Error starting simple logger: {}", e);
-	}
-	Ok(())
-}
-
-#[cfg(windows)]
-fn init_log(log_level: LevelFilter, _: &getopts::Matches) -> Result<()> {
-	if TermLogger::init(log_level, log_config(), TerminalMode::Stdout).is_err() {
-		if let Err(e) = SimpleLogger::init(log_level, log_config()) {
-			bail!("Error starting simple logger: {}", e);
-		}
-	};
-	Ok(())
-}
-
-#[cfg(unix)]
 fn notify_ready() {
 	if let Ok(true) = sd_notify::booted() {
-		if let Err(e) = sd_notify::notify(true, &[NotifyState::Ready]) {
+		if let Err(e) = sd_notify::notify(true, &[sd_notify::NotifyState::Ready]) {
 			error!("Unable to send ready notification: {}", e);
 		}
 	}
@@ -123,151 +83,94 @@ fn notify_ready() {
 #[cfg(not(unix))]
 fn notify_ready() {}
 
+fn init_logging(cli_options: &options::CLIOptions) -> Result<()> {
+	let log_level = cli_options.log_level.unwrap_or(LevelFilter::Info);
+	let log_config = simplelog::ConfigBuilder::new()
+		.set_location_level(LevelFilter::Error)
+		.build();
+
+	#[cfg(unix)]
+	let prefer_term_logger = cli_options.foreground;
+
+	#[cfg(not(unix))]
+	let prefer_term_logger = true;
+
+	if prefer_term_logger {
+		match TermLogger::init(log_level, log_config.clone(), TerminalMode::Stdout) {
+			Ok(_) => return Ok(()),
+			Err(e) => error!("Error starting terminal logger: {}", e),
+		}
+	}
+	SimpleLogger::init(log_level, log_config)?;
+	Ok(())
+}
+
 fn main() -> Result<()> {
 	// Parse CLI options
 	let args: Vec<String> = std::env::args().collect();
-	let mut options = Options::new();
-	options.optopt("c", "config", "set the configuration file", "FILE");
-	options.optopt("p", "port", "set polaris to run on a custom port", "PORT");
-	options.optopt("d", "database", "set the path to index database", "FILE");
-	options.optopt("w", "web", "set the path to web client files", "DIRECTORY");
-	options.optopt("s", "swagger", "set the path to swagger files", "DIRECTORY");
-	options.optopt(
-		"",
-		"cache",
-		"set the directory to use as cache",
-		"DIRECTORY",
-	);
-	options.optopt("", "log", "set the path to the log file", "FILE");
-	options.optopt("", "pid", "set the path to the pid file", "FILE");
-	options.optopt(
-		"",
-		"log-level",
-		"set the log level to a value between 0 (off) and 3 (debug)",
-		"LEVEL",
-	);
+	let options_manager = options::OptionsManager::new();
+	let cli_options = options_manager.parse(&args[1..])?;
 
-	#[cfg(unix)]
-	options.optflag(
-		"f",
-		"foreground",
-		"run polaris in the foreground instead of daemonizing",
-	);
-
-	options.optflag("h", "help", "print this help menu");
-
-	let matches = options.parse(&args[1..])?;
-
-	if matches.opt_present("h") {
+	if cli_options.show_help {
 		let program = args[0].clone();
 		let brief = format!("Usage: {} [options]", program);
-		print!("{}", options.usage(&brief));
+		print!("{}", options_manager.usage(&brief));
 		return Ok(());
 	}
 
-	let log_level = match matches.opt_str("log-level").as_ref().map(String::as_ref) {
-		Some("0") => LevelFilter::Off,
-		Some("1") => LevelFilter::Error,
-		Some("2") => LevelFilter::Info,
-		Some("3") => LevelFilter::Debug,
-		_ => LevelFilter::Info,
-	};
-
-	init_log(log_level, &matches)?;
-
 	#[cfg(unix)]
-	daemonize(&matches)?;
+	daemonize(
+		cli_options.foreground,
+		&cli_options.pid_file_path,
+		&cli_options.log_file_path,
+	)?;
 
-	// Init DB
-	let db_path = matches.opt_str("d").map(PathBuf::from).unwrap_or_else(|| {
-		let mut path = PathBuf::from(option_env!("POLARIS_DB_DIR").unwrap_or("."));
-		path.push("db.sqlite");
-		path
-	});
-	fs::create_dir_all(&db_path.parent().unwrap())?;
-	info!("Database file path is {}", db_path.display());
-	let db = db::DB::new(&db_path)?;
+	init_logging(&cli_options)?;
 
-	// Parse config
-	if let Some(config_path) = matches.opt_str("c").map(PathBuf::from) {
-		let config = config::parse_toml_file(&config_path)?;
-		info!("Applying configuration from {}", config_path.display());
-		config::amend(&db, &config)?;
+	// Create service context
+	let mut context_builder = service::ContextBuilder::new();
+	if let Some(port) = cli_options.port {
+		context_builder = context_builder.port(port);
 	}
-	let auth_secret = config::get_auth_secret(&db)?;
+	if let Some(path) = cli_options.config_file_path {
+		info!("Config file location is {:#?}", path);
+		context_builder = context_builder.config_file_path(path);
+	}
+	if let Some(path) = cli_options.database_file_path {
+		context_builder = context_builder.database_file_path(path);
+	}
+	if let Some(path) = cli_options.web_dir_path {
+		context_builder = context_builder.web_dir_path(path);
+	}
+	if let Some(path) = cli_options.swagger_dir_path {
+		context_builder = context_builder.swagger_dir_path(path);
+	}
+	if let Some(path) = cli_options.cache_dir_path {
+		context_builder = context_builder.cache_dir_path(path);
+	}
 
-	// Locate web client files
-	let web_dir_path = match matches
-		.opt_str("w")
-		.or(option_env!("POLARIS_WEB_DIR").map(String::from))
-	{
-		Some(s) => PathBuf::from(s),
-		None => [".", "web"].iter().collect(),
-	};
-	fs::create_dir_all(&web_dir_path)?;
-	info!("Static files location is {}", web_dir_path.display());
-
-	// Locate swagger files
-	let swagger_dir_path = match matches
-		.opt_str("s")
-		.or(option_env!("POLARIS_SWAGGER_DIR").map(String::from))
-	{
-		Some(s) => PathBuf::from(s),
-		None => [".", "docs", "swagger"].iter().collect(),
-	};
-	fs::create_dir_all(&swagger_dir_path)?;
-	info!("Swagger files location is {}", swagger_dir_path.display());
-
-	// Initialize thumbnails manager
-	let mut thumbnails_path = PathBuf::from(
-		matches
-			.opt_str("cache")
-			.or(option_env!("POLARIS_CACHE_DIR").map(String::from))
-			.unwrap_or(".".to_owned()),
+	let context = context_builder.build()?;
+	info!("Database file location is {:#?}", context.db.location());
+	info!("Web client files location is {:#?}", context.web_dir_path);
+	info!("Swagger files location is {:#?}", context.swagger_dir_path);
+	info!(
+		"Thumbnails files location is {:#?}",
+		context.thumbnails_manager.get_directory()
 	);
-	thumbnails_path.push("thumbnails");
-	fs::create_dir_all(&thumbnails_path)?;
-	info!("Thumbnails location is {}", thumbnails_path.display());
-	let thumbnails_manager = thumbnails::ThumbnailsManager::new(&thumbnails_path);
 
-	// Endpoints
-	let api_url = "/api";
-	let swagger_url = "/swagger";
-	let web_url = "/";
-	info!("Mounting API on {}", api_url);
-	info!("Mounting web client files on {}", web_url);
-	info!("Mounting swagger files on {}", swagger_url);
-
-	// Init index
-	let index = index::builder(db.clone()).periodic_updates(true).build();
+	// Begin collection scans
+	context.index.begin_periodic_updates();
 
 	// Start DDNS updates
-	let db_ddns = db.clone();
+	let db_ddns = context.db.clone();
 	std::thread::spawn(move || {
 		ddns::run(&db_ddns);
 	});
 
 	// Start server
 	info!("Starting up server");
-	let port: u16 = matches
-		.opt_str("p")
-		.unwrap_or_else(|| "5050".to_owned())
-		.parse()
-		.with_context(|| "Invalid port number")?;
-	let db_server = db.clone();
 	std::thread::spawn(move || {
-		let _ = service::server::run(
-			port,
-			&auth_secret,
-			api_url,
-			web_url,
-			&web_dir_path,
-			swagger_url,
-			&swagger_dir_path,
-			db_server,
-			index,
-			thumbnails_manager,
-		);
+		let _ = service::run(context);
 	});
 
 	// Send readiness notification

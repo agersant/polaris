@@ -1,5 +1,5 @@
 use actix_files::NamedFile;
-use actix_web::error::{ErrorInternalServerError, ErrorUnauthorized};
+use actix_web::error::{ErrorForbidden, ErrorInternalServerError, ErrorUnauthorized};
 use actix_web::{
 	delete, dev::HttpResponseBuilder, dev::Payload, get, http::StatusCode, post, put, web,
 	web::Data, web::Json, web::ServiceConfig, FromRequest, HttpMessage, HttpRequest, HttpResponse,
@@ -19,7 +19,7 @@ use crate::db::DB;
 use crate::index::{self, Index};
 use crate::lastfm;
 use crate::playlist;
-use crate::service::{constants::*, dto, error::*};
+use crate::service::{dto, error::*};
 use crate::thumbnails::{ThumbnailOptions, ThumbnailsManager};
 use crate::user;
 use crate::vfs::VFSSource;
@@ -38,13 +38,10 @@ pub fn make_config() -> impl FnOnce(&mut ServiceConfig) + Clone {
 			.service(put_preferences)
 			.service(trigger_index)
 			.service(login)
-			.service(browse_root)
 			.service(browse)
-			.service(flatten_root)
 			.service(flatten)
 			.service(random)
 			.service(recent)
-			.service(search_root)
 			.service(search)
 			.service(audio)
 			.service(thumbnail)
@@ -68,6 +65,9 @@ impl ResponseError for APIError {
 			APIError::ThumbnailFileIOError => StatusCode::NOT_FOUND,
 			APIError::LastFMLinkContentBase64DecodeError => StatusCode::BAD_REQUEST,
 			APIError::LastFMLinkContentEncodingError => StatusCode::BAD_REQUEST,
+			APIError::UserNotFound => StatusCode::NOT_FOUND,
+			APIError::PlaylistNotFound => StatusCode::NOT_FOUND,
+			APIError::VFSPathNotFound => StatusCode::NOT_FOUND,
 			APIError::Unspecified => StatusCode::INTERNAL_SERVER_ERROR,
 		}
 	}
@@ -89,7 +89,7 @@ impl FromRequest for Auth {
 			None => return Box::pin(err(ErrorInternalServerError(APIError::Unspecified))),
 		};
 
-		if let Some(session_cookie) = request.cookie(COOKIE_SESSION) {
+		if let Some(session_cookie) = request.cookie(dto::COOKIE_SESSION) {
 			let exists = match user::exists(&db, session_cookie.value()) {
 				Ok(e) => e,
 				Err(_) => return Box::pin(err(ErrorInternalServerError(APIError::Unspecified))),
@@ -146,7 +146,7 @@ impl FromRequest for AdminRights {
 			match user::is_admin(&db, &auth.username) {
 				Err(_) => Err(ErrorInternalServerError(APIError::Unspecified)),
 				Ok(true) => Ok(AdminRights { auth: Some(auth) }),
-				Ok(false) => Err(ErrorUnauthorized(APIError::Unspecified)),
+				Ok(false) => Err(ErrorForbidden(APIError::Unspecified)),
 			}
 		})
 	}
@@ -156,20 +156,20 @@ impl FromRequest for AdminRights {
 fn add_session_cookies(builder: &mut HttpResponseBuilder, username: &str, is_admin: bool) -> () {
 	let duration = time::Duration::days(1);
 
-	let session_cookie = Cookie::build(COOKIE_SESSION, username.to_owned())
+	let session_cookie = Cookie::build(dto::COOKIE_SESSION, username.to_owned())
 		.same_site(cookie::SameSite::Lax)
 		.http_only(true)
 		.max_age(duration)
 		.finish();
 
-	let username_cookie = Cookie::build(COOKIE_USERNAME, username.to_owned())
+	let username_cookie = Cookie::build(dto::COOKIE_USERNAME, username.to_owned())
 		.same_site(cookie::SameSite::Lax)
 		.http_only(false)
 		.max_age(duration)
 		.path("/")
 		.finish();
 
-	let is_admin_cookie = Cookie::build(COOKIE_ADMIN, format!("{}", is_admin))
+	let is_admin_cookie = Cookie::build(dto::COOKIE_ADMIN, format!("{}", is_admin))
 		.same_site(cookie::SameSite::Lax)
 		.http_only(false)
 		.max_age(duration)
@@ -184,8 +184,8 @@ fn add_session_cookies(builder: &mut HttpResponseBuilder, username: &str, is_adm
 #[get("/version")]
 async fn version() -> Json<dto::Version> {
 	let current_version = dto::Version {
-		major: API_MAJOR_VERSION,
-		minor: API_MINOR_VERSION,
+		major: dto::API_MAJOR_VERSION,
+		minor: dto::API_MINOR_VERSION,
 	};
 	Json(current_version)
 }
@@ -266,15 +266,6 @@ async fn login(
 	Ok(response.finish())
 }
 
-#[get("/browse")]
-async fn browse_root(
-	db: Data<DB>,
-	_auth: Auth,
-) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
-	let result = index::browse(&db, &PathBuf::new())?;
-	Ok(Json(result))
-}
-
 #[get("/browse/{path:.*}")]
 async fn browse(
 	db: Data<DB>,
@@ -282,12 +273,6 @@ async fn browse(
 	path: web::Path<PathBuf>,
 ) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
 	let result = index::browse(&db, &(path.0).into() as &PathBuf)?;
-	Ok(Json(result))
-}
-
-#[get("/flatten")]
-async fn flatten_root(db: Data<DB>, _auth: Auth) -> Result<Json<Vec<index::Song>>, APIError> {
-	let result = index::flatten(&db, &PathBuf::new())?;
 	Ok(Json(result))
 }
 
@@ -313,16 +298,7 @@ async fn recent(db: Data<DB>, _auth: Auth) -> Result<Json<Vec<index::Directory>>
 	Ok(Json(result))
 }
 
-#[get("/search")]
-async fn search_root(
-	db: Data<DB>,
-	_auth: Auth,
-) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
-	let result = index::search(&db, "")?;
-	Ok(Json(result))
-}
-
-#[get("/search/{query}")]
+#[get("/search/{query:.*}")]
 async fn search(
 	db: Data<DB>,
 	_auth: Auth,
@@ -335,7 +311,9 @@ async fn search(
 #[get("/audio/{path:.*}")]
 async fn audio(db: Data<DB>, _auth: Auth, path: web::Path<PathBuf>) -> Result<NamedFile, APIError> {
 	let vfs = db.get_vfs()?;
-	let real_path = vfs.virtual_to_real(&(path.0).into() as &PathBuf)?;
+	let real_path = vfs
+		.virtual_to_real(&(path.0).into() as &PathBuf)
+		.map_err(|_| APIError::VFSPathNotFound)?;
 	let named_file = NamedFile::open(&real_path).map_err(|_| APIError::AudioFileIOError)?;
 	Ok(named_file)
 }
@@ -349,7 +327,9 @@ async fn thumbnail(
 	options_input: web::Query<dto::ThumbnailOptions>,
 ) -> Result<NamedFile, APIError> {
 	let vfs = db.get_vfs()?;
-	let image_path = vfs.virtual_to_real(&(path.0).into() as &PathBuf)?;
+	let image_path = vfs
+		.virtual_to_real(&(path.0).into() as &PathBuf)
+		.map_err(|_| APIError::VFSPathNotFound)?;
 	let mut options = ThumbnailOptions::default();
 	options.pad_to_square = options_input.pad.unwrap_or(options.pad_to_square);
 	let thumbnail_path = thumbnails_manager.get_thumbnail(&image_path, &options)?;
@@ -363,6 +343,7 @@ async fn list_playlists(
 	db: Data<DB>,
 	auth: Auth,
 ) -> Result<Json<Vec<dto::ListPlaylistsEntry>>, APIError> {
+	dbg!("AA");
 	let playlist_names = playlist::list_playlists(&auth.username, &db)?;
 	let playlists: Vec<dto::ListPlaylistsEntry> = playlist_names
 		.into_iter()

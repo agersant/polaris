@@ -1,164 +1,112 @@
-use http::response::{Builder, Response};
-use http::{HeaderMap, HeaderValue};
+use http::{header::HeaderName, method::Method, response::Builder, HeaderValue, Request, Response};
 use rocket;
-use rocket::local::Client;
+use rocket::local::{Client, LocalResponse};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::fs;
-use std::ops::DerefMut;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use super::server;
-use crate::db::DB;
-use crate::index;
-use crate::service::test::TestService;
-use crate::thumbnails::ThumbnailsManager;
-
-pub struct RocketResponse<'r, 's> {
-	response: &'s mut rocket::Response<'r>,
-}
-
-impl<'r, 's> RocketResponse<'r, 's> {
-	fn builder(&self) -> Builder {
-		let mut builder = Response::builder().status(self.response.status().code);
-		for header in self.response.headers().iter() {
-			builder = builder.header(header.name(), header.value());
-		}
-		builder
-	}
-
-	fn to_void(&self) -> Response<()> {
-		let builder = self.builder();
-		builder.body(()).unwrap()
-	}
-
-	fn to_bytes(&mut self) -> Response<Vec<u8>> {
-		let body = self.response.body().unwrap();
-		let body = body.into_bytes().unwrap();
-		let builder = self.builder();
-		builder.body(body).unwrap()
-	}
-
-	fn to_object<T: DeserializeOwned>(&mut self) -> Response<T> {
-		let body = self.response.body_string().unwrap();
-		let body = serde_json::from_str(&body).unwrap();
-		let builder = self.builder();
-		builder.body(body).unwrap()
-	}
-}
+use crate::service;
+use crate::service::test::{protocol, TestService};
 
 pub struct RocketTestService {
 	client: Client,
+	request_builder: protocol::RequestBuilder,
 }
 
 pub type ServiceType = RocketTestService;
 
-impl TestService for RocketTestService {
-	fn new(db_name: &str) -> Self {
-		let mut db_path = PathBuf::new();
-		db_path.push("test-output");
-		fs::create_dir_all(&db_path).unwrap();
+impl RocketTestService {
+	fn process_internal<T: Serialize>(&mut self, request: &Request<T>) -> (LocalResponse, Builder) {
+		let rocket_response = {
+			let url = request.uri().to_string();
+			let mut rocket_request = match *request.method() {
+				Method::GET => self.client.get(url),
+				Method::POST => self.client.post(url),
+				Method::PUT => self.client.put(url),
+				Method::DELETE => self.client.delete(url),
+				_ => unimplemented!(),
+			};
 
-		db_path.push(format!("{}.sqlite", db_name));
+			for (name, value) in request.headers() {
+				rocket_request.add_header(rocket::http::Header::new(
+					name.as_str().to_owned(),
+					value.to_str().unwrap().to_owned(),
+				));
+			}
+
+			let payload = request.body();
+			let body = serde_json::to_string(payload).unwrap();
+			rocket_request.set_body(body);
+
+			let content_type = rocket::http::ContentType::JSON;
+			rocket_request.add_header(content_type);
+
+			rocket_request.dispatch()
+		};
+
+		let mut builder = Response::builder().status(rocket_response.status().code);
+		let headers = builder.headers_mut().unwrap();
+		for header in rocket_response.headers().iter() {
+			headers.append(
+				HeaderName::from_bytes(header.name.as_str().as_bytes()).unwrap(),
+				HeaderValue::from_str(header.value.as_ref()).unwrap(),
+			);
+		}
+
+		(rocket_response, builder)
+	}
+}
+
+impl TestService for RocketTestService {
+	fn new(test_name: &str) -> Self {
+		let mut db_path: PathBuf = ["test-output", test_name].iter().collect();
+		fs::create_dir_all(&db_path).unwrap();
+		db_path.push("db.sqlite");
+
 		if db_path.exists() {
 			fs::remove_file(&db_path).unwrap();
 		}
 
-		let db = DB::new(&db_path).unwrap();
+		let context = service::ContextBuilder::new()
+			.database_file_path(db_path)
+			.web_dir_path(Path::new("web").into())
+			.swagger_dir_path(["docs", "swagger"].iter().collect())
+			.cache_dir_path(["test-output", test_name].iter().collect())
+			.build()
+			.unwrap();
 
-		let web_dir_path = PathBuf::from("web");
-		let mut swagger_dir_path = PathBuf::from("docs");
-		swagger_dir_path.push("swagger");
-		let index = index::builder(db.clone()).periodic_updates(false).build();
-
-		let mut thumbnails_path = PathBuf::new();
-		thumbnails_path.push("test-output");
-		thumbnails_path.push("thumbnails");
-		thumbnails_path.push(db_name);
-		let thumbnails_manager = ThumbnailsManager::new(thumbnails_path.as_path());
-
-		let auth_secret: [u8; 32] = [0; 32];
-
-		let server = server::get_server(
-			5050,
-			&auth_secret,
-			"/api",
-			"/",
-			&web_dir_path,
-			"/swagger",
-			&swagger_dir_path,
-			db,
-			index,
-			thumbnails_manager,
-		)
-		.unwrap();
+		let server = service::get_server(context).unwrap();
 		let client = Client::new(server).unwrap();
-		RocketTestService { client }
+		let request_builder = protocol::RequestBuilder::new();
+		RocketTestService {
+			request_builder,
+			client,
+		}
 	}
 
-	fn get(&mut self, url: &str) -> Response<()> {
-		let mut response = self.client.get(url).dispatch();
-		RocketResponse {
-			response: response.deref_mut(),
-		}
-		.to_void()
+	fn request_builder(&self) -> &protocol::RequestBuilder {
+		&self.request_builder
 	}
 
-	fn get_bytes(&mut self, url: &str, headers: &HeaderMap<HeaderValue>) -> Response<Vec<u8>> {
-		let mut request = self.client.get(url);
-		for (name, value) in headers.iter() {
-			request.add_header(rocket::http::Header::new(
-				name.as_str().to_owned(),
-				value.to_str().unwrap().to_owned(),
-			))
-		}
-		let mut response = request.dispatch();
-		RocketResponse {
-			response: response.deref_mut(),
-		}
-		.to_bytes()
+	fn fetch<T: Serialize>(&mut self, request: &Request<T>) -> Response<()> {
+		let (_, builder) = self.process_internal(request);
+		builder.body(()).unwrap()
 	}
 
-	fn post(&mut self, url: &str) -> Response<()> {
-		let mut response = self.client.post(url).dispatch();
-		RocketResponse {
-			response: response.deref_mut(),
-		}
-		.to_void()
+	fn fetch_bytes<T: Serialize>(&mut self, request: &Request<T>) -> Response<Vec<u8>> {
+		let (mut rocket_response, builder) = self.process_internal(request);
+		let body = rocket_response.body().unwrap().into_bytes().unwrap();
+		builder.body(body).unwrap()
 	}
 
-	fn delete(&mut self, url: &str) -> Response<()> {
-		let mut response = self.client.delete(url).dispatch();
-		RocketResponse {
-			response: response.deref_mut(),
-		}
-		.to_void()
-	}
-
-	fn get_json<T: DeserializeOwned>(&mut self, url: &str) -> Response<T> {
-		let mut response = self.client.get(url).dispatch();
-		RocketResponse {
-			response: response.deref_mut(),
-		}
-		.to_object()
-	}
-
-	fn put_json<T: Serialize>(&mut self, url: &str, payload: &T) -> Response<()> {
-		let client = &self.client;
-		let body = serde_json::to_string(payload).unwrap();
-		let mut response = client.put(url).body(&body).dispatch();
-		RocketResponse {
-			response: response.deref_mut(),
-		}
-		.to_void()
-	}
-
-	fn post_json<T: Serialize>(&mut self, url: &str, payload: &T) -> Response<()> {
-		let body = serde_json::to_string(payload).unwrap();
-		let mut response = self.client.post(url).body(&body).dispatch();
-		RocketResponse {
-			response: response.deref_mut(),
-		}
-		.to_void()
+	fn fetch_json<T: Serialize, U: DeserializeOwned>(
+		&mut self,
+		request: &Request<T>,
+	) -> Response<U> {
+		let (mut rocket_response, builder) = self.process_internal(request);
+		let body = rocket_response.body_string().unwrap();
+		let body = serde_json::from_str(&body).unwrap();
+		builder.body(body).unwrap()
 	}
 }

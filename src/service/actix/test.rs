@@ -1,21 +1,25 @@
-use actix_web::{client::Client, rt::System, rt::SystemRunner, App, HttpServer};
-use http::response::Response;
-use http::{HeaderMap, HeaderValue};
+use actix_web::{
+	client::Client, client::ClientResponse, rt::System, rt::SystemRunner, App, HttpServer,
+};
+use cookie::Cookie;
+use http::{header, response::Builder, Request, Response};
+use lazy_static::lazy_static;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use std::collections::HashMap;
 use std::fs;
-use std::path::PathBuf;
+use std::ops::Deref;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::thread;
 
-use super::server;
-use crate::db::DB;
-use crate::index;
-use crate::service::test::TestService;
-use crate::thumbnails::ThumbnailsManager;
+use crate::service::actix::*;
+use crate::service::test::{protocol, TestService};
 
 lazy_static! {
-	static ref NEXT_PORT_NUMBER: Mutex<u16> = Mutex::new(5000);
+	 // Hundreds of consecutive unclaimned ports in the 17_000+ range
+	// https://en.wikipedia.org/wiki/List_of_TCP_and_UDP_port_numbers#Well-known_ports
+	static ref NEXT_PORT_NUMBER: Mutex<u16> = Mutex::new(17_000);
 }
 
 fn get_next_port_number() -> u16 {
@@ -26,187 +30,175 @@ fn get_next_port_number() -> u16 {
 }
 
 pub struct ActixTestService {
-	port: u16,
 	system_runner: SystemRunner,
-	client: Client,
-	// TODO extract cookies after each request and send them back (ugh)
+	cookies: HashMap<String, String>, // TODO not ideal
+	request_builder: protocol::RequestBuilder,
 }
 
 pub type ServiceType = ActixTestService;
 
 impl ActixTestService {
-	fn build_url(&self, endpoint: &str) -> String {
-		format!("http://localhost:{}{}", self.port, endpoint)
+	fn make_client(&mut self) -> Client {
+		let cookies = self.cookies.clone();
+		let (tx, rx) = std::sync::mpsc::channel();
+		self.system_runner.block_on(async move {
+			let mut client_builder = Client::builder();
+			let cookies_value = cookies
+				.iter()
+				.map(|(name, value)| format!("{}={}", name, value))
+				.collect::<Vec<_>>()
+				.join("; ");
+			client_builder = client_builder.header(header::COOKIE, cookies_value);
+			tx.send(client_builder.finish()).unwrap();
+		});
+		rx.recv().unwrap()
+	}
+
+	fn build_response<T>(&mut self, actix_response: &ClientResponse<T>) -> Builder {
+		let mut builder = Response::builder().status(actix_response.status());
+		let headers = builder.headers_mut().unwrap();
+		for (name, value) in actix_response.headers().iter() {
+			headers.append(name, value.clone());
+		}
+		builder
+	}
+
+	fn update_cookies<T>(&mut self, actix_response: &ClientResponse<T>) {
+		let cookies = actix_response.headers().get_all(header::SET_COOKIE);
+		for raw_cookie in cookies {
+			let cookie = Cookie::parse(raw_cookie.to_str().unwrap()).unwrap();
+			self.cookies
+				.insert(cookie.name().to_owned(), cookie.value().to_owned());
+		}
 	}
 }
 
 impl TestService for ActixTestService {
-	fn new(db_name: &str) -> Self {
-		let port = get_next_port_number();
-		let address = format!("localhost:{}", port);
-
-		let mut db_path = PathBuf::new();
-		db_path.push("test-output");
+	fn new(test_name: &str) -> Self {
+		let mut db_path: PathBuf = ["test-output", test_name].iter().collect();
 		fs::create_dir_all(&db_path).unwrap();
+		db_path.push("db.sqlite");
 
-		db_path.push(format!("{}.sqlite", db_name));
 		if db_path.exists() {
 			fs::remove_file(&db_path).unwrap();
 		}
 
-		let db = DB::new(&db_path).unwrap();
+		let context = service::ContextBuilder::new()
+			.port(get_next_port_number())
+			.database_file_path(db_path)
+			.web_dir_path(Path::new("web").into())
+			.swagger_dir_path(["docs", "swagger"].iter().collect())
+			.cache_dir_path(["test-output", test_name].iter().collect())
+			.build()
+			.unwrap();
 
-		let web_dir_path = PathBuf::from("web");
-		let mut swagger_dir_path = PathBuf::from("docs");
-		swagger_dir_path.push("swagger");
-		let index = index::builder(db.clone()).periodic_updates(false).build();
+		let address = format!("localhost:{}", context.port);
 
-		let mut thumbnails_path = PathBuf::new();
-		thumbnails_path.push("test-output");
-		thumbnails_path.push("thumbnails");
-		thumbnails_path.push(db_name);
-		let thumbnails_manager = ThumbnailsManager::new(thumbnails_path.as_path());
-
-		let auth_secret: [u8; 32] = [0; 32];
-
+		let address_server = address.clone();
 		thread::spawn(move || {
 			let system_runner = System::new("http-server");
 			HttpServer::new(move || {
-				let config = server::make_config(
-					Vec::from(auth_secret.clone()),
-					"/api".to_owned(),
-					"/".to_owned(),
-					web_dir_path.clone(),
-					"/swagger".to_owned(),
-					swagger_dir_path.clone(),
-					db.clone(),
-					index.clone(),
-					thumbnails_manager.clone(),
-				);
+				let config = make_config(context.clone());
 				App::new().configure(config)
 			})
-			.bind(address)
+			.bind(address_server)
 			.unwrap()
 			.run();
 			system_runner.run().unwrap();
 		});
 
-		let (tx, rx) = std::sync::mpsc::channel();
-		let mut system_runner = System::new("main");
-		system_runner.block_on(async move {
-			tx.send(Client::default()).unwrap();
-		});
-		let client = rx.recv().unwrap();
+		let system_runner = System::new("main");
+		let request_builder = protocol::RequestBuilder::new(format!("http://{}", address));
 
 		ActixTestService {
+			cookies: HashMap::new(),
 			system_runner,
-			client,
-			port,
+			request_builder,
 		}
 	}
 
-	fn get(&mut self, url: &str) -> Response<()> {
-		let url = self.build_url(url);
-		let client = self.client.clone();
-		self.system_runner.block_on(async move {
-			let request = client.get(url).send();
-			let client_response = request.await.unwrap();
-			let mut response = Response::builder().status(client_response.status().as_u16());
-			for (name, value) in client_response.headers() {
-				response = response.header(name, value);
-			}
-			response.body(()).unwrap()
-		})
+	fn request_builder(&self) -> &protocol::RequestBuilder {
+		&self.request_builder
 	}
 
-	fn get_bytes(&mut self, url: &str, headers: &HeaderMap<HeaderValue>) -> Response<Vec<u8>> {
-		let url = self.build_url(url);
-		let headers = headers.clone();
-		let client = self.client.clone();
-		self.system_runner.block_on(async move {
-			let mut request = client.get(url);
-			for (name, value) in headers.iter() {
-				request.headers_mut().insert(name.clone(), value.clone())
+	// TODO Avoid copy-pasting most of this function's body three times
+	fn fetch<T: Serialize + Clone + 'static>(&mut self, request: &Request<T>) -> Response<()> {
+		let client = self.make_client();
+		let url = request.uri().to_string();
+		let method = request.method().clone();
+		let headers = request.headers().clone();
+		let body = request.body().clone();
+
+		let actix_response = self.system_runner.block_on(async move {
+			let mut actix_request = client.request(method.clone(), url);
+			for (name, value) in &headers {
+				actix_request = actix_request.set_header(name, value.clone());
 			}
-			let request = request.send();
-			let mut client_response = request.await.unwrap();
-			let body = client_response.body().await.unwrap();
-			let mut response = Response::builder().status(client_response.status().as_u16());
-			for (name, value) in client_response.headers() {
-				response = response.header(name, value);
-			}
-			response.body(body[..].into()).unwrap()
-		})
+			actix_request.send_json(&body).await.unwrap()
+		});
+
+		self.update_cookies(&actix_response);
+
+		let response = self.build_response(&actix_response);
+		response.body(()).unwrap()
 	}
 
-	fn post(&mut self, url: &str) -> Response<()> {
-		let url = self.build_url(url);
-		let client = self.client.clone();
-		self.system_runner.block_on(async move {
-			let request = client.post(url).send();
-			let client_response = request.await.unwrap();
-			let mut response = Response::builder().status(client_response.status().as_u16());
-			for (name, value) in client_response.headers() {
-				response = response.header(name, value);
+	// TODO Avoid copy-pasting most of this function's body three times
+	fn fetch_bytes<T: Serialize + Clone + 'static>(
+		&mut self,
+		request: &Request<T>,
+	) -> Response<Vec<u8>> {
+		let client = self.make_client();
+		let url = request.uri().to_string();
+		let method = request.method().clone();
+		let headers = request.headers().clone();
+		let body = request.body().clone();
+
+		let mut actix_response = self.system_runner.block_on(async move {
+			let mut actix_request = client.request(method.clone(), url);
+			for (name, value) in &headers {
+				actix_request = actix_request.set_header(name, value.clone());
 			}
-			response.body(()).unwrap()
-		})
+			actix_request.send_json(&body).await.unwrap()
+		});
+		assert!(actix_response.status().is_success());
+
+		self.update_cookies(&actix_response);
+
+		let response = self.build_response(&actix_response);
+		let body = self
+			.system_runner
+			.block_on(async move { actix_response.body().await.unwrap() });
+		response.body(body.deref().to_owned()).unwrap()
 	}
 
-	fn delete(&mut self, url: &str) -> Response<()> {
-		let url = self.build_url(url);
-		let client = self.client.clone();
-		self.system_runner.block_on(async move {
-			let request = client.delete(url).send();
-			let client_response = request.await.unwrap();
-			let mut response = Response::builder().status(client_response.status().as_u16());
-			for (name, value) in client_response.headers() {
-				response = response.header(name, value);
-			}
-			response.body(()).unwrap()
-		})
-	}
+	// TODO Avoid copy-pasting most of this function's body three times
+	fn fetch_json<T: Serialize + Clone + 'static, U: DeserializeOwned>(
+		&mut self,
+		request: &Request<T>,
+	) -> Response<U> {
+		let client = self.make_client();
+		let url = request.uri().to_string();
+		let method = request.method().clone();
+		let headers = request.headers().clone();
+		let body = request.body().clone();
 
-	fn get_json<T: DeserializeOwned>(&mut self, url: &str) -> Response<T> {
-		let url = self.build_url(url);
-		let client = self.client.clone();
-		self.system_runner.block_on(async move {
-			let request = client.get(url).send();
-			let mut client_response = request.await.unwrap();
-			let body = client_response.json().await.unwrap();
-			let mut response = Response::builder().status(client_response.status().as_u16());
-			for (name, value) in client_response.headers() {
-				response = response.header(name, value);
+		let mut actix_response = self.system_runner.block_on(async move {
+			let mut actix_request = client.request(method.clone(), url);
+			for (name, value) in &headers {
+				actix_request = actix_request.set_header(name, value.clone());
 			}
-			response.body(body).unwrap()
-		})
-	}
+			actix_request.send_json(&body).await.unwrap()
+		});
+		assert!(actix_response.status().is_success());
 
-	fn put_json<T: Serialize + 'static>(&mut self, url: &str, payload: T) -> Response<()> {
-		let url = self.build_url(url);
-		let client = self.client.clone();
-		self.system_runner.block_on(async move {
-			let request = client.put(url).send_json(&payload);
-			let client_response = request.await.unwrap();
-			let mut response = Response::builder().status(client_response.status().as_u16());
-			for (name, value) in client_response.headers() {
-				response = response.header(name, value);
-			}
-			response.body(()).unwrap()
-		})
-	}
+		self.update_cookies(&actix_response);
 
-	fn post_json<T: Serialize + 'static>(&mut self, url: &str, payload: T) -> Response<()> {
-		let url = self.build_url(url);
-		let client = self.client.clone();
-		self.system_runner.block_on(async move {
-			let request = client.post(url).send_json(&payload);
-			let client_response = request.await.unwrap();
-			let mut response = Response::builder().status(client_response.status().as_u16());
-			for (name, value) in client_response.headers() {
-				response = response.header(name, value);
-			}
-			response.body(()).unwrap()
-		})
+		let response = self.build_response(&actix_response);
+		let body = self
+			.system_runner
+			.block_on(async move { actix_response.body().await.unwrap() });
+		let body = serde_json::from_slice(&body).unwrap();
+		response.body(body).unwrap()
 	}
 }

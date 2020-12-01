@@ -15,11 +15,9 @@ use time::Duration;
 use super::serve;
 use crate::config::{self, Config, Preferences};
 use crate::db::DB;
-use crate::index;
-use crate::index::Index;
+use crate::index::{self, Index, QueryError};
 use crate::lastfm;
-use crate::playlist;
-use crate::service::constants::*;
+use crate::playlist::{self, PlaylistError};
 use crate::service::dto;
 use crate::service::error::APIError;
 use crate::thumbnails::{ThumbnailOptions, ThumbnailsManager};
@@ -62,6 +60,13 @@ impl<'r> rocket::response::Responder<'r> for APIError {
 		let status = match self {
 			APIError::IncorrectCredentials => rocket::http::Status::Unauthorized,
 			APIError::OwnAdminPrivilegeRemoval => rocket::http::Status::Conflict,
+			APIError::VFSPathNotFound => rocket::http::Status::NotFound,
+			APIError::UserNotFound => rocket::http::Status::NotFound,
+			APIError::PlaylistNotFound => rocket::http::Status::NotFound,
+			APIError::LastFMLinkContentBase64DecodeError => rocket::http::Status::BadRequest,
+			APIError::LastFMLinkContentEncodingError => rocket::http::Status::BadRequest,
+			APIError::AudioFileIOError => rocket::http::Status::InternalServerError,
+			APIError::ThumbnailFileIOError => rocket::http::Status::InternalServerError,
 			APIError::Unspecified => rocket::http::Status::InternalServerError,
 		};
 		rocket::response::Response::build().status(status).ok()
@@ -75,20 +80,20 @@ struct Auth {
 fn add_session_cookies(cookies: &mut Cookies, username: &str, is_admin: bool) -> () {
 	let duration = Duration::days(1);
 
-	let session_cookie = Cookie::build(COOKIE_SESSION, username.to_owned())
+	let session_cookie = Cookie::build(dto::COOKIE_SESSION, username.to_owned())
 		.same_site(rocket::http::SameSite::Lax)
 		.http_only(true)
 		.max_age(duration)
 		.finish();
 
-	let username_cookie = Cookie::build(COOKIE_USERNAME, username.to_owned())
+	let username_cookie = Cookie::build(dto::COOKIE_USERNAME, username.to_owned())
 		.same_site(rocket::http::SameSite::Lax)
 		.http_only(false)
 		.max_age(duration)
 		.path("/")
 		.finish();
 
-	let is_admin_cookie = Cookie::build(COOKIE_ADMIN, format!("{}", is_admin))
+	let is_admin_cookie = Cookie::build(dto::COOKIE_ADMIN, format!("{}", is_admin))
 		.same_site(rocket::http::SameSite::Lax)
 		.http_only(false)
 		.max_age(duration)
@@ -110,7 +115,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for Auth {
 			_ => return Outcome::Failure((Status::InternalServerError, ())),
 		};
 
-		if let Some(u) = cookies.get_private(COOKIE_SESSION) {
+		if let Some(u) = cookies.get_private(dto::COOKIE_SESSION) {
 			let exists = match user::exists(db.deref().deref(), u.value()) {
 				Ok(e) => e,
 				Err(_) => return Outcome::Failure((Status::InternalServerError, ())),
@@ -196,8 +201,8 @@ impl From<VFSPathBuf> for PathBuf {
 #[get("/version")]
 fn version() -> Json<dto::Version> {
 	let current_version = dto::Version {
-		major: API_MAJOR_VERSION,
-		minor: API_MINOR_VERSION,
+		major: dto::API_MAJOR_VERSION,
+		minor: dto::API_MINOR_VERSION,
 	};
 	Json(current_version)
 }
@@ -280,7 +285,7 @@ fn browse(
 	db: State<'_, DB>,
 	_auth: Auth,
 	path: VFSPathBuf,
-) -> Result<Json<Vec<index::CollectionFile>>> {
+) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
 	let result = index::browse(db.deref().deref(), &path.into() as &PathBuf)?;
 	Ok(Json(result))
 }
@@ -292,7 +297,11 @@ fn flatten_root(db: State<'_, DB>, _auth: Auth) -> Result<Json<Vec<index::Song>>
 }
 
 #[get("/flatten/<path>")]
-fn flatten(db: State<'_, DB>, _auth: Auth, path: VFSPathBuf) -> Result<Json<Vec<index::Song>>> {
+fn flatten(
+	db: State<'_, DB>,
+	_auth: Auth,
+	path: VFSPathBuf,
+) -> Result<Json<Vec<index::Song>>, APIError> {
 	let result = index::flatten(db.deref().deref(), &path.into() as &PathBuf)?;
 	Ok(Json(result))
 }
@@ -326,10 +335,16 @@ fn search(
 }
 
 #[get("/audio/<path>")]
-fn audio(db: State<'_, DB>, _auth: Auth, path: VFSPathBuf) -> Result<serve::RangeResponder<File>> {
+fn audio(
+	db: State<'_, DB>,
+	_auth: Auth,
+	path: VFSPathBuf,
+) -> Result<serve::RangeResponder<File>, APIError> {
 	let vfs = db.get_vfs()?;
-	let real_path = vfs.virtual_to_real(&path.into() as &PathBuf)?;
-	let file = File::open(&real_path)?;
+	let real_path = vfs
+		.virtual_to_real(&path.into() as &PathBuf)
+		.map_err(|_| APIError::VFSPathNotFound)?;
+	let file = File::open(&real_path).map_err(|_| APIError::Unspecified)?;
 	Ok(serve::RangeResponder::new(file))
 }
 
@@ -340,13 +355,15 @@ fn thumbnail(
 	_auth: Auth,
 	path: VFSPathBuf,
 	pad: Option<bool>,
-) -> Result<File> {
+) -> Result<File, APIError> {
 	let vfs = db.get_vfs()?;
-	let image_path = vfs.virtual_to_real(&path.into() as &PathBuf)?;
+	let image_path = vfs
+		.virtual_to_real(&path.into() as &PathBuf)
+		.map_err(|_| APIError::VFSPathNotFound)?;
 	let mut options = ThumbnailOptions::default();
 	options.pad_to_square = pad.unwrap_or(options.pad_to_square);
 	let thumbnail_path = thumbnails_manager.get_thumbnail(&image_path, &options)?;
-	let file = File::open(thumbnail_path)?;
+	let file = File::open(thumbnail_path).map_err(|_| APIError::Unspecified)?;
 	Ok(file)
 }
 
@@ -373,13 +390,17 @@ fn save_playlist(
 }
 
 #[get("/playlist/<name>")]
-fn read_playlist(db: State<'_, DB>, auth: Auth, name: String) -> Result<Json<Vec<index::Song>>> {
+fn read_playlist(
+	db: State<'_, DB>,
+	auth: Auth,
+	name: String,
+) -> Result<Json<Vec<index::Song>>, APIError> {
 	let songs = playlist::read_playlist(&name, &auth.username, db.deref().deref())?;
 	Ok(Json(songs))
 }
 
 #[delete("/playlist/<name>")]
-fn delete_playlist(db: State<'_, DB>, auth: Auth, name: String) -> Result<()> {
+fn delete_playlist(db: State<'_, DB>, auth: Auth, name: String) -> Result<(), APIError> {
 	playlist::delete_playlist(&name, &auth.username, db.deref().deref())?;
 	Ok(())
 }
