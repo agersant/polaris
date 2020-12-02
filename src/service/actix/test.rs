@@ -1,5 +1,6 @@
 use actix_web::{
-	client::Client, client::ClientResponse, rt::System, rt::SystemRunner, App, HttpServer,
+	client::Client, client::ClientResponse, rt::System, rt::SystemRunner, web::Bytes, App,
+	HttpServer,
 };
 use cookie::Cookie;
 use http::{header, response::Builder, Request, Response};
@@ -54,15 +55,6 @@ impl ActixTestService {
 		rx.recv().unwrap()
 	}
 
-	fn build_response<T>(&mut self, actix_response: &ClientResponse<T>) -> Builder {
-		let mut builder = Response::builder().status(actix_response.status());
-		let headers = builder.headers_mut().unwrap();
-		for (name, value) in actix_response.headers().iter() {
-			headers.append(name, value.clone());
-		}
-		builder
-	}
-
 	fn update_cookies<T>(&mut self, actix_response: &ClientResponse<T>) {
 		let cookies = actix_response.headers().get_all(header::SET_COOKIE);
 		for raw_cookie in cookies {
@@ -70,6 +62,45 @@ impl ActixTestService {
 			self.cookies
 				.insert(cookie.name().to_owned(), cookie.value().to_owned());
 		}
+	}
+
+	fn process_internal<T: Serialize + Clone + 'static>(
+		&mut self,
+		request: &Request<T>,
+	) -> (Builder, Option<Bytes>) {
+		let client = self.make_client();
+		let url = request.uri().to_string();
+		let method = request.method().clone();
+		let headers = request.headers().clone();
+		let body = request.body().clone();
+
+		let mut actix_response = self.system_runner.block_on(async move {
+			let mut actix_request = client.request(method.clone(), url);
+			for (name, value) in &headers {
+				actix_request = actix_request.set_header(name, value.clone());
+			}
+			actix_request.send_json(&body).await.unwrap()
+		});
+
+		self.update_cookies(&actix_response);
+
+		let mut response_builder = Response::builder().status(actix_response.status());
+		let headers = response_builder.headers_mut().unwrap();
+		for (name, value) in actix_response.headers().iter() {
+			headers.append(name, value.clone());
+		}
+
+		let is_success = actix_response.status().is_success();
+		let body = if is_success {
+			Some(
+				self.system_runner
+					.block_on(async move { actix_response.body().await.unwrap() }),
+			)
+		} else {
+			None
+		};
+
+		(response_builder, body)
 	}
 }
 
@@ -121,84 +152,27 @@ impl TestService for ActixTestService {
 		&self.request_builder
 	}
 
-	// TODO Avoid copy-pasting most of this function's body three times
 	fn fetch<T: Serialize + Clone + 'static>(&mut self, request: &Request<T>) -> Response<()> {
-		let client = self.make_client();
-		let url = request.uri().to_string();
-		let method = request.method().clone();
-		let headers = request.headers().clone();
-		let body = request.body().clone();
-
-		let actix_response = self.system_runner.block_on(async move {
-			let mut actix_request = client.request(method.clone(), url);
-			for (name, value) in &headers {
-				actix_request = actix_request.set_header(name, value.clone());
-			}
-			actix_request.send_json(&body).await.unwrap()
-		});
-
-		self.update_cookies(&actix_response);
-
-		let response = self.build_response(&actix_response);
-		response.body(()).unwrap()
+		let (response_builder, _body) = self.process_internal(request);
+		response_builder.body(()).unwrap()
 	}
 
-	// TODO Avoid copy-pasting most of this function's body three times
 	fn fetch_bytes<T: Serialize + Clone + 'static>(
 		&mut self,
 		request: &Request<T>,
 	) -> Response<Vec<u8>> {
-		let client = self.make_client();
-		let url = request.uri().to_string();
-		let method = request.method().clone();
-		let headers = request.headers().clone();
-		let body = request.body().clone();
-
-		let mut actix_response = self.system_runner.block_on(async move {
-			let mut actix_request = client.request(method.clone(), url);
-			for (name, value) in &headers {
-				actix_request = actix_request.set_header(name, value.clone());
-			}
-			actix_request.send_json(&body).await.unwrap()
-		});
-		assert!(actix_response.status().is_success());
-
-		self.update_cookies(&actix_response);
-
-		let response = self.build_response(&actix_response);
-		let body = self
-			.system_runner
-			.block_on(async move { actix_response.body().await.unwrap() });
-		response.body(body.deref().to_owned()).unwrap()
+		let (response_builder, body) = self.process_internal(request);
+		response_builder
+			.body(body.unwrap().deref().to_owned())
+			.unwrap()
 	}
 
-	// TODO Avoid copy-pasting most of this function's body three times
 	fn fetch_json<T: Serialize + Clone + 'static, U: DeserializeOwned>(
 		&mut self,
 		request: &Request<T>,
 	) -> Response<U> {
-		let client = self.make_client();
-		let url = request.uri().to_string();
-		let method = request.method().clone();
-		let headers = request.headers().clone();
-		let body = request.body().clone();
-
-		let mut actix_response = self.system_runner.block_on(async move {
-			let mut actix_request = client.request(method.clone(), url);
-			for (name, value) in &headers {
-				actix_request = actix_request.set_header(name, value.clone());
-			}
-			actix_request.send_json(&body).await.unwrap()
-		});
-		assert!(actix_response.status().is_success());
-
-		self.update_cookies(&actix_response);
-
-		let response = self.build_response(&actix_response);
-		let body = self
-			.system_runner
-			.block_on(async move { actix_response.body().await.unwrap() });
-		let body = serde_json::from_slice(&body).unwrap();
-		response.body(body).unwrap()
+		let (response_builder, body) = self.process_internal(request);
+		let body = serde_json::from_slice(&body.unwrap()).unwrap();
+		response_builder.body(body).unwrap()
 	}
 }
