@@ -33,12 +33,12 @@ pub fn run(context: service::Context) -> Result<()> {
 	let _server = HttpServer::new(move || {
 		App::new()
 			.wrap_fn(api::http_auth_middleware)
-			// TODO logger middleware
+			// TODO.important logger middleware
 			.configure(make_config(context.clone()))
 	})
 	.bind(address)?
 	.run();
-	// TODO investigate why it takes two Ctrl+C to shutdown
+	// TODO.important investigate why it takes two Ctrl+C to shutdown
 	system.run()?;
 	Ok(())
 }

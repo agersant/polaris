@@ -29,7 +29,7 @@ use crate::thumbnails::{ThumbnailOptions, ThumbnailsManager};
 use crate::user;
 use crate::vfs::VFSSource;
 
-// TODO Use async instead of long blocking operations:
+// TODO.important Use async instead of long blocking operations:
 // - Thumnbail generation
 // - Everything that touches DB
 
