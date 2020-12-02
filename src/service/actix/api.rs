@@ -1,9 +1,14 @@
 use actix_files::NamedFile;
-use actix_web::error::{ErrorForbidden, ErrorInternalServerError, ErrorUnauthorized};
 use actix_web::{
-	delete, dev::HttpResponseBuilder, dev::Payload, get, http::StatusCode, post, put, web,
-	web::Data, web::Json, web::ServiceConfig, FromRequest, HttpMessage, HttpRequest, HttpResponse,
-	ResponseError,
+	client::HttpError,
+	delete,
+	dev::{MessageBody, Payload, Service, ServiceRequest, ServiceResponse},
+	error::{ErrorForbidden, ErrorInternalServerError, ErrorUnauthorized},
+	get,
+	http::StatusCode,
+	post, put, web,
+	web::{Data, Json, ServiceConfig},
+	FromRequest, HttpMessage, HttpRequest, HttpResponse, ResponseError,
 };
 use actix_web_httpauth::extractors::basic::BasicAuth;
 use cookie::{self, Cookie};
@@ -152,8 +157,43 @@ impl FromRequest for AdminRights {
 	}
 }
 
-// TODO needs to add session cookies in response to auth header (expected by mobile client!!)
-fn add_session_cookies(builder: &mut HttpResponseBuilder, username: &str, is_admin: bool) -> () {
+pub fn http_auth_middleware<
+	B: MessageBody + 'static,
+	S: Service<Response = ServiceResponse<B>, Request = ServiceRequest, Error = actix_web::Error>
+		+ 'static,
+>(
+	request: ServiceRequest,
+	service: &mut S,
+) -> Pin<Box<dyn Future<Output = Result<ServiceResponse<B>, actix_web::Error>>>> {
+	let db = match request.app_data::<Data<DB>>() {
+		Some(db) => db.clone(),
+		None => return Box::pin(err(ErrorInternalServerError(APIError::Unspecified))),
+	};
+
+	let (request, mut payload) = request.into_parts();
+	let auth_future = Auth::from_request(&request, &mut payload);
+	let request = match ServiceRequest::from_parts(request, payload) {
+		Ok(s) => s,
+		Err(_) => return Box::pin(err(ErrorInternalServerError(APIError::Unspecified))),
+	};
+
+	let response_future = service.call(request);
+	Box::pin(async move {
+		let mut response = response_future.await?;
+		if let Ok(auth) = auth_future.await {
+			let is_admin =
+				user::is_admin(&db, &auth.username).map_err(|_| APIError::Unspecified)?;
+			add_auth_cookies(response.response_mut(), &auth.username, is_admin)?;
+		}
+		Ok(response)
+	})
+}
+
+fn add_auth_cookies<T>(
+	response: &mut HttpResponse<T>,
+	username: &str,
+	is_admin: bool,
+) -> Result<(), HttpError> {
 	let duration = time::Duration::days(1);
 
 	let session_cookie = Cookie::build(dto::COOKIE_SESSION, username.to_owned())
@@ -176,9 +216,10 @@ fn add_session_cookies(builder: &mut HttpResponseBuilder, username: &str, is_adm
 		.path("/")
 		.finish();
 
-	builder.cookie(session_cookie); // TODO should be private encrypted cookie
-	builder.cookie(username_cookie);
-	builder.cookie(is_admin_cookie);
+	response.add_cookie(&session_cookie)?; // TODO.important should be private encrypted cookie
+	response.add_cookie(&username_cookie)?;
+	response.add_cookie(&is_admin_cookie)?;
+	Ok(())
 }
 
 #[get("/version")]
@@ -261,9 +302,10 @@ async fn login(
 		return Err(APIError::IncorrectCredentials);
 	}
 	let is_admin = user::is_admin(&db, &credentials.username)?;
-	let mut response = HttpResponse::Ok();
-	add_session_cookies(&mut response, &credentials.username, is_admin);
-	Ok(response.finish())
+	let mut response = HttpResponse::Ok().finish();
+	add_auth_cookies(&mut response, &credentials.username, is_admin)
+		.map_err(|_| APIError::Unspecified)?;
+	Ok(response)
 }
 
 #[get("/browse/{path:.*}")]

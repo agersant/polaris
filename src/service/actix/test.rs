@@ -130,7 +130,9 @@ impl TestService for ActixTestService {
 			let system_runner = System::new("http-server");
 			HttpServer::new(move || {
 				let config = make_config(context.clone());
-				App::new().configure(config)
+				App::new()
+					.wrap_fn(api::http_auth_middleware)
+					.configure(config)
 			})
 			.bind(address_server)
 			.unwrap()
