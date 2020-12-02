@@ -157,6 +157,7 @@ impl FromRequest for AdminRights {
 	}
 }
 
+// TODO.important should only add cookies on requests with auth header (not cookie based auth)
 pub fn http_auth_middleware<
 	B: MessageBody + 'static,
 	S: Service<Response = ServiceResponse<B>, Request = ServiceRequest, Error = actix_web::Error>
@@ -355,7 +356,7 @@ async fn search(
 async fn audio(db: Data<DB>, _auth: Auth, path: web::Path<PathBuf>) -> Result<NamedFile, APIError> {
 	let vfs = db.get_vfs()?;
 	let real_path = vfs
-		.virtual_to_real(&(path.0).into() as &PathBuf)
+		.virtual_to_real(&(path.0))
 		.map_err(|_| APIError::VFSPathNotFound)?;
 	let named_file = NamedFile::open(&real_path).map_err(|_| APIError::AudioFileIOError)?;
 	Ok(named_file)
@@ -371,7 +372,7 @@ async fn thumbnail(
 ) -> Result<NamedFile, APIError> {
 	let vfs = db.get_vfs()?;
 	let image_path = vfs
-		.virtual_to_real(&(path.0).into() as &PathBuf)
+		.virtual_to_real(&(path.0))
 		.map_err(|_| APIError::VFSPathNotFound)?;
 	let mut options = ThumbnailOptions::default();
 	options.pad_to_square = options_input.pad.unwrap_or(options.pad_to_square);
@@ -427,26 +428,26 @@ async fn delete_playlist(
 	Ok(HttpResponse::new(StatusCode::OK))
 }
 
-#[put("/lastfm/now_playing/<path>")]
+#[put("/lastfm/now_playing/{path:.*}")]
 async fn lastfm_now_playing(
 	db: Data<DB>,
 	auth: Auth,
-	path: web::Path<String>,
+	path: web::Path<PathBuf>,
 ) -> Result<HttpResponse, APIError> {
 	if user::is_lastfm_linked(&db, &auth.username) {
-		lastfm::now_playing(&db, &auth.username, &(path.0).into() as &PathBuf)?;
+		lastfm::now_playing(&db, &auth.username, &(path.0))?;
 	}
 	Ok(HttpResponse::new(StatusCode::OK))
 }
 
-#[post("/lastfm/scrobble/<path>")]
+#[post("/lastfm/scrobble/{path:.*}")]
 async fn lastfm_scrobble(
 	db: Data<DB>,
 	auth: Auth,
-	path: web::Path<String>,
+	path: web::Path<PathBuf>,
 ) -> Result<HttpResponse, APIError> {
 	if user::is_lastfm_linked(&db, &auth.username) {
-		lastfm::scrobble(&db, &auth.username, &(path.0).into() as &PathBuf)?;
+		lastfm::scrobble(&db, &auth.username, &(path.0))?;
 	}
 	Ok(HttpResponse::new(StatusCode::OK))
 }
