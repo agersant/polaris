@@ -29,7 +29,7 @@ pub fn make_config(context: service::Context) -> impl FnOnce(&mut ServiceConfig)
 
 pub fn run(context: service::Context) -> Result<()> {
 	let system = System::new("http-server");
-	let address = format!("localhost:{}", context.port);
+	let address = format!("0.0.0.0:{}", context.port);
 	let _server = HttpServer::new(move || {
 		App::new()
 			.wrap_fn(api::http_auth_middleware)
