@@ -216,7 +216,8 @@ fn add_auth_cookies<T>(
 		.path("/")
 		.finish();
 
-	response.add_cookie(&session_cookie)?; // TODO.important should be private encrypted cookie
+	// TODO.important session_cookie should be private encrypted cookie (https://github.com/actix/examples/blob/master/cookie-auth/src/main.rs)
+	response.add_cookie(&session_cookie)?;
 	response.add_cookie(&username_cookie)?;
 	response.add_cookie(&is_admin_cookie)?;
 	Ok(())

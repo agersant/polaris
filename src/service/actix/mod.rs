@@ -33,6 +33,7 @@ pub fn run(context: service::Context) -> Result<()> {
 	let _server = HttpServer::new(move || {
 		App::new()
 			.wrap_fn(api::http_auth_middleware)
+			// TODO logger middleware
 			.configure(make_config(context.clone()))
 	})
 	.bind(address)?
