@@ -79,8 +79,15 @@ impl ResponseError for APIError {
 }
 
 #[derive(Debug)]
+enum AuthSource {
+	AuthorizationHeader,
+	Cookie,
+}
+
+#[derive(Debug)]
 struct Auth {
 	username: String,
+	source: AuthSource,
 }
 
 impl FromRequest for Auth {
@@ -104,6 +111,7 @@ impl FromRequest for Auth {
 			}
 			return Box::pin(ok(Auth {
 				username: session_cookie.value().to_owned(),
+				source: AuthSource::Cookie,
 			}));
 		}
 
@@ -115,6 +123,7 @@ impl FromRequest for Auth {
 			if user::auth(&db, username, password).unwrap_or(false) {
 				return Ok(Auth {
 					username: username.to_owned(),
+					source: AuthSource::AuthorizationHeader,
 				});
 			}
 			Err(ErrorUnauthorized(APIError::Unspecified))
@@ -157,7 +166,6 @@ impl FromRequest for AdminRights {
 	}
 }
 
-// TODO.important should only add cookies on requests with auth header (not cookie based auth)
 pub fn http_auth_middleware<
 	B: MessageBody + 'static,
 	S: Service<Response = ServiceResponse<B>, Request = ServiceRequest, Error = actix_web::Error>
@@ -182,9 +190,15 @@ pub fn http_auth_middleware<
 	Box::pin(async move {
 		let mut response = response_future.await?;
 		if let Ok(auth) = auth_future.await {
-			let is_admin =
-				user::is_admin(&db, &auth.username).map_err(|_| APIError::Unspecified)?;
-			add_auth_cookies(response.response_mut(), &auth.username, is_admin)?;
+			let set_cookies = match auth.source {
+				AuthSource::AuthorizationHeader => true,
+				AuthSource::Cookie => false,
+			};
+			if set_cookies {
+				let is_admin =
+					user::is_admin(&db, &auth.username).map_err(|_| APIError::Unspecified)?;
+				add_auth_cookies(response.response_mut(), &auth.username, is_admin)?;
+			}
 		}
 		Ok(response)
 	})
