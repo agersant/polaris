@@ -18,6 +18,18 @@ fn validate_cookies<T>(response: &Response<T>) {
 	assert!(cookies.iter().any(|c| c.name() == dto::COOKIE_ADMIN));
 }
 
+fn validate_no_cookies<T>(response: &Response<T>) {
+	let cookies: Vec<Cookie> = response
+		.headers()
+		.get_all(http::header::SET_COOKIE)
+		.iter()
+		.map(|c| Cookie::parse(c.to_str().unwrap()).unwrap())
+		.collect();
+	assert!(!cookies.iter().any(|c| c.name() == dto::COOKIE_SESSION));
+	assert!(!cookies.iter().any(|c| c.name() == dto::COOKIE_USERNAME));
+	assert!(!cookies.iter().any(|c| c.name() == dto::COOKIE_ADMIN));
+}
+
 #[test]
 fn test_login_rejects_bad_username() {
 	let mut service = ServiceType::new(&test_name!());
@@ -50,6 +62,19 @@ fn test_login_golden_path() {
 	assert_eq!(response.status(), StatusCode::OK);
 
 	validate_cookies(&response);
+}
+
+#[test]
+fn test_requests_without_auth_header_do_not_set_cookies() {
+	let mut service = ServiceType::new(&test_name!());
+	service.complete_initial_setup();
+	service.login();
+
+	let request = service.request_builder().random();
+	let response = service.fetch(&request);
+	assert_eq!(response.status(), StatusCode::OK);
+
+	validate_no_cookies(&response);
 }
 
 #[test]
