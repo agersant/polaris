@@ -316,9 +316,9 @@ async fn browse(
 	_auth: Auth,
 	path: web::Path<String>,
 ) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
-	log::info!("browse raw path: {:?}", &(path.0));
-	let path = Path::new(&path.0);
-	log::info!("browse path: {:?}", &path);
+	let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
+	let path = Path::new(path.as_ref());
+	log::info!("browse path: {:?}", path);
 	let result = index::browse(&db, path)?;
 	Ok(Json(result))
 }
@@ -390,7 +390,6 @@ async fn list_playlists(
 	db: Data<DB>,
 	auth: Auth,
 ) -> Result<Json<Vec<dto::ListPlaylistsEntry>>, APIError> {
-	dbg!("AA");
 	let playlist_names = playlist::list_playlists(&auth.username, &db)?;
 	let playlists: Vec<dto::ListPlaylistsEntry> = playlist_names
 		.into_iter()
