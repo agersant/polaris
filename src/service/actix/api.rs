@@ -15,7 +15,7 @@ use cookie::{self, Cookie};
 use futures_util::future::{err, ok};
 use percent_encoding::percent_decode_str;
 use std::future::Future;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::str;
 
@@ -314,10 +314,12 @@ async fn login(
 async fn browse(
 	db: Data<DB>,
 	_auth: Auth,
-	path: web::Path<PathBuf>,
+	path: web::Path<String>,
 ) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
-	log::info!("browse path: {:?}", &(path.0));
-	let result = index::browse(&db, &(path.0).into() as &PathBuf)?;
+	log::info!("browse raw path: {:?}", &(path.0));
+	let path = Path::new(&path.0);
+	log::info!("browse path: {:?}", &path);
+	let result = index::browse(&db, path)?;
 	Ok(Json(result))
 }
 
