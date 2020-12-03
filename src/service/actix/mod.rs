@@ -39,6 +39,7 @@ pub fn run(context: service::Context) -> Result<()> {
 	.bind(address)?
 	.run();
 	// TODO.important investigate why it takes two Ctrl+C to shutdown
+	// https://github.com/actix/actix-web/issues/639 (see example at bottom)
 	system.run()?;
 	Ok(())
 }
