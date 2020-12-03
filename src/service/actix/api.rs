@@ -15,7 +15,7 @@ use cookie::{self, Cookie};
 use futures_util::future::{err, ok};
 use percent_encoding::percent_decode_str;
 use std::future::Future;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::pin::Pin;
 use std::str;
 
@@ -317,9 +317,7 @@ async fn browse(
 	path: web::Path<String>,
 ) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
 	let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
-	let path = Path::new(path.as_ref());
-	log::info!("browse path: {:?}", path);
-	let result = index::browse(&db, path)?;
+	let result = index::browse(&db, Path::new(path.as_ref()))?;
 	Ok(Json(result))
 }
 
@@ -327,9 +325,10 @@ async fn browse(
 async fn flatten(
 	db: Data<DB>,
 	_auth: Auth,
-	path: web::Path<PathBuf>,
+	path: web::Path<String>,
 ) -> Result<Json<Vec<index::Song>>, APIError> {
-	let result = index::flatten(&db, &(path.0).into() as &PathBuf)?;
+	let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
+	let result = index::flatten(&db, Path::new(path.as_ref()))?;
 	Ok(Json(result))
 }
 
@@ -356,10 +355,11 @@ async fn search(
 }
 
 #[get("/audio/{path:.*}")]
-async fn audio(db: Data<DB>, _auth: Auth, path: web::Path<PathBuf>) -> Result<NamedFile, APIError> {
+async fn audio(db: Data<DB>, _auth: Auth, path: web::Path<String>) -> Result<NamedFile, APIError> {
 	let vfs = db.get_vfs()?;
+	let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
 	let real_path = vfs
-		.virtual_to_real(&(path.0))
+		.virtual_to_real(Path::new(path.as_ref()))
 		.map_err(|_| APIError::VFSPathNotFound)?;
 	let named_file = NamedFile::open(&real_path).map_err(|_| APIError::AudioFileIOError)?;
 	Ok(named_file)
@@ -370,12 +370,13 @@ async fn thumbnail(
 	db: Data<DB>,
 	thumbnails_manager: Data<ThumbnailsManager>,
 	_auth: Auth,
-	path: web::Path<PathBuf>,
+	path: web::Path<String>,
 	options_input: web::Query<dto::ThumbnailOptions>,
 ) -> Result<NamedFile, APIError> {
 	let vfs = db.get_vfs()?;
+	let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
 	let image_path = vfs
-		.virtual_to_real(&(path.0))
+		.virtual_to_real(Path::new(path.as_ref()))
 		.map_err(|_| APIError::VFSPathNotFound)?;
 	let mut options = ThumbnailOptions::default();
 	options.pad_to_square = options_input.pad.unwrap_or(options.pad_to_square);
@@ -434,10 +435,11 @@ async fn delete_playlist(
 async fn lastfm_now_playing(
 	db: Data<DB>,
 	auth: Auth,
-	path: web::Path<PathBuf>,
+	path: web::Path<String>,
 ) -> Result<HttpResponse, APIError> {
 	if user::is_lastfm_linked(&db, &auth.username) {
-		lastfm::now_playing(&db, &auth.username, &(path.0))?;
+		let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
+		lastfm::now_playing(&db, &auth.username, Path::new(path.as_ref()))?;
 	}
 	Ok(HttpResponse::new(StatusCode::OK))
 }
@@ -446,10 +448,11 @@ async fn lastfm_now_playing(
 async fn lastfm_scrobble(
 	db: Data<DB>,
 	auth: Auth,
-	path: web::Path<PathBuf>,
+	path: web::Path<String>,
 ) -> Result<HttpResponse, APIError> {
 	if user::is_lastfm_linked(&db, &auth.username) {
-		lastfm::scrobble(&db, &auth.username, &(path.0))?;
+		let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
+		lastfm::scrobble(&db, &auth.username, Path::new(path.as_ref()))?;
 	}
 	Ok(HttpResponse::new(StatusCode::OK))
 }
