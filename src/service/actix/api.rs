@@ -316,6 +316,7 @@ async fn browse(
 	_auth: Auth,
 	path: web::Path<PathBuf>,
 ) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
+	log::info!("browse path: {:?}", &(path.0));
 	let result = index::browse(&db, &(path.0).into() as &PathBuf)?;
 	Ok(Json(result))
 }

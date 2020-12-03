@@ -1,4 +1,4 @@
-use actix_web::{rt::System, web, web::ServiceConfig, App, HttpServer};
+use actix_web::{middleware::Logger, rt::System, web, web::ServiceConfig, App, HttpServer};
 use anyhow::*;
 
 use crate::service;
@@ -32,8 +32,8 @@ pub fn run(context: service::Context) -> Result<()> {
 	let address = format!("0.0.0.0:{}", context.port);
 	let _server = HttpServer::new(move || {
 		App::new()
+			.wrap(Logger::default())
 			.wrap_fn(api::http_auth_middleware)
-			// TODO.important logger middleware
 			.configure(make_config(context.clone()))
 	})
 	.bind(address)?

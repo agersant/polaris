@@ -1,6 +1,6 @@
 use actix_web::{
-	client::Client, client::ClientResponse, rt::System, rt::SystemRunner, web::Bytes, App,
-	HttpServer,
+	client::Client, client::ClientResponse, middleware::Logger, rt::System, rt::SystemRunner,
+	web::Bytes, App, HttpServer,
 };
 use cookie::Cookie;
 use http::{header, response::Builder, Request, Response};
@@ -131,6 +131,7 @@ impl TestService for ActixTestService {
 			HttpServer::new(move || {
 				let config = make_config(context.clone());
 				App::new()
+					.wrap(Logger::default())
 					.wrap_fn(api::http_auth_middleware)
 					.configure(config)
 			})
