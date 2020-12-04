@@ -117,7 +117,7 @@ fn test_random_requires_auth() {
 }
 
 #[test]
-fn test_random() {
+fn test_random_golden_path() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login_admin();
@@ -140,7 +140,7 @@ fn test_recent_requires_auth() {
 }
 
 #[test]
-fn test_recent() {
+fn test_recent_golden_path() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login_admin();
