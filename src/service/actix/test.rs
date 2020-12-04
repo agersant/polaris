@@ -7,12 +7,11 @@ use http::{header, response::Builder, Request, Response};
 use lazy_static::lazy_static;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use std::{fs, thread, time::Duration};
 use std::collections::HashMap;
-use std::fs;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
-use std::thread;
 
 use crate::service::actix::*;
 use crate::service::test::{protocol, TestService};
@@ -49,7 +48,7 @@ impl ActixTestService {
 				.map(|(name, value)| format!("{}={}", name, value))
 				.collect::<Vec<_>>()
 				.join("; ");
-			client_builder = client_builder.header(header::COOKIE, cookies_value);
+			client_builder = client_builder.header(header::COOKIE, cookies_value).timeout(Duration::from_secs(60));
 			tx.send(client_builder.finish()).unwrap();
 		});
 		rx.recv().unwrap()
