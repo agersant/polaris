@@ -1,9 +1,15 @@
-use http::StatusCode;
+use http::{Request, StatusCode};
 use std::path::{Path, PathBuf};
 
 use crate::index;
 use crate::service::test::{constants::*, ServiceType, TestService};
 use crate::test_name;
+
+fn add_trailing_slash<T>(request: &mut Request<T>) {
+	*request.uri_mut() = (request.uri().to_string().trim_end_matches("/").to_string() + "/")
+		.parse()
+		.unwrap();
+}
 
 #[test]
 fn test_browse_requires_auth() {
@@ -117,7 +123,7 @@ fn test_random_requires_auth() {
 }
 
 #[test]
-fn test_random() {
+fn test_random_golden_path() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login_admin();
@@ -125,6 +131,22 @@ fn test_random() {
 	service.login();
 
 	let request = service.request_builder().random();
+	let response = service.fetch_json::<_, Vec<index::Directory>>(&request);
+	assert_eq!(response.status(), StatusCode::OK);
+	let entries = response.body();
+	assert_eq!(entries.len(), 3);
+}
+
+#[test]
+fn test_random_with_trailing_slash() {
+	let mut service = ServiceType::new(&test_name!());
+	service.complete_initial_setup();
+	service.login_admin();
+	service.index();
+	service.login();
+
+	let mut request = service.request_builder().random();
+	add_trailing_slash(&mut request);
 	let response = service.fetch_json::<_, Vec<index::Directory>>(&request);
 	assert_eq!(response.status(), StatusCode::OK);
 	let entries = response.body();
@@ -140,7 +162,7 @@ fn test_recent_requires_auth() {
 }
 
 #[test]
-fn test_recent() {
+fn test_recent_golden_path() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login_admin();
@@ -148,6 +170,22 @@ fn test_recent() {
 	service.login();
 
 	let request = service.request_builder().recent();
+	let response = service.fetch_json::<_, Vec<index::Directory>>(&request);
+	assert_eq!(response.status(), StatusCode::OK);
+	let entries = response.body();
+	assert_eq!(entries.len(), 3);
+}
+
+#[test]
+fn test_recent_with_trailing_slash() {
+	let mut service = ServiceType::new(&test_name!());
+	service.complete_initial_setup();
+	service.login_admin();
+	service.index();
+	service.login();
+
+	let mut request = service.request_builder().recent();
+	add_trailing_slash(&mut request);
 	let response = service.fetch_json::<_, Vec<index::Directory>>(&request);
 	assert_eq!(response.status(), StatusCode::OK);
 	let entries = response.body();
