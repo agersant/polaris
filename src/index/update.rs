@@ -1,5 +1,4 @@
 use anyhow::*;
-use crossbeam_channel::{Receiver, Sender};
 use diesel;
 use diesel::prelude::*;
 #[cfg(feature = "profile-index")]
@@ -9,6 +8,7 @@ use rayon::prelude::*;
 use regex::Regex;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::mpsc::*;
 use std::time;
 
 use crate::config::MiscSettings;
@@ -83,12 +83,12 @@ impl IndexUpdater {
 	}
 
 	#[cfg_attr(feature = "profile-index", flame)]
-	fn push_song(&self, song: NewSong) -> Result<()> {
+	fn push_song(&mut self, song: NewSong) -> Result<()> {
 		self.song_sender.send(song).map_err(Error::new)
 	}
 
 	#[cfg_attr(feature = "profile-index", flame)]
-	fn push_directory(&self, directory: NewDirectory) -> Result<()> {
+	fn push_directory(&mut self, directory: NewDirectory) -> Result<()> {
 		self.directory_sender.send(directory).map_err(Error::new)
 	}
 
@@ -104,7 +104,7 @@ impl IndexUpdater {
 		Ok(None)
 	}
 
-	fn populate_directory(&self, parent: Option<&Path>, path: &Path) -> Result<()> {
+	fn populate_directory(&mut self, parent: Option<&Path>, path: &Path) -> Result<()> {
 		#[cfg(feature = "profile-index")]
 		let _guard = flame::start_guard(format!(
 			"dir: {}",
@@ -159,7 +159,6 @@ impl IndexUpdater {
 			}
 		};
 
-		// Insert content
 		for file in files {
 			let file_path = match file {
 				Ok(ref f) => f.path(),
@@ -196,7 +195,7 @@ impl IndexUpdater {
 			})
 		};
 		let song_tags = song_files
-			.into_par_iter()
+			.into_iter()
 			.filter_map(song_metadata)
 			.collect::<Vec<_>>();
 
@@ -207,6 +206,7 @@ impl IndexUpdater {
 				.map(|(p, _)| p.to_owned());
 		}
 
+		// Insert content
 		for (file_path_string, tags) in song_tags {
 			if tags.year.is_some() {
 				inconsistent_directory_year |=
@@ -279,10 +279,11 @@ impl IndexUpdater {
 		self.push_directory(directory)?;
 
 		// Populate subdirectories
-		sub_directories
-			.into_par_iter()
-			.map(|sub_directory| self.populate_directory(Some(path), &sub_directory))
-			.collect() // propagate an error to the caller if one of them failed
+		for sub_directory in sub_directories {
+			self.populate_directory(Some(path), &sub_directory)?;
+		}
+
+		Ok(())
 	}
 }
 
@@ -354,8 +355,8 @@ pub fn populate(db: &DB) -> Result<()> {
 		Regex::new(&settings.index_album_art_pattern)?
 	};
 
-	let (directory_sender, directory_receiver) = crossbeam_channel::unbounded();
-	let (song_sender, song_receiver) = crossbeam_channel::unbounded();
+	let (directory_sender, directory_receiver) = channel();
+	let (song_sender, song_receiver) = channel();
 
 	let songs_db = db.clone();
 	let directories_db = db.clone();
@@ -369,13 +370,10 @@ pub fn populate(db: &DB) -> Result<()> {
 	});
 
 	{
-		let updater = IndexUpdater::new(album_art_pattern, directory_sender, song_sender)?;
-		let mount_points = mount_points.values().collect::<Vec<_>>();
-		mount_points
-			.iter()
-			.par_bridge()
-			.map(|target| updater.populate_directory(None, target.as_path()))
-			.collect::<Result<()>>()?;
+		let mut updater = IndexUpdater::new(album_art_pattern, directory_sender, song_sender)?;
+		for target in mount_points.values() {
+			updater.populate_directory(None, target.as_path())?;
+		}
 	}
 
 	match directories_thread.join() {
