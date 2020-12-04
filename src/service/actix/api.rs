@@ -43,10 +43,13 @@ pub fn make_config() -> impl FnOnce(&mut ServiceConfig) + Clone {
 			.service(put_preferences)
 			.service(trigger_index)
 			.service(login)
+			.service(browse_root)
 			.service(browse)
+			.service(flatten_root)
 			.service(flatten)
 			.service(random)
 			.service(recent)
+			.service(search_root)
 			.service(search)
 			.service(audio)
 			.service(thumbnail)
@@ -324,6 +327,15 @@ async fn login(
 	Ok(response)
 }
 
+#[get("/browse")]
+async fn browse_root(
+	db: Data<DB>,
+	_auth: Auth,
+) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
+	let result = index::browse(&db, Path::new(""))?;
+	Ok(Json(result))
+}
+
 #[get("/browse/{path:.*}")]
 async fn browse(
 	db: Data<DB>,
@@ -332,6 +344,15 @@ async fn browse(
 ) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
 	let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
 	let result = index::browse(&db, Path::new(path.as_ref()))?;
+	Ok(Json(result))
+}
+
+#[get("/flatten")]
+async fn flatten_root(
+	db: Data<DB>,
+	_auth: Auth,
+) -> Result<Json<Vec<index::Song>>, APIError> {
+	let result = index::flatten(&db, Path::new(""))?;
 	Ok(Json(result))
 }
 
@@ -355,6 +376,15 @@ async fn random(db: Data<DB>, _auth: Auth) -> Result<Json<Vec<index::Directory>>
 #[get("/recent")]
 async fn recent(db: Data<DB>, _auth: Auth) -> Result<Json<Vec<index::Directory>>, APIError> {
 	let result = index::get_recent_albums(&db, 20)?;
+	Ok(Json(result))
+}
+
+#[get("/search")]
+async fn search_root(
+	db: Data<DB>,
+	_auth: Auth,
+) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
+	let result = index::search(&db, "")?;
 	Ok(Json(result))
 }
 

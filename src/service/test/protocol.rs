@@ -29,7 +29,7 @@ impl RequestBuilder {
 	pub fn swagger_index(&self) -> Request<()> {
 		Request::builder()
 			.method(Method::GET)
-			.uri(self.build_uri("/swagger/"))
+			.uri(self.build_uri("/swagger"))
 			.body(())
 			.unwrap()
 	}

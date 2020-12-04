@@ -1,15 +1,9 @@
-use http::{Request, StatusCode};
+use http::StatusCode;
 use std::path::{Path, PathBuf};
 
 use crate::index;
-use crate::service::test::{constants::*, ServiceType, TestService};
+use crate::service::test::{add_trailing_slash, constants::*, ServiceType, TestService};
 use crate::test_name;
-
-fn add_trailing_slash<T>(request: &mut Request<T>) {
-	*request.uri_mut() = (request.uri().to_string().trim_end_matches("/").to_string() + "/")
-		.parse()
-		.unwrap();
-}
 
 #[test]
 fn test_browse_requires_auth() {

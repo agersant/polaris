@@ -116,3 +116,9 @@ pub trait TestService {
 		}
 	}
 }
+
+fn add_trailing_slash<T>(request: &mut Request<T>) {
+	*request.uri_mut() = (request.uri().to_string().trim_end_matches("/").to_string() + "/")
+		.parse()
+		.unwrap();
+}

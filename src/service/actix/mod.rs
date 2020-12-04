@@ -1,4 +1,9 @@
-use actix_web::{middleware::Logger, rt::System, web, web::ServiceConfig, App, HttpServer};
+use actix_web::{
+	middleware::{normalize::TrailingSlash, Logger, NormalizePath},
+	rt::System,
+	web::{self, ServiceConfig},
+	App, HttpServer,
+};
 use anyhow::*;
 
 use crate::service;
@@ -16,12 +21,10 @@ pub fn make_config(context: service::Context) -> impl FnOnce(&mut ServiceConfig)
 			.service(web::scope(&context.api_url).configure(api::make_config()))
 			.service(
 				actix_files::Files::new(&context.swagger_url, context.swagger_dir_path)
-					.redirect_to_slash_directory()
 					.index_file("index.html"),
 			)
 			.service(
 				actix_files::Files::new(&context.web_url, context.web_dir_path)
-					.redirect_to_slash_directory()
 					.index_file("index.html"),
 			);
 	}
@@ -34,6 +37,7 @@ pub fn run(context: service::Context) -> Result<()> {
 		App::new()
 			.wrap(Logger::default())
 			.wrap_fn(api::http_auth_middleware)
+			.wrap(NormalizePath::new(TrailingSlash::Trim))
 			.configure(make_config(context.clone()))
 	})
 	.bind(address)?

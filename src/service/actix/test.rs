@@ -1,6 +1,6 @@
 use actix_web::{
-	client::Client, client::ClientResponse, middleware::Logger, rt::System, rt::SystemRunner,
-	web::Bytes, App, HttpServer,
+	client::{Client, ClientResponse}, rt::{System, SystemRunner},
+	web::Bytes, App, HttpServer, middleware::{Logger, NormalizePath, normalize::TrailingSlash}
 };
 use cookie::Cookie;
 use http::{header, response::Builder, Request, Response};
@@ -132,6 +132,7 @@ impl TestService for ActixTestService {
 				App::new()
 					.wrap(Logger::default())
 					.wrap_fn(api::http_auth_middleware)
+					.wrap(NormalizePath::new(TrailingSlash::Trim))
 					.configure(config)
 			})
 			.bind(address_server)
