@@ -20,12 +20,3 @@ fn test_swagger_can_get_index_with_trailing_slash() {
 	let response = service.fetch(&request);
 	assert_eq!(response.status(), StatusCode::OK);
 }
-
-#[test]
-fn test_swagger_can_get_index_with_trailing_slash() {
-	let mut service = ServiceType::new(&test_name!());
-	let mut request = service.request_builder().swagger_index();
-	add_trailing_slash(&mut request);
-	let response = service.fetch_bytes(&request);
-	assert_eq!(response.status(), StatusCode::OK);
-}
