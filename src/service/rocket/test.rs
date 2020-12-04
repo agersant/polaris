@@ -78,7 +78,7 @@ impl TestService for RocketTestService {
 
 		let server = service::get_server(context).unwrap();
 		let client = Client::new(server).unwrap();
-		let request_builder = protocol::RequestBuilder::new();
+		let request_builder = protocol::RequestBuilder::new("".to_owned());
 		RocketTestService {
 			request_builder,
 			client,
