@@ -44,7 +44,6 @@ impl Traverser {
 			}
 		};
 
-		// TODO could re-use vectors for every directory instead of doing new allocs every time
 		let mut sub_directories = Vec::new();
 		let mut songs = Vec::new();
 		let mut other_files = Vec::new();
