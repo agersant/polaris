@@ -50,10 +50,8 @@ pub struct Inserter {
 
 impl Inserter {
 	pub fn new(db: DB, receiver: Receiver<Item>) -> Self {
-		let mut new_directories = Vec::new();
-		let mut new_songs = Vec::new();
-		new_directories.reserve_exact(INDEX_BUILDING_INSERT_BUFFER_SIZE);
-		new_songs.reserve_exact(INDEX_BUILDING_INSERT_BUFFER_SIZE);
+		let new_directories = Vec::with_capacity(INDEX_BUILDING_INSERT_BUFFER_SIZE);
+		let new_songs = Vec::with_capacity(INDEX_BUILDING_INSERT_BUFFER_SIZE);
 		Self {
 			db,
 			receiver,
