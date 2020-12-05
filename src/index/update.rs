@@ -63,33 +63,31 @@ struct NewDirectory {
 }
 
 struct IndexUpdater {
-	directory_sender: Sender<NewDirectory>,
-	song_sender: Sender<NewSong>,
+	insert_sender: Sender<Insert>,
 	album_art_pattern: Regex,
 }
 
 impl IndexUpdater {
 	#[cfg_attr(feature = "profile-index", flame)]
-	fn new(
-		album_art_pattern: Regex,
-		directory_sender: Sender<NewDirectory>,
-		song_sender: Sender<NewSong>,
-	) -> Result<IndexUpdater> {
+	fn new(album_art_pattern: Regex, insert_sender: Sender<Insert>) -> Result<IndexUpdater> {
 		Ok(IndexUpdater {
-			directory_sender,
-			song_sender,
+			insert_sender,
 			album_art_pattern,
 		})
 	}
 
 	#[cfg_attr(feature = "profile-index", flame)]
 	fn push_song(&mut self, song: NewSong) -> Result<()> {
-		self.song_sender.send(song).map_err(Error::new)
+		self.insert_sender
+			.send(Insert::Song(song))
+			.map_err(Error::new)
 	}
 
 	#[cfg_attr(feature = "profile-index", flame)]
 	fn push_directory(&mut self, directory: NewDirectory) -> Result<()> {
-		self.directory_sender.send(directory).map_err(Error::new)
+		self.insert_sender
+			.send(Insert::Dir(directory))
+			.map_err(Error::new)
 	}
 
 	fn get_artwork(&self, dir: &Path) -> Result<Option<String>> {
@@ -354,38 +352,21 @@ pub fn populate(db: &DB) -> Result<()> {
 		Regex::new(&settings.index_album_art_pattern)?
 	};
 
-	let (directory_sender, directory_receiver) = crossbeam_channel::unbounded();
-	let (song_sender, song_receiver) = crossbeam_channel::unbounded();
-
-	let songs_db = db.clone();
-	let directories_db = db.clone();
-
-	let directories_thread = std::thread::spawn(move || {
-		insert_directories(directory_receiver, directories_db);
+	let (insert_sender, insert_receiver) = crossbeam_channel::unbounded();
+	let inertion_db = db.clone();
+	let insertion_thread = std::thread::spawn(move || {
+		insert_loop(insert_receiver, inertion_db);
 	});
-
-	let songs_thread = std::thread::spawn(move || {
-		insert_songs(song_receiver, songs_db);
-	});
-
 	{
-		let mut updater = IndexUpdater::new(album_art_pattern, directory_sender, song_sender)?;
+		let mut updater = IndexUpdater::new(album_art_pattern, insert_sender)?;
 		for target in mount_points.values() {
 			updater.populate_directory(None, target.as_path())?;
 		}
 	}
 
-	match directories_thread.join() {
+	match insertion_thread.join() {
 		Err(e) => error!(
-			"Error while waiting for directory insertions to complete: {:?}",
-			e
-		),
-		_ => (),
-	}
-
-	match songs_thread.join() {
-		Err(e) => error!(
-			"Error while waiting for song insertions to complete: {:?}",
+			"Error while waiting for index insertions to complete: {:?}",
 			e
 		),
 		_ => (),
@@ -424,46 +405,45 @@ fn flush_songs(db: &DB, entries: &Vec<NewSong>) {
 	}
 }
 
-fn insert_directories(receiver: Receiver<NewDirectory>, db: DB) {
-	let mut new_entries = Vec::new();
-	new_entries.reserve_exact(INDEX_BUILDING_INSERT_BUFFER_SIZE);
-
-	loop {
-		match receiver.recv() {
-			Ok(s) => {
-				new_entries.push(s);
-				if new_entries.len() >= INDEX_BUILDING_INSERT_BUFFER_SIZE {
-					flush_directories(&db, &new_entries);
-					new_entries.clear();
-				}
-			}
-			Err(_) => break,
-		}
-	}
-
-	if new_entries.len() > 0 {
-		flush_directories(&db, &new_entries);
-	}
+enum Insert {
+	Dir(NewDirectory),
+	Song(NewSong),
 }
 
-fn insert_songs(receiver: Receiver<NewSong>, db: DB) {
-	let mut new_entries = Vec::new();
-	new_entries.reserve_exact(INDEX_BUILDING_INSERT_BUFFER_SIZE);
+fn insert_loop(receiver: Receiver<Insert>, db: DB) {
+	let mut new_directories = Vec::new();
+	let mut new_songs = Vec::new();
+	new_directories.reserve_exact(INDEX_BUILDING_INSERT_BUFFER_SIZE);
+	new_songs.reserve_exact(INDEX_BUILDING_INSERT_BUFFER_SIZE);
 
 	loop {
 		match receiver.recv() {
-			Ok(s) => {
-				new_entries.push(s);
-				if new_entries.len() >= INDEX_BUILDING_INSERT_BUFFER_SIZE {
-					flush_songs(&db, &new_entries);
-					new_entries.clear();
-				}
+			Ok(insert) => {
+				match insert {
+					Insert::Dir(d) => {
+						new_directories.push(d);
+						if new_directories.len() >= INDEX_BUILDING_INSERT_BUFFER_SIZE {
+							flush_directories(&db, &new_directories);
+							new_directories.clear();
+						}
+					}
+					Insert::Song(s) => {
+						new_songs.push(s);
+						if new_songs.len() >= INDEX_BUILDING_INSERT_BUFFER_SIZE {
+							flush_songs(&db, &new_songs);
+							new_songs.clear();
+						}
+					}
+				};
 			}
 			Err(_) => break,
 		}
 	}
 
-	if new_entries.len() > 0 {
-		flush_songs(&db, &new_entries);
+	if new_directories.len() > 0 {
+		flush_directories(&db, &new_directories);
+	}
+	if new_songs.len() > 0 {
+		flush_songs(&db, &new_songs);
 	}
 }
