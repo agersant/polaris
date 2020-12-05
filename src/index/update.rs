@@ -1,4 +1,5 @@
 use anyhow::*;
+use crossbeam_channel::{Receiver, Sender};
 use diesel;
 use diesel::prelude::*;
 #[cfg(feature = "profile-index")]
@@ -8,7 +9,6 @@ use rayon::prelude::*;
 use regex::Regex;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::mpsc::*;
 use std::time;
 
 use crate::config::MiscSettings;
@@ -354,8 +354,8 @@ pub fn populate(db: &DB) -> Result<()> {
 		Regex::new(&settings.index_album_art_pattern)?
 	};
 
-	let (directory_sender, directory_receiver) = channel();
-	let (song_sender, song_receiver) = channel();
+	let (directory_sender, directory_receiver) = crossbeam_channel::unbounded();
+	let (song_sender, song_receiver) = crossbeam_channel::unbounded();
 
 	let songs_db = db.clone();
 	let directories_db = db.clone();
