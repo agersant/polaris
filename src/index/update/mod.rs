@@ -63,7 +63,7 @@ pub fn update(db: &DB) -> Result<()> {
 	});
 
 	if let Err(e) = traverser_thread.join() {
-		error!("Error joining on collector thread: {:?}", e);
+		error!("Error joining on traverser thread: {:?}", e);
 	}
 
 	if let Err(e) = collector_thread.join() {
