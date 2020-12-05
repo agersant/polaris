@@ -364,12 +364,8 @@ pub fn populate(db: &DB) -> Result<()> {
 		}
 	}
 
-	match insertion_thread.join() {
-		Err(e) => error!(
-			"Error while waiting for index insertions to complete: {:?}",
-			e
-		),
-		_ => (),
+	if let Err(e) = insertion_thread.join() {
+		error!("Error joining on insertion thread to complete: {:?}", e);
 	}
 
 	Ok(())
