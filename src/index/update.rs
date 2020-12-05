@@ -375,36 +375,6 @@ pub fn populate(db: &DB) -> Result<()> {
 	Ok(())
 }
 
-fn flush_directories(db: &DB, entries: &Vec<NewDirectory>) {
-	if db
-		.connect()
-		.and_then(|connection| {
-			diesel::insert_into(directories::table)
-				.values(entries)
-				.execute(&*connection) // TODO https://github.com/diesel-rs/diesel/issues/1822
-				.map_err(Error::new)
-		})
-		.is_err()
-	{
-		error!("Could not insert new directories in database");
-	}
-}
-
-fn flush_songs(db: &DB, entries: &Vec<NewSong>) {
-	if db
-		.connect()
-		.and_then(|connection| {
-			diesel::insert_into(songs::table)
-				.values(entries)
-				.execute(&*connection) // TODO https://github.com/diesel-rs/diesel/issues/1822
-				.map_err(Error::new)
-		})
-		.is_err()
-	{
-		error!("Could not insert new songs in database");
-	}
-}
-
 enum Insert {
 	Dir(NewDirectory),
 	Song(NewSong),
@@ -423,14 +393,14 @@ fn insert_loop(receiver: Receiver<Insert>, db: DB) {
 					Insert::Dir(d) => {
 						new_directories.push(d);
 						if new_directories.len() >= INDEX_BUILDING_INSERT_BUFFER_SIZE {
-							flush_directories(&db, &new_directories);
+							insert_directories(&db, &new_directories);
 							new_directories.clear();
 						}
 					}
 					Insert::Song(s) => {
 						new_songs.push(s);
 						if new_songs.len() >= INDEX_BUILDING_INSERT_BUFFER_SIZE {
-							flush_songs(&db, &new_songs);
+							insert_songs(&db, &new_songs);
 							new_songs.clear();
 						}
 					}
@@ -441,9 +411,39 @@ fn insert_loop(receiver: Receiver<Insert>, db: DB) {
 	}
 
 	if new_directories.len() > 0 {
-		flush_directories(&db, &new_directories);
+		insert_directories(&db, &new_directories);
 	}
 	if new_songs.len() > 0 {
-		flush_songs(&db, &new_songs);
+		insert_songs(&db, &new_songs);
+	}
+}
+
+fn insert_directories(db: &DB, entries: &Vec<NewDirectory>) {
+	if db
+		.connect()
+		.and_then(|connection| {
+			diesel::insert_into(directories::table)
+				.values(entries)
+				.execute(&*connection) // TODO https://github.com/diesel-rs/diesel/issues/1822
+				.map_err(Error::new)
+		})
+		.is_err()
+	{
+		error!("Could not insert new directories in database");
+	}
+}
+
+fn insert_songs(db: &DB, entries: &Vec<NewSong>) {
+	if db
+		.connect()
+		.and_then(|connection| {
+			diesel::insert_into(songs::table)
+				.values(entries)
+				.execute(&*connection) // TODO https://github.com/diesel-rs/diesel/issues/1822
+				.map_err(Error::new)
+		})
+		.is_err()
+	{
+		error!("Could not insert new songs in database");
 	}
 }
