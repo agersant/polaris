@@ -5,7 +5,7 @@ target
 test-output
 
 # Profiler output when using the `profile-index` feature
-index-flame-graph.html
+profile-index.html
 
 # Local config for quick iteration
 TestConfig.toml

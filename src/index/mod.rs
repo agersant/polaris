@@ -1,8 +1,6 @@
 use anyhow::*;
 use diesel;
 use diesel::prelude::*;
-#[cfg(feature = "profile-index")]
-use flame;
 use log::error;
 use std::sync::{Arc, Condvar, Mutex};
 use std::time;
