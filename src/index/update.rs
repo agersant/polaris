@@ -5,7 +5,7 @@ use diesel::prelude::*;
 #[cfg(feature = "profile-index")]
 use flame;
 use log::{error, info};
-use rayon::prelude::*;
+use rayon::{prelude::*, ThreadPoolBuilder};
 use regex::Regex;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -23,8 +23,12 @@ const INDEX_BUILDING_CLEAN_BUFFER_SIZE: usize = 500; // Insertions in each trans
 pub fn update(db: &DB) -> Result<()> {
 	let start = time::Instant::now();
 	info!("Beginning library index update");
-	clean(db)?;
-	populate(db)?;
+	let thread_pool = ThreadPoolBuilder::new().build()?;
+	thread_pool.install(|| -> Result<()> {
+		clean(db)?;
+		populate(db)?;
+		Ok(())
+	})?;
 	info!(
 		"Library index update took {} seconds",
 		start.elapsed().as_millis() as f32 / 1000.0
@@ -288,53 +292,49 @@ impl IndexUpdater {
 pub fn clean(db: &DB) -> Result<()> {
 	let vfs = db.get_vfs()?;
 
-	{
-		let all_songs: Vec<String>;
-		{
-			let connection = db.connect()?;
-			all_songs = songs::table.select(songs::path).load(&connection)?;
-		}
+	let all_directories: Vec<String> = {
+		let connection = db.connect()?;
+		directories::table
+			.select(directories::path)
+			.load(&connection)?
+	};
 
-		let missing_songs = all_songs
-			.par_iter()
-			.filter(|ref song_path| {
-				let path = Path::new(&song_path);
-				!path.exists() || vfs.real_to_virtual(path).is_err()
-			})
-			.collect::<Vec<_>>();
+	let all_songs: Vec<String> = {
+		let connection = db.connect()?;
+		songs::table.select(songs::path).load(&connection)?
+	};
 
-		{
-			let connection = db.connect()?;
-			for chunk in missing_songs[..].chunks(INDEX_BUILDING_CLEAN_BUFFER_SIZE) {
-				diesel::delete(songs::table.filter(songs::path.eq_any(chunk)))
-					.execute(&connection)?;
-			}
-		}
-	}
-
-	{
-		let all_directories: Vec<String>;
-		{
-			let connection = db.connect()?;
-			all_directories = directories::table
-				.select(directories::path)
-				.load(&connection)?;
-		}
-
-		let missing_directories = all_directories
+	let list_missing_directories = || {
+		all_directories
 			.par_iter()
 			.filter(|ref directory_path| {
 				let path = Path::new(&directory_path);
 				!path.exists() || vfs.real_to_virtual(path).is_err()
 			})
-			.collect::<Vec<_>>();
+			.collect::<Vec<_>>()
+	};
 
-		{
-			let connection = db.connect()?;
-			for chunk in missing_directories[..].chunks(INDEX_BUILDING_CLEAN_BUFFER_SIZE) {
-				diesel::delete(directories::table.filter(directories::path.eq_any(chunk)))
-					.execute(&connection)?;
-			}
+	let list_missing_songs = || {
+		all_songs
+			.par_iter()
+			.filter(|ref song_path| {
+				let path = Path::new(&song_path);
+				!path.exists() || vfs.real_to_virtual(path).is_err()
+			})
+			.collect::<Vec<_>>()
+	};
+
+	let (missing_songs, missing_directories) =
+		rayon::join(list_missing_directories, list_missing_songs);
+
+	{
+		let connection = db.connect()?;
+		for chunk in missing_directories[..].chunks(INDEX_BUILDING_CLEAN_BUFFER_SIZE) {
+			diesel::delete(directories::table.filter(directories::path.eq_any(chunk)))
+				.execute(&connection)?;
+		}
+		for chunk in missing_songs[..].chunks(INDEX_BUILDING_CLEAN_BUFFER_SIZE) {
+			diesel::delete(songs::table.filter(songs::path.eq_any(chunk))).execute(&connection)?;
 		}
 	}
 
