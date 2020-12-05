@@ -178,12 +178,11 @@ impl IndexUpdater {
 					.unwrap_or("Unknown".to_owned())
 			));
 
-			if file_path.is_dir() {
-				sub_directories.push(file_path.to_path_buf());
-				continue;
+			match file_path.is_dir() {
+				true => &mut sub_directories,
+				false => &mut song_files,
 			}
-
-			song_files.push(file_path);
+			.push(file_path);
 		}
 
 		let song_metadata = |path: PathBuf| -> Option<(String, SongTags)> {
