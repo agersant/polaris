@@ -4,13 +4,13 @@ use rocket::request::{self, FromParam, FromRequest, Request};
 use rocket::response::content::Html;
 use rocket::{delete, get, post, put, routes, Outcome, State};
 use rocket_contrib::json::Json;
+use rocket_time::Duration;
 use std::default::Default;
 use std::fs::File;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::str;
 use std::str::FromStr;
-use time::Duration;
 
 use super::serve;
 use crate::config::{self, Config, Preferences};

@@ -1,3 +1,4 @@
+use actix_cookie::Cookie;
 use actix_web::{
 	client::{Client, ClientResponse},
 	middleware::{normalize::TrailingSlash, Logger, NormalizePath},
@@ -5,7 +6,6 @@ use actix_web::{
 	web::Bytes,
 	App, HttpServer,
 };
-use cookie::Cookie;
 use http::{header, response::Builder, Request, Response};
 use lazy_static::lazy_static;
 use serde::de::DeserializeOwned;

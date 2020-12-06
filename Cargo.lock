@@ -722,6 +722,15 @@ dependencies = [
 
 [[package]]
 name = "cookie"
+version = "0.13.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0c60ef6d0bbf56ad2674249b6bb74f2c6aeb98b98dd57b5d3e37cace33011d69"
+dependencies = [
+ "time 0.2.23",
+]
+
+[[package]]
+name = "cookie"
 version = "0.14.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "784ad0fbab4f3e9cef09f20e0aea6000ae08d2cb98ac4c0abc53df18803d702f"
@@ -2534,6 +2543,8 @@ dependencies = [
  "anyhow",
  "ape",
  "base64 0.12.3",
+ "cookie 0.11.3",
+ "cookie 0.13.3",
  "cookie 0.14.3",
  "crossbeam-channel 0.4.4",
  "diesel",
@@ -2570,6 +2581,7 @@ dependencies = [
  "serde_json",
  "simplelog",
  "thiserror",
+ "time 0.1.44",
  "time 0.2.23",
  "toml 0.5.7",
  "unix-daemonize",
