@@ -3,7 +3,7 @@ use headers::{self, HeaderMapExt};
 use http::{Response, StatusCode};
 
 use crate::service::dto;
-use crate::service::test::{constants::*, ServiceType, TestService};
+use crate::service::test::{constants::*, protocol, ServiceType, TestService};
 use crate::test_name;
 
 fn validate_cookies<T>(response: &Response<T>) {
@@ -46,7 +46,7 @@ fn test_login_rejects_bad_username() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 
-	let request = service.request_builder().login("garbage", TEST_PASSWORD);
+	let request = protocol::login("garbage", TEST_PASSWORD);
 	let response = service.fetch(&request);
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
@@ -56,7 +56,7 @@ fn test_login_rejects_bad_password() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 
-	let request = service.request_builder().login(TEST_USERNAME, "garbage");
+	let request = protocol::login(TEST_USERNAME, "garbage");
 	let response = service.fetch(&request);
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
@@ -66,9 +66,7 @@ fn test_login_golden_path() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 
-	let request = service
-		.request_builder()
-		.login(TEST_USERNAME, TEST_PASSWORD);
+	let request = protocol::login(TEST_USERNAME, TEST_PASSWORD);
 	let response = service.fetch(&request);
 	assert_eq!(response.status(), StatusCode::OK);
 
@@ -81,7 +79,7 @@ fn test_requests_without_auth_header_do_not_set_cookies() {
 	service.complete_initial_setup();
 	service.login();
 
-	let request = service.request_builder().random();
+	let request = protocol::random();
 	let response = service.fetch(&request);
 	assert_eq!(response.status(), StatusCode::OK);
 
@@ -93,7 +91,7 @@ fn test_authentication_via_http_header_rejects_bad_username() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 
-	let mut request = service.request_builder().random();
+	let mut request = protocol::random();
 	let basic = headers::Authorization::basic("garbage", TEST_PASSWORD);
 	request.headers_mut().typed_insert(basic);
 
@@ -106,7 +104,7 @@ fn test_authentication_via_http_header_rejects_bad_password() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 
-	let mut request = service.request_builder().random();
+	let mut request = protocol::random();
 	let basic = headers::Authorization::basic(TEST_PASSWORD, "garbage");
 	request.headers_mut().typed_insert(basic);
 
@@ -119,7 +117,7 @@ fn test_authentication_via_http_header_golden_path() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 
-	let mut request = service.request_builder().random();
+	let mut request = protocol::random();
 	let basic = headers::Authorization::basic(TEST_USERNAME, TEST_PASSWORD);
 	request.headers_mut().typed_insert(basic);
 

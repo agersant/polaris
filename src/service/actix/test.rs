@@ -17,12 +17,11 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 
 use crate::service::actix::*;
-use crate::service::test::{protocol, TestService};
+use crate::service::test::TestService;
 
 pub struct ActixTestService {
 	system_runner: SystemRunner,
 	cookies: HashMap<String, String>,
-	request_builder: protocol::RequestBuilder,
 	server: TestServer,
 }
 
@@ -122,18 +121,11 @@ impl TestService for ActixTestService {
 				.configure(config)
 		});
 
-		let request_builder = protocol::RequestBuilder::new("".to_owned()); // todo remove prefix
-
 		ActixTestService {
 			cookies: HashMap::new(),
 			system_runner,
-			request_builder,
 			server,
 		}
-	}
-
-	fn request_builder(&self) -> &protocol::RequestBuilder {
-		&self.request_builder
 	}
 
 	fn fetch<T: Serialize + Clone + 'static>(&mut self, request: &Request<T>) -> Response<()> {

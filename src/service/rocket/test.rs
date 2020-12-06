@@ -11,7 +11,6 @@ use crate::service::test::{protocol, TestService};
 
 pub struct RocketTestService {
 	client: Client,
-	request_builder: protocol::RequestBuilder,
 }
 
 pub type ServiceType = RocketTestService;
@@ -78,15 +77,7 @@ impl TestService for RocketTestService {
 
 		let server = service::get_server(context).unwrap();
 		let client = Client::new(server).unwrap();
-		let request_builder = protocol::RequestBuilder::new("".to_owned());
-		RocketTestService {
-			request_builder,
-			client,
-		}
-	}
-
-	fn request_builder(&self) -> &protocol::RequestBuilder {
-		&self.request_builder
+		RocketTestService { client }
 	}
 
 	fn fetch<T: Serialize>(&mut self, request: &Request<T>) -> Response<()> {
