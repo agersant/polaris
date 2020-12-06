@@ -11,7 +11,7 @@ use actix_web::{
 	FromRequest, HttpMessage, HttpRequest, HttpResponse, ResponseError,
 };
 use actix_web_httpauth::extractors::basic::BasicAuth;
-use cookie::{self, Cookie};
+use cookie::*;
 use futures_util::future::{err, ok};
 use percent_encoding::percent_decode_str;
 use std::future::Future;
@@ -104,18 +104,29 @@ impl FromRequest for Auth {
 			None => return Box::pin(err(ErrorInternalServerError(APIError::Unspecified))),
 		};
 
+		// TODO key
+
 		if let Some(session_cookie) = request.cookie(dto::COOKIE_SESSION) {
-			let exists = match user::exists(&db, session_cookie.value()) {
-				Ok(e) => e,
-				Err(_) => return Box::pin(err(ErrorInternalServerError(APIError::Unspecified))),
-			};
-			if !exists {
-				return Box::pin(err(ErrorUnauthorized(APIError::Unspecified)));
+			let key = [0 as u8; 32].to_vec();
+			let key = cookie::Key::derive_from(&key[..]);
+			let mut jar = CookieJar::new();
+			jar.add_original(session_cookie);
+			let signed_jar = jar.signed(&key);
+			if let Some(session_cookie) = signed_jar.get(dto::COOKIE_SESSION) {
+				let exists = match user::exists(&db, session_cookie.value()) {
+					Ok(e) => e,
+					Err(_) => {
+						return Box::pin(err(ErrorInternalServerError(APIError::Unspecified)))
+					}
+				};
+				if !exists {
+					return Box::pin(err(ErrorUnauthorized(APIError::Unspecified)));
+				}
+				return Box::pin(ok(Auth {
+					username: session_cookie.value().to_owned(),
+					source: AuthSource::Cookie,
+				}));
 			}
-			return Box::pin(ok(Auth {
-				username: session_cookie.value().to_owned(),
-				source: AuthSource::Cookie,
-			}));
 		}
 
 		let auth_future = BasicAuth::from_request(request, payload);
@@ -214,30 +225,45 @@ fn add_auth_cookies<T>(
 ) -> Result<(), HttpError> {
 	let duration = time::Duration::days(1);
 
-	let session_cookie = Cookie::build(dto::COOKIE_SESSION, username.to_owned())
-		.same_site(cookie::SameSite::Lax)
-		.http_only(true)
-		.max_age(duration)
-		.finish();
+	// TODO key
+	let key = [0 as u8; 32].to_vec();
+	let key = cookie::Key::derive_from(&key[..]);
 
-	let username_cookie = Cookie::build(dto::COOKIE_USERNAME, username.to_owned())
-		.same_site(cookie::SameSite::Lax)
-		.http_only(false)
-		.max_age(duration)
-		.path("/")
-		.finish();
+	let mut jar = CookieJar::new();
+	let mut signed_jar = jar.signed(&key);
+	signed_jar.add(
+		Cookie::build(dto::COOKIE_SESSION, username.to_owned())
+			.same_site(cookie::SameSite::Lax)
+			.http_only(true)
+			.max_age(duration)
+			.finish(),
+	);
 
-	let is_admin_cookie = Cookie::build(dto::COOKIE_ADMIN, format!("{}", is_admin))
-		.same_site(cookie::SameSite::Lax)
-		.http_only(false)
-		.max_age(duration)
-		.path("/")
-		.finish();
+	jar.add(
+		Cookie::build(dto::COOKIE_USERNAME, username.to_owned())
+			.same_site(cookie::SameSite::Lax)
+			.http_only(false)
+			.max_age(duration)
+			.path("/")
+			.finish(),
+	);
 
-	// TODO.important session_cookie should be private encrypted cookie (https://github.com/actix/examples/blob/master/cookie-auth/src/main.rs)
-	response.add_cookie(&session_cookie)?;
-	response.add_cookie(&username_cookie)?;
-	response.add_cookie(&is_admin_cookie)?;
+	jar.add(
+		Cookie::build(dto::COOKIE_ADMIN, format!("{}", is_admin))
+			.same_site(cookie::SameSite::Lax)
+			.http_only(false)
+			.max_age(duration)
+			.path("/")
+			.finish(),
+	);
+
+	let headers = response.headers_mut();
+	for cookie in jar.delta() {
+		http::HeaderValue::from_str(&cookie.to_string()).map(|c| {
+			headers.append(http::header::SET_COOKIE, c);
+		})?;
+	}
+
 	Ok(())
 }
 
@@ -348,10 +374,7 @@ async fn browse(
 }
 
 #[get("/flatten")]
-async fn flatten_root(
-	db: Data<DB>,
-	_auth: Auth,
-) -> Result<Json<Vec<index::Song>>, APIError> {
+async fn flatten_root(db: Data<DB>, _auth: Auth) -> Result<Json<Vec<index::Song>>, APIError> {
 	let result = index::flatten(&db, Path::new(""))?;
 	Ok(Json(result))
 }
