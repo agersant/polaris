@@ -43,3 +43,5 @@ pub struct LastFMLink {
 	pub token: String,
 	pub content: String,
 }
+
+// TODO: Config and Preferences should have dto types
