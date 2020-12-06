@@ -2557,7 +2557,6 @@ dependencies = [
  "http 0.2.1",
  "id3",
  "image",
- "lazy_static 1.4.0",
  "lewton",
  "libsqlite3-sys",
  "log 0.4.11",

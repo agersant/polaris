@@ -9,10 +9,6 @@ extern crate diesel_migrations;
 #[macro_use]
 extern crate flamer;
 
-#[cfg(all(text, feature = "service-actix"))]
-#[macro_use]
-extern crate lazy_static;
-
 use anyhow::*;
 use log::{error, info};
 use simplelog::{LevelFilter, SimpleLogger, TermLogger, TerminalMode};

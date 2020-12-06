@@ -30,7 +30,6 @@ getopts = "0.2.15"
 http = "0.2.1"
 id3 = "0.5.1"
 image = "0.23.4"
-lazy_static = "1.4"
 libsqlite3-sys = { version = "0.16", features = ["bundled-windows"] }
 lewton = "0.10.1"
 log = "0.4.5"
