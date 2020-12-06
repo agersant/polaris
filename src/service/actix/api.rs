@@ -15,6 +15,7 @@ use cookie::*;
 use futures_util::future::{err, ok};
 use percent_encoding::percent_decode_str;
 use std::future::Future;
+use std::ops::Deref;
 use std::path::Path;
 use std::pin::Pin;
 use std::str;
@@ -81,6 +82,66 @@ impl ResponseError for APIError {
 	}
 }
 
+struct Cookies {
+	jar: CookieJar,
+	key: Key,
+}
+
+impl Cookies {
+	fn new(key: Key) -> Self {
+		let jar = CookieJar::new();
+		Self { jar, key }
+	}
+
+	fn add_original(&mut self, cookie: Cookie<'static>) {
+		self.jar.add_original(cookie);
+	}
+
+	fn add(&mut self, cookie: Cookie<'static>) {
+		self.jar.add(cookie);
+	}
+
+	fn add_signed(&mut self, cookie: Cookie<'static>) {
+		let mut signed_jar = self.jar.signed(&self.key);
+		signed_jar.add(cookie);
+	}
+
+	#[allow(dead_code)]
+	fn get(&self, name: &str) -> Option<&Cookie> {
+		self.jar.get(name)
+	}
+
+	fn get_signed(&mut self, name: &str) -> Option<Cookie> {
+		let signed_jar = self.jar.signed(&self.key);
+		signed_jar.get(name)
+	}
+}
+
+impl FromRequest for Cookies {
+	type Error = actix_web::Error;
+	type Future = Pin<Box<dyn Future<Output = Result<Self, Self::Error>>>>;
+	type Config = ();
+
+	fn from_request(request: &HttpRequest, _payload: &mut Payload) -> Self::Future {
+		let request_cookies = match request.cookies() {
+			Ok(c) => c,
+			Err(_) => return Box::pin(err(ErrorInternalServerError(APIError::Unspecified))),
+		};
+
+		let key = match request.app_data::<Data<Key>>() {
+			Some(k) => k.as_ref(),
+			None => return Box::pin(err(ErrorInternalServerError(APIError::Unspecified))),
+		};
+
+		let mut cookies = Cookies::new(key.clone());
+		for cookie in request_cookies.deref() {
+			cookies.add_original(cookie.clone());
+		}
+
+		Box::pin(ok(cookies))
+	}
+}
+
 #[derive(Debug)]
 enum AuthSource {
 	AuthorizationHeader,
@@ -104,43 +165,41 @@ impl FromRequest for Auth {
 			None => return Box::pin(err(ErrorInternalServerError(APIError::Unspecified))),
 		};
 
-		// TODO key
+		let cookies_future = Cookies::from_request(request, payload);
+		let http_auth_future = BasicAuth::from_request(request, payload);
 
-		if let Some(session_cookie) = request.cookie(dto::COOKIE_SESSION) {
-			let key = [0 as u8; 32].to_vec();
-			let key = cookie::Key::derive_from(&key[..]);
-			let mut jar = CookieJar::new();
-			jar.add_original(session_cookie);
-			let signed_jar = jar.signed(&key);
-			if let Some(session_cookie) = signed_jar.get(dto::COOKIE_SESSION) {
-				let exists = match user::exists(&db, session_cookie.value()) {
-					Ok(e) => e,
-					Err(_) => {
-						return Box::pin(err(ErrorInternalServerError(APIError::Unspecified)))
-					}
-				};
-				if !exists {
-					return Box::pin(err(ErrorUnauthorized(APIError::Unspecified)));
-				}
-				return Box::pin(ok(Auth {
-					username: session_cookie.value().to_owned(),
-					source: AuthSource::Cookie,
-				}));
-			}
-		}
-
-		let auth_future = BasicAuth::from_request(request, payload);
 		Box::pin(async move {
-			let auth = auth_future.await?;
-			let username = auth.user_id().as_ref();
-			let password = auth.password().map(|s| s.as_ref()).unwrap_or("");
-			if user::auth(&db, username, password).unwrap_or(false) {
-				return Ok(Auth {
-					username: username.to_owned(),
-					source: AuthSource::AuthorizationHeader,
-				});
+			// Auth via session cookie
+			{
+				let mut cookies = cookies_future.await?;
+				if let Some(session_cookie) = cookies.get_signed(dto::COOKIE_SESSION) {
+					let exists = match user::exists(&db, session_cookie.value()) {
+						Ok(e) => e,
+						Err(_) => return Err(ErrorInternalServerError(APIError::Unspecified)),
+					};
+					if !exists {
+						return Err(ErrorUnauthorized(APIError::Unspecified));
+					}
+					return Ok(Auth {
+						username: session_cookie.value().to_owned(),
+						source: AuthSource::Cookie,
+					});
+				}
 			}
-			Err(ErrorUnauthorized(APIError::Unspecified))
+
+			// Auth via HTTP header
+			{
+				let auth = http_auth_future.await?;
+				let username = auth.user_id().as_ref();
+				let password = auth.password().map(|s| s.as_ref()).unwrap_or("");
+				if user::auth(&db, username, password).unwrap_or(false) {
+					return Ok(Auth {
+						username: username.to_owned(),
+						source: AuthSource::AuthorizationHeader,
+					});
+				}
+				Err(ErrorUnauthorized(APIError::Unspecified))
+			}
 		})
 	}
 }
@@ -195,6 +254,7 @@ pub fn http_auth_middleware<
 
 	let (request, mut payload) = request.into_parts();
 	let auth_future = Auth::from_request(&request, &mut payload);
+	let cookies_future = Cookies::from_request(&request, &mut payload);
 	let request = match ServiceRequest::from_parts(request, payload) {
 		Ok(s) => s,
 		Err(_) => return Box::pin(err(ErrorInternalServerError(APIError::Unspecified))),
@@ -209,9 +269,15 @@ pub fn http_auth_middleware<
 				AuthSource::Cookie => false,
 			};
 			if set_cookies {
+				let mut cookies = cookies_future.await?;
 				let is_admin =
 					user::is_admin(&db, &auth.username).map_err(|_| APIError::Unspecified)?;
-				add_auth_cookies(response.response_mut(), &auth.username, is_admin)?;
+				add_auth_cookies(
+					response.response_mut(),
+					&mut cookies,
+					&auth.username,
+					is_admin,
+				)?;
 			}
 		}
 		Ok(response)
@@ -220,18 +286,13 @@ pub fn http_auth_middleware<
 
 fn add_auth_cookies<T>(
 	response: &mut HttpResponse<T>,
+	cookies: &mut Cookies,
 	username: &str,
 	is_admin: bool,
 ) -> Result<(), HttpError> {
 	let duration = time::Duration::days(1);
 
-	// TODO key
-	let key = [0 as u8; 32].to_vec();
-	let key = cookie::Key::derive_from(&key[..]);
-
-	let mut jar = CookieJar::new();
-	let mut signed_jar = jar.signed(&key);
-	signed_jar.add(
+	cookies.add_signed(
 		Cookie::build(dto::COOKIE_SESSION, username.to_owned())
 			.same_site(cookie::SameSite::Lax)
 			.http_only(true)
@@ -239,7 +300,7 @@ fn add_auth_cookies<T>(
 			.finish(),
 	);
 
-	jar.add(
+	cookies.add(
 		Cookie::build(dto::COOKIE_USERNAME, username.to_owned())
 			.same_site(cookie::SameSite::Lax)
 			.http_only(false)
@@ -248,7 +309,7 @@ fn add_auth_cookies<T>(
 			.finish(),
 	);
 
-	jar.add(
+	cookies.add(
 		Cookie::build(dto::COOKIE_ADMIN, format!("{}", is_admin))
 			.same_site(cookie::SameSite::Lax)
 			.http_only(false)
@@ -258,7 +319,7 @@ fn add_auth_cookies<T>(
 	);
 
 	let headers = response.headers_mut();
-	for cookie in jar.delta() {
+	for cookie in cookies.jar.delta() {
 		http::HeaderValue::from_str(&cookie.to_string()).map(|c| {
 			headers.append(http::header::SET_COOKIE, c);
 		})?;
@@ -342,13 +403,14 @@ async fn trigger_index(
 async fn login(
 	db: Data<DB>,
 	credentials: Json<dto::AuthCredentials>,
+	mut cookies: Cookies,
 ) -> Result<HttpResponse, APIError> {
 	if !user::auth(&db, &credentials.username, &credentials.password)? {
 		return Err(APIError::IncorrectCredentials);
 	}
 	let is_admin = user::is_admin(&db, &credentials.username)?;
 	let mut response = HttpResponse::Ok().finish();
-	add_auth_cookies(&mut response, &credentials.username, is_admin)
+	add_auth_cookies(&mut response, &mut cookies, &credentials.username, is_admin)
 		.map_err(|_| APIError::Unspecified)?;
 	Ok(response)
 }
