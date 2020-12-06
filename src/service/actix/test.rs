@@ -1,17 +1,20 @@
 use actix_web::{
-	client::{Client, ClientResponse}, rt::{System, SystemRunner},
-	web::Bytes, App, HttpServer, middleware::{Logger, NormalizePath, normalize::TrailingSlash}
+	client::{Client, ClientResponse},
+	middleware::{normalize::TrailingSlash, Logger, NormalizePath},
+	rt::{System, SystemRunner},
+	web::Bytes,
+	App, HttpServer,
 };
 use cookie::Cookie;
 use http::{header, response::Builder, Request, Response};
 use lazy_static::lazy_static;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use std::{fs, thread, time::Duration};
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
+use std::{fs, thread, time::Duration};
 
 use crate::service::actix::*;
 use crate::service::test::{protocol, TestService};
@@ -48,7 +51,9 @@ impl ActixTestService {
 				.map(|(name, value)| format!("{}={}", name, value))
 				.collect::<Vec<_>>()
 				.join("; ");
-			client_builder = client_builder.header(header::COOKIE, cookies_value).timeout(Duration::from_secs(60));
+			client_builder = client_builder
+				.header(header::COOKIE, cookies_value)
+				.timeout(Duration::from_secs(60));
 			tx.send(client_builder.finish()).unwrap();
 		});
 		rx.recv().unwrap()
