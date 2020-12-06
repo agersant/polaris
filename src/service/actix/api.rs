@@ -82,6 +82,7 @@ impl ResponseError for APIError {
 	}
 }
 
+#[derive(Clone)]
 struct Cookies {
 	jar: CookieJar,
 	key: Key,
@@ -102,8 +103,7 @@ impl Cookies {
 	}
 
 	fn add_signed(&mut self, cookie: Cookie<'static>) {
-		let mut signed_jar = self.jar.signed(&self.key);
-		signed_jar.add(cookie);
+		self.jar.signed(&self.key).add(cookie);
 	}
 
 	#[allow(dead_code)]
@@ -112,8 +112,7 @@ impl Cookies {
 	}
 
 	fn get_signed(&mut self, name: &str) -> Option<Cookie> {
-		let signed_jar = self.jar.signed(&self.key);
-		signed_jar.get(name)
+		self.jar.signed(&self.key).get(name)
 	}
 }
 
@@ -269,15 +268,10 @@ pub fn http_auth_middleware<
 				AuthSource::Cookie => false,
 			};
 			if set_cookies {
-				let mut cookies = cookies_future.await?;
+				let cookies = cookies_future.await?;
 				let is_admin =
 					user::is_admin(&db, &auth.username).map_err(|_| APIError::Unspecified)?;
-				add_auth_cookies(
-					response.response_mut(),
-					&mut cookies,
-					&auth.username,
-					is_admin,
-				)?;
+				add_auth_cookies(response.response_mut(), &cookies, &auth.username, is_admin)?;
 			}
 		}
 		Ok(response)
@@ -286,11 +280,13 @@ pub fn http_auth_middleware<
 
 fn add_auth_cookies<T>(
 	response: &mut HttpResponse<T>,
-	cookies: &mut Cookies,
+	cookies: &Cookies,
 	username: &str,
 	is_admin: bool,
 ) -> Result<(), HttpError> {
 	let duration = time::Duration::days(1);
+
+	let mut cookies = cookies.clone();
 
 	cookies.add_signed(
 		Cookie::build(dto::COOKIE_SESSION, username.to_owned())
@@ -403,14 +399,14 @@ async fn trigger_index(
 async fn login(
 	db: Data<DB>,
 	credentials: Json<dto::AuthCredentials>,
-	mut cookies: Cookies,
+	cookies: Cookies,
 ) -> Result<HttpResponse, APIError> {
 	if !user::auth(&db, &credentials.username, &credentials.password)? {
 		return Err(APIError::IncorrectCredentials);
 	}
 	let is_admin = user::is_admin(&db, &credentials.username)?;
 	let mut response = HttpResponse::Ok().finish();
-	add_auth_cookies(&mut response, &mut cookies, &credentials.username, is_admin)
+	add_auth_cookies(&mut response, &cookies, &credentials.username, is_admin)
 		.map_err(|_| APIError::Unspecified)?;
 	Ok(response)
 }
