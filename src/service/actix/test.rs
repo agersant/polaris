@@ -127,9 +127,9 @@ impl TestService for ActixTestService {
 			.build()
 			.unwrap();
 
-		let address = format!("localhost:{}", context.port);
+		let address_request = format!("localhost:{}", context.port);
+		let address_listen = format!("0.0.0.0:{}", context.port);
 
-		let address_server = address.clone();
 		thread::spawn(move || {
 			let system_runner = System::new("http-server");
 			HttpServer::new(move || {
@@ -140,14 +140,14 @@ impl TestService for ActixTestService {
 					.wrap(NormalizePath::new(TrailingSlash::Trim))
 					.configure(config)
 			})
-			.bind(address_server)
+			.bind(address_listen)
 			.unwrap()
 			.run();
 			system_runner.run().unwrap();
 		});
 
 		let system_runner = System::new("main");
-		let request_builder = protocol::RequestBuilder::new(format!("http://{}", address));
+		let request_builder = protocol::RequestBuilder::new(format!("http://{}", address_request));
 
 		ActixTestService {
 			cookies: HashMap::new(),
