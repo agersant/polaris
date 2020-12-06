@@ -13,7 +13,18 @@ fn validate_cookies<T>(response: &Response<T>) {
 		.iter()
 		.map(|c| Cookie::parse(c.to_str().unwrap()).unwrap())
 		.collect();
-	assert!(cookies.iter().any(|c| c.name() == dto::COOKIE_SESSION));
+	let session = cookies
+		.iter()
+		.find_map(|c| {
+			if c.name() == dto::COOKIE_SESSION {
+				Some(c.value())
+			} else {
+				None
+			}
+		})
+		.unwrap();
+	assert_ne!(session, TEST_USERNAME);
+	assert_ne!(session, TEST_USERNAME_ADMIN);
 	assert!(cookies.iter().any(|c| c.name() == dto::COOKIE_USERNAME));
 	assert!(cookies.iter().any(|c| c.name() == dto::COOKIE_ADMIN));
 }
