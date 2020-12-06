@@ -11,7 +11,7 @@ jobs:
     strategy:
       matrix:
         features: [--features default, --no-default-features --features service-rocket,--no-default-features --features service-actix, --features "ui profile-index"]
-        os: [ubuntu-latest, windows-latest, macOS-latest]
+        os: [ubuntu-latest, windows-latest]
 
     steps:
     - name: Install libsqlite3-dev
