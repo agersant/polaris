@@ -69,7 +69,7 @@ impl TestService for RocketTestService {
 
 		let context = service::ContextBuilder::new()
 			.database_file_path(db_path)
-			.web_dir_path(Path::new("web").into())
+			.web_dir_path(Path::new("test-data/web").into())
 			.swagger_dir_path(["docs", "swagger"].iter().collect())
 			.cache_dir_path(["test-output", test_name].iter().collect())
 			.build()
