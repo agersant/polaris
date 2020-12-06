@@ -34,7 +34,7 @@ fn get_next_port_number() -> u16 {
 
 pub struct ActixTestService {
 	system_runner: SystemRunner,
-	cookies: HashMap<String, String>, // TODO not ideal
+	cookies: HashMap<String, String>,
 	request_builder: protocol::RequestBuilder,
 }
 
