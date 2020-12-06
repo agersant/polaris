@@ -355,8 +355,6 @@ async fn put_settings(
 	db: Data<DB>,
 	config: Json<Config>,
 ) -> Result<HttpResponse, APIError> {
-	// TODO config should be a dto type
-
 	// Do not let users remove their own admin rights
 	if let Some(auth) = &admin_rights.auth {
 		if let Some(users) = &config.users {
