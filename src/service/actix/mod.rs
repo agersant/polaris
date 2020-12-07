@@ -33,19 +33,20 @@ pub fn make_config(context: service::Context) -> impl FnOnce(&mut ServiceConfig)
 }
 
 pub fn run(context: service::Context) -> Result<()> {
-	let system = System::new("http-server");
-	let address = format!("0.0.0.0:{}", context.port);
-	let _server = HttpServer::new(move || {
-		App::new()
-			.wrap(Logger::default())
-			.wrap_fn(api::http_auth_middleware)
-			.wrap(NormalizePath::new(TrailingSlash::Trim))
-			.configure(make_config(context.clone()))
+	System::run(move || {
+		let address = format!("0.0.0.0:{}", context.port);
+		HttpServer::new(move || {
+			App::new()
+				.wrap(Logger::default())
+				.wrap_fn(api::http_auth_middleware)
+				.wrap(NormalizePath::new(TrailingSlash::Trim))
+				.configure(make_config(context.clone()))
+		})
+		.disable_signals()
+		.bind(address)
+		.unwrap()
+		.run();
 	})
-	.bind(address)?
-	.run();
-	// TODO.important investigate why it takes two Ctrl+C to shutdown
-	// https://github.com/actix/actix-web/issues/639 (see example at bottom)
-	system.run()?;
+	.unwrap();
 	Ok(())
 }
