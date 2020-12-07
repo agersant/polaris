@@ -67,16 +67,7 @@ impl Inserter {
 				Err(_) => break,
 			}
 		}
-
-		if self.new_directories.len() > 0 {
-			self.flush_directories();
-		}
-		if self.new_songs.len() > 0 {
-			self.flush_songs();
-		}
 	}
-
-	// TODO use drop for final flush?
 
 	fn insert_item(&mut self, insert: Item) {
 		match insert {
@@ -127,5 +118,16 @@ impl Inserter {
 			error!("Could not insert new songs in database");
 		}
 		self.new_songs.clear();
+	}
+}
+
+impl Drop for Inserter {
+	fn drop(&mut self) {
+		if self.new_directories.len() > 0 {
+			self.flush_directories();
+		}
+		if self.new_songs.len() > 0 {
+			self.flush_songs();
+		}
 	}
 }
