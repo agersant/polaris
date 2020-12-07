@@ -1,9 +1,10 @@
 use crossbeam_channel::Sender;
-use log::error;
+use log::{error, info};
 use parking_lot::Mutex;
 use std::cmp::min;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::thread;
@@ -53,8 +54,14 @@ impl Traverser {
 		let num_pending_work_items = Arc::new(AtomicUsize::new(initial_work.len()));
 		let queue = Arc::new(Mutex::new(initial_work));
 
+		let key = "POLARIS_NUM_TRAVERSER_THREADS";
+		let num_threads = std::env::var_os(key)
+			.map(|v| v.to_string_lossy().to_string())
+			.and_then(|v| usize::from_str(&v).ok())
+			.unwrap_or(min(num_cpus::get(), 4));
+		info!("Browsing collection using {} threads", num_threads);
+
 		let mut threads = Vec::new();
-		let num_threads = min(num_cpus::get(), 4); // TODO.index
 		for _ in 0..num_threads {
 			let queue = queue.clone();
 			let directory_sender = self.directory_sender.clone();
