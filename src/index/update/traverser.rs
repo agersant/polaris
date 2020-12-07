@@ -1,6 +1,5 @@
-use crossbeam_channel::Sender;
+use crossbeam_channel::{self, Receiver, Sender};
 use log::{error, info};
-use parking_lot::Mutex;
 use std::cmp::min;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -43,16 +42,8 @@ impl Traverser {
 	}
 
 	pub fn traverse(&self, roots: Vec<PathBuf>) {
-		let initial_work: Vec<WorkItem> = roots
-			.into_iter()
-			.map(|d| WorkItem {
-				parent: None,
-				path: d,
-			})
-			.collect();
-
-		let num_pending_work_items = Arc::new(AtomicUsize::new(initial_work.len()));
-		let queue = Arc::new(Mutex::new(initial_work));
+		let num_pending_work_items = Arc::new(AtomicUsize::new(roots.len()));
+		let (work_item_sender, work_item_receiver) = crossbeam_channel::unbounded();
 
 		let key = "POLARIS_NUM_TRAVERSER_THREADS";
 		let num_threads = std::env::var_os(key)
@@ -63,17 +54,29 @@ impl Traverser {
 
 		let mut threads = Vec::new();
 		for _ in 0..num_threads {
-			let queue = queue.clone();
+			let work_item_sender = work_item_sender.clone();
+			let work_item_receiver = work_item_receiver.clone();
 			let directory_sender = self.directory_sender.clone();
 			let num_pending_work_items = num_pending_work_items.clone();
-			threads.push(std::thread::spawn(move || {
+			threads.push(thread::spawn(move || {
 				let worker = Worker {
-					queue,
+					work_item_sender,
+					work_item_receiver,
 					directory_sender,
 					num_pending_work_items,
 				};
 				worker.run();
 			}));
+		}
+
+		for root in roots {
+			let work_item = WorkItem {
+				parent: None,
+				path: root,
+			};
+			if let Err(e) = work_item_sender.send(work_item) {
+				error!("Error initializing traverser: {:#?}", e);
+			}
 		}
 
 		for thread in threads {
@@ -85,7 +88,8 @@ impl Traverser {
 }
 
 struct Worker {
-	queue: Arc<Mutex<Vec<WorkItem>>>,
+	work_item_sender: Sender<WorkItem>,
+	work_item_receiver: Receiver<WorkItem>,
 	directory_sender: Sender<Directory>,
 	num_pending_work_items: Arc<AtomicUsize>,
 }
@@ -104,12 +108,13 @@ impl Worker {
 				return None;
 			}
 			{
-				let mut queue = self.queue.lock();
-				if let Some(w) = queue.pop() {
+				if let Ok(w) = self
+					.work_item_receiver
+					.recv_timeout(Duration::from_millis(100))
+				{
 					return Some(w);
 				}
 			};
-			thread::sleep(Duration::from_millis(1));
 		}
 	}
 
@@ -119,8 +124,7 @@ impl Worker {
 
 	fn queue_work(&self, work_item: WorkItem) {
 		self.num_pending_work_items.fetch_add(1, Ordering::SeqCst);
-		let mut queue = self.queue.lock();
-		queue.push(work_item);
+		self.work_item_sender.send(work_item).unwrap();
 	}
 
 	fn on_item_processed(&self) {

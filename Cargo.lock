@@ -1856,7 +1856,6 @@ dependencies = [
  "mp4ameta",
  "num_cpus",
  "opus_headers",
- "parking_lot 0.11.1",
  "pbkdf2",
  "percent-encoding 2.1.0",
  "rand 0.7.3",
