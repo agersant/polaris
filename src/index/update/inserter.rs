@@ -76,6 +76,8 @@ impl Inserter {
 		}
 	}
 
+	// TODO use drop for final flush?
+
 	fn insert_item(&mut self, insert: Item) {
 		match insert {
 			Item::Directory(d) => {
