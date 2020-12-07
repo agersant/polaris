@@ -41,7 +41,7 @@ impl Traverser {
 		Self { directory_sender }
 	}
 
-	pub fn traverse(&self, roots: Vec<PathBuf>) -> anyhow::Result<()> {
+	pub fn traverse(&self, roots: Vec<PathBuf>) {
 		let initial_work: Vec<WorkItem> = roots
 			.into_iter()
 			.map(|d| WorkItem {
@@ -70,10 +70,10 @@ impl Traverser {
 		}
 
 		for thread in threads {
-			thread.join().ok(); // TODO.index
+			if let Err(e) = thread.join() {
+				error!("Error joining on traverser worker thread: {:#?}", e);
+			}
 		}
-
-		Ok(())
 	}
 }
 
@@ -121,7 +121,7 @@ impl Worker {
 	}
 
 	fn emit_directory(&self, directory: Directory) {
-		self.directory_sender.send(directory).unwrap(); // TODO.index
+		self.directory_sender.send(directory).ok();
 	}
 
 	pub fn process_work_item(&self, work_item: WorkItem) {

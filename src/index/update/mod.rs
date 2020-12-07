@@ -54,9 +54,7 @@ pub fn update(db: &DB) -> Result<()> {
 
 		let mount_points = vfs.get_mount_points();
 		let traverser = Traverser::new(collect_sender);
-		traverser
-			.traverse(mount_points.values().map(|p| p.clone()).collect())
-			.ok(); // TODO.index
+		traverser.traverse(mount_points.values().map(|p| p.clone()).collect());
 
 		#[cfg(feature = "profile-index")]
 		flame::dump_html(&mut std::fs::File::create("profile-index.html").unwrap()).unwrap();
