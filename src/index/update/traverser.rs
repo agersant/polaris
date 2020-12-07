@@ -121,7 +121,7 @@ impl Worker {
 	}
 
 	fn emit_directory(&self, directory: Directory) {
-		self.directory_sender.send(directory).ok();
+		self.directory_sender.send(directory).unwrap();
 	}
 
 	pub fn process_work_item(&self, work_item: WorkItem) {
