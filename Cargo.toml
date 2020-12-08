@@ -18,7 +18,6 @@ diesel = { version = "1.4.4", features = ["sqlite", "r2d2"] }
 diesel_migrations = { version = "1.4", features = ["sqlite"] }
 getopts = "0.2.15"
 id3 = "0.5.1"
-image = "0.23.4"
 libsqlite3-sys = { version = "0.16", features = ["bundled-windows"] }
 rustfm-scrobble = "^1"
 lewton = "0.10.1"
@@ -42,6 +41,11 @@ thiserror = "1.0.19"
 time = "0.1"
 toml = "0.5"
 url = "2.1"
+
+[dependencies.image]
+version = "0.23.12"
+default_features = false
+features = ["bmp", "gif", "jpeg", "png"]
 
 [dependencies.rocket_contrib]
 version = "0.4.5"
