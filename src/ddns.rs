@@ -1,7 +1,6 @@
 use anyhow::*;
 use diesel::prelude::*;
 use log::{error, info};
-use reqwest;
 use serde::{Deserialize, Serialize};
 use std::thread;
 use std::time;
@@ -41,17 +40,18 @@ fn update_my_ip(config_source: &DB) -> Result<()> {
 	}
 
 	let full_url = format!("{}?host={}", DDNS_UPDATE_URL, &config.host);
-	let client = reqwest::ClientBuilder::new().build()?;
-	let res = client
-		.get(full_url.as_str())
-		.basic_auth(config.username, Some(config.password))
-		.send()?;
-	if !res.status().is_success() {
+
+	let response = ureq::get(full_url.as_str())
+		.auth(&config.username, &config.password)
+		.call();
+
+	if !response.ok() {
 		bail!(
 			"DDNS update query failed with status code: {}",
-			res.status()
+			response.status()
 		);
 	}
+
 	Ok(())
 }
 
