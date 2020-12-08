@@ -78,9 +78,7 @@ jobs:
       run: make preview-xdg XDG_DATA_HOME=/my/own/xdg/home
     - uses: actions-rs/toolchain@v1
       with:
-        toolchain: none
         profile: minimal
-        default: true
     - name: Install
       run: make install-xdg
     - name: Run Polaris
@@ -102,9 +100,7 @@ jobs:
     - name: Install Rust Toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: none
         profile: minimal
-        default: true
     - name: Make release
       uses: ./.github/actions/make-windows-release
       with:
