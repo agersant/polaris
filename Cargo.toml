@@ -13,7 +13,7 @@ service-rocket = ["rocket", "rocket_contrib"]
 anyhow = "1.0.35"
 ape = "0.3.0"
 base64 = "0.13"
-crossbeam-channel = "0.4"
+crossbeam-channel = "0.5"
 diesel_migrations = { version = "1.4", features = ["sqlite"] }
 getopts = "0.2.15"
 id3 = "0.5.1"
