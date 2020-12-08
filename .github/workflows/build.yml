@@ -10,10 +10,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        features: [--all-features, --features default]
+        features: [--all-features, --features default, --features "service-rocket" --no-default-features]
         os: [ubuntu-latest, windows-latest, macOS-latest]
 
     steps:
+    - name: Install libsqlite3-dev
+      if: contains(matrix.features, 'no-default-features')
+      run: sudo apt-get update && sudo apt-get install libsqlite3-dev
     - uses: actions/checkout@v1
     - uses: actions-rs/toolchain@v1
       with:
