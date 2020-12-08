@@ -1,8 +1,6 @@
 use anyhow::*;
 use diesel;
 use diesel::prelude::*;
-#[cfg(feature = "profile-index")]
-use flame;
 use log::{error, info};
 use regex::Regex;
 use std::time;
@@ -49,15 +47,9 @@ pub fn update(db: &DB) -> Result<()> {
 
 	let vfs = db.get_vfs()?;
 	let traverser_thread = std::thread::spawn(move || {
-		#[cfg(feature = "profile-index")]
-		flame::clear();
-
 		let mount_points = vfs.get_mount_points();
 		let traverser = Traverser::new(collect_sender);
 		traverser.traverse(mount_points.values().map(|p| p.clone()).collect());
-
-		#[cfg(feature = "profile-index")]
-		flame::dump_html(&mut std::fs::File::create("profile-index.html").unwrap()).unwrap();
 	});
 
 	if let Err(e) = traverser_thread.join() {

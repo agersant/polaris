@@ -136,14 +136,6 @@ impl Worker {
 	}
 
 	pub fn process_work_item(&self, work_item: WorkItem) {
-		#[cfg(feature = "profile-index")]
-		let _guard = flame::start_guard(format!(
-			"traverse: {}",
-			dir.file_name()
-				.map(|s| { s.to_string_lossy().into_owned() })
-				.unwrap_or("Unknown".to_owned())
-		));
-
 		let read_dir = match fs::read_dir(&work_item.path) {
 			Ok(read_dir) => read_dir,
 			Err(e) => {
@@ -202,7 +194,6 @@ impl Worker {
 		}
 	}
 
-	#[cfg_attr(feature = "profile-index", flame)]
 	fn get_date_created(path: &Path) -> Option<i32> {
 		if let Ok(t) = fs::metadata(path).and_then(|m| m.created().or(m.modified())) {
 			t.duration_since(std::time::UNIX_EPOCH)

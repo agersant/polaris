@@ -4,9 +4,6 @@ target
 # Test output
 test-output
 
-# Profiler output when using the `profile-index` feature
-profile-index.html
-
 # Local config for quick iteration
 TestConfig.toml
 

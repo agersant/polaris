@@ -7,7 +7,6 @@ edition = "2018"
 [features]
 default = ["service-rocket"]
 ui = ["uuid", "winapi"]
-profile-index = ["flame", "flamer"]
 service-rocket = ["rocket", "rocket_contrib"]
 
 [dependencies]
