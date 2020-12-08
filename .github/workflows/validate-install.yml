@@ -47,9 +47,7 @@ jobs:
       run: make preview PREFIX=/some/random/prefix
     - uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly
         profile: minimal
-        default: true
     - name: Install
       run: sudo --preserve-env=PATH make install
     - name: Run Polaris
@@ -80,7 +78,7 @@ jobs:
       run: make preview-xdg XDG_DATA_HOME=/my/own/xdg/home
     - uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly
+        toolchain: none
         profile: minimal
         default: true
     - name: Install
@@ -104,7 +102,7 @@ jobs:
     - name: Install Rust Toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly
+        toolchain: none
         profile: minimal
         default: true
     - name: Make release

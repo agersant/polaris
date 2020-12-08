@@ -4,7 +4,7 @@
 
 Compiling and running Polaris is very easy as it only depends on the Rust toolchain.
 
-1. [Install Rust](https://www.rust-lang.org/en-US/install.html), you need the `nightly` version of the toolchain
+1. [Install Rust](https://www.rust-lang.org/en-US/install.html)
 2. Clone the polaris depot with this command: `git clone --recursive https://github.com/agersant/polaris.git`
 3. You can now run compile and run polaris from the newly created directory with the command: `cargo run`
 

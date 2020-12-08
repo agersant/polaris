@@ -18,7 +18,7 @@ You can now start Polaris from the start menu or from your desktop, Polaris will
 #### Dependencies
 
 1. Install OpenSSL, SQLite and their headers, and some development tools. These are available from your distribution's package manager. For instance on Ubuntu, execute `sudo apt-get install binutils pkg-config libssl-dev libsqlite3-dev`
-2. Install the nightly Rust compiler by executing `curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain nightly` or using an [alternative method](https://www.rust-lang.org/en-US/install.html)
+2. Install the Rust compiler by executing `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh` or using an [alternative method](https://www.rust-lang.org/en-US/install.html)
 
 #### Polaris installation
 1. Download the [latest release]((https://github.com/agersant/polaris/releases/latest)) of Polaris (you want the .tar.gz file)
