@@ -5,9 +5,6 @@
 extern crate diesel;
 #[macro_use]
 extern crate diesel_migrations;
-#[cfg(feature = "profile-index")]
-#[macro_use]
-extern crate flamer;
 
 use anyhow::*;
 use log::{error, info};

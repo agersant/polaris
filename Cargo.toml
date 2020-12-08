@@ -7,7 +7,6 @@ edition = "2018"
 [features]
 default = ["service-rocket"]
 ui = ["uuid", "winapi"]
-profile-index = ["flame", "flamer"]
 service-rocket = ["rocket", "rocket_contrib"]
 
 [dependencies]
@@ -29,6 +28,7 @@ log = "0.4.5"
 metaflac = "0.2.3"
 mp3-duration = "0.1.9"
 mp4ameta = "0.7.1"
+num_cpus = "1.13.0"
 opus_headers = "0.1.2"
 pbkdf2 = "0.4"
 rand = "0.7"
