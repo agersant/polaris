@@ -14,7 +14,6 @@ anyhow = "1.0.31"
 ape = "0.3.0"
 base64 = "0.12.1"
 crossbeam-channel = "0.4"
-diesel = { version = "1.4.4", features = ["sqlite", "r2d2"] }
 diesel_migrations = { version = "1.4", features = ["sqlite"] }
 getopts = "0.2.15"
 id3 = "0.5.1"
@@ -41,6 +40,11 @@ thiserror = "1.0.19"
 time = "0.1"
 toml = "0.5"
 url = "2.1"
+
+[dependencies.diesel]
+version = "1.4.5"
+default_features = false
+features = ["libsqlite3-sys", "r2d2", "sqlite"]
 
 [dependencies.image]
 version = "0.23.12"
