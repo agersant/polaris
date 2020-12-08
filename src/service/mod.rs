@@ -12,15 +12,8 @@ mod error;
 #[cfg(test)]
 mod test;
 
-#[cfg(feature = "service-actix")]
 mod actix;
-#[cfg(feature = "service-actix")]
-pub use self::actix::*;
-
-#[cfg(feature = "service-rocket")]
-mod rocket;
-#[cfg(feature = "service-rocket")]
-pub use self::rocket::*;
+pub use actix::*;
 
 #[derive(Clone)]
 pub struct Context {

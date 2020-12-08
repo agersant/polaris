@@ -11,7 +11,6 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
-        backend: [service-rocket, service-actix]
         bundle-sqlite: ['', bundle-sqlite]
         ui: ['', ui]
         exclude:
@@ -29,4 +28,4 @@ jobs:
     - uses: actions-rs/cargo@v1
       with:
         command: test
-        args: --release --no-default-features --features ${{ matrix.backend }} ${{ matrix.bundle-sqlite }} ${{ matrix.ui }}
+        args: --release --no-default-features --features ${{ matrix.bundle-sqlite }} ${{ matrix.ui }}

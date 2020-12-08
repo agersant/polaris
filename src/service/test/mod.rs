@@ -20,10 +20,6 @@ mod web;
 use crate::service::test::constants::*;
 use crate::{config, index, vfs};
 
-#[cfg(feature = "service-rocket")]
-pub use crate::service::rocket::test::ServiceType;
-
-#[cfg(feature = "service-actix")]
 pub use crate::service::actix::test::ServiceType;
 
 #[macro_export]
