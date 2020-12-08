@@ -71,6 +71,3 @@ unix-daemonize = "0.1.2"
 [dev-dependencies]
 headers = "0.3"
 dev-cookie = { package = "cookie", version = "0.13" }
-
-[profile.release.build-override]
-opt-level = 0
