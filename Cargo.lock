@@ -2563,6 +2563,7 @@ dependencies = [
  "metaflac",
  "mp3-duration",
  "mp4ameta",
+ "num_cpus",
  "opus_headers",
  "pbkdf2",
  "percent-encoding 2.1.0",

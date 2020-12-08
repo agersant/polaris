@@ -3,8 +3,6 @@ use diesel;
 use diesel::dsl::sql;
 use diesel::prelude::*;
 use diesel::sql_types;
-#[cfg(feature = "profile-index")]
-use flame;
 use std::path::Path;
 
 use crate::db::{directories, songs, DB};
@@ -31,7 +29,6 @@ no_arg_sql_function!(
 	"Represents the SQL RANDOM() function"
 );
 
-#[cfg_attr(feature = "profile-index", flame)]
 pub fn virtualize_song(vfs: &VFS, mut song: Song) -> Option<Song> {
 	song.path = match vfs.real_to_virtual(Path::new(&song.path)) {
 		Ok(p) => p.to_string_lossy().into_owned(),
@@ -46,7 +43,6 @@ pub fn virtualize_song(vfs: &VFS, mut song: Song) -> Option<Song> {
 	Some(song)
 }
 
-#[cfg_attr(feature = "profile-index", flame)]
 fn virtualize_directory(vfs: &VFS, mut directory: Directory) -> Option<Directory> {
 	directory.path = match vfs.real_to_virtual(Path::new(&directory.path)) {
 		Ok(p) => p.to_string_lossy().into_owned(),

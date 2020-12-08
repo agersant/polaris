@@ -27,7 +27,6 @@ pub struct SongTags {
 	pub has_artwork: bool,
 }
 
-#[cfg_attr(feature = "profile-index", flame)]
 pub fn read(path: &Path) -> Option<SongTags> {
 	let data = match utils::get_audio_format(path) {
 		Some(AudioFormat::APE) => Some(read_ape(path)),
@@ -49,11 +48,8 @@ pub fn read(path: &Path) -> Option<SongTags> {
 	}
 }
 
-#[cfg_attr(feature = "profile-index", flame)]
 fn read_id3(path: &Path) -> Result<SongTags> {
 	let tag = {
-		#[cfg(feature = "profile-index")]
-		let _guard = flame::start_guard("id3_tag_read");
 		match id3::Tag::read_from_path(&path) {
 			Ok(t) => Ok(t),
 			Err(e) => {
@@ -66,8 +62,6 @@ fn read_id3(path: &Path) -> Result<SongTags> {
 		}?
 	};
 	let duration = {
-		#[cfg(feature = "profile-index")]
-		let _guard = flame::start_guard("mp3_duration");
 		mp3_duration::from_path(&path)
 			.map(|d| d.as_secs() as u32)
 			.ok()
@@ -127,7 +121,6 @@ fn read_ape_x_of_y(item: &ape::Item) -> Option<u32> {
 	}
 }
 
-#[cfg_attr(feature = "profile-index", flame)]
 fn read_ape(path: &Path) -> Result<SongTags> {
 	let tag = ape::read(path)?;
 	let artist = tag.item("Artist").and_then(read_ape_string);
@@ -150,7 +143,6 @@ fn read_ape(path: &Path) -> Result<SongTags> {
 	})
 }
 
-#[cfg_attr(feature = "profile-index", flame)]
 fn read_vorbis(path: &Path) -> Result<SongTags> {
 	let file = fs::File::open(path)?;
 	let source = OggStreamReader::new(file)?;
@@ -185,7 +177,6 @@ fn read_vorbis(path: &Path) -> Result<SongTags> {
 	Ok(tags)
 }
 
-#[cfg_attr(feature = "profile-index", flame)]
 fn read_opus(path: &Path) -> Result<SongTags> {
 	let headers = opus_headers::parse_from_path(path)?;
 
@@ -219,7 +210,6 @@ fn read_opus(path: &Path) -> Result<SongTags> {
 	Ok(tags)
 }
 
-#[cfg_attr(feature = "profile-index", flame)]
 fn read_flac(path: &Path) -> Result<SongTags> {
 	let tag = metaflac::Tag::read_from_path(path)?;
 	let vorbis = tag
@@ -251,7 +241,6 @@ fn read_flac(path: &Path) -> Result<SongTags> {
 	})
 }
 
-#[cfg_attr(feature = "profile-index", flame)]
 fn read_mp4(path: &Path) -> Result<SongTags> {
 	let mut tag = mp4ameta::Tag::read_from_path(path)?;
 

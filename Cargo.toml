@@ -7,7 +7,6 @@ edition = "2018"
 [features]
 default = ["service-actix"]
 ui = ["uuid", "winapi"]
-profile-index = ["flame", "flamer"]
 service-actix = ["actix-files", "actix-web", "actix-web-httpauth", "futures-util", "actix-cookie", "actix-time"]
 service-rocket = ["rocket", "rocket_contrib", "rocket-cookie", "rocket-time"]
 
@@ -36,6 +35,7 @@ log = "0.4.5"
 metaflac = "0.2.3"
 mp3-duration = "0.1.9"
 mp4ameta = "0.7.1"
+num_cpus = "1.13.0"
 opus_headers = "0.1.2"
 percent-encoding = "2.1"
 pbkdf2 = "0.4"

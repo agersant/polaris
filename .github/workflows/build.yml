@@ -10,7 +10,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        features: [--features default, --features service-rocket --no-default-features,--features service-actix --no-default-features, --features "ui profile-index"]
+        features: [--features default, --features service-rocket --no-default-features,--features service-actix --no-default-features, --features "ui"]
         os: [ubuntu-latest, windows-latest]
 
     steps:
