@@ -10,11 +10,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        features: [--features default, --features service-rocket --no-default-features,--features service-actix --no-default-features, --features "ui"]
         os: [ubuntu-latest, windows-latest]
+        backend: [service-rocket, service-actix]
+        bundle-sqlite: ['', bundle-sqlite]
+        ui: ['', ui]
         exclude:
           - os: windows-latest
-            features: --features "service-rocket" --no-default-features
+            bundle-sqlite: ''
 
     steps:
     - name: Install libsqlite3-dev
@@ -27,4 +29,4 @@ jobs:
     - uses: actions-rs/cargo@v1
       with:
         command: test
-        args: --release ${{ matrix.features }}
+        args: --release --no-default-features --features ${{ matrix.backend }} ${{ matrix.bundle-sqlite }} ${{ matrix.ui }}
