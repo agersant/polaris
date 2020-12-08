@@ -57,12 +57,6 @@ version = "0.23.12"
 default_features = false
 features = ["bmp", "gif", "jpeg", "png"]
 
-[dependencies.rocket_contrib]
-version = "0.4.5"
-default_features = false
-features = ["json", "serve"]
-optional = true
-
 [target.'cfg(windows)'.dependencies]
 uuid = { version="0.8", optional = true }
 winapi = { version = "0.3.3", features = ["winuser", "libloaderapi", "shellapi", "errhandlingapi"], optional = true }
