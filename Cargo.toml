@@ -10,7 +10,7 @@ ui = ["uuid", "winapi"]
 service-rocket = ["rocket", "rocket_contrib"]
 
 [dependencies]
-anyhow = "1.0.31"
+anyhow = "1.0.35"
 ape = "0.3.0"
 base64 = "0.12.1"
 crossbeam-channel = "0.4"
