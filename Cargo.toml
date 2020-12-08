@@ -5,10 +5,11 @@ authors = ["Antoine Gersant <antoine.gersant@lesforges.org>"]
 edition = "2018"
 
 [features]
-default = ["service-actix"]
+default = ["service-actix", "bundle-sqlite"]
 ui = ["uuid", "winapi"]
 service-actix = ["actix-files", "actix-web", "actix-web-httpauth", "futures-util", "actix-cookie", "actix-time"]
-service-rocket = ["rocket", "rocket_contrib", "rocket-cookie", "rocket-time"]
+service-rocket = ["rocket", "rocket_contrib"]
+bundle-sqlite = ["libsqlite3-sys"]
 
 [dependencies]
 actix-files = { version = "0.4", optional = true }
@@ -25,7 +26,7 @@ futures-util = { version = "0.3", optional = true }
 getopts = "0.2.15"
 http = "0.2.1"
 id3 = "0.5.1"
-libsqlite3-sys = { version = "*", features = ["bundled", "bundled-windows"] }
+libsqlite3-sys = { version = "0.18", features = ["bundled", "bundled-windows"], optional = true }
 lewton = "0.10.1"
 log = "0.4.5"
 metaflac = "0.2.3"
