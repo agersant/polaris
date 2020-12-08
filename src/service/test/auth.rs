@@ -1,4 +1,4 @@
-use dev_cookie::Cookie;
+use cookie::Cookie;
 use headers::{self, HeaderMapExt};
 use http::{Response, StatusCode};
 

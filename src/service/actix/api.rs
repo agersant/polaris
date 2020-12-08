@@ -1,7 +1,4 @@
-use actix_cookie as cookie;
-use actix_cookie::*;
 use actix_files::NamedFile;
-use actix_time::Duration;
 use actix_web::{
 	client::HttpError,
 	delete,
@@ -14,6 +11,7 @@ use actix_web::{
 	FromRequest, HttpMessage, HttpRequest, HttpResponse, ResponseError,
 };
 use actix_web_httpauth::extractors::basic::BasicAuth;
+use cookie::{self, *};
 use futures_util::future::{err, ok};
 use percent_encoding::percent_decode_str;
 use std::future::Future;
@@ -21,6 +19,7 @@ use std::ops::Deref;
 use std::path::Path;
 use std::pin::Pin;
 use std::str;
+use time::Duration;
 
 use crate::config::{self, Config, Preferences};
 use crate::db::DB;

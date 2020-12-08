@@ -15,7 +15,7 @@ pub mod test;
 
 pub fn make_config(context: service::Context) -> impl FnOnce(&mut ServiceConfig) + Clone {
 	move |cfg: &mut ServiceConfig| {
-		let encryption_key = actix_cookie::Key::derive_from(&context.auth_secret[..]);
+		let encryption_key = cookie::Key::derive_from(&context.auth_secret[..]);
 		cfg.app_data(web::Data::new(context.db))
 			.app_data(web::Data::new(context.index))
 			.app_data(web::Data::new(context.thumbnails_manager))
