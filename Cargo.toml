@@ -26,7 +26,6 @@ futures-util = { version = "0.3", optional = true }
 getopts = "0.2.15"
 http = "0.2.1"
 id3 = "0.5.1"
-image = "0.23.4"
 libsqlite3-sys = { version = "0.16", features = ["bundled-windows"] }
 lewton = "0.10.1"
 log = "0.4.5"
@@ -44,7 +43,6 @@ reqwest = "0.9.2"
 rocket = { version = "0.4.5", optional = true }
 rocket-cookie = { package = "cookie", version = "0.11.3", optional = true }
 rocket-time = { package = "time", version = "0.1", optional = true }
-rust-crypto = "0.2.36"
 rustfm-scrobble = "^1"
 serde = { version = "1.0.111", features = ["derive"] }
 serde_derive = "1.0.111"
@@ -53,6 +51,11 @@ simplelog = "0.8.0"
 thiserror = "1.0.19"
 toml = "0.5"
 url = "2.1"
+
+[dependencies.image]
+version = "0.23.12"
+default_features = false
+features = ["bmp", "gif", "jpeg", "png"]
 
 [dependencies.rocket_contrib]
 version = "0.4.5"
