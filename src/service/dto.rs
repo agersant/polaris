@@ -32,3 +32,5 @@ pub struct ListPlaylistsEntry {
 pub struct SavePlaylistInput {
 	pub tracks: Vec<String>,
 }
+
+// TODO: Config and Preferences should have dto types
