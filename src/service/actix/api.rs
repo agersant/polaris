@@ -32,7 +32,6 @@ use crate::user;
 use crate::vfs::VFSSource;
 
 // TODO.important Use async instead of long blocking operations:
-// - Thumnbail generation
 // - Everything that touches DB
 // - Requests to last.fm
 
