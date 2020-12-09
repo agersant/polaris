@@ -11,10 +11,10 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
-        features: [--features bundle-sqlite, --features ui]
+        features: [--no-default-features, --features bundle-sqlite, --features ui]
         exclude:
           - os: windows-latest
-            bundle-sqlite: ''
+            features: --no-default-features
 
     steps:
     - name: Install libsqlite3-dev
@@ -27,4 +27,4 @@ jobs:
     - uses: actions-rs/cargo@v1
       with:
         command: test
-        args: --release --no-default-features --features ${{ matrix.features }}
+        args: --release ${{ matrix.features }}
