@@ -3,11 +3,11 @@ use actix_web::{
 	client::HttpError,
 	delete,
 	dev::{MessageBody, Payload, Service, ServiceRequest, ServiceResponse},
-	error::{ErrorForbidden, ErrorInternalServerError, ErrorUnauthorized},
+	error::{BlockingError, ErrorForbidden, ErrorInternalServerError, ErrorUnauthorized},
 	get,
 	http::StatusCode,
-	post, put, web,
-	web::{Data, Json, ServiceConfig},
+	post, put,
+	web::{self, Data, Json, ServiceConfig},
 	FromRequest, HttpMessage, HttpRequest, HttpResponse, ResponseError,
 };
 use actix_web_httpauth::extractors::basic::BasicAuth;
@@ -34,6 +34,7 @@ use crate::vfs::VFSSource;
 // TODO.important Use async instead of long blocking operations:
 // - Thumnbail generation
 // - Everything that touches DB
+// - Requests to last.fm
 
 pub fn make_config() -> impl FnOnce(&mut ServiceConfig) + Clone {
 	move |cfg: &mut ServiceConfig| {
@@ -325,6 +326,18 @@ fn add_auth_cookies<T>(
 	Ok(())
 }
 
+async fn block<F, I, E>(f: F) -> Result<I, APIError>
+where
+	F: FnOnce() -> Result<I, E> + Send + 'static,
+	I: Send + 'static,
+	E: Send + std::fmt::Debug + 'static + Into<APIError>,
+{
+	actix_web::web::block(f).await.map_err(|e| match e {
+		BlockingError::Error(e) => e.into(),
+		BlockingError::Canceled => APIError::Unspecified,
+	})
+}
+
 #[get("/version")]
 async fn version() -> Json<dto::Version> {
 	let current_version = dto::Version {
@@ -504,7 +517,9 @@ async fn thumbnail(
 		.map_err(|_| APIError::VFSPathNotFound)?;
 	let mut options = ThumbnailOptions::default();
 	options.pad_to_square = options_input.pad.unwrap_or(options.pad_to_square);
-	let thumbnail_path = thumbnails_manager.get_thumbnail(&image_path, &options)?;
+	let thumbnail_path =
+		block(move || thumbnails_manager.get_thumbnail(&image_path, &options)).await?;
+
 	let named_file =
 		NamedFile::open(&thumbnail_path).map_err(|_| APIError::ThumbnailFileIOError)?;
 	Ok(named_file)
