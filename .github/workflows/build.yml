@@ -11,15 +11,14 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
-        bundle-sqlite: ['', bundle-sqlite]
-        ui: ['', ui]
+        features: [--features bundle-sqlite, --features ui]
         exclude:
           - os: windows-latest
             bundle-sqlite: ''
 
     steps:
     - name: Install libsqlite3-dev
-      if: contains(matrix.os, 'ubuntu')
+      if: contains(matrix.os, 'ubuntu') && !contains(matrix.features, 'bundle-sqlite')
       run: sudo apt-get update && sudo apt-get install libsqlite3-dev
     - uses: actions/checkout@v1
     - uses: actions-rs/toolchain@v1
@@ -28,4 +27,4 @@ jobs:
     - uses: actions-rs/cargo@v1
       with:
         command: test
-        args: --release --no-default-features --features ${{ matrix.bundle-sqlite }} ${{ matrix.ui }}
+        args: --release --no-default-features --features ${{ matrix.features }}
