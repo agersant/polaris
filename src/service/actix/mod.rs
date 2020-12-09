@@ -1,5 +1,5 @@
 use actix_web::{
-	middleware::{normalize::TrailingSlash, Logger, NormalizePath},
+	middleware::{normalize::TrailingSlash, Compress, Logger, NormalizePath},
 	rt::System,
 	web::{self, ServiceConfig},
 	App, HttpServer,
@@ -38,6 +38,7 @@ pub fn run(context: service::Context) -> Result<()> {
 		HttpServer::new(move || {
 			App::new()
 				.wrap(Logger::default())
+				.wrap(Compress::default())
 				.wrap_fn(api::http_auth_middleware)
 				.wrap(NormalizePath::new(TrailingSlash::Trim))
 				.configure(make_config(context.clone()))
