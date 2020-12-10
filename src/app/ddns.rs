@@ -6,10 +6,17 @@ use serde::{Deserialize, Serialize};
 use std::thread;
 use std::time;
 
-use crate::db::ddns_config;
-use crate::db::DB;
+use crate::db::{DB, ddns_config};
 
 const DDNS_UPDATE_URL: &str = "https://ydns.io/api/v1/update/";
+
+#[derive(Clone, Debug, Deserialize, Insertable, PartialEq, Queryable, Serialize)]
+#[table_name = "ddns_config"]
+pub struct Config {
+	pub host: String,
+	pub username: String,
+	pub password: String,
+}
 
 pub struct Manager {
 	db: DB,
@@ -21,7 +28,7 @@ impl Manager {
 	}
 
 	fn update_my_ip(&self) -> Result<()> {
-		let config = self.db.get_ddns_config()?;
+		let config = self.get_config()?;
 		if config.host.is_empty() || config.username.is_empty() {
 			info!("Skipping DDNS update because credentials are missing");
 			return Ok(());
@@ -43,6 +50,14 @@ impl Manager {
 		Ok(())
 	}
 
+	fn get_config(&self) -> Result<Config> {
+		use crate::db::ddns_config::dsl::*;
+		let connection = self.db.connect()?;
+		Ok(ddns_config
+			.select((host, username, password))
+			.get_result(&connection)?)
+	}
+
 	pub fn run(&self) {
 		loop {
 			if let Err(e) = self.update_my_ip() {
@@ -50,27 +65,5 @@ impl Manager {
 			}
 			thread::sleep(time::Duration::from_secs(60 * 30));
 		}
-	}
-}
-
-#[derive(Clone, Debug, Deserialize, Insertable, PartialEq, Queryable, Serialize)]
-#[table_name = "ddns_config"]
-pub struct Config {
-	pub host: String,
-	pub username: String,
-	pub password: String,
-}
-
-trait ConfigProvider {
-	fn get_ddns_config(&self) -> Result<Config>;
-}
-
-impl ConfigProvider for DB {
-	fn get_ddns_config(&self) -> Result<Config> {
-		use crate::db::ddns_config::dsl::*;
-		let connection = self.connect()?;
-		Ok(ddns_config
-			.select((host, username, password))
-			.get_result(&connection)?)
 	}
 }
