@@ -1,6 +1,6 @@
+use crate::app::thumbnails;
 use crate::db::DB;
 use crate::index::Index;
-use crate::thumbnails::ThumbnailsManager;
 use std::fs;
 use std::path::PathBuf;
 
@@ -27,7 +27,7 @@ pub struct Context {
 	pub api_url: String,
 	pub db: DB,
 	pub index: Index,
-	pub thumbnails_manager: ThumbnailsManager,
+	pub thumbnails_manager: thumbnails::Manager,
 }
 
 pub struct ContextBuilder {
@@ -92,7 +92,7 @@ impl ContextBuilder {
 			web_url: "/".to_owned(),
 			web_dir_path,
 			swagger_dir_path,
-			thumbnails_manager: ThumbnailsManager::new(thumbnails_dir_path),
+			thumbnails_manager: thumbnails::Manager::new(thumbnails_dir_path),
 			index: Index::new(db.clone()),
 			db,
 		})

@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::thread;
 use std::time;
 
-use crate::db::{DB, ddns_config};
+use crate::db::{ddns_config, DB};
 
 const DDNS_UPDATE_URL: &str = "https://ydns.io/api/v1/update/";
 

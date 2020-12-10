@@ -11,7 +11,6 @@ use log::{error, info};
 use simplelog::{LevelFilter, SimpleLogger, TermLogger, TerminalMode};
 
 mod app;
-mod artwork;
 mod config;
 mod db;
 mod index;
@@ -19,7 +18,6 @@ mod lastfm;
 mod options;
 mod playlist;
 mod service;
-mod thumbnails;
 mod ui;
 mod user;
 mod utils;
