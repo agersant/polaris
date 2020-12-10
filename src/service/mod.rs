@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use crate::app::{index::Index, lastfm, playlists, thumbnail, user, vfs};
+use crate::app::{index::Index, lastfm, playlist, thumbnail, user, vfs};
 use crate::config;
 use crate::db::DB;
 
@@ -27,7 +27,7 @@ pub struct Context {
 	pub db: DB,
 	pub index: Index,
 	pub lastfm_manager: lastfm::Manager,
-	pub playlists_manager: playlists::Manager,
+	pub playlist_manager: playlist::Manager,
 	pub thumbnail_manager: thumbnail::Manager,
 	pub user_manager: user::Manager,
 	pub vfs_manager: vfs::Manager,
@@ -89,7 +89,7 @@ impl ContextBuilder {
 
 		let vfs_manager = vfs::Manager::new(db.clone());
 		let index = Index::new(db.clone(), vfs_manager.clone());
-		let playlists_manager = playlists::Manager::new(db.clone(), vfs_manager.clone());
+		let playlist_manager = playlist::Manager::new(db.clone(), vfs_manager.clone());
 		let thumbnail_manager = thumbnail::Manager::new(thumbnails_dir_path);
 		let user_manager = user::Manager::new(db.clone());
 		let lastfm_manager = lastfm::Manager::new(index.clone(), user_manager.clone());
@@ -104,7 +104,7 @@ impl ContextBuilder {
 			swagger_dir_path,
 			index,
 			lastfm_manager,
-			playlists_manager,
+			playlist_manager,
 			thumbnail_manager,
 			user_manager,
 			vfs_manager,
