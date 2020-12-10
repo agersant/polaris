@@ -4,7 +4,7 @@ use image::{DynamicImage, GenericImage, GenericImageView, ImageBuffer};
 use std::cmp;
 use std::path::*;
 
-use crate::app::thumbnails::{read, Options};
+use crate::app::thumbnail::{read, Options};
 
 pub fn generate_thumbnail(image_path: &Path, thumbnailoptions: &Options) -> Result<DynamicImage> {
 	let source_image = read(image_path)?;

@@ -143,7 +143,7 @@ fn main() -> Result<()> {
 	info!("Swagger files location is {:#?}", context.swagger_dir_path);
 	info!(
 		"Thumbnails files location is {:#?}",
-		context.thumbnails_manager.get_directory()
+		context.thumbnail_manager.get_directory()
 	);
 
 	// Begin collection scans

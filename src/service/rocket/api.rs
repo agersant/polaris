@@ -13,7 +13,7 @@ use time::Duration;
 
 use super::serve;
 use crate::app::index::{self, Index, QueryError};
-use crate::app::{lastfm, playlists, thumbnails, user, vfs};
+use crate::app::{lastfm, playlists, thumbnail, user, vfs};
 use crate::config::{self, Config, Preferences};
 use crate::db::DB;
 use crate::service::dto;
@@ -361,7 +361,7 @@ fn audio(
 #[get("/thumbnail/<path>?<pad>")]
 fn thumbnail(
 	vfs_manager: State<'_, vfs::Manager>,
-	thumbnails_manager: State<'_, thumbnails::Manager>,
+	thumbnail_manager: State<'_, thumbnail::Manager>,
 	_auth: Auth,
 	path: VFSPathBuf,
 	pad: Option<bool>,
@@ -370,9 +370,9 @@ fn thumbnail(
 	let image_path = vfs
 		.virtual_to_real(&path.into() as &PathBuf)
 		.map_err(|_| APIError::VFSPathNotFound)?;
-	let mut options = thumbnails::Options::default();
+	let mut options = thumbnail::Options::default();
 	options.pad_to_square = pad.unwrap_or(options.pad_to_square);
-	let thumbnail_path = thumbnails_manager.get_thumbnail(&image_path, &options)?;
+	let thumbnail_path = thumbnail_manager.get_thumbnail(&image_path, &options)?;
 	let file = File::open(thumbnail_path).map_err(|_| APIError::Unspecified)?;
 	Ok(file)
 }

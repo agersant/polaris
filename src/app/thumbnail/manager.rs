@@ -5,7 +5,7 @@ use std::fs::{self, File};
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 
-use crate::app::thumbnails::*;
+use crate::app::thumbnail::*;
 
 pub struct Manager {
 	thumbnails_dir_path: PathBuf,
