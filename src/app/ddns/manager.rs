@@ -2,21 +2,13 @@ use anyhow::*;
 use diesel::prelude::*;
 use log::{error, info};
 use reqwest;
-use serde::{Deserialize, Serialize};
 use std::thread;
 use std::time;
 
-use crate::db::{ddns_config, DB};
+use super::*;
+use crate::db::DB;
 
 const DDNS_UPDATE_URL: &str = "https://ydns.io/api/v1/update/";
-
-#[derive(Clone, Debug, Deserialize, Insertable, PartialEq, Queryable, Serialize)]
-#[table_name = "ddns_config"]
-pub struct Config {
-	pub host: String,
-	pub username: String,
-	pub password: String,
-}
 
 pub struct Manager {
 	db: DB,
