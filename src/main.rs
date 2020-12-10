@@ -101,7 +101,7 @@ fn init_logging(cli_options: &options::CLIOptions) -> Result<()> {
 fn main() -> Result<()> {
 	// Parse CLI options
 	let args: Vec<String> = std::env::args().collect();
-	let options_manager = options::OptionsManager::new();
+	let options_manager = options::Manager::new();
 	let cli_options = options_manager.parse(&args[1..])?;
 
 	if cli_options.show_help {
