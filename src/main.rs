@@ -10,10 +10,10 @@ use anyhow::*;
 use log::{error, info};
 use simplelog::{LevelFilter, SimpleLogger, TermLogger, TerminalMode};
 
+mod app;
 mod artwork;
 mod config;
 mod db;
-mod ddns;
 mod index;
 mod lastfm;
 mod options;
@@ -155,9 +155,9 @@ fn main() -> Result<()> {
 	context.index.begin_periodic_updates();
 
 	// Start DDNS updates
-	let db_ddns = context.db.clone();
+	let ddns_manager = app::ddns::Manager::new(context.db.clone());
 	std::thread::spawn(move || {
-		ddns::run(&db_ddns);
+		ddns_manager.run();
 	});
 
 	// Start server

@@ -9,8 +9,8 @@ use std::io::Read;
 use std::path;
 use toml;
 
+use crate::app::ddns;
 use crate::db::{ddns_config, misc_settings, mount_points, users, DB};
-use crate::ddns::DDNSConfig;
 use crate::user::*;
 use crate::vfs::MountPoint;
 
@@ -42,7 +42,7 @@ pub struct Config {
 	pub reindex_every_n_seconds: Option<i32>,
 	pub mount_dirs: Option<Vec<MountPoint>>,
 	pub users: Option<Vec<ConfigUser>>,
-	pub ydns: Option<DDNSConfig>,
+	pub ydns: Option<ddns::Config>,
 }
 
 impl Config {
@@ -310,7 +310,7 @@ fn test_amend() {
 			password: "🐞🐞".into(),
 			admin: false,
 		}]),
-		ydns: Some(DDNSConfig {
+		ydns: Some(ddns::Config {
 			host: "🐸🐸🐸.ydns.eu".into(),
 			username: "kfr🐸g".into(),
 			password: "tasty🐞".into(),
