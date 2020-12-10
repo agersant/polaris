@@ -7,7 +7,6 @@ use std::path::Path;
 
 use crate::db::{directories, songs, DB};
 use crate::index::*;
-use crate::vfs::VFSSource;
 
 #[derive(thiserror::Error, Debug)]
 pub enum QueryError {

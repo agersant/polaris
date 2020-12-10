@@ -7,17 +7,18 @@ use diesel::BelongingToDsl;
 use std::path::Path;
 
 use super::*;
+use crate::app::vfs;
 use crate::db::{playlist_songs, playlists, users, DB};
 use crate::index::{self, Song};
-use crate::vfs::VFSSource;
 
 pub struct Manager {
 	db: DB,
+	vfs_manager: vfs::Manager,
 }
 
 impl Manager {
-	pub fn new(db: DB) -> Self {
-		Self { db }
+	pub fn new(db: DB, vfs_manager: vfs::Manager) -> Self {
+		Self { db, vfs_manager }
 	}
 
 	pub fn list_playlists(&self, owner: &str) -> Result<Vec<String>, Error> {
@@ -52,7 +53,7 @@ impl Manager {
 	) -> Result<(), Error> {
 		let new_playlist: NewPlaylist;
 		let playlist: Playlist;
-		let vfs = self.db.get_vfs()?;
+		let vfs = self.vfs_manager.get_vfs()?;
 
 		{
 			let connection = self.db.connect()?;
@@ -129,7 +130,7 @@ impl Manager {
 	}
 
 	pub fn read_playlist(&self, playlist_name: &str, owner: &str) -> Result<Vec<Song>, Error> {
-		let vfs = self.db.get_vfs()?;
+		let vfs = self.vfs_manager.get_vfs()?;
 		let songs: Vec<Song>;
 
 		{
@@ -209,7 +210,6 @@ impl Manager {
 		}
 	}
 }
-
 
 #[derive(Identifiable, Queryable, Associations)]
 #[belongs_to(User, foreign_key = "owner")]

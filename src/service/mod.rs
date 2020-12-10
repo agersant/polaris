@@ -1,10 +1,10 @@
-use crate::app::{playlists, thumbnails};
-use crate::db::DB;
-use crate::index::Index;
 use std::fs;
 use std::path::PathBuf;
 
+use crate::app::{playlists, thumbnails, vfs};
 use crate::config;
+use crate::db::DB;
+use crate::index::Index;
 
 mod dto;
 mod error;
@@ -29,6 +29,7 @@ pub struct Context {
 	pub index: Index,
 	pub playlists_manager: playlists::Manager,
 	pub thumbnails_manager: thumbnails::Manager,
+	pub vfs_manager: vfs::Manager,
 }
 
 pub struct ContextBuilder {
@@ -85,6 +86,8 @@ impl ContextBuilder {
 			.unwrap_or(PathBuf::from(".").to_owned());
 		thumbnails_dir_path.push("thumbnails");
 
+		let vfs_manager = vfs::Manager::new(db.clone());
+
 		Ok(Context {
 			port: self.port.unwrap_or(5050),
 			auth_secret,
@@ -93,9 +96,10 @@ impl ContextBuilder {
 			web_url: "/".to_owned(),
 			web_dir_path,
 			swagger_dir_path,
-			playlists_manager: playlists::Manager::new(db.clone()),
-			thumbnails_manager: thumbnails::Manager::new(thumbnails_dir_path),
 			index: Index::new(db.clone()),
+			playlists_manager: playlists::Manager::new(db.clone(), vfs_manager),
+			thumbnails_manager: thumbnails::Manager::new(thumbnails_dir_path),
+			vfs_manager,
 			db,
 		})
 	}

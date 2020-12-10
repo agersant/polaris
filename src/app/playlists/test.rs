@@ -2,6 +2,7 @@ use core::clone::Clone;
 use std::path::{Path, PathBuf};
 
 use super::*;
+use crate::app::vfs;
 use crate::db;
 
 use crate::test_name;
@@ -9,7 +10,8 @@ use crate::test_name;
 #[test]
 fn test_create_playlist() {
 	let db = db::get_test_db(&test_name!());
-	let manager = Manager::new(db);
+	let vfs_manager = vfs::Manager::new(db.clone());
+	let manager = Manager::new(db, vfs_manager);
 
 	let found_playlists = manager.list_playlists("test_user").unwrap();
 	assert!(found_playlists.is_empty());
@@ -28,7 +30,9 @@ fn test_create_playlist() {
 #[test]
 fn test_delete_playlist() {
 	let db = db::get_test_db(&test_name!());
-	let manager = Manager::new(db);
+	let vfs_manager = vfs::Manager::new(db.clone());
+	let manager = Manager::new(db, vfs_manager);
+
 	let playlist_content = Vec::new();
 
 	manager
@@ -56,7 +60,8 @@ fn test_fill_playlist() {
 	use crate::index;
 
 	let db = db::get_test_db(&test_name!());
-	let manager = Manager::new(db.clone());
+	let vfs_manager = vfs::Manager::new(db.clone());
+	let manager = Manager::new(db, vfs_manager);
 
 	index::update(&db).unwrap();
 

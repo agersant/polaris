@@ -7,7 +7,6 @@ use std::time;
 
 use crate::config::MiscSettings;
 use crate::db::{misc_settings, DB};
-use crate::vfs::VFSSource;
 
 mod cleaner;
 mod collector;

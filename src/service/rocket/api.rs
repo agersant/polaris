@@ -13,8 +13,7 @@ use std::str::FromStr;
 use time::Duration;
 
 use super::serve;
-use crate::app::playlists;
-use crate::app::thumbnails;
+use crate::app::{playlists, thumbnails, vfs};
 use crate::config::{self, Config, Preferences};
 use crate::db::DB;
 use crate::index::{self, Index, QueryError};
@@ -22,7 +21,6 @@ use crate::lastfm;
 use crate::service::dto;
 use crate::service::error::APIError;
 use crate::user;
-use crate::vfs::VFSSource;
 
 pub fn get_routes() -> Vec<rocket::Route> {
 	routes![
@@ -351,11 +349,11 @@ fn search(
 
 #[get("/audio/<path>")]
 fn audio(
-	db: State<'_, DB>,
+	vfs_manager: State<'_, vfs::Manager>,
 	_auth: Auth,
 	path: VFSPathBuf,
 ) -> Result<serve::RangeResponder<File>, APIError> {
-	let vfs = db.get_vfs()?;
+	let vfs = vfs_manager.get_vfs()?;
 	let real_path = vfs
 		.virtual_to_real(&path.into() as &PathBuf)
 		.map_err(|_| APIError::VFSPathNotFound)?;
@@ -365,13 +363,13 @@ fn audio(
 
 #[get("/thumbnail/<path>?<pad>")]
 fn thumbnail(
-	db: State<'_, DB>,
+	vfs_manager: State<'_, vfs::Manager>,
 	thumbnails_manager: State<'_, thumbnails::Manager>,
 	_auth: Auth,
 	path: VFSPathBuf,
 	pad: Option<bool>,
 ) -> Result<File, APIError> {
-	let vfs = db.get_vfs()?;
+	let vfs = vfs_manager.get_vfs()?;
 	let image_path = vfs
 		.virtual_to_real(&path.into() as &PathBuf)
 		.map_err(|_| APIError::VFSPathNotFound)?;

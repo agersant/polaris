@@ -17,8 +17,9 @@ mod settings;
 mod swagger;
 mod web;
 
+use crate::app::vfs;
 use crate::service::test::constants::*;
-use crate::{config, index, vfs};
+use crate::{config, index};
 
 #[cfg(feature = "service-rocket")]
 pub use crate::service::rocket::test::ServiceType;

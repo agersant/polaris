@@ -5,7 +5,6 @@ use rayon::prelude::*;
 use std::path::Path;
 
 use crate::db::{directories, songs, DB};
-use crate::vfs::VFSSource;
 
 const INDEX_BUILDING_CLEAN_BUFFER_SIZE: usize = 500; // Deletions in each transaction
 

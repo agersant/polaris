@@ -22,7 +22,6 @@ mod test;
 mod ui;
 mod user;
 mod utils;
-mod vfs;
 
 #[cfg(unix)]
 fn daemonize(

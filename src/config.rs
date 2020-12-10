@@ -9,10 +9,9 @@ use std::io::Read;
 use std::path;
 use toml;
 
-use crate::app::ddns;
+use crate::app::{ddns, vfs};
 use crate::db::{ddns_config, misc_settings, mount_points, users, DB};
 use crate::user::*;
-use crate::vfs::MountPoint;
 
 #[derive(Debug, Queryable)]
 pub struct MiscSettings {
@@ -40,7 +39,7 @@ pub struct ConfigUser {
 pub struct Config {
 	pub album_art_pattern: Option<String>,
 	pub reindex_every_n_seconds: Option<i32>,
-	pub mount_dirs: Option<Vec<MountPoint>>,
+	pub mount_dirs: Option<Vec<vfs::MountPoint>>,
 	pub users: Option<Vec<ConfigUser>>,
 	pub ydns: Option<ddns::Config>,
 }
@@ -286,7 +285,7 @@ fn test_amend() {
 	let initial_config = Config {
 		album_art_pattern: Some("file\\.png".into()),
 		reindex_every_n_seconds: Some(123),
-		mount_dirs: Some(vec![MountPoint {
+		mount_dirs: Some(vec![vfs::MountPoint {
 			source: "C:\\Music".into(),
 			name: "root".into(),
 		}]),
@@ -301,7 +300,7 @@ fn test_amend() {
 	let new_config = Config {
 		album_art_pattern: Some("🖼️\\.jpg".into()),
 		reindex_every_n_seconds: None,
-		mount_dirs: Some(vec![MountPoint {
+		mount_dirs: Some(vec![vfs::MountPoint {
 			source: "/home/music".into(),
 			name: "🎵📁".into(),
 		}]),
