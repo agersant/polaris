@@ -7,16 +7,16 @@ use rocket_contrib::json::Json;
 use std::default::Default;
 use std::fs::File;
 use std::ops::Deref;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str;
 use std::str::FromStr;
 use time::Duration;
 
 use super::serve;
+use crate::app::index::{self, Index, QueryError};
 use crate::app::{playlists, thumbnails, vfs};
 use crate::config::{self, Config, Preferences};
 use crate::db::DB;
-use crate::index::{self, Index, QueryError};
 use crate::lastfm;
 use crate::service::dto;
 use crate::service::error::APIError;
@@ -288,62 +288,62 @@ fn auth(
 }
 
 #[get("/browse")]
-fn browse_root(db: State<'_, DB>, _auth: Auth) -> Result<Json<Vec<index::CollectionFile>>> {
-	let result = index::browse(db.deref().deref(), &PathBuf::new())?;
+fn browse_root(index: State<'_, Index>, _auth: Auth) -> Result<Json<Vec<index::CollectionFile>>> {
+	let result = index.browse(&Path::new(""))?;
 	Ok(Json(result))
 }
 
 #[get("/browse/<path>")]
 fn browse(
-	db: State<'_, DB>,
+	index: State<'_, Index>,
 	_auth: Auth,
 	path: VFSPathBuf,
 ) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
-	let result = index::browse(db.deref().deref(), &path.into() as &PathBuf)?;
+	let result = index.browse(&path.into() as &PathBuf)?;
 	Ok(Json(result))
 }
 
 #[get("/flatten")]
-fn flatten_root(db: State<'_, DB>, _auth: Auth) -> Result<Json<Vec<index::Song>>> {
-	let result = index::flatten(db.deref().deref(), &PathBuf::new())?;
+fn flatten_root(index: State<'_, Index>, _auth: Auth) -> Result<Json<Vec<index::Song>>> {
+	let result = index.flatten(&PathBuf::new())?;
 	Ok(Json(result))
 }
 
 #[get("/flatten/<path>")]
 fn flatten(
-	db: State<'_, DB>,
+	index: State<'_, Index>,
 	_auth: Auth,
 	path: VFSPathBuf,
 ) -> Result<Json<Vec<index::Song>>, APIError> {
-	let result = index::flatten(db.deref().deref(), &path.into() as &PathBuf)?;
+	let result = index.flatten(&path.into() as &PathBuf)?;
 	Ok(Json(result))
 }
 
 #[get("/random")]
-fn random(db: State<'_, DB>, _auth: Auth) -> Result<Json<Vec<index::Directory>>> {
-	let result = index::get_random_albums(db.deref().deref(), 20)?;
+fn random(index: State<'_, Index>, _auth: Auth) -> Result<Json<Vec<index::Directory>>> {
+	let result = index.get_random_albums(20)?;
 	Ok(Json(result))
 }
 
 #[get("/recent")]
-fn recent(db: State<'_, DB>, _auth: Auth) -> Result<Json<Vec<index::Directory>>> {
-	let result = index::get_recent_albums(db.deref().deref(), 20)?;
+fn recent(index: State<'_, Index>, _auth: Auth) -> Result<Json<Vec<index::Directory>>> {
+	let result = index.get_recent_albums(20)?;
 	Ok(Json(result))
 }
 
 #[get("/search")]
-fn search_root(db: State<'_, DB>, _auth: Auth) -> Result<Json<Vec<index::CollectionFile>>> {
-	let result = index::search(db.deref().deref(), "")?;
+fn search_root(index: State<'_, Index>, _auth: Auth) -> Result<Json<Vec<index::CollectionFile>>> {
+	let result = index.search("")?;
 	Ok(Json(result))
 }
 
 #[get("/search/<query>")]
 fn search(
-	db: State<'_, DB>,
+	index: State<'_, Index>,
 	_auth: Auth,
 	query: String,
 ) -> Result<Json<Vec<index::CollectionFile>>> {
-	let result = index::search(db.deref().deref(), &query)?;
+	let result = index.search(&query)?;
 	Ok(Json(result))
 }
 

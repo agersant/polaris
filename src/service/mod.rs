@@ -1,10 +1,9 @@
 use std::fs;
 use std::path::PathBuf;
 
-use crate::app::{playlists, thumbnails, vfs};
+use crate::app::{index::Index, playlists, thumbnails, vfs};
 use crate::config;
 use crate::db::DB;
-use crate::index::Index;
 
 mod dto;
 mod error;
@@ -96,8 +95,8 @@ impl ContextBuilder {
 			web_url: "/".to_owned(),
 			web_dir_path,
 			swagger_dir_path,
-			index: Index::new(db.clone()),
-			playlists_manager: playlists::Manager::new(db.clone(), vfs_manager),
+			index: Index::new(db.clone(), vfs_manager.clone()),
+			playlists_manager: playlists::Manager::new(db.clone(), vfs_manager.clone()),
 			thumbnails_manager: thumbnails::Manager::new(thumbnails_dir_path),
 			vfs_manager,
 			db,

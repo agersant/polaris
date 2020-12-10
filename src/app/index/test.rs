@@ -1,14 +1,17 @@
 use std::path::{Path, PathBuf};
 
-use crate::db;
-use crate::db::{directories, songs};
-use crate::index::*;
+use super::*;
+use crate::app::vfs;
+use crate::db::{self, directories, songs};
+use crate::test_name;
 
 #[test]
 fn test_populate() {
-	let db = db::get_test_db("populate.sqlite");
-	update(&db).unwrap();
-	update(&db).unwrap(); // Check that subsequent updates don't run into conflicts
+	let db = db::get_test_db(&test_name!());
+	let vfs_manager = vfs::Manager::new(db.clone());
+	let index = Index::new(db.clone(), vfs_manager);
+	index.update().unwrap();
+	index.update().unwrap(); // Validates that subsequent updates don't run into conflicts
 
 	let connection = db.connect().unwrap();
 	let all_directories: Vec<Directory> = directories::table.load(&connection).unwrap();
@@ -19,11 +22,9 @@ fn test_populate() {
 
 #[test]
 fn test_metadata() {
-	let mut target = PathBuf::new();
-	target.push("test-data");
-	target.push("small-collection");
-	target.push("Tobokegao");
-	target.push("Picnic");
+	let target: PathBuf = ["test-data", "small-collection", "Tobokegao", "Picnic"]
+		.iter()
+		.collect();
 
 	let mut song_path = target.clone();
 	song_path.push("05 - シャーベット (Sherbet).mp3");
@@ -31,8 +32,10 @@ fn test_metadata() {
 	let mut artwork_path = target.clone();
 	artwork_path.push("Folder.png");
 
-	let db = db::get_test_db("metadata.sqlite");
-	update(&db).unwrap();
+	let db = db::get_test_db(&test_name!());
+	let vfs_manager = vfs::Manager::new(db.clone());
+	let index = Index::new(db.clone(), vfs_manager);
+	index.update().unwrap();
 
 	let connection = db.connect().unwrap();
 	let songs: Vec<Song> = songs::table
@@ -58,15 +61,20 @@ fn test_metadata() {
 
 #[test]
 fn test_embedded_artwork() {
-	let mut song_path = PathBuf::new();
-	song_path.push("test-data");
-	song_path.push("small-collection");
-	song_path.push("Tobokegao");
-	song_path.push("Picnic");
-	song_path.push("07 - なぜ (Why).mp3");
+	let song_path: PathBuf = [
+		"test-data",
+		"small-collection",
+		"Tobokegao",
+		"Picnic",
+		"07 - なぜ (Why).mp3",
+	]
+	.iter()
+	.collect();
 
-	let db = db::get_test_db("artwork.sqlite");
-	update(&db).unwrap();
+	let db = db::get_test_db(&test_name!());
+	let vfs_manager = vfs::Manager::new(db.clone());
+	let index = Index::new(db.clone(), vfs_manager);
+	index.update().unwrap();
 
 	let connection = db.connect().unwrap();
 	let songs: Vec<Song> = songs::table
@@ -84,9 +92,12 @@ fn test_browse_top_level() {
 	let mut root_path = PathBuf::new();
 	root_path.push("root");
 
-	let db = db::get_test_db("browse_top_level.sqlite");
-	update(&db).unwrap();
-	let results = browse(&db, Path::new("")).unwrap();
+	let db = db::get_test_db(&test_name!());
+	let vfs_manager = vfs::Manager::new(db.clone());
+	let index = Index::new(db, vfs_manager);
+	index.update().unwrap();
+
+	let results = index.browse(Path::new("")).unwrap();
 
 	assert_eq!(results.len(), 1);
 	match results[0] {
@@ -97,17 +108,15 @@ fn test_browse_top_level() {
 
 #[test]
 fn test_browse() {
-	let mut khemmis_path = PathBuf::new();
-	khemmis_path.push("root");
-	khemmis_path.push("Khemmis");
+	let khemmis_path: PathBuf = ["root", "Khemmis"].iter().collect();
+	let tobokegao_path: PathBuf = ["root", "Tobokegao"].iter().collect();
 
-	let mut tobokegao_path = PathBuf::new();
-	tobokegao_path.push("root");
-	tobokegao_path.push("Tobokegao");
+	let db = db::get_test_db(&test_name!());
+	let vfs_manager = vfs::Manager::new(db.clone());
+	let index = Index::new(db, vfs_manager);
+	index.update().unwrap();
 
-	let db = db::get_test_db("browse.sqlite");
-	update(&db).unwrap();
-	let results = browse(&db, Path::new("root")).unwrap();
+	let results = index.browse(Path::new("root")).unwrap();
 
 	assert_eq!(results.len(), 2);
 	match results[0] {
@@ -122,58 +131,61 @@ fn test_browse() {
 
 #[test]
 fn test_flatten() {
-	let db = db::get_test_db("flatten.sqlite");
-	update(&db).unwrap();
+	let db = db::get_test_db(&test_name!());
+	let vfs_manager = vfs::Manager::new(db.clone());
+	let index = Index::new(db, vfs_manager);
+	index.update().unwrap();
 
 	// Flatten all
-	let results = flatten(&db, Path::new("root")).unwrap();
+	let results = index.flatten(Path::new("root")).unwrap();
 	assert_eq!(results.len(), 13);
 	assert_eq!(results[0].title, Some("Above The Water".to_owned()));
 
 	// Flatten a directory
-	let mut path = PathBuf::new();
-	path.push("root");
-	path.push("Tobokegao");
-	let results = flatten(&db, &path).unwrap();
+	let path: PathBuf = ["root", "Tobokegao"].iter().collect();
+	let results = index.flatten(&path).unwrap();
 	assert_eq!(results.len(), 8);
 
 	// Flatten a directory that is a prefix of another directory (Picnic Remixes)
-	let mut path = PathBuf::new();
-	path.push("root");
-	path.push("Tobokegao");
-	path.push("Picnic");
-	let results = flatten(&db, &path).unwrap();
+	let path: PathBuf = ["root", "Tobokegao", "Picnic"].iter().collect();
+	let results = index.flatten(&path).unwrap();
 	assert_eq!(results.len(), 7);
 }
 
 #[test]
 fn test_random() {
-	let db = db::get_test_db("random.sqlite");
-	update(&db).unwrap();
-	let results = get_random_albums(&db, 1).unwrap();
+	let db = db::get_test_db(&test_name!());
+	let vfs_manager = vfs::Manager::new(db.clone());
+	let index = Index::new(db, vfs_manager);
+	index.update().unwrap();
+
+	let results = index.get_random_albums(1).unwrap();
 	assert_eq!(results.len(), 1);
 }
 
 #[test]
 fn test_recent() {
-	let db = db::get_test_db("recent.sqlite");
-	update(&db).unwrap();
-	let results = get_recent_albums(&db, 2).unwrap();
+	let db = db::get_test_db(&test_name!());
+	let vfs_manager = vfs::Manager::new(db.clone());
+	let index = Index::new(db, vfs_manager);
+	index.update().unwrap();
+
+	let results = index.get_recent_albums(2).unwrap();
 	assert_eq!(results.len(), 2);
 	assert!(results[0].date_added >= results[1].date_added);
 }
 
 #[test]
 fn test_get_song() {
-	let db = db::get_test_db("get_song.sqlite");
-	update(&db).unwrap();
+	let db = db::get_test_db(&test_name!());
+	let vfs_manager = vfs::Manager::new(db.clone());
+	let index = Index::new(db, vfs_manager);
+	index.update().unwrap();
 
-	let mut song_path = PathBuf::new();
-	song_path.push("root");
-	song_path.push("Khemmis");
-	song_path.push("Hunted");
-	song_path.push("02 - Candlelight.mp3");
+	let song_path: PathBuf = ["root", "Khemmis", "Hunted", "02 - Candlelight.mp3"]
+		.iter()
+		.collect();
 
-	let song = get_song(&db, &song_path).unwrap();
+	let song = index.get_song(&song_path).unwrap();
 	assert_eq!(song.title.unwrap(), "Candlelight");
 }

@@ -3,8 +3,8 @@ use rustfm_scrobble::{Scrobble, Scrobbler};
 use serde::Deserialize;
 use std::path::Path;
 
+use crate::app::index::Index;
 use crate::db::DB;
-use crate::index;
 use crate::user;
 
 const LASTFM_API_KEY: &str = "02b96c939a2b451c31dfd67add1f696e";

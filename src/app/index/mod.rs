@@ -5,9 +5,9 @@ use log::error;
 use std::sync::{Arc, Condvar, Mutex};
 use std::time;
 
+use crate::app::vfs;
 use crate::config::MiscSettings;
 use crate::db::{misc_settings, DB};
-use crate::app::vfs::VFS;
 
 mod metadata;
 mod query;
@@ -23,14 +23,16 @@ pub use self::update::*;
 #[derive(Clone)]
 pub struct Index {
 	db: DB,
+	vfs_manager: vfs::Manager,
 	pending_reindex: Arc<(Mutex<bool>, Condvar)>,
 }
 
 impl Index {
-	pub fn new(db: DB) -> Self {
+	pub fn new(db: DB, vfs_manager: vfs::Manager) -> Self {
 		let index = Self {
-			pending_reindex: Arc::new((Mutex::new(false), Condvar::new())),
 			db,
+			vfs_manager,
+			pending_reindex: Arc::new((Mutex::new(false), Condvar::new())),
 		};
 
 		let commands_index = index.clone();
@@ -65,7 +67,7 @@ impl Index {
 				}
 				*pending = false;
 			}
-			if let Err(e) = update(&self.db) {
+			if let Err(e) = self.update() {
 				error!("Error while updating index: {}", e);
 			}
 		}

@@ -7,9 +7,9 @@ use diesel::BelongingToDsl;
 use std::path::Path;
 
 use super::*;
+use crate::app::index::Song;
 use crate::app::vfs;
 use crate::db::{playlist_songs, playlists, users, DB};
-use crate::index::{self, Song};
 
 pub struct Manager {
 	db: DB,
@@ -177,7 +177,7 @@ impl Manager {
 		// Map real path to virtual paths
 		let virtual_songs = songs
 			.into_iter()
-			.filter_map(|s| index::virtualize_song(&vfs, s))
+			.filter_map(|s| s.virtualize(&vfs))
 			.collect();
 
 		Ok(virtual_songs)

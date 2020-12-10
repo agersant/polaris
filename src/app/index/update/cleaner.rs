@@ -4,21 +4,23 @@ use diesel::prelude::*;
 use rayon::prelude::*;
 use std::path::Path;
 
+use crate::app::vfs;
 use crate::db::{directories, songs, DB};
 
 const INDEX_BUILDING_CLEAN_BUFFER_SIZE: usize = 500; // Deletions in each transaction
 
 pub struct Cleaner {
 	db: DB,
+	vfs_manager: vfs::Manager,
 }
 
 impl Cleaner {
-	pub fn new(db: DB) -> Self {
-		Self { db }
+	pub fn new(db: DB, vfs_manager: vfs::Manager) -> Self {
+		Self { db, vfs_manager }
 	}
 
 	pub fn clean(&self) -> Result<()> {
-		let vfs = self.db.get_vfs()?;
+		let vfs = self.vfs_manager.get_vfs()?;
 
 		let all_directories: Vec<String> = {
 			let connection = self.db.connect()?;

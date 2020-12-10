@@ -1,6 +1,6 @@
 use http::StatusCode;
 
-use crate::index;
+use crate::app::index;
 use crate::service::dto;
 use crate::service::test::{ServiceType, TestService};
 use crate::test_name;

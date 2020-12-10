@@ -13,7 +13,6 @@ use simplelog::{LevelFilter, SimpleLogger, TermLogger, TerminalMode};
 mod app;
 mod config;
 mod db;
-mod index;
 mod lastfm;
 mod options;
 mod service;

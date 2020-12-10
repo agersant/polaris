@@ -2,9 +2,8 @@ use core::clone::Clone;
 use std::path::{Path, PathBuf};
 
 use super::*;
-use crate::app::vfs;
+use crate::app::{index::Index, vfs};
 use crate::db;
-
 use crate::test_name;
 
 #[test]
@@ -57,15 +56,15 @@ fn test_delete_playlist() {
 
 #[test]
 fn test_fill_playlist() {
-	use crate::index;
-
 	let db = db::get_test_db(&test_name!());
 	let vfs_manager = vfs::Manager::new(db.clone());
+	let index = Index::new(db.clone(), vfs_manager.clone());
 	let manager = Manager::new(db, vfs_manager);
 
-	index::update(&db).unwrap();
+	index.update().unwrap();
 
-	let mut playlist_content: Vec<String> = index::flatten(&db, Path::new("root"))
+	let mut playlist_content: Vec<String> = index
+		.flatten(Path::new("root"))
 		.unwrap()
 		.into_iter()
 		.map(|s| s.path)

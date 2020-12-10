@@ -6,6 +6,7 @@ use super::*;
 use crate::db::mount_points;
 use crate::db::DB;
 
+#[derive(Clone)]
 pub struct Manager {
 	db: DB,
 }
