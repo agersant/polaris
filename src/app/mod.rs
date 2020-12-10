@@ -1,3 +1,4 @@
+pub mod config;
 pub mod ddns;
 pub mod index;
 pub mod lastfm;

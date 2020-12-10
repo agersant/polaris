@@ -4,8 +4,6 @@ use std::path::Path;
 use crate::app::vfs::VFS;
 use crate::db::songs;
 
-// TODO dto types
-
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub enum CollectionFile {
 	Directory(Directory),

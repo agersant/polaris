@@ -11,7 +11,6 @@ use log::{error, info};
 use simplelog::{LevelFilter, SimpleLogger, TermLogger, TerminalMode};
 
 mod app;
-mod config;
 mod db;
 mod options;
 mod service;

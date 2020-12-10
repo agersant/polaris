@@ -1,7 +1,8 @@
+use diesel::prelude::*;
 use std::path::{Path, PathBuf};
 
 use super::*;
-use crate::app::vfs;
+use crate::app::{config, user, vfs};
 use crate::db::{self, directories, songs};
 use crate::test_name;
 
@@ -9,7 +10,9 @@ use crate::test_name;
 fn test_populate() {
 	let db = db::get_test_db(&test_name!());
 	let vfs_manager = vfs::Manager::new(db.clone());
-	let index = Index::new(db.clone(), vfs_manager);
+	let user_manager = user::Manager::new(db.clone());
+	let config_manager = config::Manager::new(db.clone(), user_manager);
+	let index = Index::new(db.clone(), vfs_manager, config_manager);
 	index.update().unwrap();
 	index.update().unwrap(); // Validates that subsequent updates don't run into conflicts
 
@@ -34,7 +37,9 @@ fn test_metadata() {
 
 	let db = db::get_test_db(&test_name!());
 	let vfs_manager = vfs::Manager::new(db.clone());
-	let index = Index::new(db.clone(), vfs_manager);
+	let user_manager = user::Manager::new(db.clone());
+	let config_manager = config::Manager::new(db.clone(), user_manager);
+	let index = Index::new(db.clone(), vfs_manager, config_manager);
 	index.update().unwrap();
 
 	let connection = db.connect().unwrap();
@@ -73,7 +78,9 @@ fn test_embedded_artwork() {
 
 	let db = db::get_test_db(&test_name!());
 	let vfs_manager = vfs::Manager::new(db.clone());
-	let index = Index::new(db.clone(), vfs_manager);
+	let user_manager = user::Manager::new(db.clone());
+	let config_manager = config::Manager::new(db.clone(), user_manager);
+	let index = Index::new(db.clone(), vfs_manager, config_manager);
 	index.update().unwrap();
 
 	let connection = db.connect().unwrap();
@@ -94,7 +101,9 @@ fn test_browse_top_level() {
 
 	let db = db::get_test_db(&test_name!());
 	let vfs_manager = vfs::Manager::new(db.clone());
-	let index = Index::new(db, vfs_manager);
+	let user_manager = user::Manager::new(db.clone());
+	let config_manager = config::Manager::new(db.clone(), user_manager);
+	let index = Index::new(db.clone(), vfs_manager, config_manager);
 	index.update().unwrap();
 
 	let results = index.browse(Path::new("")).unwrap();
@@ -113,7 +122,9 @@ fn test_browse() {
 
 	let db = db::get_test_db(&test_name!());
 	let vfs_manager = vfs::Manager::new(db.clone());
-	let index = Index::new(db, vfs_manager);
+	let user_manager = user::Manager::new(db.clone());
+	let config_manager = config::Manager::new(db.clone(), user_manager);
+	let index = Index::new(db.clone(), vfs_manager, config_manager);
 	index.update().unwrap();
 
 	let results = index.browse(Path::new("root")).unwrap();
@@ -133,7 +144,9 @@ fn test_browse() {
 fn test_flatten() {
 	let db = db::get_test_db(&test_name!());
 	let vfs_manager = vfs::Manager::new(db.clone());
-	let index = Index::new(db, vfs_manager);
+	let user_manager = user::Manager::new(db.clone());
+	let config_manager = config::Manager::new(db.clone(), user_manager);
+	let index = Index::new(db.clone(), vfs_manager, config_manager);
 	index.update().unwrap();
 
 	// Flatten all
@@ -156,7 +169,9 @@ fn test_flatten() {
 fn test_random() {
 	let db = db::get_test_db(&test_name!());
 	let vfs_manager = vfs::Manager::new(db.clone());
-	let index = Index::new(db, vfs_manager);
+	let user_manager = user::Manager::new(db.clone());
+	let config_manager = config::Manager::new(db.clone(), user_manager);
+	let index = Index::new(db.clone(), vfs_manager, config_manager);
 	index.update().unwrap();
 
 	let results = index.get_random_albums(1).unwrap();
@@ -167,7 +182,9 @@ fn test_random() {
 fn test_recent() {
 	let db = db::get_test_db(&test_name!());
 	let vfs_manager = vfs::Manager::new(db.clone());
-	let index = Index::new(db, vfs_manager);
+	let user_manager = user::Manager::new(db.clone());
+	let config_manager = config::Manager::new(db.clone(), user_manager);
+	let index = Index::new(db.clone(), vfs_manager, config_manager);
 	index.update().unwrap();
 
 	let results = index.get_recent_albums(2).unwrap();
@@ -179,7 +196,9 @@ fn test_recent() {
 fn test_get_song() {
 	let db = db::get_test_db(&test_name!());
 	let vfs_manager = vfs::Manager::new(db.clone());
-	let index = Index::new(db, vfs_manager);
+	let user_manager = user::Manager::new(db.clone());
+	let config_manager = config::Manager::new(db.clone(), user_manager);
+	let index = Index::new(db.clone(), vfs_manager, config_manager);
 	index.update().unwrap();
 
 	let song_path: PathBuf = ["root", "Khemmis", "Hunted", "02 - Candlelight.mp3"]

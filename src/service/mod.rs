@@ -1,8 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use crate::app::{index::Index, lastfm, playlist, thumbnail, user, vfs};
-use crate::config;
+use crate::app::{config, index::Index, lastfm, playlist, thumbnail, user, vfs};
 use crate::db::DB;
 
 mod dto;
@@ -26,6 +25,7 @@ pub struct Context {
 	pub api_url: String,
 	pub db: DB,
 	pub index: Index,
+	pub config_manager: config::Manager,
 	pub lastfm_manager: lastfm::Manager,
 	pub playlist_manager: playlist::Manager,
 	pub thumbnail_manager: thumbnail::Manager,
@@ -63,12 +63,6 @@ impl ContextBuilder {
 		fs::create_dir_all(&db_path.parent().unwrap())?;
 		let db = DB::new(&db_path)?;
 
-		if let Some(config_path) = self.config_file_path {
-			let config = config::parse_toml_file(&config_path)?;
-			config::amend(&db, &config)?;
-		}
-		let auth_secret = config::get_auth_secret(&db)?;
-
 		let web_dir_path = self
 			.web_dir_path
 			.or(option_env!("POLARIS_WEB_DIR").map(PathBuf::from))
@@ -88,11 +82,18 @@ impl ContextBuilder {
 		thumbnails_dir_path.push("thumbnails");
 
 		let vfs_manager = vfs::Manager::new(db.clone());
-		let index = Index::new(db.clone(), vfs_manager.clone());
+		let user_manager = user::Manager::new(db.clone());
+		let config_manager = config::Manager::new(db.clone(), user_manager.clone());
+		let index = Index::new(db.clone(), vfs_manager.clone(), config_manager.clone());
 		let playlist_manager = playlist::Manager::new(db.clone(), vfs_manager.clone());
 		let thumbnail_manager = thumbnail::Manager::new(thumbnails_dir_path);
-		let user_manager = user::Manager::new(db.clone());
 		let lastfm_manager = lastfm::Manager::new(index.clone(), user_manager.clone());
+
+		if let Some(config_path) = self.config_file_path {
+			let config = config::Config::from_path(&config_path)?;
+			config_manager.amend(&config)?;
+		}
+		let auth_secret = config_manager.get_auth_secret()?;
 
 		Ok(Context {
 			port: self.port.unwrap_or(5050),
@@ -103,6 +104,7 @@ impl ContextBuilder {
 			web_dir_path,
 			swagger_dir_path,
 			index,
+			config_manager,
 			lastfm_manager,
 			playlist_manager,
 			thumbnail_manager,

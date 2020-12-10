@@ -2,7 +2,7 @@ use core::clone::Clone;
 use std::path::{Path, PathBuf};
 
 use super::*;
-use crate::app::{index::Index, vfs};
+use crate::app::{config, index::Index, user, vfs};
 use crate::db;
 use crate::test_name;
 
@@ -58,7 +58,9 @@ fn test_delete_playlist() {
 fn test_fill_playlist() {
 	let db = db::get_test_db(&test_name!());
 	let vfs_manager = vfs::Manager::new(db.clone());
-	let index = Index::new(db.clone(), vfs_manager.clone());
+	let user_manager = user::Manager::new(db.clone());
+	let config_manager = config::Manager::new(db.clone(), user_manager);
+	let index = Index::new(db.clone(), vfs_manager.clone(), config_manager);
 	let manager = Manager::new(db, vfs_manager);
 
 	index.update().unwrap();

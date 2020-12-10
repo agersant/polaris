@@ -1,8 +1,12 @@
 use crate::db::users;
 
+mod error;
 mod manager;
 mod preferences;
+#[cfg(test)]
+mod test;
 
+pub use error::*;
 pub use manager::*;
 pub use preferences::*;
 
@@ -12,15 +16,4 @@ pub struct User {
 	pub name: String,
 	pub password_hash: String,
 	pub admin: i32,
-}
-
-impl User {
-	pub fn new(name: &str, password: &str) -> anyhow::Result<User> {
-		let hash = hash_password(password)?;
-		Ok(User {
-			name: name.to_owned(),
-			password_hash: hash,
-			admin: 0,
-		})
-	}
 }

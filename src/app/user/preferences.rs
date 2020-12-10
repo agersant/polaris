@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 
 use super::*;
 
-// TODO dto types (note: write type ignores lastfm username!)
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Preferences {
 	pub lastfm_username: Option<String>,

@@ -1,8 +1,3 @@
-use anyhow::Result;
-use diesel;
-use diesel::prelude::*;
-use serde::{Deserialize, Serialize};
-
 use super::*;
 use crate::db;
 use crate::test_name;
@@ -17,6 +12,8 @@ fn test_preferences_read_write() {
 		web_theme_accent: Some("#FF0000".to_owned()),
 		lastfm_username: None,
 	};
+
+	manager.create_user("Walter", "super_secret!").unwrap();
 
 	manager
 		.write_preferences("Walter", &new_preferences)

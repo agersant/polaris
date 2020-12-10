@@ -13,9 +13,7 @@ use time::Duration;
 
 use super::serve;
 use crate::app::index::{self, Index, QueryError};
-use crate::app::{lastfm, playlist, thumbnail, user, vfs};
-use crate::config::{self, Config};
-use crate::db::DB;
+use crate::app::{config, lastfm, playlist, thumbnail, user, vfs};
 use crate::service::dto;
 use crate::service::error::APIError;
 
@@ -226,16 +224,19 @@ fn initial_setup(user_manager: State<'_, user::Manager>) -> Result<Json<dto::Ini
 }
 
 #[get("/settings")]
-fn get_settings(db: State<'_, DB>, _admin_rights: AdminRights) -> Result<Json<Config>> {
-	let config = config::read(&db)?;
+fn get_settings(
+	config_manager: State<'_, config::Manager>,
+	_admin_rights: AdminRights,
+) -> Result<Json<config::Config>> {
+	let config = config_manager.read()?;
 	Ok(Json(config))
 }
 
 #[put("/settings", data = "<config>")]
 fn put_settings(
-	db: State<'_, DB>,
+	config_manager: State<'_, config::Manager>,
 	admin_rights: AdminRights,
-	config: Json<Config>,
+	config: Json<config::Config>,
 ) -> Result<(), APIError> {
 	// Do not let users remove their own admin rights
 	if let Some(auth) = &admin_rights.auth {
@@ -248,7 +249,7 @@ fn put_settings(
 		}
 	}
 
-	config::amend(&db, &config)?;
+	config_manager.amend(&config)?;
 	Ok(())
 }
 

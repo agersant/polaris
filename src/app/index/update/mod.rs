@@ -1,12 +1,6 @@
 use anyhow::*;
-use diesel;
-use diesel::prelude::*;
 use log::{error, info};
-use regex::Regex;
 use std::time;
-
-use crate::config::MiscSettings;
-use crate::db::misc_settings;
 
 mod cleaner;
 mod collector;
@@ -24,11 +18,7 @@ impl Index {
 		let start = time::Instant::now();
 		info!("Beginning library index update");
 
-		let album_art_pattern = {
-			let connection = self.db.connect()?;
-			let settings: MiscSettings = misc_settings::table.get_result(&connection)?;
-			Regex::new(&settings.index_album_art_pattern)?
-		};
+		let album_art_pattern = self.config_manager.get_index_album_art_pattern()?;
 
 		let cleaner = Cleaner::new(self.db.clone(), self.vfs_manager.clone());
 		cleaner.clean()?;
