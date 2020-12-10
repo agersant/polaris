@@ -9,7 +9,7 @@ use std::io::Read;
 use std::path;
 use toml;
 
-use crate::app::{ddns, vfs, user};
+use crate::app::{ddns, user, vfs};
 use crate::db::{ddns_config, misc_settings, mount_points, users, DB};
 
 #[derive(Debug, Queryable)]
@@ -18,13 +18,6 @@ pub struct MiscSettings {
 	pub auth_secret: Vec<u8>,
 	pub index_sleep_duration_seconds: i32,
 	pub index_album_art_pattern: String,
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-pub struct Preferences {
-	pub lastfm_username: Option<String>,
-	pub web_theme_base: Option<String>,
-	pub web_theme_accent: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -214,32 +207,6 @@ pub fn amend(db: &DB, new_config: &Config) -> Result<()> {
 			.execute(&connection)?;
 	}
 
-	Ok(())
-}
-
-pub fn read_preferences(db: &DB, username: &str) -> Result<Preferences> {
-	use self::users::dsl::*;
-	let connection = db.connect()?;
-	let (theme_base, theme_accent, read_lastfm_username) = users
-		.select((web_theme_base, web_theme_accent, lastfm_username))
-		.filter(name.eq(username))
-		.get_result(&connection)?;
-	Ok(Preferences {
-		web_theme_base: theme_base,
-		web_theme_accent: theme_accent,
-		lastfm_username: read_lastfm_username,
-	})
-}
-
-pub fn write_preferences(db: &DB, username: &str, preferences: &Preferences) -> Result<()> {
-	use crate::db::users::dsl::*;
-	let connection = db.connect()?;
-	diesel::update(users.filter(name.eq(username)))
-		.set((
-			web_theme_base.eq(&preferences.web_theme_base),
-			web_theme_accent.eq(&preferences.web_theme_accent),
-		))
-		.execute(&connection)?;
 	Ok(())
 }
 
@@ -477,34 +444,6 @@ fn test_toggle_admin() {
 		let is_admin: i32 = users.select(admin).get_result(&connection).unwrap();
 		assert_eq!(is_admin, 0);
 	}
-}
-
-#[test]
-fn test_preferences_read_write() {
-	let db = get_test_db("preferences_read_write.sqlite");
-
-	let initial_config = Config {
-		album_art_pattern: None,
-		reindex_every_n_seconds: None,
-		mount_dirs: None,
-		users: Some(vec![ConfigUser {
-			name: "Teddy🐻".into(),
-			password: "Tasty🍖".into(),
-			admin: false,
-		}]),
-		ydns: None,
-	};
-	amend(&db, &initial_config).unwrap();
-
-	let new_preferences = Preferences {
-		web_theme_base: Some("very-dark-theme".to_owned()),
-		web_theme_accent: Some("#FF0000".to_owned()),
-		lastfm_username: None,
-	};
-	write_preferences(&db, "Teddy🐻", &new_preferences).unwrap();
-
-	let read_preferences = read_preferences(&db, "Teddy🐻").unwrap();
-	assert_eq!(new_preferences, read_preferences);
 }
 
 #[test]

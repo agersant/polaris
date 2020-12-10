@@ -14,7 +14,7 @@ use time::Duration;
 use super::serve;
 use crate::app::index::{self, Index, QueryError};
 use crate::app::{lastfm, playlist, thumbnail, user, vfs};
-use crate::config::{self, Config, Preferences};
+use crate::config::{self, Config};
 use crate::db::DB;
 use crate::service::dto;
 use crate::service::error::APIError;
@@ -253,14 +253,21 @@ fn put_settings(
 }
 
 #[get("/preferences")]
-fn get_preferences(db: State<'_, DB>, auth: Auth) -> Result<Json<Preferences>> {
-	let preferences = config::read_preferences(&db, &auth.username)?;
+fn get_preferences(
+	user_manager: State<'_, user::Manager>,
+	auth: Auth,
+) -> Result<Json<user::Preferences>> {
+	let preferences = user_manager.read_preferences(&auth.username)?;
 	Ok(Json(preferences))
 }
 
 #[put("/preferences", data = "<preferences>")]
-fn put_preferences(db: State<'_, DB>, auth: Auth, preferences: Json<Preferences>) -> Result<()> {
-	config::write_preferences(&db, &auth.username, &preferences)?;
+fn put_preferences(
+	user_manager: State<'_, user::Manager>,
+	auth: Auth,
+	preferences: Json<user::Preferences>,
+) -> Result<()> {
+	user_manager.write_preferences(&auth.username, &preferences)?;
 	Ok(())
 }
 

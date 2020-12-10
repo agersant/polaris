@@ -2,14 +2,13 @@ use anyhow::*;
 use diesel;
 use diesel::prelude::*;
 
-use crate::db::users;
 use crate::db::DB;
 
 const HASH_ITERATIONS: u32 = 10000;
 
 #[derive(Clone)]
 pub struct Manager {
-	db: DB,
+	pub db: DB,
 }
 
 impl Manager {
@@ -97,25 +96,6 @@ impl Manager {
 			.set((lastfm_session_key.eq(""), lastfm_username.eq("")))
 			.execute(&connection)?;
 		Ok(())
-	}
-}
-
-#[derive(Debug, Insertable, Queryable)]
-#[table_name = "users"]
-pub struct User {
-	pub name: String,
-	pub password_hash: String,
-	pub admin: i32,
-}
-
-impl User {
-	pub fn new(name: &str, password: &str) -> Result<User> {
-		let hash = hash_password(password)?;
-		Ok(User {
-			name: name.to_owned(),
-			password_hash: hash,
-			admin: 0,
-		})
 	}
 }
 

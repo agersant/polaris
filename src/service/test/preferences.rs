@@ -1,6 +1,6 @@
 use http::StatusCode;
 
-use crate::config;
+use crate::app::user;
 use crate::service::test::{ServiceType, TestService};
 use crate::test_name;
 
@@ -19,7 +19,7 @@ fn test_get_preferences_golden_path() {
 	service.login();
 
 	let request = service.request_builder().get_preferences();
-	let response = service.fetch_json::<_, config::Preferences>(&request);
+	let response = service.fetch_json::<_, user::Preferences>(&request);
 	assert_eq!(response.status(), StatusCode::OK);
 }
 
@@ -28,7 +28,7 @@ fn test_put_preferences_requires_auth() {
 	let mut service = ServiceType::new(&test_name!());
 	let request = service
 		.request_builder()
-		.put_preferences(config::Preferences::default());
+		.put_preferences(user::Preferences::default());
 	let response = service.fetch(&request);
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
@@ -41,7 +41,7 @@ fn test_put_preferences_golden_path() {
 
 	let request = service
 		.request_builder()
-		.put_preferences(config::Preferences::default());
+		.put_preferences(user::Preferences::default());
 	let response = service.fetch(&request);
 	assert_eq!(response.status(), StatusCode::OK);
 }
