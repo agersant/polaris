@@ -1,4 +1,4 @@
-use crate::app::thumbnails;
+use crate::app::{playlists, thumbnails};
 use crate::db::DB;
 use crate::index::Index;
 use std::fs;
@@ -27,6 +27,7 @@ pub struct Context {
 	pub api_url: String,
 	pub db: DB,
 	pub index: Index,
+	pub playlists_manager: playlists::Manager,
 	pub thumbnails_manager: thumbnails::Manager,
 }
 
@@ -92,6 +93,7 @@ impl ContextBuilder {
 			web_url: "/".to_owned(),
 			web_dir_path,
 			swagger_dir_path,
+			playlists_manager: playlists::Manager::new(db.clone()),
 			thumbnails_manager: thumbnails::Manager::new(thumbnails_dir_path),
 			index: Index::new(db.clone()),
 			db,

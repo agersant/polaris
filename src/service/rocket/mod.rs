@@ -28,6 +28,7 @@ pub fn get_server(context: service::Context) -> Result<rocket::Rocket> {
 	Ok(rocket::custom(config)
 		.manage(context.db)
 		.manage(context.index)
+		.manage(context.playlists_manager)
 		.manage(context.thumbnails_manager)
 		.mount(&context.api_url, api::get_routes())
 		.mount(

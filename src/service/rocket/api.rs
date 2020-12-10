@@ -13,12 +13,12 @@ use std::str::FromStr;
 use time::Duration;
 
 use super::serve;
+use crate::app::playlists;
 use crate::app::thumbnails;
 use crate::config::{self, Config, Preferences};
 use crate::db::DB;
 use crate::index::{self, Index, QueryError};
 use crate::lastfm;
-use crate::playlist::{self, PlaylistError};
 use crate::service::dto;
 use crate::service::error::APIError;
 use crate::user;
@@ -69,12 +69,12 @@ impl<'r> rocket::response::Responder<'r> for APIError {
 	}
 }
 
-impl From<PlaylistError> for APIError {
-	fn from(error: PlaylistError) -> APIError {
+impl From<playlists::Error> for APIError {
+	fn from(error: playlists::Error) -> APIError {
 		match error {
-			PlaylistError::PlaylistNotFound => APIError::PlaylistNotFound,
-			PlaylistError::UserNotFound => APIError::UserNotFound,
-			PlaylistError::Unspecified => APIError::Unspecified,
+			playlists::Error::PlaylistNotFound => APIError::PlaylistNotFound,
+			playlists::Error::UserNotFound => APIError::UserNotFound,
+			playlists::Error::Unspecified => APIError::Unspecified,
 		}
 	}
 }
@@ -383,8 +383,11 @@ fn thumbnail(
 }
 
 #[get("/playlists")]
-fn list_playlists(db: State<'_, DB>, auth: Auth) -> Result<Json<Vec<dto::ListPlaylistsEntry>>> {
-	let playlist_names = playlist::list_playlists(&auth.username, db.deref().deref())?;
+fn list_playlists(
+	playlists_manager: State<'_, playlists::Manager>,
+	auth: Auth,
+) -> Result<Json<Vec<dto::ListPlaylistsEntry>>> {
+	let playlist_names = playlists_manager.list_playlists(&auth.username)?;
 	let playlists: Vec<dto::ListPlaylistsEntry> = playlist_names
 		.into_iter()
 		.map(|p| dto::ListPlaylistsEntry { name: p })
@@ -395,28 +398,32 @@ fn list_playlists(db: State<'_, DB>, auth: Auth) -> Result<Json<Vec<dto::ListPla
 
 #[put("/playlist/<name>", data = "<playlist>")]
 fn save_playlist(
-	db: State<'_, DB>,
+	playlists_manager: State<'_, playlists::Manager>,
 	auth: Auth,
 	name: String,
 	playlist: Json<dto::SavePlaylistInput>,
 ) -> Result<()> {
-	playlist::save_playlist(&name, &auth.username, &playlist.tracks, db.deref().deref())?;
+	playlists_manager.save_playlist(&name, &auth.username, &playlist.tracks)?;
 	Ok(())
 }
 
 #[get("/playlist/<name>")]
 fn read_playlist(
-	db: State<'_, DB>,
+	playlists_manager: State<'_, playlists::Manager>,
 	auth: Auth,
 	name: String,
 ) -> Result<Json<Vec<index::Song>>, APIError> {
-	let songs = playlist::read_playlist(&name, &auth.username, db.deref().deref())?;
+	let songs = playlists_manager.read_playlist(&name, &auth.username)?;
 	Ok(Json(songs))
 }
 
 #[delete("/playlist/<name>")]
-fn delete_playlist(db: State<'_, DB>, auth: Auth, name: String) -> Result<(), APIError> {
-	playlist::delete_playlist(&name, &auth.username, db.deref().deref())?;
+fn delete_playlist(
+	playlists_manager: State<'_, playlists::Manager>,
+	auth: Auth,
+	name: String,
+) -> Result<(), APIError> {
+	playlists_manager.delete_playlist(&name, &auth.username)?;
 	Ok(())
 }
 

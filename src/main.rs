@@ -16,8 +16,9 @@ mod db;
 mod index;
 mod lastfm;
 mod options;
-mod playlist;
 mod service;
+#[cfg(test)]
+mod test;
 mod ui;
 mod user;
 mod utils;
