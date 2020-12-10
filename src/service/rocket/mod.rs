@@ -30,6 +30,7 @@ pub fn get_server(context: service::Context) -> Result<rocket::Rocket> {
 		.manage(context.index)
 		.manage(context.playlists_manager)
 		.manage(context.thumbnails_manager)
+		.manage(context.user_manager)
 		.manage(context.vfs_manager)
 		.mount(&context.api_url, api::get_routes())
 		.mount(

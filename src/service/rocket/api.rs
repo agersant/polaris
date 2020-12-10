@@ -6,7 +6,6 @@ use rocket::{delete, get, post, put, routes, Outcome, State};
 use rocket_contrib::json::Json;
 use std::default::Default;
 use std::fs::File;
-use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::str;
 use std::str::FromStr;
@@ -14,12 +13,11 @@ use time::Duration;
 
 use super::serve;
 use crate::app::index::{self, Index, QueryError};
-use crate::app::{lastfm, playlists, thumbnails, vfs};
+use crate::app::{lastfm, playlists, thumbnails, user, vfs};
 use crate::config::{self, Config, Preferences};
 use crate::db::DB;
 use crate::service::dto;
 use crate::service::error::APIError;
-use crate::user;
 
 pub fn get_routes() -> Vec<rocket::Route> {
 	routes![
@@ -122,13 +120,13 @@ impl<'a, 'r> FromRequest<'a, 'r> for Auth {
 
 	fn from_request(request: &'a Request<'r>) -> request::Outcome<Self, ()> {
 		let mut cookies = request.guard::<Cookies<'_>>().unwrap();
-		let db = match request.guard::<State<'_, DB>>() {
+		let user_manager = match request.guard::<State<'_, user::Manager>>() {
 			Outcome::Success(d) => d,
 			_ => return Outcome::Failure((Status::InternalServerError, ())),
 		};
 
 		if let Some(u) = cookies.get_private(dto::COOKIE_SESSION) {
-			let exists = match user::exists(db.deref().deref(), u.value()) {
+			let exists = match user_manager.exists(u.value()) {
 				Ok(e) => e,
 				Err(_) => return Outcome::Failure((Status::InternalServerError, ())),
 			};
@@ -147,8 +145,8 @@ impl<'a, 'r> FromRequest<'a, 'r> for Auth {
 				password: Some(password),
 			}) = Basic::from_str(auth_header_string.trim_start_matches("Basic "))
 			{
-				if user::auth(db.deref().deref(), &username, &password).unwrap_or(false) {
-					let is_admin = match user::is_admin(db.deref().deref(), &username) {
+				if user_manager.auth(&username, &password).unwrap_or(false) {
+					let is_admin = match user_manager.is_admin(&username) {
 						Ok(a) => a,
 						Err(_) => return Outcome::Failure((Status::InternalServerError, ())),
 					};
@@ -172,16 +170,16 @@ impl<'a, 'r> FromRequest<'a, 'r> for AdminRights {
 	type Error = ();
 
 	fn from_request(request: &'a Request<'r>) -> request::Outcome<Self, ()> {
-		let db = request.guard::<State<'_, DB>>()?;
+		let user_manager = request.guard::<State<'_, user::Manager>>()?;
 
-		match user::count(&db) {
+		match user_manager.count() {
 			Err(_) => return Outcome::Failure((Status::InternalServerError, ())),
 			Ok(0) => return Outcome::Success(AdminRights { auth: None }),
 			_ => (),
 		};
 
 		let auth = request.guard::<Auth>()?;
-		match user::is_admin(&db, &auth.username) {
+		match user_manager.is_admin(&auth.username) {
 			Err(_) => Outcome::Failure((Status::InternalServerError, ())),
 			Ok(true) => Outcome::Success(AdminRights { auth: Some(auth) }),
 			Ok(false) => Outcome::Failure((Status::Forbidden, ())),
@@ -220,9 +218,9 @@ fn version() -> Json<dto::Version> {
 }
 
 #[get("/initial_setup")]
-fn initial_setup(db: State<'_, DB>) -> Result<Json<dto::InitialSetup>> {
+fn initial_setup(user_manager: State<'_, user::Manager>) -> Result<Json<dto::InitialSetup>> {
 	let initial_setup = dto::InitialSetup {
-		has_any_users: user::count(&db)? > 0,
+		has_any_users: user_manager.count()? > 0,
 	};
 	Ok(Json(initial_setup))
 }
@@ -274,14 +272,14 @@ fn trigger_index(index: State<'_, Index>, _admin_rights: AdminRights) -> Result<
 
 #[post("/auth", data = "<credentials>")]
 fn auth(
-	db: State<'_, DB>,
+	user_manager: State<'_, user::Manager>,
 	credentials: Json<dto::AuthCredentials>,
 	mut cookies: Cookies<'_>,
 ) -> std::result::Result<(), APIError> {
-	if !user::auth(&db, &credentials.username, &credentials.password)? {
+	if !user_manager.auth(&credentials.username, &credentials.password)? {
 		return Err(APIError::IncorrectCredentials);
 	}
-	let is_admin = user::is_admin(&db, &credentials.username)?;
+	let is_admin = user_manager.is_admin(&credentials.username)?;
 	add_session_cookies(&mut cookies, &credentials.username, is_admin);
 	Ok(())
 }
@@ -426,12 +424,12 @@ fn delete_playlist(
 
 #[put("/lastfm/now_playing/<path>")]
 fn lastfm_now_playing(
-	db: State<'_, DB>,
+	user_manager: State<'_, user::Manager>,
 	lastfm_manager: State<'_, lastfm::Manager>,
 	auth: Auth,
 	path: VFSPathBuf,
 ) -> Result<()> {
-	if user::is_lastfm_linked(db.deref().deref(), &auth.username) {
+	if user_manager.is_lastfm_linked(&auth.username) {
 		lastfm_manager.now_playing(&auth.username, &path.into() as &PathBuf)?;
 	}
 	Ok(())
@@ -439,12 +437,12 @@ fn lastfm_now_playing(
 
 #[post("/lastfm/scrobble/<path>")]
 fn lastfm_scrobble(
-	db: State<'_, DB>,
+	user_manager: State<'_, user::Manager>,
 	lastfm_manager: State<'_, lastfm::Manager>,
 	auth: Auth,
 	path: VFSPathBuf,
 ) -> Result<()> {
-	if user::is_lastfm_linked(db.deref().deref(), &auth.username) {
+	if user_manager.is_lastfm_linked(&auth.username) {
 		lastfm_manager.scrobble(&auth.username, &path.into() as &PathBuf)?;
 	}
 	Ok(())

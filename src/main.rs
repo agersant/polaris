@@ -18,7 +18,6 @@ mod service;
 #[cfg(test)]
 mod test;
 mod ui;
-mod user;
 mod utils;
 
 #[cfg(unix)]

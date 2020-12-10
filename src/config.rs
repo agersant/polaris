@@ -9,9 +9,8 @@ use std::io::Read;
 use std::path;
 use toml;
 
-use crate::app::{ddns, vfs};
+use crate::app::{ddns, vfs, user};
 use crate::db::{ddns_config, misc_settings, mount_points, users, DB};
-use crate::user::*;
 
 #[derive(Debug, Queryable)]
 pub struct MiscSettings {
@@ -169,7 +168,7 @@ pub fn amend(db: &DB, new_config: &Config) -> Result<()> {
 			})
 			.collect::<_>();
 		for config_user in &insert_users {
-			let new_user = User::new(&config_user.name, &config_user.password)?;
+			let new_user = user::User::new(&config_user.name, &config_user.password)?;
 			diesel::insert_into(users::table)
 				.values(&new_user)
 				.execute(&connection)?;
@@ -179,7 +178,7 @@ pub fn amend(db: &DB, new_config: &Config) -> Result<()> {
 		for user in config_users.iter() {
 			// Update password if provided
 			if !user.password.is_empty() {
-				let hash = hash_password(&user.password)?;
+				let hash = user::hash_password(&user.password)?;
 				diesel::update(users::table.filter(users::name.eq(&user.name)))
 					.set(users::password_hash.eq(hash))
 					.execute(&connection)?;
