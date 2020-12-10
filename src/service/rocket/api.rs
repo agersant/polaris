@@ -14,10 +14,9 @@ use time::Duration;
 
 use super::serve;
 use crate::app::index::{self, Index, QueryError};
-use crate::app::{playlists, thumbnails, vfs};
+use crate::app::{lastfm, playlists, thumbnails, vfs};
 use crate::config::{self, Config, Preferences};
 use crate::db::DB;
-use crate::lastfm;
 use crate::service::dto;
 use crate::service::error::APIError;
 use crate::user;
@@ -426,29 +425,39 @@ fn delete_playlist(
 }
 
 #[put("/lastfm/now_playing/<path>")]
-fn lastfm_now_playing(db: State<'_, DB>, auth: Auth, path: VFSPathBuf) -> Result<()> {
+fn lastfm_now_playing(
+	db: State<'_, DB>,
+	lastfm_manager: State<'_, lastfm::Manager>,
+	auth: Auth,
+	path: VFSPathBuf,
+) -> Result<()> {
 	if user::is_lastfm_linked(db.deref().deref(), &auth.username) {
-		lastfm::now_playing(db.deref().deref(), &auth.username, &path.into() as &PathBuf)?;
+		lastfm_manager.now_playing(&auth.username, &path.into() as &PathBuf)?;
 	}
 	Ok(())
 }
 
 #[post("/lastfm/scrobble/<path>")]
-fn lastfm_scrobble(db: State<'_, DB>, auth: Auth, path: VFSPathBuf) -> Result<()> {
+fn lastfm_scrobble(
+	db: State<'_, DB>,
+	lastfm_manager: State<'_, lastfm::Manager>,
+	auth: Auth,
+	path: VFSPathBuf,
+) -> Result<()> {
 	if user::is_lastfm_linked(db.deref().deref(), &auth.username) {
-		lastfm::scrobble(db.deref().deref(), &auth.username, &path.into() as &PathBuf)?;
+		lastfm_manager.scrobble(&auth.username, &path.into() as &PathBuf)?;
 	}
 	Ok(())
 }
 
 #[get("/lastfm/link?<token>&<content>")]
 fn lastfm_link(
-	db: State<'_, DB>,
+	lastfm_manager: State<'_, lastfm::Manager>,
 	auth: Auth,
 	token: String,
 	content: String,
 ) -> Result<Html<String>> {
-	lastfm::link(db.deref().deref(), &auth.username, &token)?;
+	lastfm_manager.link(&auth.username, &token)?;
 
 	// Percent decode
 	let base64_content = RawStr::from_str(&content).percent_decode()?;
@@ -463,7 +472,7 @@ fn lastfm_link(
 }
 
 #[delete("/lastfm/link")]
-fn lastfm_unlink(db: State<'_, DB>, auth: Auth) -> Result<()> {
-	lastfm::unlink(db.deref().deref(), &auth.username)?;
+fn lastfm_unlink(lastfm_manager: State<'_, lastfm::Manager>, auth: Auth) -> Result<()> {
+	lastfm_manager.unlink(&auth.username)?;
 	Ok(())
 }

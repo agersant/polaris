@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use crate::app::{index::Index, playlists, thumbnails, vfs};
+use crate::app::{index::Index, lastfm, playlists, thumbnails, vfs};
 use crate::config;
 use crate::db::DB;
 
@@ -26,6 +26,7 @@ pub struct Context {
 	pub api_url: String,
 	pub db: DB,
 	pub index: Index,
+	pub lastfm_manager: lastfm::Manager,
 	pub playlists_manager: playlists::Manager,
 	pub thumbnails_manager: thumbnails::Manager,
 	pub vfs_manager: vfs::Manager,
@@ -86,6 +87,10 @@ impl ContextBuilder {
 		thumbnails_dir_path.push("thumbnails");
 
 		let vfs_manager = vfs::Manager::new(db.clone());
+		let index = Index::new(db.clone(), vfs_manager.clone());
+		let lastfm_manager = lastfm::Manager::new(db.clone(), index.clone());
+		let playlists_manager = playlists::Manager::new(db.clone(), vfs_manager.clone());
+		let thumbnails_manager = thumbnails::Manager::new(thumbnails_dir_path);
 
 		Ok(Context {
 			port: self.port.unwrap_or(5050),
@@ -95,9 +100,10 @@ impl ContextBuilder {
 			web_url: "/".to_owned(),
 			web_dir_path,
 			swagger_dir_path,
-			index: Index::new(db.clone(), vfs_manager.clone()),
-			playlists_manager: playlists::Manager::new(db.clone(), vfs_manager.clone()),
-			thumbnails_manager: thumbnails::Manager::new(thumbnails_dir_path),
+			index,
+			lastfm_manager,
+			playlists_manager,
+			thumbnails_manager,
 			vfs_manager,
 			db,
 		})
