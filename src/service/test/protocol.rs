@@ -127,7 +127,6 @@ pub fn recent() -> Request<()> {
 
 pub fn search(query: &str) -> Request<()> {
 	let endpoint = format!("/api/search/{}", url_encode(query));
-	dbg!(&endpoint);
 	Request::builder()
 		.method(Method::GET)
 		.uri(&endpoint)
