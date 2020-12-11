@@ -2,7 +2,7 @@ use http::{method::Method, Request};
 use percent_encoding::{percent_encode, NON_ALPHANUMERIC};
 use std::path::Path;
 
-use crate::config;
+use crate::app::{config, user};
 use crate::service::dto;
 
 pub fn web_index() -> Request<()> {

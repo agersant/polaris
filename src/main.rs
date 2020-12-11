@@ -9,20 +9,14 @@ use anyhow::*;
 use log::{error, info};
 use simplelog::{LevelFilter, SimpleLogger, TermLogger, TerminalMode};
 
-mod artwork;
-mod config;
+mod app;
 mod db;
-mod ddns;
-mod index;
-mod lastfm;
 mod options;
-mod playlist;
 mod service;
-mod thumbnails;
+#[cfg(test)]
+mod test;
 mod ui;
-mod user;
 mod utils;
-mod vfs;
 
 #[cfg(unix)]
 fn daemonize(
@@ -100,7 +94,7 @@ fn init_logging(cli_options: &options::CLIOptions) -> Result<()> {
 fn main() -> Result<()> {
 	// Parse CLI options
 	let args: Vec<String> = std::env::args().collect();
-	let options_manager = options::OptionsManager::new();
+	let options_manager = options::Manager::new();
 	let cli_options = options_manager.parse(&args[1..])?;
 
 	if cli_options.show_help {
@@ -147,16 +141,16 @@ fn main() -> Result<()> {
 	info!("Swagger files location is {:#?}", context.swagger_dir_path);
 	info!(
 		"Thumbnails files location is {:#?}",
-		context.thumbnails_manager.get_directory()
+		context.thumbnail_manager.get_directory()
 	);
 
 	// Begin collection scans
 	context.index.begin_periodic_updates();
 
 	// Start DDNS updates
-	let db_ddns = context.db.clone();
+	let ddns_manager = app::ddns::Manager::new(context.db.clone());
 	std::thread::spawn(move || {
-		ddns::run(&db_ddns);
+		ddns_manager.run();
 	});
 
 	// Start server

@@ -1,10 +1,8 @@
-use crate::db::DB;
-use crate::index::Index;
-use crate::thumbnails::ThumbnailsManager;
 use std::fs;
 use std::path::PathBuf;
 
-use crate::config;
+use crate::app::{config, index::Index, lastfm, playlist, thumbnail, user, vfs};
+use crate::db::DB;
 
 mod dto;
 mod error;
@@ -26,7 +24,12 @@ pub struct Context {
 	pub api_url: String,
 	pub db: DB,
 	pub index: Index,
-	pub thumbnails_manager: ThumbnailsManager,
+	pub config_manager: config::Manager,
+	pub lastfm_manager: lastfm::Manager,
+	pub playlist_manager: playlist::Manager,
+	pub thumbnail_manager: thumbnail::Manager,
+	pub user_manager: user::Manager,
+	pub vfs_manager: vfs::Manager,
 }
 
 pub struct ContextBuilder {
@@ -59,12 +62,6 @@ impl ContextBuilder {
 		fs::create_dir_all(&db_path.parent().unwrap())?;
 		let db = DB::new(&db_path)?;
 
-		if let Some(config_path) = self.config_file_path {
-			let config = config::parse_toml_file(&config_path)?;
-			config::amend(&db, &config)?;
-		}
-		let auth_secret = config::get_auth_secret(&db)?;
-
 		let web_dir_path = self
 			.web_dir_path
 			.or(option_env!("POLARIS_WEB_DIR").map(PathBuf::from))
@@ -83,6 +80,20 @@ impl ContextBuilder {
 			.unwrap_or(PathBuf::from(".").to_owned());
 		thumbnails_dir_path.push("thumbnails");
 
+		let vfs_manager = vfs::Manager::new(db.clone());
+		let user_manager = user::Manager::new(db.clone());
+		let config_manager = config::Manager::new(db.clone(), user_manager.clone());
+		let index = Index::new(db.clone(), vfs_manager.clone(), config_manager.clone());
+		let playlist_manager = playlist::Manager::new(db.clone(), vfs_manager.clone());
+		let thumbnail_manager = thumbnail::Manager::new(thumbnails_dir_path);
+		let lastfm_manager = lastfm::Manager::new(index.clone(), user_manager.clone());
+
+		if let Some(config_path) = self.config_file_path {
+			let config = config::Config::from_path(&config_path)?;
+			config_manager.amend(&config)?;
+		}
+		let auth_secret = config_manager.get_auth_secret()?;
+
 		Ok(Context {
 			port: self.port.unwrap_or(5050),
 			auth_secret,
@@ -91,8 +102,13 @@ impl ContextBuilder {
 			web_url: "/".to_owned(),
 			web_dir_path,
 			swagger_dir_path,
-			thumbnails_manager: ThumbnailsManager::new(thumbnails_dir_path),
-			index: Index::new(db.clone()),
+			index,
+			config_manager,
+			lastfm_manager,
+			playlist_manager,
+			thumbnail_manager,
+			user_manager,
+			vfs_manager,
 			db,
 		})
 	}

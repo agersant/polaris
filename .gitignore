@@ -9,7 +9,7 @@ TestConfig.toml
 
 # Runtime artifacts
 *.sqlite
-thumbnails
+/thumbnails
 
 # Release process artifacts (usually runs on CI)
 release

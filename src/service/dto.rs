@@ -44,4 +44,4 @@ pub struct LastFMLink {
 	pub content: String,
 }
 
-// TODO: Config and Preferences should have dto types
+// TODO: Config, Preferences, CollectionFile, Song and Directory should have dto types

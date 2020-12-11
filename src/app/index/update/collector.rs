@@ -1,7 +1,8 @@
-use crate::index::update::{inserter, traverser};
 use crossbeam_channel::{Receiver, Sender};
 use log::error;
 use regex::Regex;
+
+use super::*;
 
 pub struct Collector {
 	receiver: Receiver<traverser::Directory>,
