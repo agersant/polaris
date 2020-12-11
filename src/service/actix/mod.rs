@@ -18,7 +18,12 @@ pub fn make_config(context: service::Context) -> impl FnOnce(&mut ServiceConfig)
 		let encryption_key = cookie::Key::derive_from(&context.auth_secret[..]);
 		cfg.app_data(web::Data::new(context.db))
 			.app_data(web::Data::new(context.index))
-			.app_data(web::Data::new(context.thumbnails_manager))
+			.app_data(web::Data::new(context.config_manager))
+			.app_data(web::Data::new(context.lastfm_manager))
+			.app_data(web::Data::new(context.playlist_manager))
+			.app_data(web::Data::new(context.thumbnail_manager))
+			.app_data(web::Data::new(context.user_manager))
+			.app_data(web::Data::new(context.vfs_manager))
 			.app_data(web::Data::new(encryption_key))
 			.service(web::scope(&context.api_url).configure(api::make_config()))
 			.service(

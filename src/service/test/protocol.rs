@@ -73,7 +73,7 @@ pub fn get_preferences() -> Request<()> {
 		.unwrap()
 }
 
-pub fn put_preferences(preferences: config::Preferences) -> Request<config::Preferences> {
+pub fn put_preferences(preferences: user::Preferences) -> Request<user::Preferences> {
 	Request::builder()
 		.method(Method::PUT)
 		.uri("/api/preferences")

@@ -1,6 +1,6 @@
 use http::StatusCode;
 
-use crate::app::{config, user};
+use crate::app::user;
 use crate::service::test::{protocol, ServiceType, TestService};
 use crate::test_name;
 

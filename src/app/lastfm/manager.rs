@@ -39,6 +39,7 @@ struct AuthResponse {
 	pub session: AuthResponseSession,
 }
 
+#[derive(Clone)]
 pub struct Manager {
 	index: Index,
 	user_manager: user::Manager,

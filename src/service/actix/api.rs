@@ -21,15 +21,12 @@ use std::pin::Pin;
 use std::str;
 use time::Duration;
 
-use crate::config::{self, Config, Preferences};
-use crate::db::DB;
-use crate::index::{self, Index};
-use crate::lastfm;
-use crate::playlist;
+use crate::app::{
+	config,
+	index::{self, Index},
+	lastfm, playlist, thumbnail, user, vfs,
+};
 use crate::service::{dto, error::*};
-use crate::thumbnails::{ThumbnailOptions, ThumbnailsManager};
-use crate::user;
-use crate::vfs::VFSSource;
 
 // TODO.important Use async instead of long blocking operations:
 // - Everything that touches DB
@@ -53,8 +50,8 @@ pub fn make_config() -> impl FnOnce(&mut ServiceConfig) + Clone {
 			.service(recent)
 			.service(search_root)
 			.service(search)
-			.service(audio)
-			.service(thumbnail)
+			.service(get_audio)
+			.service(get_thumbnail)
 			.service(list_playlists)
 			.service(save_playlist)
 			.service(read_playlist)
@@ -160,8 +157,8 @@ impl FromRequest for Auth {
 	type Config = ();
 
 	fn from_request(request: &HttpRequest, payload: &mut Payload) -> Self::Future {
-		let db = match request.app_data::<Data<DB>>() {
-			Some(db) => db.clone(),
+		let user_manager = match request.app_data::<Data<user::Manager>>() {
+			Some(m) => m.clone(),
 			None => return Box::pin(err(ErrorInternalServerError(APIError::Unspecified))),
 		};
 
@@ -173,7 +170,7 @@ impl FromRequest for Auth {
 			{
 				let mut cookies = cookies_future.await?;
 				if let Some(session_cookie) = cookies.get_signed(dto::COOKIE_SESSION) {
-					let exists = match user::exists(&db, session_cookie.value()) {
+					let exists = match user_manager.exists(session_cookie.value()) {
 						Ok(e) => e,
 						Err(_) => return Err(ErrorInternalServerError(APIError::Unspecified)),
 					};
@@ -192,7 +189,7 @@ impl FromRequest for Auth {
 				let auth = http_auth_future.await?;
 				let username = auth.user_id().as_ref();
 				let password = auth.password().map(|s| s.as_ref()).unwrap_or("");
-				if user::auth(&db, username, password).unwrap_or(false) {
+				if user_manager.auth(username, password).unwrap_or(false) {
 					return Ok(Auth {
 						username: username.to_owned(),
 						source: AuthSource::AuthorizationHeader,
@@ -215,12 +212,12 @@ impl FromRequest for AdminRights {
 	type Config = ();
 
 	fn from_request(request: &HttpRequest, payload: &mut Payload) -> Self::Future {
-		let db = match request.app_data::<Data<DB>>() {
-			Some(db) => db.clone(),
+		let user_manager = match request.app_data::<Data<user::Manager>>() {
+			Some(m) => m.clone(),
 			None => return Box::pin(err(ErrorInternalServerError(APIError::Unspecified))),
 		};
 
-		match user::count(&db) {
+		match user_manager.count() {
 			Err(_) => return Box::pin(err(ErrorInternalServerError(APIError::Unspecified))),
 			Ok(0) => return Box::pin(ok(AdminRights { auth: None })),
 			_ => (),
@@ -230,7 +227,7 @@ impl FromRequest for AdminRights {
 
 		Box::pin(async move {
 			let auth = auth_future.await?;
-			match user::is_admin(&db, &auth.username) {
+			match user_manager.is_admin(&auth.username) {
 				Err(_) => Err(ErrorInternalServerError(APIError::Unspecified)),
 				Ok(true) => Ok(AdminRights { auth: Some(auth) }),
 				Ok(false) => Err(ErrorForbidden(APIError::Unspecified)),
@@ -247,8 +244,8 @@ pub fn http_auth_middleware<
 	request: ServiceRequest,
 	service: &mut S,
 ) -> Pin<Box<dyn Future<Output = Result<ServiceResponse<B>, actix_web::Error>>>> {
-	let db = match request.app_data::<Data<DB>>() {
-		Some(db) => db.clone(),
+	let user_manager = match request.app_data::<Data<user::Manager>>() {
+		Some(m) => m.clone(),
 		None => return Box::pin(err(ErrorInternalServerError(APIError::Unspecified))),
 	};
 
@@ -270,8 +267,9 @@ pub fn http_auth_middleware<
 			};
 			if set_cookies {
 				let cookies = cookies_future.await?;
-				let is_admin =
-					user::is_admin(&db, &auth.username).map_err(|_| APIError::Unspecified)?;
+				let is_admin = user_manager
+					.is_admin(&auth.username)
+					.map_err(|_| APIError::Unspecified)?;
 				add_auth_cookies(response.response_mut(), &cookies, &auth.username, is_admin)?;
 			}
 		}
@@ -347,24 +345,29 @@ async fn version() -> Json<dto::Version> {
 }
 
 #[get("/initial_setup")]
-async fn initial_setup(db: Data<DB>) -> Result<Json<dto::InitialSetup>, APIError> {
+async fn initial_setup(
+	user_manager: Data<user::Manager>,
+) -> Result<Json<dto::InitialSetup>, APIError> {
 	let initial_setup = dto::InitialSetup {
-		has_any_users: user::count(&db)? > 0,
+		has_any_users: user_manager.count()? > 0,
 	};
 	Ok(Json(initial_setup))
 }
 
 #[get("/settings")]
-async fn get_settings(db: Data<DB>, _admin_rights: AdminRights) -> Result<Json<Config>, APIError> {
-	let config = config::read(&db)?;
+async fn get_settings(
+	config_manager: Data<config::Manager>,
+	_admin_rights: AdminRights,
+) -> Result<Json<config::Config>, APIError> {
+	let config = config_manager.read()?;
 	Ok(Json(config))
 }
 
 #[put("/settings")]
 async fn put_settings(
 	admin_rights: AdminRights,
-	db: Data<DB>,
-	config: Json<Config>,
+	config_manager: Data<config::Manager>,
+	config: Json<config::Config>,
 ) -> Result<HttpResponse, APIError> {
 	// Do not let users remove their own admin rights
 	if let Some(auth) = &admin_rights.auth {
@@ -377,23 +380,26 @@ async fn put_settings(
 		}
 	}
 
-	config::amend(&db, &config)?;
+	config_manager.amend(&config)?;
 	Ok(HttpResponse::new(StatusCode::OK))
 }
 
 #[get("/preferences")]
-async fn get_preferences(db: Data<DB>, auth: Auth) -> Result<Json<Preferences>, APIError> {
-	let preferences = config::read_preferences(&db, &auth.username)?;
+async fn get_preferences(
+	user_manager: Data<user::Manager>,
+	auth: Auth,
+) -> Result<Json<user::Preferences>, APIError> {
+	let preferences = user_manager.read_preferences(&auth.username)?;
 	Ok(Json(preferences))
 }
 
 #[put("/preferences")]
 async fn put_preferences(
-	db: Data<DB>,
+	user_manager: Data<user::Manager>,
 	auth: Auth,
-	preferences: Json<Preferences>,
+	preferences: Json<user::Preferences>,
 ) -> Result<HttpResponse, APIError> {
-	config::write_preferences(&db, &auth.username, &preferences)?;
+	user_manager.write_preferences(&auth.username, &preferences)?;
 	Ok(HttpResponse::new(StatusCode::OK))
 }
 
@@ -408,14 +414,14 @@ async fn trigger_index(
 
 #[post("/auth")]
 async fn login(
-	db: Data<DB>,
+	user_manager: Data<user::Manager>,
 	credentials: Json<dto::AuthCredentials>,
 	cookies: Cookies,
 ) -> Result<HttpResponse, APIError> {
-	if !user::auth(&db, &credentials.username, &credentials.password)? {
+	if !user_manager.auth(&credentials.username, &credentials.password)? {
 		return Err(APIError::IncorrectCredentials);
 	}
-	let is_admin = user::is_admin(&db, &credentials.username)?;
+	let is_admin = user_manager.is_admin(&credentials.username)?;
 	let mut response = HttpResponse::Ok().finish();
 	add_auth_cookies(&mut response, &cookies, &credentials.username, is_admin)
 		.map_err(|_| APIError::Unspecified)?;
@@ -424,75 +430,79 @@ async fn login(
 
 #[get("/browse")]
 async fn browse_root(
-	db: Data<DB>,
+	index: Data<Index>,
 	_auth: Auth,
 ) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
-	let result = index::browse(&db, Path::new(""))?;
+	let result = index.browse(Path::new(""))?;
 	Ok(Json(result))
 }
 
 #[get("/browse/{path:.*}")]
 async fn browse(
-	db: Data<DB>,
+	index: Data<Index>,
 	_auth: Auth,
 	path: web::Path<String>,
 ) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
 	let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
-	let result = index::browse(&db, Path::new(path.as_ref()))?;
+	let result = index.browse(Path::new(path.as_ref()))?;
 	Ok(Json(result))
 }
 
 #[get("/flatten")]
-async fn flatten_root(db: Data<DB>, _auth: Auth) -> Result<Json<Vec<index::Song>>, APIError> {
-	let result = index::flatten(&db, Path::new(""))?;
+async fn flatten_root(index: Data<Index>, _auth: Auth) -> Result<Json<Vec<index::Song>>, APIError> {
+	let result = index.flatten(Path::new(""))?;
 	Ok(Json(result))
 }
 
 #[get("/flatten/{path:.*}")]
 async fn flatten(
-	db: Data<DB>,
+	index: Data<Index>,
 	_auth: Auth,
 	path: web::Path<String>,
 ) -> Result<Json<Vec<index::Song>>, APIError> {
 	let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
-	let result = index::flatten(&db, Path::new(path.as_ref()))?;
+	let result = index.flatten(Path::new(path.as_ref()))?;
 	Ok(Json(result))
 }
 
 #[get("/random")]
-async fn random(db: Data<DB>, _auth: Auth) -> Result<Json<Vec<index::Directory>>, APIError> {
-	let result = index::get_random_albums(&db, 20)?;
+async fn random(index: Data<Index>, _auth: Auth) -> Result<Json<Vec<index::Directory>>, APIError> {
+	let result = index.get_random_albums(20)?;
 	Ok(Json(result))
 }
 
 #[get("/recent")]
-async fn recent(db: Data<DB>, _auth: Auth) -> Result<Json<Vec<index::Directory>>, APIError> {
-	let result = index::get_recent_albums(&db, 20)?;
+async fn recent(index: Data<Index>, _auth: Auth) -> Result<Json<Vec<index::Directory>>, APIError> {
+	let result = index.get_recent_albums(20)?;
 	Ok(Json(result))
 }
 
 #[get("/search")]
 async fn search_root(
-	db: Data<DB>,
+	index: Data<Index>,
 	_auth: Auth,
 ) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
-	let result = index::search(&db, "")?;
+	let result = index.search("")?;
 	Ok(Json(result))
 }
 
 #[get("/search/{query:.*}")]
 async fn search(
-	db: Data<DB>,
+	index: Data<Index>,
 	_auth: Auth,
 	query: web::Path<String>,
 ) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
-	let result = index::search(&db, &query)?;
+	let result = index.search(&query)?;
 	Ok(Json(result))
 }
 
 #[get("/audio/{path:.*}")]
-async fn audio(db: Data<DB>, _auth: Auth, path: web::Path<String>) -> Result<NamedFile, APIError> {
-	let vfs = db.get_vfs()?;
+async fn get_audio(
+	vfs_manager: Data<vfs::Manager>,
+	_auth: Auth,
+	path: web::Path<String>,
+) -> Result<NamedFile, APIError> {
+	let vfs = vfs_manager.get_vfs()?;
 	let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
 	let real_path = vfs
 		.virtual_to_real(Path::new(path.as_ref()))
@@ -502,19 +512,19 @@ async fn audio(db: Data<DB>, _auth: Auth, path: web::Path<String>) -> Result<Nam
 }
 
 #[get("/thumbnail/{path:.*}")]
-async fn thumbnail(
-	db: Data<DB>,
-	thumbnails_manager: Data<ThumbnailsManager>,
+async fn get_thumbnail(
+	vfs_manager: Data<vfs::Manager>,
+	thumbnails_manager: Data<thumbnail::Manager>,
 	_auth: Auth,
 	path: web::Path<String>,
 	options_input: web::Query<dto::ThumbnailOptions>,
 ) -> Result<NamedFile, APIError> {
-	let vfs = db.get_vfs()?;
+	let vfs = vfs_manager.get_vfs()?;
 	let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
 	let image_path = vfs
 		.virtual_to_real(Path::new(path.as_ref()))
 		.map_err(|_| APIError::VFSPathNotFound)?;
-	let mut options = ThumbnailOptions::default();
+	let mut options = thumbnail::Options::default();
 	options.pad_to_square = options_input.pad.unwrap_or(options.pad_to_square);
 	let thumbnail_path =
 		block(move || thumbnails_manager.get_thumbnail(&image_path, &options)).await?;
@@ -526,10 +536,10 @@ async fn thumbnail(
 
 #[get("/playlists")]
 async fn list_playlists(
-	db: Data<DB>,
+	playlist_manager: Data<playlist::Manager>,
 	auth: Auth,
 ) -> Result<Json<Vec<dto::ListPlaylistsEntry>>, APIError> {
-	let playlist_names = playlist::list_playlists(&auth.username, &db)?;
+	let playlist_names = playlist_manager.list_playlists(&auth.username)?;
 	let playlists: Vec<dto::ListPlaylistsEntry> = playlist_names
 		.into_iter()
 		.map(|p| dto::ListPlaylistsEntry { name: p })
@@ -540,68 +550,70 @@ async fn list_playlists(
 
 #[put("/playlist/{name}")]
 async fn save_playlist(
-	db: Data<DB>,
+	playlist_manager: Data<playlist::Manager>,
 	auth: Auth,
 	name: web::Path<String>,
 	playlist: Json<dto::SavePlaylistInput>,
 ) -> Result<HttpResponse, APIError> {
-	playlist::save_playlist(&name, &auth.username, &playlist.tracks, &db)?;
+	playlist_manager.save_playlist(&name, &auth.username, &playlist.tracks)?;
 	Ok(HttpResponse::new(StatusCode::OK))
 }
 
 #[get("/playlist/{name}")]
 async fn read_playlist(
-	db: Data<DB>,
+	playlist_manager: Data<playlist::Manager>,
 	auth: Auth,
 	name: web::Path<String>,
 ) -> Result<Json<Vec<index::Song>>, APIError> {
-	let songs = playlist::read_playlist(&name, &auth.username, &db)?;
+	let songs = playlist_manager.read_playlist(&name, &auth.username)?;
 	Ok(Json(songs))
 }
 
 #[delete("/playlist/{name}")]
 async fn delete_playlist(
-	db: Data<DB>,
+	playlist_manager: Data<playlist::Manager>,
 	auth: Auth,
 	name: web::Path<String>,
 ) -> Result<HttpResponse, APIError> {
-	playlist::delete_playlist(&name, &auth.username, &db)?;
+	playlist_manager.delete_playlist(&name, &auth.username)?;
 	Ok(HttpResponse::new(StatusCode::OK))
 }
 
 #[put("/lastfm/now_playing/{path:.*}")]
 async fn lastfm_now_playing(
-	db: Data<DB>,
+	lastfm_manager: Data<lastfm::Manager>,
+	user_manager: Data<user::Manager>,
 	auth: Auth,
 	path: web::Path<String>,
 ) -> Result<HttpResponse, APIError> {
-	if user::is_lastfm_linked(&db, &auth.username) {
+	if user_manager.is_lastfm_linked(&auth.username) {
 		let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
-		lastfm::now_playing(&db, &auth.username, Path::new(path.as_ref()))?;
+		lastfm_manager.now_playing(&auth.username, Path::new(path.as_ref()))?;
 	}
 	Ok(HttpResponse::new(StatusCode::OK))
 }
 
 #[post("/lastfm/scrobble/{path:.*}")]
 async fn lastfm_scrobble(
-	db: Data<DB>,
+	lastfm_manager: Data<lastfm::Manager>,
+	user_manager: Data<user::Manager>,
 	auth: Auth,
 	path: web::Path<String>,
 ) -> Result<HttpResponse, APIError> {
-	if user::is_lastfm_linked(&db, &auth.username) {
+	if user_manager.is_lastfm_linked(&auth.username) {
 		let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
-		lastfm::scrobble(&db, &auth.username, Path::new(path.as_ref()))?;
+		lastfm_manager.scrobble(&auth.username, Path::new(path.as_ref()))?;
 	}
 	Ok(HttpResponse::new(StatusCode::OK))
 }
 
 #[get("/lastfm/link")]
 async fn lastfm_link(
-	db: Data<DB>,
+	lastfm_manager: Data<lastfm::Manager>,
 	auth: Auth,
 	payload: web::Query<dto::LastFMLink>,
 ) -> Result<HttpResponse, APIError> {
-	lastfm::link(&db, &auth.username, &payload.token)?;
+	lastfm_manager.link(&auth.username, &payload.token)?;
 
 	// Percent decode
 	let base64_content = percent_decode_str(&payload.content).decode_utf8_lossy();
@@ -620,7 +632,10 @@ async fn lastfm_link(
 }
 
 #[delete("/lastfm/link")]
-async fn lastfm_unlink(db: Data<DB>, auth: Auth) -> Result<HttpResponse, APIError> {
-	lastfm::unlink(&db, &auth.username)?;
+async fn lastfm_unlink(
+	lastfm_manager: Data<lastfm::Manager>,
+	auth: Auth,
+) -> Result<HttpResponse, APIError> {
+	lastfm_manager.unlink(&auth.username)?;
 	Ok(HttpResponse::new(StatusCode::OK))
 }

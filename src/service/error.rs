@@ -1,7 +1,7 @@
 use thiserror::Error;
 
-use crate::index::QueryError;
-use crate::playlist::PlaylistError;
+use crate::app::index::QueryError;
+use crate::app::playlist;
 
 #[derive(Error, Debug)]
 pub enum APIError {
@@ -33,12 +33,12 @@ impl From<anyhow::Error> for APIError {
 	}
 }
 
-impl From<PlaylistError> for APIError {
-	fn from(error: PlaylistError) -> APIError {
+impl From<playlist::Error> for APIError {
+	fn from(error: playlist::Error) -> APIError {
 		match error {
-			PlaylistError::PlaylistNotFound => APIError::PlaylistNotFound,
-			PlaylistError::UserNotFound => APIError::UserNotFound,
-			PlaylistError::Unspecified => APIError::Unspecified,
+			playlist::Error::PlaylistNotFound => APIError::PlaylistNotFound,
+			playlist::Error::UserNotFound => APIError::UserNotFound,
+			playlist::Error::Unspecified => APIError::Unspecified,
 		}
 	}
 }
