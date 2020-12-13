@@ -1,7 +1,7 @@
 use http::StatusCode;
 use std::path::{Path, PathBuf};
 
-use crate::index;
+use crate::app::index;
 use crate::service::test::{add_trailing_slash, constants::*, ServiceType, TestService};
 use crate::test_name;
 

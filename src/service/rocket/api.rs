@@ -6,23 +6,16 @@ use rocket::{delete, get, post, put, routes, Outcome, State};
 use rocket_contrib::json::Json;
 use std::default::Default;
 use std::fs::File;
-use std::ops::Deref;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str;
 use std::str::FromStr;
 use time::Duration;
 
 use super::serve;
-use crate::config::{self, Config, Preferences};
-use crate::db::DB;
-use crate::index::{self, Index, QueryError};
-use crate::lastfm;
-use crate::playlist::{self, PlaylistError};
+use crate::app::index::{self, Index, QueryError};
+use crate::app::{config, lastfm, playlist, thumbnail, user, vfs};
 use crate::service::dto;
 use crate::service::error::APIError;
-use crate::thumbnails::{ThumbnailOptions, ThumbnailsManager};
-use crate::user;
-use crate::vfs::VFSSource;
 
 pub fn get_routes() -> Vec<rocket::Route> {
 	routes![
@@ -69,12 +62,12 @@ impl<'r> rocket::response::Responder<'r> for APIError {
 	}
 }
 
-impl From<PlaylistError> for APIError {
-	fn from(error: PlaylistError) -> APIError {
+impl From<playlist::Error> for APIError {
+	fn from(error: playlist::Error) -> APIError {
 		match error {
-			PlaylistError::PlaylistNotFound => APIError::PlaylistNotFound,
-			PlaylistError::UserNotFound => APIError::UserNotFound,
-			PlaylistError::Unspecified => APIError::Unspecified,
+			playlist::Error::PlaylistNotFound => APIError::PlaylistNotFound,
+			playlist::Error::UserNotFound => APIError::UserNotFound,
+			playlist::Error::Unspecified => APIError::Unspecified,
 		}
 	}
 }
@@ -125,13 +118,13 @@ impl<'a, 'r> FromRequest<'a, 'r> for Auth {
 
 	fn from_request(request: &'a Request<'r>) -> request::Outcome<Self, ()> {
 		let mut cookies = request.guard::<Cookies<'_>>().unwrap();
-		let db = match request.guard::<State<'_, DB>>() {
+		let user_manager = match request.guard::<State<'_, user::Manager>>() {
 			Outcome::Success(d) => d,
 			_ => return Outcome::Failure((Status::InternalServerError, ())),
 		};
 
 		if let Some(u) = cookies.get_private(dto::COOKIE_SESSION) {
-			let exists = match user::exists(db.deref().deref(), u.value()) {
+			let exists = match user_manager.exists(u.value()) {
 				Ok(e) => e,
 				Err(_) => return Outcome::Failure((Status::InternalServerError, ())),
 			};
@@ -150,8 +143,8 @@ impl<'a, 'r> FromRequest<'a, 'r> for Auth {
 				password: Some(password),
 			}) = Basic::from_str(auth_header_string.trim_start_matches("Basic "))
 			{
-				if user::auth(db.deref().deref(), &username, &password).unwrap_or(false) {
-					let is_admin = match user::is_admin(db.deref().deref(), &username) {
+				if user_manager.auth(&username, &password).unwrap_or(false) {
+					let is_admin = match user_manager.is_admin(&username) {
 						Ok(a) => a,
 						Err(_) => return Outcome::Failure((Status::InternalServerError, ())),
 					};
@@ -175,16 +168,16 @@ impl<'a, 'r> FromRequest<'a, 'r> for AdminRights {
 	type Error = ();
 
 	fn from_request(request: &'a Request<'r>) -> request::Outcome<Self, ()> {
-		let db = request.guard::<State<'_, DB>>()?;
+		let user_manager = request.guard::<State<'_, user::Manager>>()?;
 
-		match user::count(&db) {
+		match user_manager.count() {
 			Err(_) => return Outcome::Failure((Status::InternalServerError, ())),
 			Ok(0) => return Outcome::Success(AdminRights { auth: None }),
 			_ => (),
 		};
 
 		let auth = request.guard::<Auth>()?;
-		match user::is_admin(&db, &auth.username) {
+		match user_manager.is_admin(&auth.username) {
 			Err(_) => Outcome::Failure((Status::InternalServerError, ())),
 			Ok(true) => Outcome::Success(AdminRights { auth: Some(auth) }),
 			Ok(false) => Outcome::Failure((Status::Forbidden, ())),
@@ -223,24 +216,27 @@ fn version() -> Json<dto::Version> {
 }
 
 #[get("/initial_setup")]
-fn initial_setup(db: State<'_, DB>) -> Result<Json<dto::InitialSetup>> {
+fn initial_setup(user_manager: State<'_, user::Manager>) -> Result<Json<dto::InitialSetup>> {
 	let initial_setup = dto::InitialSetup {
-		has_any_users: user::count(&db)? > 0,
+		has_any_users: user_manager.count()? > 0,
 	};
 	Ok(Json(initial_setup))
 }
 
 #[get("/settings")]
-fn get_settings(db: State<'_, DB>, _admin_rights: AdminRights) -> Result<Json<Config>> {
-	let config = config::read(&db)?;
+fn get_settings(
+	config_manager: State<'_, config::Manager>,
+	_admin_rights: AdminRights,
+) -> Result<Json<config::Config>> {
+	let config = config_manager.read()?;
 	Ok(Json(config))
 }
 
 #[put("/settings", data = "<config>")]
 fn put_settings(
-	db: State<'_, DB>,
+	config_manager: State<'_, config::Manager>,
 	admin_rights: AdminRights,
-	config: Json<Config>,
+	config: Json<config::Config>,
 ) -> Result<(), APIError> {
 	// Do not let users remove their own admin rights
 	if let Some(auth) = &admin_rights.auth {
@@ -253,19 +249,26 @@ fn put_settings(
 		}
 	}
 
-	config::amend(&db, &config)?;
+	config_manager.amend(&config)?;
 	Ok(())
 }
 
 #[get("/preferences")]
-fn get_preferences(db: State<'_, DB>, auth: Auth) -> Result<Json<Preferences>> {
-	let preferences = config::read_preferences(&db, &auth.username)?;
+fn get_preferences(
+	user_manager: State<'_, user::Manager>,
+	auth: Auth,
+) -> Result<Json<user::Preferences>> {
+	let preferences = user_manager.read_preferences(&auth.username)?;
 	Ok(Json(preferences))
 }
 
 #[put("/preferences", data = "<preferences>")]
-fn put_preferences(db: State<'_, DB>, auth: Auth, preferences: Json<Preferences>) -> Result<()> {
-	config::write_preferences(&db, &auth.username, &preferences)?;
+fn put_preferences(
+	user_manager: State<'_, user::Manager>,
+	auth: Auth,
+	preferences: Json<user::Preferences>,
+) -> Result<()> {
+	user_manager.write_preferences(&auth.username, &preferences)?;
 	Ok(())
 }
 
@@ -277,85 +280,85 @@ fn trigger_index(index: State<'_, Index>, _admin_rights: AdminRights) -> Result<
 
 #[post("/auth", data = "<credentials>")]
 fn auth(
-	db: State<'_, DB>,
+	user_manager: State<'_, user::Manager>,
 	credentials: Json<dto::AuthCredentials>,
 	mut cookies: Cookies<'_>,
 ) -> std::result::Result<(), APIError> {
-	if !user::auth(&db, &credentials.username, &credentials.password)? {
+	if !user_manager.auth(&credentials.username, &credentials.password)? {
 		return Err(APIError::IncorrectCredentials);
 	}
-	let is_admin = user::is_admin(&db, &credentials.username)?;
+	let is_admin = user_manager.is_admin(&credentials.username)?;
 	add_session_cookies(&mut cookies, &credentials.username, is_admin);
 	Ok(())
 }
 
 #[get("/browse")]
-fn browse_root(db: State<'_, DB>, _auth: Auth) -> Result<Json<Vec<index::CollectionFile>>> {
-	let result = index::browse(db.deref().deref(), &PathBuf::new())?;
+fn browse_root(index: State<'_, Index>, _auth: Auth) -> Result<Json<Vec<index::CollectionFile>>> {
+	let result = index.browse(&Path::new(""))?;
 	Ok(Json(result))
 }
 
 #[get("/browse/<path>")]
 fn browse(
-	db: State<'_, DB>,
+	index: State<'_, Index>,
 	_auth: Auth,
 	path: VFSPathBuf,
 ) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
-	let result = index::browse(db.deref().deref(), &path.into() as &PathBuf)?;
+	let result = index.browse(&path.into() as &PathBuf)?;
 	Ok(Json(result))
 }
 
 #[get("/flatten")]
-fn flatten_root(db: State<'_, DB>, _auth: Auth) -> Result<Json<Vec<index::Song>>> {
-	let result = index::flatten(db.deref().deref(), &PathBuf::new())?;
+fn flatten_root(index: State<'_, Index>, _auth: Auth) -> Result<Json<Vec<index::Song>>> {
+	let result = index.flatten(&PathBuf::new())?;
 	Ok(Json(result))
 }
 
 #[get("/flatten/<path>")]
 fn flatten(
-	db: State<'_, DB>,
+	index: State<'_, Index>,
 	_auth: Auth,
 	path: VFSPathBuf,
 ) -> Result<Json<Vec<index::Song>>, APIError> {
-	let result = index::flatten(db.deref().deref(), &path.into() as &PathBuf)?;
+	let result = index.flatten(&path.into() as &PathBuf)?;
 	Ok(Json(result))
 }
 
 #[get("/random")]
-fn random(db: State<'_, DB>, _auth: Auth) -> Result<Json<Vec<index::Directory>>> {
-	let result = index::get_random_albums(db.deref().deref(), 20)?;
+fn random(index: State<'_, Index>, _auth: Auth) -> Result<Json<Vec<index::Directory>>> {
+	let result = index.get_random_albums(20)?;
 	Ok(Json(result))
 }
 
 #[get("/recent")]
-fn recent(db: State<'_, DB>, _auth: Auth) -> Result<Json<Vec<index::Directory>>> {
-	let result = index::get_recent_albums(db.deref().deref(), 20)?;
+fn recent(index: State<'_, Index>, _auth: Auth) -> Result<Json<Vec<index::Directory>>> {
+	let result = index.get_recent_albums(20)?;
 	Ok(Json(result))
 }
 
 #[get("/search")]
-fn search_root(db: State<'_, DB>, _auth: Auth) -> Result<Json<Vec<index::CollectionFile>>> {
-	let result = index::search(db.deref().deref(), "")?;
+fn search_root(index: State<'_, Index>, _auth: Auth) -> Result<Json<Vec<index::CollectionFile>>> {
+	let result = index.search("")?;
 	Ok(Json(result))
 }
 
 #[get("/search/<query>")]
 fn search(
-	db: State<'_, DB>,
+	index: State<'_, Index>,
 	_auth: Auth,
 	query: String,
 ) -> Result<Json<Vec<index::CollectionFile>>> {
-	let result = index::search(db.deref().deref(), &query)?;
+	let result = index.search(&query)?;
 	Ok(Json(result))
 }
 
 #[get("/audio/<path>")]
 fn audio(
-	db: State<'_, DB>,
+	vfs_manager: State<'_, vfs::Manager>,
 	_auth: Auth,
 	path: VFSPathBuf,
 ) -> Result<serve::RangeResponder<File>, APIError> {
-	let vfs = db.get_vfs()?;
+	let vfs = vfs_manager.get_vfs()?;
 	let real_path = vfs
 		.virtual_to_real(&path.into() as &PathBuf)
 		.map_err(|_| APIError::VFSPathNotFound)?;
@@ -365,26 +368,29 @@ fn audio(
 
 #[get("/thumbnail/<path>?<pad>")]
 fn thumbnail(
-	db: State<'_, DB>,
-	thumbnails_manager: State<'_, ThumbnailsManager>,
+	vfs_manager: State<'_, vfs::Manager>,
+	thumbnail_manager: State<'_, thumbnail::Manager>,
 	_auth: Auth,
 	path: VFSPathBuf,
 	pad: Option<bool>,
 ) -> Result<File, APIError> {
-	let vfs = db.get_vfs()?;
+	let vfs = vfs_manager.get_vfs()?;
 	let image_path = vfs
 		.virtual_to_real(&path.into() as &PathBuf)
 		.map_err(|_| APIError::VFSPathNotFound)?;
-	let mut options = ThumbnailOptions::default();
+	let mut options = thumbnail::Options::default();
 	options.pad_to_square = pad.unwrap_or(options.pad_to_square);
-	let thumbnail_path = thumbnails_manager.get_thumbnail(&image_path, &options)?;
+	let thumbnail_path = thumbnail_manager.get_thumbnail(&image_path, &options)?;
 	let file = File::open(thumbnail_path).map_err(|_| APIError::Unspecified)?;
 	Ok(file)
 }
 
 #[get("/playlists")]
-fn list_playlists(db: State<'_, DB>, auth: Auth) -> Result<Json<Vec<dto::ListPlaylistsEntry>>> {
-	let playlist_names = playlist::list_playlists(&auth.username, db.deref().deref())?;
+fn list_playlists(
+	playlist_manager: State<'_, playlist::Manager>,
+	auth: Auth,
+) -> Result<Json<Vec<dto::ListPlaylistsEntry>>> {
+	let playlist_names = playlist_manager.list_playlists(&auth.username)?;
 	let playlists: Vec<dto::ListPlaylistsEntry> = playlist_names
 		.into_iter()
 		.map(|p| dto::ListPlaylistsEntry { name: p })
@@ -395,55 +401,69 @@ fn list_playlists(db: State<'_, DB>, auth: Auth) -> Result<Json<Vec<dto::ListPla
 
 #[put("/playlist/<name>", data = "<playlist>")]
 fn save_playlist(
-	db: State<'_, DB>,
+	playlist_manager: State<'_, playlist::Manager>,
 	auth: Auth,
 	name: String,
 	playlist: Json<dto::SavePlaylistInput>,
 ) -> Result<()> {
-	playlist::save_playlist(&name, &auth.username, &playlist.tracks, db.deref().deref())?;
+	playlist_manager.save_playlist(&name, &auth.username, &playlist.tracks)?;
 	Ok(())
 }
 
 #[get("/playlist/<name>")]
 fn read_playlist(
-	db: State<'_, DB>,
+	playlist_manager: State<'_, playlist::Manager>,
 	auth: Auth,
 	name: String,
 ) -> Result<Json<Vec<index::Song>>, APIError> {
-	let songs = playlist::read_playlist(&name, &auth.username, db.deref().deref())?;
+	let songs = playlist_manager.read_playlist(&name, &auth.username)?;
 	Ok(Json(songs))
 }
 
 #[delete("/playlist/<name>")]
-fn delete_playlist(db: State<'_, DB>, auth: Auth, name: String) -> Result<(), APIError> {
-	playlist::delete_playlist(&name, &auth.username, db.deref().deref())?;
+fn delete_playlist(
+	playlist_manager: State<'_, playlist::Manager>,
+	auth: Auth,
+	name: String,
+) -> Result<(), APIError> {
+	playlist_manager.delete_playlist(&name, &auth.username)?;
 	Ok(())
 }
 
 #[put("/lastfm/now_playing/<path>")]
-fn lastfm_now_playing(db: State<'_, DB>, auth: Auth, path: VFSPathBuf) -> Result<()> {
-	if user::is_lastfm_linked(db.deref().deref(), &auth.username) {
-		lastfm::now_playing(db.deref().deref(), &auth.username, &path.into() as &PathBuf)?;
+fn lastfm_now_playing(
+	user_manager: State<'_, user::Manager>,
+	lastfm_manager: State<'_, lastfm::Manager>,
+	auth: Auth,
+	path: VFSPathBuf,
+) -> Result<()> {
+	if user_manager.is_lastfm_linked(&auth.username) {
+		lastfm_manager.now_playing(&auth.username, &path.into() as &PathBuf)?;
 	}
 	Ok(())
 }
 
 #[post("/lastfm/scrobble/<path>")]
-fn lastfm_scrobble(db: State<'_, DB>, auth: Auth, path: VFSPathBuf) -> Result<()> {
-	if user::is_lastfm_linked(db.deref().deref(), &auth.username) {
-		lastfm::scrobble(db.deref().deref(), &auth.username, &path.into() as &PathBuf)?;
+fn lastfm_scrobble(
+	user_manager: State<'_, user::Manager>,
+	lastfm_manager: State<'_, lastfm::Manager>,
+	auth: Auth,
+	path: VFSPathBuf,
+) -> Result<()> {
+	if user_manager.is_lastfm_linked(&auth.username) {
+		lastfm_manager.scrobble(&auth.username, &path.into() as &PathBuf)?;
 	}
 	Ok(())
 }
 
 #[get("/lastfm/link?<token>&<content>")]
 fn lastfm_link(
-	db: State<'_, DB>,
+	lastfm_manager: State<'_, lastfm::Manager>,
 	auth: Auth,
 	token: String,
 	content: String,
 ) -> Result<Html<String>> {
-	lastfm::link(db.deref().deref(), &auth.username, &token)?;
+	lastfm_manager.link(&auth.username, &token)?;
 
 	// Percent decode
 	let base64_content = RawStr::from_str(&content).percent_decode()?;
@@ -458,7 +478,7 @@ fn lastfm_link(
 }
 
 #[delete("/lastfm/link")]
-fn lastfm_unlink(db: State<'_, DB>, auth: Auth) -> Result<()> {
-	lastfm::unlink(db.deref().deref(), &auth.username)?;
+fn lastfm_unlink(lastfm_manager: State<'_, lastfm::Manager>, auth: Auth) -> Result<()> {
+	lastfm_manager.unlink(&auth.username)?;
 	Ok(())
 }

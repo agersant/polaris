@@ -17,21 +17,11 @@ mod settings;
 mod swagger;
 mod web;
 
+use crate::app::{config, index, vfs};
 use crate::service::test::constants::*;
-use crate::{config, index, vfs};
 
 #[cfg(feature = "service-rocket")]
 pub use crate::service::rocket::test::ServiceType;
-
-#[macro_export]
-macro_rules! test_name {
-	() => {{
-		let file_name = file!();
-		let file_name = file_name.replace("/", "-");
-		let file_name = file_name.replace("\\", "-");
-		format!("{}-line-{}", file_name, line!())
-		}};
-}
 
 pub trait TestService {
 	fn new(test_name: &str) -> Self;

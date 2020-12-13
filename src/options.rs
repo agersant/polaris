@@ -17,11 +17,11 @@ pub struct CLIOptions {
 	pub log_level: Option<LevelFilter>,
 }
 
-pub struct OptionsManager {
+pub struct Manager {
 	protocol: getopts::Options,
 }
 
-impl OptionsManager {
+impl Manager {
 	pub fn new() -> Self {
 		Self {
 			protocol: get_options(),

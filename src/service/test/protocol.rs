@@ -2,7 +2,7 @@ use http::{method::Method, Request};
 use percent_encoding::{percent_encode, NON_ALPHANUMERIC};
 use std::path::Path;
 
-use crate::config;
+use crate::app::{config, user};
 use crate::service::dto;
 
 pub struct RequestBuilder {}
@@ -80,10 +80,7 @@ impl RequestBuilder {
 			.unwrap()
 	}
 
-	pub fn put_preferences(
-		&self,
-		preferences: config::Preferences,
-	) -> Request<config::Preferences> {
+	pub fn put_preferences(&self, preferences: user::Preferences) -> Request<user::Preferences> {
 		Request::builder()
 			.method(Method::PUT)
 			.uri("/api/preferences")

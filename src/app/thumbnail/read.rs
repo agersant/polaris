@@ -19,7 +19,9 @@ pub fn read(image_path: &Path) -> Result<DynamicImage> {
 }
 
 fn read_ape(_: &Path) -> Result<DynamicImage> {
-	Err(crate::Error::msg("Embedded ape artworks not yet supported"))
+	Err(crate::Error::msg(
+		"Embedded images are not supported in APE files",
+	))
 }
 
 fn read_flac(path: &Path) -> Result<DynamicImage> {
@@ -62,13 +64,13 @@ fn read_mp4(path: &Path) -> Result<DynamicImage> {
 
 fn read_vorbis(_: &Path) -> Result<DynamicImage> {
 	Err(crate::Error::msg(
-		"Embedded vorbis artworks are not yet supported",
+		"Embedded images are not supported in Vorbis files",
 	))
 }
 
 fn read_opus(_: &Path) -> Result<DynamicImage> {
 	Err(crate::Error::msg(
-		"Embedded opus artworks are not yet supported",
+		"Embedded images are not supported in Opus files",
 	))
 }
 

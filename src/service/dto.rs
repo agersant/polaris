@@ -33,4 +33,4 @@ pub struct SavePlaylistInput {
 	pub tracks: Vec<String>,
 }
 
-// TODO: Config and Preferences should have dto types
+// TODO: Config, Preferences, CollectionFile, Song and Directory should have dto types
