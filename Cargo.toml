@@ -19,7 +19,7 @@ diesel_migrations = { version = "1.4", features = ["sqlite"] }
 getopts = "0.2.15"
 id3 = "0.5.1"
 libsqlite3-sys = { version = "0.18", features = ["bundled", "bundled-windows"], optional = true }
-rustfm-scrobble = "^1"
+rustfm-scrobble = "1.1"
 lewton = "0.10.1"
 log = "0.4.5"
 metaflac = "0.2.3"
