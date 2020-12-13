@@ -1,9 +1,9 @@
 use anyhow::*;
 use diesel::prelude::*;
 use log::{error, info};
-use reqwest;
 use std::thread;
 use std::time;
+use ureq;
 
 use super::*;
 use crate::db::DB;
@@ -27,18 +27,17 @@ impl Manager {
 		}
 
 		let full_url = format!("{}?host={}", DDNS_UPDATE_URL, &config.host);
-		let client = reqwest::ClientBuilder::new().build()?;
-		let response = client
-			.get(full_url.as_str())
-			.basic_auth(config.username, Some(config.password))
-			.send()?;
+		let response = ureq::get(full_url.as_str())
+			.auth(&config.username, &config.password)
+			.call();
 
-		if !response.status().is_success() {
+		if !response.ok() {
 			bail!(
 				"DDNS update query failed with status code: {}",
 				response.status()
 			);
 		}
+
 		Ok(())
 	}
 
