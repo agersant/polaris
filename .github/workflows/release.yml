@@ -1,27 +1,54 @@
 on:
-  push:
-    tags:
-    - '[0-9]+.[0-9]+.[0-9]+**'
+  workflow_dispatch:
+    inputs:
+      versionNumber:
+        description: 'User facing version number (eg: 0.13.0)'
+        required: true
 
-name: Release
+name: Make Release
 
 jobs:
+
+  branch_and_tag:
+    name: Update Release Branch
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Merge to Release Branch
+      uses: devmasx/merge-branch@v1.3.1
+      with:
+        type: now
+        target_branch: release
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Checkout Release Branch
+      uses: actions/checkout@master
+      with:
+        ref: release
+    - name: Update Polaris version in Cargo.toml
+      run: gawk -i inplace '/^version/ { if (count == 0) { $3 = "\"${{ github.event.inputs.versionNumber }}\""; count++ } } 1' Cargo.toml
+   - name: Commit And Tag Changes
+      uses: EndBug/add-and-commit@v5
+      with:
+        branch: release
+        message: 'Updated version number'
+        tag: '${{ github.event.inputs.versionNumber }} --force'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   create_release:
     name: Create Github Release
     runs-on: ubuntu-latest
+    needs: branch_and_tag
 
     steps:
-    - name: Read Polaris Version
-      run: echo "POLARIS_VERSION=${GITHUB_REF:10}" >> $GITHUB_ENV
     - name: Create Github Release
       id: create_release
       uses: actions/create-release@v1.0.0
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ env.POLARIS_VERSION }}
-        release_name: Polaris ${{ env.POLARIS_VERSION }}
+        tag_name: ${{ github.event.inputs.versionNumber }}
+        release_name: Polaris ${{ github.event.inputs.versionNumber }}
         draft: true
         prerelease: false
     - name: Write Upload URL To Disk
@@ -40,9 +67,6 @@ jobs:
     steps:
     - name: Checkout Polaris
       uses: actions/checkout@v1
-    - name: Read Polaris Version
-      shell: bash
-      run: echo "POLARIS_VERSION=${GITHUB_REF:10}" >> $GITHUB_ENV
     - name: Install Rust Toolchain
       uses: actions-rs/toolchain@v1
       with:
@@ -50,7 +74,7 @@ jobs:
     - name: Make release
       uses: ./.github/actions/make-windows-release
       with:
-        version-number: ${{ env.POLARIS_VERSION }}
+        version-number: ${{ github.event.inputs.versionNumber }}
         output-file: polaris.msi
     - name: Read Upload URL
       shell: bash
@@ -62,7 +86,7 @@ jobs:
       with:
         upload_url: ${{ env.UPLOAD_URL }}
         asset_path: polaris.msi
-        asset_name: Polaris_${{ env.POLARIS_VERSION }}.msi
+        asset_name: Polaris_${{ github.event.inputs.versionNumber }}.msi
         asset_content_type: application/x-msi
 
   linux:
@@ -73,12 +97,10 @@ jobs:
     steps:
     - name: Checkout Polaris
       uses: actions/checkout@v1
-    - name: Read Polaris Version
-      run: echo "POLARIS_VERSION=${GITHUB_REF:10}" >> $GITHUB_ENV
     - name: Make release
       uses: ./.github/actions/make-linux-release
       with:
-        version-number: ${{ env.POLARIS_VERSION }}
+        version-number: ${{ github.event.inputs.versionNumber }}
         output-file: polaris.tar.gz
     - name: Retrieve Upload URL
       uses: actions/download-artifact@v1
@@ -93,5 +115,5 @@ jobs:
       with:
         upload_url: ${{ env.UPLOAD_URL }}
         asset_path: polaris.tar.gz
-        asset_name: Polaris_${{ env.POLARIS_VERSION }}.tar.gz
+        asset_name: Polaris_${{ github.event.inputs.versionNumber }}.tar.gz
         asset_content_type: application/gzip

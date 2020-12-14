@@ -20,7 +20,7 @@ jobs:
     - name: Make release
       uses: ./.github/actions/make-linux-release
       with:
-        version-number: '0.0'
+        version-number: '0.0.0'
         output-file: polaris.tar.gz
     - name: Upload packaged release
       uses: actions/upload-artifact@v2
@@ -104,7 +104,7 @@ jobs:
     - name: Make release
       uses: ./.github/actions/make-windows-release
       with:
-        version-number: '0.0'
+        version-number: '0.0.0'
         output-file: polaris.msi
     - name: Upload packaged release
       uses: actions/upload-artifact@v2
