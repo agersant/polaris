@@ -348,9 +348,13 @@ async fn version() -> Json<dto::Version> {
 async fn initial_setup(
 	user_manager: Data<user::Manager>,
 ) -> Result<Json<dto::InitialSetup>, APIError> {
-	let initial_setup = dto::InitialSetup {
-		has_any_users: user_manager.count()? > 0,
-	};
+	let initial_setup = block(move || -> Result<dto::InitialSetup, APIError> {
+		let user_count = user_manager.count()?;
+		Ok(dto::InitialSetup {
+			has_any_users: user_count > 0,
+		})
+	})
+	.await?;
 	Ok(Json(initial_setup))
 }
 
@@ -359,7 +363,7 @@ async fn get_settings(
 	config_manager: Data<config::Manager>,
 	_admin_rights: AdminRights,
 ) -> Result<Json<config::Config>, APIError> {
-	let config = config_manager.read()?;
+	let config = block(move || config_manager.read()).await?;
 	Ok(Json(config))
 }
 
@@ -380,7 +384,7 @@ async fn put_settings(
 		}
 	}
 
-	config_manager.amend(&config)?;
+	block(move || config_manager.amend(&config)).await?;
 	Ok(HttpResponse::new(StatusCode::OK))
 }
 
@@ -389,7 +393,7 @@ async fn get_preferences(
 	user_manager: Data<user::Manager>,
 	auth: Auth,
 ) -> Result<Json<user::Preferences>, APIError> {
-	let preferences = user_manager.read_preferences(&auth.username)?;
+	let preferences = block(move || user_manager.read_preferences(&auth.username)).await?;
 	Ok(Json(preferences))
 }
 
@@ -399,7 +403,7 @@ async fn put_preferences(
 	auth: Auth,
 	preferences: Json<user::Preferences>,
 ) -> Result<HttpResponse, APIError> {
-	user_manager.write_preferences(&auth.username, &preferences)?;
+	block(move || user_manager.write_preferences(&auth.username, &preferences)).await?;
 	Ok(HttpResponse::new(StatusCode::OK))
 }
 
@@ -418,12 +422,18 @@ async fn login(
 	credentials: Json<dto::AuthCredentials>,
 	cookies: Cookies,
 ) -> Result<HttpResponse, APIError> {
-	if !user_manager.auth(&credentials.username, &credentials.password)? {
-		return Err(APIError::IncorrectCredentials);
-	}
-	let is_admin = user_manager.is_admin(&credentials.username)?;
+	let username = credentials.username.clone();
+	let is_admin = block(move || {
+		if !user_manager.auth(&credentials.username, &credentials.password)? {
+			return Err(APIError::IncorrectCredentials);
+		}
+		user_manager
+			.is_admin(&credentials.username)
+			.map_err(|_| APIError::Unspecified)
+	})
+	.await?;
 	let mut response = HttpResponse::Ok().finish();
-	add_auth_cookies(&mut response, &cookies, &credentials.username, is_admin)
+	add_auth_cookies(&mut response, &cookies, &username, is_admin)
 		.map_err(|_| APIError::Unspecified)?;
 	Ok(response)
 }
@@ -433,7 +443,7 @@ async fn browse_root(
 	index: Data<Index>,
 	_auth: Auth,
 ) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
-	let result = index.browse(Path::new(""))?;
+	let result = block(move || index.browse(Path::new(""))).await?;
 	Ok(Json(result))
 }
 
@@ -443,15 +453,18 @@ async fn browse(
 	_auth: Auth,
 	path: web::Path<String>,
 ) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
-	let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
-	let result = index.browse(Path::new(path.as_ref()))?;
+	let result = block(move || {
+		let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
+		index.browse(Path::new(path.as_ref()))
+	})
+	.await?;
 	Ok(Json(result))
 }
 
 #[get("/flatten")]
 async fn flatten_root(index: Data<Index>, _auth: Auth) -> Result<Json<Vec<index::Song>>, APIError> {
-	let result = index.flatten(Path::new(""))?;
-	Ok(Json(result))
+	let songs = block(move || index.flatten(Path::new(""))).await?;
+	Ok(Json(songs))
 }
 
 #[get("/flatten/{path:.*}")]
@@ -460,20 +473,23 @@ async fn flatten(
 	_auth: Auth,
 	path: web::Path<String>,
 ) -> Result<Json<Vec<index::Song>>, APIError> {
-	let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
-	let result = index.flatten(Path::new(path.as_ref()))?;
-	Ok(Json(result))
+	let songs = block(move || {
+		let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
+		index.flatten(Path::new(path.as_ref()))
+	})
+	.await?;
+	Ok(Json(songs))
 }
 
 #[get("/random")]
 async fn random(index: Data<Index>, _auth: Auth) -> Result<Json<Vec<index::Directory>>, APIError> {
-	let result = index.get_random_albums(20)?;
+	let result = block(move || index.get_random_albums(20)).await?;
 	Ok(Json(result))
 }
 
 #[get("/recent")]
 async fn recent(index: Data<Index>, _auth: Auth) -> Result<Json<Vec<index::Directory>>, APIError> {
-	let result = index.get_recent_albums(20)?;
+	let result = block(move || index.get_recent_albums(20)).await?;
 	Ok(Json(result))
 }
 
@@ -482,7 +498,7 @@ async fn search_root(
 	index: Data<Index>,
 	_auth: Auth,
 ) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
-	let result = index.search("")?;
+	let result = block(move || index.search("")).await?;
 	Ok(Json(result))
 }
 
@@ -492,7 +508,7 @@ async fn search(
 	_auth: Auth,
 	query: web::Path<String>,
 ) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
-	let result = index.search(&query)?;
+	let result = block(move || index.search(&query)).await?;
 	Ok(Json(result))
 }
 
@@ -502,12 +518,15 @@ async fn get_audio(
 	_auth: Auth,
 	path: web::Path<String>,
 ) -> Result<NamedFile, APIError> {
-	let vfs = vfs_manager.get_vfs()?;
-	let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
-	let real_path = vfs
-		.virtual_to_real(Path::new(path.as_ref()))
-		.map_err(|_| APIError::VFSPathNotFound)?;
-	let named_file = NamedFile::open(&real_path).map_err(|_| APIError::AudioFileIOError)?;
+	let audio_path = block(move || {
+		let vfs = vfs_manager.get_vfs()?;
+		let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
+		vfs.virtual_to_real(Path::new(path.as_ref()))
+			.map_err(|_| APIError::VFSPathNotFound)
+	})
+	.await?;
+
+	let named_file = NamedFile::open(&audio_path).map_err(|_| APIError::AudioFileIOError)?;
 	Ok(named_file)
 }
 
@@ -519,18 +538,22 @@ async fn get_thumbnail(
 	path: web::Path<String>,
 	options_input: web::Query<dto::ThumbnailOptions>,
 ) -> Result<NamedFile, APIError> {
-	let vfs = vfs_manager.get_vfs()?;
-	let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
-	let image_path = vfs
-		.virtual_to_real(Path::new(path.as_ref()))
-		.map_err(|_| APIError::VFSPathNotFound)?;
 	let mut options = thumbnail::Options::default();
 	options.pad_to_square = options_input.pad.unwrap_or(options.pad_to_square);
-	let thumbnail_path =
-		block(move || thumbnails_manager.get_thumbnail(&image_path, &options)).await?;
+
+	let thumbnail_path = block(move || {
+		let vfs = vfs_manager.get_vfs()?;
+		let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
+		let image_path = vfs
+			.virtual_to_real(Path::new(path.as_ref()))
+			.map_err(|_| APIError::VFSPathNotFound)?;
+		thumbnails_manager.get_thumbnail(&image_path, &options)
+	})
+	.await?;
 
 	let named_file =
 		NamedFile::open(&thumbnail_path).map_err(|_| APIError::ThumbnailFileIOError)?;
+
 	Ok(named_file)
 }
 
@@ -539,7 +562,7 @@ async fn list_playlists(
 	playlist_manager: Data<playlist::Manager>,
 	auth: Auth,
 ) -> Result<Json<Vec<dto::ListPlaylistsEntry>>, APIError> {
-	let playlist_names = playlist_manager.list_playlists(&auth.username)?;
+	let playlist_names = block(move || playlist_manager.list_playlists(&auth.username)).await?;
 	let playlists: Vec<dto::ListPlaylistsEntry> = playlist_names
 		.into_iter()
 		.map(|p| dto::ListPlaylistsEntry { name: p })
@@ -555,7 +578,7 @@ async fn save_playlist(
 	name: web::Path<String>,
 	playlist: Json<dto::SavePlaylistInput>,
 ) -> Result<HttpResponse, APIError> {
-	playlist_manager.save_playlist(&name, &auth.username, &playlist.tracks)?;
+	block(move || playlist_manager.save_playlist(&name, &auth.username, &playlist.tracks)).await?;
 	Ok(HttpResponse::new(StatusCode::OK))
 }
 
@@ -565,7 +588,7 @@ async fn read_playlist(
 	auth: Auth,
 	name: web::Path<String>,
 ) -> Result<Json<Vec<index::Song>>, APIError> {
-	let songs = playlist_manager.read_playlist(&name, &auth.username)?;
+	let songs = block(move || playlist_manager.read_playlist(&name, &auth.username)).await?;
 	Ok(Json(songs))
 }
 
@@ -575,7 +598,7 @@ async fn delete_playlist(
 	auth: Auth,
 	name: web::Path<String>,
 ) -> Result<HttpResponse, APIError> {
-	playlist_manager.delete_playlist(&name, &auth.username)?;
+	block(move || playlist_manager.delete_playlist(&name, &auth.username)).await?;
 	Ok(HttpResponse::new(StatusCode::OK))
 }
 
@@ -586,10 +609,14 @@ async fn lastfm_now_playing(
 	auth: Auth,
 	path: web::Path<String>,
 ) -> Result<HttpResponse, APIError> {
-	if user_manager.is_lastfm_linked(&auth.username) {
-		let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
-		lastfm_manager.now_playing(&auth.username, Path::new(path.as_ref()))?;
-	}
+	block(move || -> Result<(), APIError> {
+		if user_manager.is_lastfm_linked(&auth.username) {
+			let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
+			lastfm_manager.now_playing(&auth.username, Path::new(path.as_ref()))?;
+		}
+		Ok(())
+	})
+	.await?;
 	Ok(HttpResponse::new(StatusCode::OK))
 }
 
@@ -600,10 +627,14 @@ async fn lastfm_scrobble(
 	auth: Auth,
 	path: web::Path<String>,
 ) -> Result<HttpResponse, APIError> {
-	if user_manager.is_lastfm_linked(&auth.username) {
-		let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
-		lastfm_manager.scrobble(&auth.username, Path::new(path.as_ref()))?;
-	}
+	block(move || -> Result<(), APIError> {
+		if user_manager.is_lastfm_linked(&auth.username) {
+			let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
+			lastfm_manager.scrobble(&auth.username, Path::new(path.as_ref()))?;
+		}
+		Ok(())
+	})
+	.await?;
 	Ok(HttpResponse::new(StatusCode::OK))
 }
 
@@ -613,22 +644,25 @@ async fn lastfm_link(
 	auth: Auth,
 	payload: web::Query<dto::LastFMLink>,
 ) -> Result<HttpResponse, APIError> {
-	lastfm_manager.link(&auth.username, &payload.token)?;
+	let popup_content_string = block(move || {
+		lastfm_manager.link(&auth.username, &payload.token)?;
+		// Percent decode
+		let base64_content = percent_decode_str(&payload.content).decode_utf8_lossy();
 
-	// Percent decode
-	let base64_content = percent_decode_str(&payload.content).decode_utf8_lossy();
+		// Base64 decode
+		let popup_content = base64::decode(base64_content.as_bytes())
+			.map_err(|_| APIError::LastFMLinkContentBase64DecodeError)?;
 
-	// Base64 decode
-	let popup_content = base64::decode(base64_content.as_bytes())
-		.map_err(|_| APIError::LastFMLinkContentBase64DecodeError)?;
-
-	// UTF-8 decode
-	let popup_content_string =
-		str::from_utf8(&popup_content).map_err(|_| APIError::LastFMLinkContentEncodingError)?;
+		// UTF-8 decode
+		str::from_utf8(&popup_content)
+			.map_err(|_| APIError::LastFMLinkContentEncodingError)
+			.map(|s| s.to_owned())
+	})
+	.await?;
 
 	Ok(HttpResponse::build(StatusCode::OK)
 		.content_type("text/html; charset=utf-8")
-		.body(popup_content_string.to_owned()))
+		.body(popup_content_string))
 }
 
 #[delete("/lastfm/link")]
@@ -636,6 +670,6 @@ async fn lastfm_unlink(
 	lastfm_manager: Data<lastfm::Manager>,
 	auth: Auth,
 ) -> Result<HttpResponse, APIError> {
-	lastfm_manager.unlink(&auth.username)?;
+	block(move || lastfm_manager.unlink(&auth.username)).await?;
 	Ok(HttpResponse::new(StatusCode::OK))
 }
