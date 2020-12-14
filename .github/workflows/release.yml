@@ -2,7 +2,7 @@ on:
   workflow_dispatch:
     inputs:
       versionNumber:
-        description: 'User facing version number (eg: 0.13.0)'
+        description: 'User-facing version number (eg: 0.13.0)'
         required: true
 
 name: Make Release
@@ -26,7 +26,7 @@ jobs:
         ref: release
     - name: Update Polaris version in Cargo.toml
       run: gawk -i inplace '/^version/ { if (count == 0) { $3 = "\"${{ github.event.inputs.versionNumber }}\""; count++ } } 1' Cargo.toml
-   - name: Commit And Tag Changes
+    - name: Commit And Tag Changes
       uses: EndBug/add-and-commit@v5
       with:
         branch: release
