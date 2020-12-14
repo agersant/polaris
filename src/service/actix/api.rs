@@ -170,15 +170,13 @@ impl FromRequest for Auth {
 			{
 				let mut cookies = cookies_future.await?;
 				if let Some(session_cookie) = cookies.get_signed(dto::COOKIE_SESSION) {
-					let exists = match user_manager.exists(session_cookie.value()) {
-						Ok(e) => e,
-						Err(_) => return Err(ErrorInternalServerError(APIError::Unspecified)),
-					};
+					let username = session_cookie.value().to_string();
+					let exists = block(move || user_manager.exists(&username)).await?;
 					if !exists {
 						return Err(ErrorUnauthorized(APIError::Unspecified));
 					}
 					return Ok(Auth {
-						username: session_cookie.value().to_owned(),
+						username: session_cookie.value().to_string(),
 						source: AuthSource::Cookie,
 					});
 				}
@@ -187,15 +185,21 @@ impl FromRequest for Auth {
 			// Auth via HTTP header
 			{
 				let auth = http_auth_future.await?;
-				let username = auth.user_id().as_ref();
-				let password = auth.password().map(|s| s.as_ref()).unwrap_or("");
-				if user_manager.auth(username, password).unwrap_or(false) {
-					return Ok(Auth {
-						username: username.to_owned(),
+				let username = auth.user_id().to_string();
+				let password = auth
+					.password()
+					.map(|s| s.as_ref())
+					.unwrap_or("")
+					.to_string();
+				let auth_result = block(move || user_manager.auth(&username, &password)).await?;
+				if auth_result {
+					Ok(Auth {
+						username: auth.user_id().to_string(),
 						source: AuthSource::AuthorizationHeader,
-					});
+					})
+				} else {
+					Err(ErrorUnauthorized(APIError::Unspecified))
 				}
-				Err(ErrorUnauthorized(APIError::Unspecified))
 			}
 		})
 	}
@@ -217,20 +221,24 @@ impl FromRequest for AdminRights {
 			None => return Box::pin(err(ErrorInternalServerError(APIError::Unspecified))),
 		};
 
-		match user_manager.count() {
-			Err(_) => return Box::pin(err(ErrorInternalServerError(APIError::Unspecified))),
-			Ok(0) => return Box::pin(ok(AdminRights { auth: None })),
-			_ => (),
-		};
-
 		let auth_future = Auth::from_request(request, payload);
 
 		Box::pin(async move {
+			let user_manager_count = user_manager.clone();
+			let user_count = block(move || user_manager_count.count()).await;
+			match user_count {
+				Err(_) => return Err(ErrorInternalServerError(APIError::Unspecified)),
+				Ok(0) => return Ok(AdminRights { auth: None }),
+				_ => (),
+			};
+
 			let auth = auth_future.await?;
-			match user_manager.is_admin(&auth.username) {
-				Err(_) => Err(ErrorInternalServerError(APIError::Unspecified)),
-				Ok(true) => Ok(AdminRights { auth: Some(auth) }),
-				Ok(false) => Err(ErrorForbidden(APIError::Unspecified)),
+			let username = auth.username.clone();
+			let is_admin = block(move || user_manager.is_admin(&username)).await?;
+			if is_admin {
+				Ok(AdminRights { auth: Some(auth) })
+			} else {
+				Err(ErrorForbidden(APIError::Unspecified))
 			}
 		})
 	}
@@ -267,10 +275,14 @@ pub fn http_auth_middleware<
 			};
 			if set_cookies {
 				let cookies = cookies_future.await?;
-				let is_admin = user_manager
-					.is_admin(&auth.username)
-					.map_err(|_| APIError::Unspecified)?;
-				add_auth_cookies(response.response_mut(), &cookies, &auth.username, is_admin)?;
+				let username = auth.username.clone();
+				let is_admin = block(move || {
+					user_manager
+						.is_admin(&auth.username)
+						.map_err(|_| APIError::Unspecified)
+				})
+				.await?;
+				add_auth_cookies(response.response_mut(), &cookies, &username, is_admin)?;
 			}
 		}
 		Ok(response)
