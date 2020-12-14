@@ -24,16 +24,21 @@ jobs:
       uses: actions/checkout@master
       with:
         ref: release
-    - name: Update Polaris version in Cargo.toml
+    - name: Update Version in Cargo.toml
       run: gawk -i inplace '/^version/ { if (count == 0) { $3 = "\"${{ github.event.inputs.versionNumber }}\""; count++ } } 1' Cargo.toml
-    - name: Commit And Tag Changes
+    - name: Commit Cargo.toml Version Change
       uses: EndBug/add-and-commit@v5
       with:
         branch: release
         message: 'Updated version number'
-        tag: '${{ github.event.inputs.versionNumber }} --force'
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Add <version number> Git Tag
+      run: |
+        git config --global user.name ${{ github.actor }}
+        git config --global user.email "<>"
+        git tag -f -a ${{ github.event.inputs.versionNumber }} -m "Version number"
+        git push -f --tags
 
   create_release:
     name: Create Github Release
