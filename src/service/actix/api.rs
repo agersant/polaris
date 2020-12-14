@@ -7,7 +7,7 @@ use actix_web::{
 	get,
 	http::StatusCode,
 	post, put,
-	web::{self, Data, Json, ServiceConfig},
+	web::{self, Data, Json, JsonConfig, ServiceConfig},
 	FromRequest, HttpMessage, HttpRequest, HttpResponse, ResponseError,
 };
 use actix_web_httpauth::extractors::basic::BasicAuth;
@@ -30,7 +30,9 @@ use crate::service::{dto, error::*};
 
 pub fn make_config() -> impl FnOnce(&mut ServiceConfig) + Clone {
 	move |cfg: &mut ServiceConfig| {
-		cfg.service(version)
+		let megabyte = 1024 * 1024;
+		cfg.app_data(JsonConfig::default().limit(4 * megabyte)) // 4MB
+			.service(version)
 			.service(initial_setup)
 			.service(get_settings)
 			.service(put_settings)
@@ -66,6 +68,7 @@ impl ResponseError for APIError {
 			APIError::OwnAdminPrivilegeRemoval => StatusCode::CONFLICT,
 			APIError::AudioFileIOError => StatusCode::NOT_FOUND,
 			APIError::ThumbnailFileIOError => StatusCode::NOT_FOUND,
+			APIError::LastFMAccountNotLinked => StatusCode::UNAUTHORIZED,
 			APIError::LastFMLinkContentBase64DecodeError => StatusCode::BAD_REQUEST,
 			APIError::LastFMLinkContentEncodingError => StatusCode::BAD_REQUEST,
 			APIError::UserNotFound => StatusCode::NOT_FOUND,
@@ -620,10 +623,11 @@ async fn lastfm_now_playing(
 	path: web::Path<String>,
 ) -> Result<HttpResponse, APIError> {
 	block(move || -> Result<(), APIError> {
-		if user_manager.is_lastfm_linked(&auth.username) {
-			let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
-			lastfm_manager.now_playing(&auth.username, Path::new(path.as_ref()))?;
+		if !user_manager.is_lastfm_linked(&auth.username) {
+			return Err(APIError::LastFMAccountNotLinked);
 		}
+		let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
+		lastfm_manager.now_playing(&auth.username, Path::new(path.as_ref()))?;
 		Ok(())
 	})
 	.await?;
@@ -638,10 +642,11 @@ async fn lastfm_scrobble(
 	path: web::Path<String>,
 ) -> Result<HttpResponse, APIError> {
 	block(move || -> Result<(), APIError> {
-		if user_manager.is_lastfm_linked(&auth.username) {
-			let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
-			lastfm_manager.scrobble(&auth.username, Path::new(path.as_ref()))?;
+		if !user_manager.is_lastfm_linked(&auth.username) {
+			return Err(APIError::LastFMAccountNotLinked);
 		}
+		let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
+		lastfm_manager.scrobble(&auth.username, Path::new(path.as_ref()))?;
 		Ok(())
 	})
 	.await?;
