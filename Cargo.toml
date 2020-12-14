@@ -1,6 +1,6 @@
 [package]
 name = "polaris"
-version = "0.0.0"
+version = "0.13.0"
 authors = ["Antoine Gersant <antoine.gersant@lesforges.org>"]
 edition = "2018"
 
