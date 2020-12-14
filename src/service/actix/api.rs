@@ -556,7 +556,6 @@ async fn save_playlist(
 	name: web::Path<String>,
 	playlist: Json<dto::SavePlaylistInput>,
 ) -> Result<HttpResponse, APIError> {
-	// TODO allow large payloads
 	playlist_manager.save_playlist(&name, &auth.username, &playlist.tracks)?;
 	Ok(HttpResponse::new(StatusCode::OK))
 }
