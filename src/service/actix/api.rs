@@ -34,7 +34,8 @@ use crate::service::{dto, error::*};
 
 pub fn make_config() -> impl FnOnce(&mut ServiceConfig) + Clone {
 	move |cfg: &mut ServiceConfig| {
-		cfg.app_data(JsonConfig::default().limit(4_194_304)) // 4MB
+		let megabyte = 1024 * 1024;
+		cfg.app_data(JsonConfig::default().limit(4 * megabyte)) // 4MB
 			.service(version)
 			.service(initial_setup)
 			.service(get_settings)
