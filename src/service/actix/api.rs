@@ -559,7 +559,9 @@ async fn get_thumbnail(
 		let image_path = vfs
 			.virtual_to_real(Path::new(path.as_ref()))
 			.map_err(|_| APIError::VFSPathNotFound)?;
-		thumbnails_manager.get_thumbnail(&image_path, &options)
+		thumbnails_manager
+			.get_thumbnail(&image_path, &options)
+			.map_err(|_| APIError::Unspecified)
 	})
 	.await?;
 
