@@ -7,7 +7,7 @@ use actix_web::{
 	get,
 	http::StatusCode,
 	post, put,
-	web::{self, Data, Json, ServiceConfig},
+	web::{self, Data, Json, JsonConfig, ServiceConfig},
 	FromRequest, HttpMessage, HttpRequest, HttpResponse, ResponseError,
 };
 use actix_web_httpauth::extractors::basic::BasicAuth;
@@ -34,7 +34,8 @@ use crate::service::{dto, error::*};
 
 pub fn make_config() -> impl FnOnce(&mut ServiceConfig) + Clone {
 	move |cfg: &mut ServiceConfig| {
-		cfg.service(version)
+		cfg.app_data(JsonConfig::default().limit(4_194_304)) // 4MB
+			.service(version)
 			.service(initial_setup)
 			.service(get_settings)
 			.service(put_settings)
