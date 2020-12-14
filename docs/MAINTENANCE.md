@@ -1,10 +1,10 @@
 # Maintenance
 
 ## How to make a release
-
-- `git pull` to not miss out on any recent contributions
-- Update version number in Cargo.toml and commit the change (no need to push)
-- Run `make_release.ps1`
+- On Github, go to **Actions**, select the **Make Release** workflow and click **Run workflow**
+- Select the branch to deploy (usually `master`)
+- Input a user-facing version name (eg: **0.13.0**)
+- Click the **Run workflow** button
 - After CI completes, find the release on Github and write the changelog
 - Move the release from Draft to Published
 
