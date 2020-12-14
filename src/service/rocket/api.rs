@@ -5,6 +5,7 @@ use rocket::response::content::Html;
 use rocket::{delete, get, post, put, routes, Outcome, State};
 use rocket_contrib::json::Json;
 use std::default::Default;
+use std::env;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::str;
@@ -86,7 +87,14 @@ struct Auth {
 }
 
 fn add_session_cookies(cookies: &mut Cookies, username: &str, is_admin: bool) -> () {
-	let duration = Duration::days(1);
+	let days = match env::var("POLARIS_COOKIE_DURATION") {
+		Ok(val) => match val.parse::<i64>() {
+			Ok(d) => d,
+			_ => 1,
+		}
+		_ => 1,
+	};
+	let duration = Duration::days(days);
 
 	let session_cookie = Cookie::build(dto::COOKIE_SESSION, username.to_owned())
 		.same_site(rocket::http::SameSite::Lax)
