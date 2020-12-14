@@ -588,11 +588,11 @@ async fn lastfm_now_playing(
 	auth: Auth,
 	path: web::Path<String>,
 ) -> Result<HttpResponse, APIError> {
-	// Investigate 500
-	if user_manager.is_lastfm_linked(&auth.username) {
-		let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
-		lastfm_manager.now_playing(&auth.username, Path::new(path.as_ref()))?;
+	if !user_manager.is_lastfm_linked(&auth.username) {
+		return Ok(HttpResponse::new(StatusCode::UNAUTHORIZED));
 	}
+	let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
+	lastfm_manager.now_playing(&auth.username, Path::new(path.as_ref()))?;
 	Ok(HttpResponse::new(StatusCode::OK))
 }
 
@@ -603,11 +603,11 @@ async fn lastfm_scrobble(
 	auth: Auth,
 	path: web::Path<String>,
 ) -> Result<HttpResponse, APIError> {
-	// Investigate 500
-	if user_manager.is_lastfm_linked(&auth.username) {
-		let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
-		lastfm_manager.scrobble(&auth.username, Path::new(path.as_ref()))?;
+	if !user_manager.is_lastfm_linked(&auth.username) {
+		return Ok(HttpResponse::new(StatusCode::UNAUTHORIZED));
 	}
+	let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
+	lastfm_manager.scrobble(&auth.username, Path::new(path.as_ref()))?;
 	Ok(HttpResponse::new(StatusCode::OK))
 }
 

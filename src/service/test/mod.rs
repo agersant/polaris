@@ -10,6 +10,7 @@ pub mod protocol;
 mod admin;
 mod auth;
 mod collection;
+mod lastfm;
 mod media;
 mod playlist;
 mod preferences;
