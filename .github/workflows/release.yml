@@ -2,7 +2,7 @@ on:
   workflow_dispatch:
     inputs:
       versionNumber:
-        description: 'User facing version number (eg: 0.13.0)'
+        description: 'User-facing version number (eg: 0.13.0)'
         required: true
 
 name: Make Release
