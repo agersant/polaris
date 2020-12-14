@@ -76,6 +76,10 @@ jobs:
       with:
         version-number: ${{ github.event.inputs.versionNumber }}
         output-file: polaris.msi
+    - name: Retrieve Upload URL
+      uses: actions/download-artifact@v1
+      with:
+        name: release
     - name: Read Upload URL
       shell: bash
       run: echo "UPLOAD_URL=$(cat release/upload-url)" >> $GITHUB_ENV
