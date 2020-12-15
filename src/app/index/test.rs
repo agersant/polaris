@@ -89,8 +89,8 @@ fn test_artwork_pattern_case_insensitive() {
 	assert_eq!(songs.len(), 1);
 	let song = &songs[0];
 	assert_eq!(
-		song.artwork,
-		Some(artwork_path.to_string_lossy().into_owned())
+		song.artwork.as_ref().unwrap().to_lowercase(),
+		artwork_path.to_string_lossy().to_lowercase()
 	);
 }
 
