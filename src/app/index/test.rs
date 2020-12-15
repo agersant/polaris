@@ -6,13 +6,18 @@ use crate::app::{config, user, vfs};
 use crate::db::{self, directories, songs};
 use crate::test_name;
 
-#[test]
-fn test_populate() {
-	let db = db::get_test_db(&test_name!());
+fn get_context(test_name: &str) -> (db::DB, Index) {
+	let db = db::get_test_db(test_name);
 	let vfs_manager = vfs::Manager::new(db.clone());
 	let user_manager = user::Manager::new(db.clone());
 	let config_manager = config::Manager::new(db.clone(), user_manager);
 	let index = Index::new(db.clone(), vfs_manager, config_manager);
+	(db, index)
+}
+
+#[test]
+fn test_populate() {
+	let (db, index) = get_context(&test_name!());
 	index.update().unwrap();
 	index.update().unwrap(); // Validates that subsequent updates don't run into conflicts
 
@@ -35,11 +40,7 @@ fn test_metadata() {
 	let mut artwork_path = target.clone();
 	artwork_path.push("Folder.png");
 
-	let db = db::get_test_db(&test_name!());
-	let vfs_manager = vfs::Manager::new(db.clone());
-	let user_manager = user::Manager::new(db.clone());
-	let config_manager = config::Manager::new(db.clone(), user_manager);
-	let index = Index::new(db.clone(), vfs_manager, config_manager);
+	let (db, index) = get_context(&test_name!());
 	index.update().unwrap();
 
 	let connection = db.connect().unwrap();
@@ -76,11 +77,7 @@ fn test_artwork_pattern_case_insensitive() {
 	let mut artwork_path = target.clone();
 	artwork_path.push("folder.jpg");
 
-	let db = db::get_test_db(&test_name!());
-	let vfs_manager = vfs::Manager::new(db.clone());
-	let user_manager = user::Manager::new(db.clone());
-	let config_manager = config::Manager::new(db.clone(), user_manager);
-	let index = Index::new(db.clone(), vfs_manager, config_manager);
+	let (db, index) = get_context(&test_name!());
 	index.update().unwrap();
 
 	let connection = db.connect().unwrap();
@@ -109,11 +106,7 @@ fn test_embedded_artwork() {
 	.iter()
 	.collect();
 
-	let db = db::get_test_db(&test_name!());
-	let vfs_manager = vfs::Manager::new(db.clone());
-	let user_manager = user::Manager::new(db.clone());
-	let config_manager = config::Manager::new(db.clone(), user_manager);
-	let index = Index::new(db.clone(), vfs_manager, config_manager);
+	let (db, index) = get_context(&test_name!());
 	index.update().unwrap();
 
 	let connection = db.connect().unwrap();
@@ -132,11 +125,7 @@ fn test_browse_top_level() {
 	let mut root_path = PathBuf::new();
 	root_path.push("root");
 
-	let db = db::get_test_db(&test_name!());
-	let vfs_manager = vfs::Manager::new(db.clone());
-	let user_manager = user::Manager::new(db.clone());
-	let config_manager = config::Manager::new(db.clone(), user_manager);
-	let index = Index::new(db.clone(), vfs_manager, config_manager);
+	let (_db, index) = get_context(&test_name!());
 	index.update().unwrap();
 
 	let results = index.browse(Path::new("")).unwrap();
@@ -153,11 +142,7 @@ fn test_browse() {
 	let khemmis_path: PathBuf = ["root", "Khemmis"].iter().collect();
 	let tobokegao_path: PathBuf = ["root", "Tobokegao"].iter().collect();
 
-	let db = db::get_test_db(&test_name!());
-	let vfs_manager = vfs::Manager::new(db.clone());
-	let user_manager = user::Manager::new(db.clone());
-	let config_manager = config::Manager::new(db.clone(), user_manager);
-	let index = Index::new(db.clone(), vfs_manager, config_manager);
+	let (_db, index) = get_context(&test_name!());
 	index.update().unwrap();
 
 	let results = index.browse(Path::new("root")).unwrap();
@@ -175,11 +160,7 @@ fn test_browse() {
 
 #[test]
 fn test_flatten() {
-	let db = db::get_test_db(&test_name!());
-	let vfs_manager = vfs::Manager::new(db.clone());
-	let user_manager = user::Manager::new(db.clone());
-	let config_manager = config::Manager::new(db.clone(), user_manager);
-	let index = Index::new(db.clone(), vfs_manager, config_manager);
+	let (_db, index) = get_context(&test_name!());
 	index.update().unwrap();
 
 	// Flatten all
@@ -200,11 +181,7 @@ fn test_flatten() {
 
 #[test]
 fn test_random() {
-	let db = db::get_test_db(&test_name!());
-	let vfs_manager = vfs::Manager::new(db.clone());
-	let user_manager = user::Manager::new(db.clone());
-	let config_manager = config::Manager::new(db.clone(), user_manager);
-	let index = Index::new(db.clone(), vfs_manager, config_manager);
+	let (_db, index) = get_context(&test_name!());
 	index.update().unwrap();
 
 	let results = index.get_random_albums(1).unwrap();
@@ -213,11 +190,7 @@ fn test_random() {
 
 #[test]
 fn test_recent() {
-	let db = db::get_test_db(&test_name!());
-	let vfs_manager = vfs::Manager::new(db.clone());
-	let user_manager = user::Manager::new(db.clone());
-	let config_manager = config::Manager::new(db.clone(), user_manager);
-	let index = Index::new(db.clone(), vfs_manager, config_manager);
+	let (_db, index) = get_context(&test_name!());
 	index.update().unwrap();
 
 	let results = index.get_recent_albums(2).unwrap();
@@ -227,11 +200,7 @@ fn test_recent() {
 
 #[test]
 fn test_get_song() {
-	let db = db::get_test_db(&test_name!());
-	let vfs_manager = vfs::Manager::new(db.clone());
-	let user_manager = user::Manager::new(db.clone());
-	let config_manager = config::Manager::new(db.clone(), user_manager);
-	let index = Index::new(db.clone(), vfs_manager, config_manager);
+	let (_db, index) = get_context(&test_name!());
 	index.update().unwrap();
 
 	let song_path: PathBuf = ["root", "Khemmis", "Hunted", "02 - Candlelight.mp3"]
