@@ -1,7 +1,7 @@
 use diesel;
 use diesel::prelude::*;
-use std::time::Duration;
 use regex::Regex;
+use std::time::Duration;
 
 use super::*;
 use crate::app::user;
@@ -53,7 +53,8 @@ impl Manager {
 				diesel::result::Error::NotFound => Error::IndexAlbumArtPatternNotFound,
 				_ => Error::Unspecified,
 			})
-			.and_then(|s: String| Regex::new(&s).map_err(|_| Error::IndexAlbumArtPatternInvalid))
+			.map(|s: String| format!("(?i){}", s))
+			.and_then(|s| Regex::new(&s).map_err(|_| Error::IndexAlbumArtPatternInvalid))
 	}
 
 	pub fn read(&self) -> anyhow::Result<Config> {

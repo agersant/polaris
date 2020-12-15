@@ -65,6 +65,39 @@ fn test_metadata() {
 }
 
 #[test]
+fn test_artwork_pattern_case_insensitive() {
+	let target: PathBuf = ["test-data", "small-collection", "Khemmis", "Hunted"]
+		.iter()
+		.collect();
+
+	let mut song_path = target.clone();
+	song_path.push("05 - Hunted.mp3");
+
+	let mut artwork_path = target.clone();
+	artwork_path.push("folder.jpg");
+
+	let db = db::get_test_db(&test_name!());
+	let vfs_manager = vfs::Manager::new(db.clone());
+	let user_manager = user::Manager::new(db.clone());
+	let config_manager = config::Manager::new(db.clone(), user_manager);
+	let index = Index::new(db.clone(), vfs_manager, config_manager);
+	index.update().unwrap();
+
+	let connection = db.connect().unwrap();
+	let songs: Vec<Song> = songs::table
+		.filter(songs::title.eq("Hunted"))
+		.load(&connection)
+		.unwrap();
+
+	assert_eq!(songs.len(), 1);
+	let song = &songs[0];
+	assert_eq!(
+		song.artwork,
+		Some(artwork_path.to_string_lossy().into_owned())
+	);
+}
+
+#[test]
 fn test_embedded_artwork() {
 	let song_path: PathBuf = [
 		"test-data",
