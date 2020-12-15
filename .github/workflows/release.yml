@@ -24,7 +24,7 @@ jobs:
       uses: actions/checkout@master
       with:
         ref: release
-    - name: Update Version in Cargo.toml
+    - name: Update Polaris Version in Cargo.toml
       run: gawk -i inplace '/^version/ { if (count == 0) { $3 = "\"${{ github.event.inputs.versionNumber }}\""; count++ } } 1' Cargo.toml
     - name: Commit Cargo.toml Version Change
       uses: EndBug/add-and-commit@v5
