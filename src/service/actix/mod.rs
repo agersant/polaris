@@ -51,7 +51,6 @@ pub fn run(context: service::Context) -> Result<()> {
 		.bind(address)
 		.unwrap()
 		.run();
-	})
-	.unwrap();
+	})?;
 	Ok(())
 }
