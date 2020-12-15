@@ -10,11 +10,10 @@ mod error;
 #[cfg(test)]
 mod test;
 
-#[cfg(feature = "service-rocket")]
-mod rocket;
-#[cfg(feature = "service-rocket")]
-pub use self::rocket::*;
+mod actix;
+pub use actix::*;
 
+#[derive(Clone)]
 pub struct Context {
 	pub port: u16,
 	pub auth_secret: Vec<u8>,

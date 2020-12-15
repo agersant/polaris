@@ -1,7 +1,7 @@
 use http::{header, HeaderValue, StatusCode};
 use std::path::PathBuf;
 
-use crate::service::test::{constants::*, ServiceType, TestService};
+use crate::service::test::{constants::*, protocol, ServiceType, TestService};
 use crate::test_name;
 
 #[test]
@@ -12,7 +12,7 @@ fn test_audio_requires_auth() {
 		.iter()
 		.collect();
 
-	let request = service.request_builder().audio(&path);
+	let request = protocol::audio(&path);
 	let response = service.fetch(&request);
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
@@ -29,7 +29,7 @@ fn test_audio_golden_path() {
 		.iter()
 		.collect();
 
-	let request = service.request_builder().audio(&path);
+	let request = protocol::audio(&path);
 	let response = service.fetch_bytes(&request);
 	assert_eq!(response.status(), StatusCode::OK);
 	assert_eq!(response.body().len(), 24_142);
@@ -47,7 +47,7 @@ fn test_audio_partial_content() {
 		.iter()
 		.collect();
 
-	let mut request = service.request_builder().audio(&path);
+	let mut request = protocol::audio(&path);
 	let headers = request.headers_mut();
 	headers.append(
 		header::RANGE,
@@ -71,7 +71,7 @@ fn test_audio_bad_path_returns_not_found() {
 
 	let path: PathBuf = ["not_my_collection"].iter().collect();
 
-	let request = service.request_builder().audio(&path);
+	let request = protocol::audio(&path);
 	let response = service.fetch(&request);
 	assert_eq!(response.status(), StatusCode::NOT_FOUND);
 }
@@ -85,7 +85,7 @@ fn test_thumbnail_requires_auth() {
 		.collect();
 
 	let pad = None;
-	let request = service.request_builder().thumbnail(&path, pad);
+	let request = protocol::thumbnail(&path, pad);
 	let response = service.fetch(&request);
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
@@ -103,7 +103,7 @@ fn test_thumbnail_golden_path() {
 		.collect();
 
 	let pad = None;
-	let request = service.request_builder().thumbnail(&path, pad);
+	let request = protocol::thumbnail(&path, pad);
 	let response = service.fetch_bytes(&request);
 	assert_eq!(response.status(), StatusCode::OK);
 }
@@ -117,7 +117,7 @@ fn test_thumbnail_bad_path_returns_not_found() {
 	let path: PathBuf = ["not_my_collection"].iter().collect();
 
 	let pad = None;
-	let request = service.request_builder().thumbnail(&path, pad);
+	let request = protocol::thumbnail(&path, pad);
 	let response = service.fetch(&request);
 	assert_eq!(response.status(), StatusCode::NOT_FOUND);
 }
