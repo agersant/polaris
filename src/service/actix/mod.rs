@@ -5,6 +5,7 @@ use actix_web::{
 	App, HttpServer,
 };
 use anyhow::*;
+use log::error;
 
 use crate::service;
 
@@ -49,8 +50,9 @@ pub fn run(context: service::Context) -> Result<()> {
 		})
 		.disable_signals()
 		.bind(address)
-		.unwrap()
-		.run();
+		.map(|server| server.run())
+		.map_err(|e| error!("Error starting HTTP server: {:?}", e))
+		.ok();
 	})?;
 	Ok(())
 }
