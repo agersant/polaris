@@ -9,7 +9,7 @@ fn test_swagger_can_get_index() {
 	let request = protocol::swagger_index();
 	let response = service.fetch(&request);
 	let status = response.status();
-	assert!(status == StatusCode::OK || status == StatusCode::PERMANENT_REDIRECT);
+	assert_eq!(status, StatusCode::FOUND);
 }
 
 #[test]

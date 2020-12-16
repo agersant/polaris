@@ -1,6 +1,6 @@
 use actix_web::{
 	client::ClientResponse,
-	middleware::{normalize::TrailingSlash, Compress, Logger, NormalizePath},
+	middleware::{Compress, Logger},
 	rt::{System, SystemRunner},
 	test,
 	test::*,
@@ -117,8 +117,6 @@ impl TestService for ActixTestService {
 			App::new()
 				.wrap(Logger::default())
 				.wrap(Compress::default())
-				.wrap_fn(api::http_auth_middleware)
-				.wrap(NormalizePath::new(TrailingSlash::Trim))
 				.configure(config)
 		});
 
