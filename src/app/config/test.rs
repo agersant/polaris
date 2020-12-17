@@ -22,8 +22,6 @@ fn get_test_db(name: &str) -> DB {
 
 #[test]
 fn apply_saves_misc_settings() {
-	use crate::app::ddns;
-
 	let db = get_test_db(&test_name!());
 	let settings_manager = settings::Manager::new(db.clone());
 	let user_manager = user::Manager::new(db.clone());
@@ -33,32 +31,74 @@ fn apply_saves_misc_settings() {
 		settings: Some(settings::NewSettings {
 			index_album_art_pattern: Some("🖼️\\.jpg".into()),
 			index_sleep_duration_seconds: Some(100),
-			mount_dirs: Some(vec![vfs::MountPoint {
-				source: "/home/music".into(),
-				name: "🎵📁".into(),
-			}]),
-			ydns: Some(ddns::Config {
-				host: "🐸🐸🐸.ydns.eu".into(),
-				username: "kfr🐸g".into(),
-				password: "tasty🐞".into(),
-			}),
+			..Default::default()
 		}),
 		..Default::default()
 	};
 
 	config_manager.apply(&new_config).unwrap();
-	let _settings = settings_manager.read().unwrap();
-	// TODO
+	let settings = settings_manager.read().unwrap();
+	let new_settings = new_config.settings.unwrap();
+	assert_eq!(
+		settings.index_album_art_pattern,
+		new_settings.index_album_art_pattern.unwrap()
+	);
+	assert_eq!(
+		settings.index_sleep_duration_seconds,
+		new_settings.index_sleep_duration_seconds.unwrap()
+	);
 }
 
 #[test]
 fn apply_saves_mount_points() {
-	// TODO
+	let db = get_test_db(&test_name!());
+	let settings_manager = settings::Manager::new(db.clone());
+	let user_manager = user::Manager::new(db.clone());
+	let config_manager = Manager::new(settings_manager.clone(), user_manager.clone());
+
+	let new_config = Config {
+		settings: Some(settings::NewSettings {
+			mount_dirs: Some(vec![vfs::MountPoint {
+				source: "/home/music".into(),
+				name: "🎵📁".into(),
+			}]),
+			..Default::default()
+		}),
+		..Default::default()
+	};
+
+	config_manager.apply(&new_config).unwrap();
+	let settings = settings_manager.read().unwrap();
+	let new_settings = new_config.settings.unwrap();
+	assert_eq!(settings.mount_dirs, new_settings.mount_dirs.unwrap());
+	assert_eq!(settings.ydns, new_settings.ydns);
 }
 
 #[test]
 fn apply_saves_ddns_settings() {
-	// TODO
+	use crate::app::ddns;
+
+	let db = get_test_db(&test_name!());
+	let settings_manager = settings::Manager::new(db.clone());
+	let user_manager = user::Manager::new(db.clone());
+	let config_manager = Manager::new(settings_manager.clone(), user_manager.clone());
+
+	let new_config = Config {
+		settings: Some(settings::NewSettings {
+			ydns: Some(ddns::Config {
+				host: "🐸🐸🐸.ydns.eu".into(),
+				username: "kfr🐸g".into(),
+				password: "tasty🐞".into(),
+			}),
+			..Default::default()
+		}),
+		..Default::default()
+	};
+
+	config_manager.apply(&new_config).unwrap();
+	let settings = settings_manager.read().unwrap();
+	let new_settings = new_config.settings.unwrap();
+	assert_eq!(settings.ydns, new_settings.ydns);
 }
 
 #[test]

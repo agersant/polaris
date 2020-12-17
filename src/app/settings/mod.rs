@@ -30,7 +30,7 @@ pub struct Settings {
 	pub ydns: Option<ddns::Config>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Default, Deserialize)]
 pub struct NewSettings {
 	pub index_sleep_duration_seconds: Option<i32>,
 	pub index_album_art_pattern: Option<String>,
