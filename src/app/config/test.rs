@@ -1,10 +1,9 @@
-use diesel::prelude::*;
 use std::fs;
 use std::path::PathBuf;
 
 use super::*;
-use crate::app::{user, vfs};
-use crate::db::{users, DB};
+use crate::app::{settings, user, vfs};
+use crate::db::DB;
 use crate::test_name;
 
 #[cfg(test)]
@@ -22,214 +21,106 @@ fn get_test_db(name: &str) -> DB {
 }
 
 #[test]
-fn test_amend() {
-	let db = get_test_db(&test_name!());
-	let user_manager = user::Manager::new(db.clone());
-	let config_manager = Manager::new(db, user_manager);
+fn apply_saves_misc_settings() {
+	use crate::app::ddns;
 
-	let initial_config = Config {
-		album_art_pattern: Some("file\\.png".into()),
-		reindex_every_n_seconds: Some(123),
-		mount_dirs: Some(vec![vfs::MountPoint {
-			source: "C:\\Music".into(),
-			name: "root".into(),
-		}]),
-		users: Some(vec![ConfigUser {
-			name: "Teddy🐻".into(),
-			password: "Tasty🍖".into(),
-			admin: false,
-		}]),
-		ydns: None,
-	};
+	let db = get_test_db(&test_name!());
+	let settings_manager = settings::Manager::new(db.clone());
+	let user_manager = user::Manager::new(db.clone());
+	let config_manager = Manager::new(settings_manager.clone(), user_manager.clone());
 
 	let new_config = Config {
-		album_art_pattern: Some("🖼️\\.jpg".into()),
-		reindex_every_n_seconds: None,
-		mount_dirs: Some(vec![vfs::MountPoint {
-			source: "/home/music".into(),
-			name: "🎵📁".into(),
-		}]),
-		users: Some(vec![ConfigUser {
-			name: "Kermit🐸".into(),
-			password: "🐞🐞".into(),
-			admin: false,
-		}]),
-		ydns: Some(ddns::Config {
-			host: "🐸🐸🐸.ydns.eu".into(),
-			username: "kfr🐸g".into(),
-			password: "tasty🐞".into(),
+		settings: Some(settings::NewSettings {
+			index_album_art_pattern: Some("🖼️\\.jpg".into()),
+			index_sleep_duration_seconds: Some(100),
+			mount_dirs: Some(vec![vfs::MountPoint {
+				source: "/home/music".into(),
+				name: "🎵📁".into(),
+			}]),
+			ydns: Some(ddns::Config {
+				host: "🐸🐸🐸.ydns.eu".into(),
+				username: "kfr🐸g".into(),
+				password: "tasty🐞".into(),
+			}),
 		}),
+		..Default::default()
 	};
 
-	let mut expected_config = new_config.clone();
-	expected_config.reindex_every_n_seconds = initial_config.reindex_every_n_seconds;
-	if let Some(ref mut users) = expected_config.users {
-		users[0].password = "".into();
-	}
-
-	config_manager.amend(&initial_config).unwrap();
-	config_manager.amend(&new_config).unwrap();
-	let db_config = config_manager.read().unwrap();
-	assert_eq!(db_config, expected_config);
+	config_manager.apply(&new_config).unwrap();
+	let _settings = settings_manager.read().unwrap();
+	// TODO
 }
 
 #[test]
-fn test_amend_preserve_password_hashes() {
-	use self::users::dsl::*;
+fn apply_saves_mount_points() {
+	// TODO
+}
 
+#[test]
+fn apply_saves_ddns_settings() {
+	// TODO
+}
+
+#[test]
+fn apply_preserves_password_hashes() {
 	let db = get_test_db(&test_name!());
+	let settings_manager = settings::Manager::new(db.clone());
 	let user_manager = user::Manager::new(db.clone());
-	let config_manager = Manager::new(db.clone(), user_manager);
-
-	let initial_hash: String;
-	let new_hash: String;
+	let config_manager = Manager::new(settings_manager.clone(), user_manager.clone());
 
 	let initial_config = Config {
-		album_art_pattern: None,
-		reindex_every_n_seconds: None,
-		mount_dirs: None,
-		users: Some(vec![ConfigUser {
-			name: "Teddy🐻".into(),
+		users: Some(vec![user::NewUser {
+			name: "Walter".into(),
 			password: "Tasty🍖".into(),
 			admin: false,
 		}]),
-		ydns: None,
+		..Default::default()
 	};
-	config_manager.amend(&initial_config).unwrap();
-
-	{
-		let connection = db.connect().unwrap();
-		initial_hash = users
-			.select(password_hash)
-			.filter(name.eq("Teddy🐻"))
-			.get_result(&connection)
-			.unwrap();
-	}
+	config_manager.apply(&initial_config).unwrap();
+	let initial_hash = &user_manager.list().unwrap()[0].password_hash;
 
 	let new_config = Config {
-		album_art_pattern: None,
-		reindex_every_n_seconds: None,
-		mount_dirs: None,
-		users: Some(vec![
-			ConfigUser {
-				name: "Kermit🐸".into(),
-				password: "tasty🐞".into(),
-				admin: false,
-			},
-			ConfigUser {
-				name: "Teddy🐻".into(),
-				password: "".into(),
-				admin: false,
-			},
-		]),
-		ydns: None,
+		users: Some(vec![user::NewUser {
+			name: "Walter".into(),
+			password: "".into(),
+			admin: false,
+		}]),
+		..Default::default()
 	};
-	config_manager.amend(&new_config).unwrap();
-
-	{
-		let connection = db.connect().unwrap();
-		new_hash = users
-			.select(password_hash)
-			.filter(name.eq("Teddy🐻"))
-			.get_result(&connection)
-			.unwrap();
-	}
+	config_manager.apply(&new_config).unwrap();
+	let new_hash = &user_manager.list().unwrap()[0].password_hash;
 
 	assert_eq!(new_hash, initial_hash);
 }
 
 #[test]
-fn test_amend_ignore_blank_users() {
-	use self::users::dsl::*;
-
+fn apply_can_toggle_admin() {
 	let db = get_test_db(&test_name!());
+	let settings_manager = settings::Manager::new(db.clone());
 	let user_manager = user::Manager::new(db.clone());
-	let config_manager = Manager::new(db.clone(), user_manager);
-
-	{
-		let config = Config {
-			album_art_pattern: None,
-			reindex_every_n_seconds: None,
-			mount_dirs: None,
-			users: Some(vec![ConfigUser {
-				name: "".into(),
-				password: "Tasty🍖".into(),
-				admin: false,
-			}]),
-			ydns: None,
-		};
-		config_manager.amend(&config).unwrap();
-
-		let connection = db.connect().unwrap();
-		let user_count: i64 = users.count().get_result(&connection).unwrap();
-		assert_eq!(user_count, 0);
-	}
-
-	{
-		let config = Config {
-			album_art_pattern: None,
-			reindex_every_n_seconds: None,
-			mount_dirs: None,
-			users: Some(vec![ConfigUser {
-				name: "Teddy🐻".into(),
-				password: "".into(),
-				admin: false,
-			}]),
-			ydns: None,
-		};
-		config_manager.amend(&config).unwrap();
-
-		let connection = db.connect().unwrap();
-		let user_count: i64 = users.count().get_result(&connection).unwrap();
-		assert_eq!(user_count, 0);
-	}
-}
-
-#[test]
-fn test_toggle_admin() {
-	use self::users::dsl::*;
-
-	let db = get_test_db(&test_name!());
-	let user_manager = user::Manager::new(db.clone());
-	let config_manager = Manager::new(db.clone(), user_manager);
+	let config_manager = Manager::new(settings_manager.clone(), user_manager.clone());
 
 	let initial_config = Config {
-		album_art_pattern: None,
-		reindex_every_n_seconds: None,
-		mount_dirs: None,
-		users: Some(vec![ConfigUser {
-			name: "Teddy🐻".into(),
+		users: Some(vec![user::NewUser {
+			name: "Walter".into(),
 			password: "Tasty🍖".into(),
 			admin: true,
 		}]),
-		ydns: None,
+		..Default::default()
 	};
-	config_manager.amend(&initial_config).unwrap();
-
-	{
-		let connection = db.connect().unwrap();
-		let is_admin: i32 = users.select(admin).get_result(&connection).unwrap();
-		assert_eq!(is_admin, 1);
-	}
+	config_manager.apply(&initial_config).unwrap();
+	assert!(user_manager.list().unwrap()[0].is_admin());
 
 	let new_config = Config {
-		album_art_pattern: None,
-		reindex_every_n_seconds: None,
-		mount_dirs: None,
-		users: Some(vec![ConfigUser {
-			name: "Teddy🐻".into(),
+		users: Some(vec![user::NewUser {
+			name: "Walter".into(),
 			password: "".into(),
 			admin: false,
 		}]),
-		ydns: None,
+		..Default::default()
 	};
-	config_manager.amend(&new_config).unwrap();
-
-	{
-		let connection = db.connect().unwrap();
-		let is_admin: i32 = users.select(admin).get_result(&connection).unwrap();
-		assert_eq!(is_admin, 0);
-	}
+	config_manager.apply(&new_config).unwrap();
+	assert!(!user_manager.list().unwrap()[0].is_admin());
 }
 
 #[test]

@@ -18,7 +18,7 @@ impl Index {
 		let start = time::Instant::now();
 		info!("Beginning library index update");
 
-		let album_art_pattern = self.config_manager.get_index_album_art_pattern()?;
+		let album_art_pattern = self.settings_manager.get_index_album_art_pattern()?;
 
 		let cleaner = Cleaner::new(self.db.clone(), self.vfs_manager.clone());
 		cleaner.clean()?;

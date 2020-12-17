@@ -1,3 +1,5 @@
+use serde::Deserialize;
+
 use crate::db::users;
 
 mod error;
@@ -15,5 +17,18 @@ pub use preferences::*;
 pub struct User {
 	pub name: String,
 	pub password_hash: String,
-	pub admin: i32,
+	admin: i32,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct NewUser {
+	pub name: String,
+	pub password: String,
+	pub admin: bool,
+}
+
+impl User {
+	pub fn is_admin(&self) -> bool {
+		self.admin != 0
+	}
 }

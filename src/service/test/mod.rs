@@ -10,6 +10,7 @@ pub mod protocol;
 mod admin;
 mod auth;
 mod collection;
+mod config;
 mod lastfm;
 mod media;
 mod playlist;
@@ -18,7 +19,8 @@ mod settings;
 mod swagger;
 mod web;
 
-use crate::app::{config, index, vfs};
+use crate::app::index;
+use crate::service::dto;
 use crate::service::test::constants::*;
 
 pub use crate::service::actix::test::ServiceType;
@@ -36,28 +38,29 @@ pub trait TestService {
 	) -> Response<U>;
 
 	fn complete_initial_setup(&mut self) {
-		let configuration = config::Config {
-			album_art_pattern: None,
-			reindex_every_n_seconds: None,
-			ydns: None,
+		let configuration = dto::Config {
 			users: Some(vec![
-				config::ConfigUser {
+				dto::NewUser {
 					name: TEST_USERNAME_ADMIN.into(),
 					password: TEST_PASSWORD_ADMIN.into(),
 					admin: true,
 				},
-				config::ConfigUser {
+				dto::NewUser {
 					name: TEST_USERNAME.into(),
 					password: TEST_PASSWORD.into(),
 					admin: false,
 				},
 			]),
-			mount_dirs: Some(vec![vfs::MountPoint {
-				name: TEST_MOUNT_NAME.into(),
-				source: TEST_MOUNT_SOURCE.into(),
-			}]),
+			settings: Some(dto::NewSettings {
+				mount_dirs: Some(vec![dto::MountPoint {
+					name: TEST_MOUNT_NAME.into(),
+					source: TEST_MOUNT_SOURCE.into(),
+				}]),
+				..Default::default()
+			}),
+			..Default::default()
 		};
-		let request = protocol::put_settings(configuration);
+		let request = protocol::apply_config(configuration.into());
 		let response = self.fetch(&request);
 		assert_eq!(response.status(), StatusCode::OK);
 	}

@@ -2,7 +2,7 @@ use http::{method::Method, Request};
 use percent_encoding::{percent_encode, NON_ALPHANUMERIC};
 use std::path::Path;
 
-use crate::app::{config, user};
+use crate::app::user;
 use crate::service::dto;
 
 pub fn web_index() -> Request<()> {
@@ -49,6 +49,14 @@ pub fn login(username: &str, password: &str) -> Request<dto::AuthCredentials> {
 		.unwrap()
 }
 
+pub fn apply_config(config: dto::Config) -> Request<dto::Config> {
+	Request::builder()
+		.method(Method::PUT)
+		.uri("/api/config")
+		.body(config)
+		.unwrap()
+}
+
 pub fn get_settings() -> Request<()> {
 	Request::builder()
 		.method(Method::GET)
@@ -57,11 +65,11 @@ pub fn get_settings() -> Request<()> {
 		.unwrap()
 }
 
-pub fn put_settings(configuration: config::Config) -> Request<config::Config> {
+pub fn put_settings(settings: dto::NewSettings) -> Request<dto::NewSettings> {
 	Request::builder()
 		.method(Method::PUT)
 		.uri("/api/settings")
-		.body(configuration)
+		.body(settings)
 		.unwrap()
 }
 

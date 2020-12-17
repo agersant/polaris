@@ -19,12 +19,11 @@ use std::ops::Deref;
 use std::path::Path;
 use std::pin::Pin;
 use std::str;
-use time::Duration;
 
 use crate::app::{
 	config,
 	index::{self, Index},
-	lastfm, playlist, thumbnail, user, vfs,
+	lastfm, playlist, settings, thumbnail, user, vfs,
 };
 use crate::service::{dto, error::*};
 
@@ -34,6 +33,7 @@ pub fn make_config() -> impl FnOnce(&mut ServiceConfig) + Clone {
 		cfg.app_data(JsonConfig::default().limit(4 * megabyte)) // 4MB
 			.service(version)
 			.service(initial_setup)
+			.service(apply_config)
 			.service(get_settings)
 			.service(put_settings)
 			.service(get_preferences)
@@ -65,6 +65,7 @@ impl ResponseError for APIError {
 	fn status_code(&self) -> StatusCode {
 		match self {
 			APIError::IncorrectCredentials => StatusCode::UNAUTHORIZED,
+			APIError::EmptyPassword => StatusCode::BAD_REQUEST,
 			APIError::OwnAdminPrivilegeRemoval => StatusCode::CONFLICT,
 			APIError::AudioFileIOError => StatusCode::NOT_FOUND,
 			APIError::ThumbnailFileIOError => StatusCode::NOT_FOUND,
@@ -190,7 +191,7 @@ impl FromRequest for Auth {
 					.map(|s| s.as_ref())
 					.unwrap_or("")
 					.to_string();
-				let auth_result = block(move || user_manager.auth(&username, &password)).await?;
+				let auth_result = block(move || user_manager.login(&username, &password)).await?;
 				if auth_result {
 					Ok(Auth {
 						username: auth.user_id().to_string(),
@@ -294,15 +295,13 @@ fn add_auth_cookies<T>(
 	username: &str,
 	is_admin: bool,
 ) -> Result<(), HttpError> {
-	let duration = Duration::days(1);
-
 	let mut cookies = cookies.clone();
 
 	cookies.add_signed(
 		Cookie::build(dto::COOKIE_SESSION, username.to_owned())
 			.same_site(cookie::SameSite::Lax)
 			.http_only(true)
-			.max_age(duration)
+			.permanent()
 			.finish(),
 	);
 
@@ -310,7 +309,7 @@ fn add_auth_cookies<T>(
 		Cookie::build(dto::COOKIE_USERNAME, username.to_owned())
 			.same_site(cookie::SameSite::Lax)
 			.http_only(false)
-			.max_age(duration)
+			.permanent()
 			.path("/")
 			.finish(),
 	);
@@ -319,7 +318,7 @@ fn add_auth_cookies<T>(
 		Cookie::build(dto::COOKIE_ADMIN, format!("{}", is_admin))
 			.same_site(cookie::SameSite::Lax)
 			.http_only(false)
-			.max_age(duration)
+			.permanent()
 			.path("/")
 			.finish(),
 	);
@@ -369,33 +368,33 @@ async fn initial_setup(
 	Ok(Json(initial_setup))
 }
 
+#[put("/config")]
+async fn apply_config(
+	_admin_rights: AdminRights,
+	config_manager: Data<config::Manager>,
+	config: Json<dto::Config>,
+) -> Result<HttpResponse, APIError> {
+	// TODO test that users cannot unadmin themselves
+	block(move || config_manager.apply(&config.to_owned().into())).await?;
+	Ok(HttpResponse::new(StatusCode::OK))
+}
+
 #[get("/settings")]
 async fn get_settings(
-	config_manager: Data<config::Manager>,
+	settings_manager: Data<settings::Manager>,
 	_admin_rights: AdminRights,
-) -> Result<Json<config::Config>, APIError> {
-	let config = block(move || config_manager.read()).await?;
-	Ok(Json(config))
+) -> Result<Json<dto::Settings>, APIError> {
+	let settings = block(move || settings_manager.read()).await?;
+	Ok(Json(settings.into()))
 }
 
 #[put("/settings")]
 async fn put_settings(
-	admin_rights: AdminRights,
-	config_manager: Data<config::Manager>,
-	config: Json<config::Config>,
+	_admin_rights: AdminRights,
+	settings_manager: Data<settings::Manager>,
+	new_settings: Json<dto::NewSettings>,
 ) -> Result<HttpResponse, APIError> {
-	// Do not let users remove their own admin rights
-	if let Some(auth) = &admin_rights.auth {
-		if let Some(users) = &config.users {
-			for user in users {
-				if auth.username == user.name && !user.admin {
-					return Err(APIError::OwnAdminPrivilegeRemoval);
-				}
-			}
-		}
-	}
-
-	block(move || config_manager.amend(&config)).await?;
+	block(move || settings_manager.amend(&new_settings.to_owned().into())).await?;
 	Ok(HttpResponse::new(StatusCode::OK))
 }
 
@@ -435,7 +434,7 @@ async fn login(
 ) -> Result<HttpResponse, APIError> {
 	let username = credentials.username.clone();
 	let is_admin = block(move || {
-		if !user_manager.auth(&credentials.username, &credentials.password)? {
+		if !user_manager.login(&credentials.username, &credentials.password)? {
 			return Err(APIError::IncorrectCredentials);
 		}
 		user_manager
