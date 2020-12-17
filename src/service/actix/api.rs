@@ -370,11 +370,21 @@ async fn initial_setup(
 
 #[put("/config")]
 async fn apply_config(
-	_admin_rights: AdminRights,
+	admin_rights: AdminRights,
 	config_manager: Data<config::Manager>,
 	config: Json<dto::Config>,
 ) -> Result<HttpResponse, APIError> {
-	// TODO test that users cannot unadmin themselves
+	// Do not let users remove their own admin rights
+	if let Some(auth) = &admin_rights.auth {
+		if let Some(users) = &config.users {
+			for user in users {
+				if auth.username == user.name && !user.admin {
+					return Err(APIError::OwnAdminPrivilegeRemoval);
+				}
+			}
+		}
+	}
+
 	block(move || config_manager.apply(&config.to_owned().into())).await?;
 	Ok(HttpResponse::new(StatusCode::OK))
 }
