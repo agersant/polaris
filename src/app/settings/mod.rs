@@ -24,16 +24,16 @@ struct MiscSettings {
 #[derive(Debug)]
 pub struct Settings {
 	auth_secret: Vec<u8>,
-	pub index_sleep_duration_seconds: i32,
-	pub index_album_art_pattern: String,
+	pub reindex_every_n_seconds: i32,
+	pub album_art_pattern: String,
 	pub mount_dirs: Vec<vfs::MountPoint>,
 	pub ydns: Option<ddns::Config>,
 }
 
 #[derive(Debug, Default, Deserialize)]
 pub struct NewSettings {
-	pub index_sleep_duration_seconds: Option<i32>,
-	pub index_album_art_pattern: Option<String>,
+	pub reindex_every_n_seconds: Option<i32>,
+	pub album_art_pattern: Option<String>,
 	pub mount_dirs: Option<Vec<vfs::MountPoint>>,
 	pub ydns: Option<ddns::Config>,
 }

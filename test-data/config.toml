@@ -1,6 +1,5 @@
 [settings]
 album_art_pattern = '^Folder\.(png|jpg|jpeg)$'
-# todo this might have changed name
 
 [[settings.mount_dirs]]
 name = 'root'

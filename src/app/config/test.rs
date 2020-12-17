@@ -29,8 +29,8 @@ fn apply_saves_misc_settings() {
 
 	let new_config = Config {
 		settings: Some(settings::NewSettings {
-			index_album_art_pattern: Some("🖼️\\.jpg".into()),
-			index_sleep_duration_seconds: Some(100),
+			album_art_pattern: Some("🖼️\\.jpg".into()),
+			reindex_every_n_seconds: Some(100),
 			..Default::default()
 		}),
 		..Default::default()
@@ -40,12 +40,12 @@ fn apply_saves_misc_settings() {
 	let settings = settings_manager.read().unwrap();
 	let new_settings = new_config.settings.unwrap();
 	assert_eq!(
-		settings.index_album_art_pattern,
-		new_settings.index_album_art_pattern.unwrap()
+		settings.album_art_pattern,
+		new_settings.album_art_pattern.unwrap()
 	);
 	assert_eq!(
-		settings.index_sleep_duration_seconds,
-		new_settings.index_sleep_duration_seconds.unwrap()
+		settings.reindex_every_n_seconds,
+		new_settings.reindex_every_n_seconds.unwrap()
 	);
 }
 

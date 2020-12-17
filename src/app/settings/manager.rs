@@ -87,8 +87,8 @@ impl Manager {
 
 		Ok(Settings {
 			auth_secret: misc.auth_secret,
-			index_album_art_pattern: misc.index_album_art_pattern,
-			index_sleep_duration_seconds: misc.index_sleep_duration_seconds,
+			album_art_pattern: misc.index_album_art_pattern,
+			reindex_every_n_seconds: misc.index_sleep_duration_seconds,
 			mount_dirs,
 			ydns,
 		})
@@ -107,14 +107,14 @@ impl Manager {
 				.map_err(|_| Error::Unspecified)?; // TODO https://github.com/diesel-rs/diesel/issues/1822
 		}
 
-		if let Some(sleep_duration) = new_settings.index_sleep_duration_seconds {
+		if let Some(sleep_duration) = new_settings.reindex_every_n_seconds {
 			diesel::update(misc_settings::table)
 				.set(misc_settings::index_sleep_duration_seconds.eq(sleep_duration as i32))
 				.execute(&connection)
 				.map_err(|_| Error::Unspecified)?;
 		}
 
-		if let Some(ref album_art_pattern) = new_settings.index_album_art_pattern {
+		if let Some(ref album_art_pattern) = new_settings.album_art_pattern {
 			diesel::update(misc_settings::table)
 				.set(misc_settings::index_album_art_pattern.eq(album_art_pattern))
 				.execute(&connection)
