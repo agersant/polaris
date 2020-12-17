@@ -5,7 +5,7 @@ use crate::service::test::{protocol, ServiceType, TestService};
 use crate::test_name;
 
 #[test]
-fn test_get_preferences_requires_auth() {
+fn get_preferences_requires_auth() {
 	let mut service = ServiceType::new(&test_name!());
 	let request = protocol::get_preferences();
 	let response = service.fetch(&request);
@@ -13,7 +13,7 @@ fn test_get_preferences_requires_auth() {
 }
 
 #[test]
-fn test_get_preferences_golden_path() {
+fn get_preferences_golden_path() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login();
@@ -24,7 +24,7 @@ fn test_get_preferences_golden_path() {
 }
 
 #[test]
-fn test_put_preferences_requires_auth() {
+fn put_preferences_requires_auth() {
 	let mut service = ServiceType::new(&test_name!());
 	let request = protocol::put_preferences(user::Preferences::default());
 	let response = service.fetch(&request);
@@ -32,7 +32,7 @@ fn test_put_preferences_requires_auth() {
 }
 
 #[test]
-fn test_put_preferences_golden_path() {
+fn put_preferences_golden_path() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login();
