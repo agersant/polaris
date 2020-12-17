@@ -71,7 +71,6 @@ fn apply_saves_mount_points() {
 	let settings = settings_manager.read().unwrap();
 	let new_settings = new_config.settings.unwrap();
 	assert_eq!(settings.mount_dirs, new_settings.mount_dirs.unwrap());
-	assert_eq!(settings.ydns, new_settings.ydns);
 }
 
 #[test]
