@@ -30,7 +30,6 @@ impl Config {
 		Ok(config)
 	}
 
-	// TODO find a better home for this?
 	fn clean_paths(&mut self) -> anyhow::Result<()> {
 		if let Some(ref mut settings) = self.settings {
 			if let Some(ref mut mount_dirs) = settings.mount_dirs {
