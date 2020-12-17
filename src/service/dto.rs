@@ -52,11 +52,20 @@ pub struct User {
 	pub is_admin: bool,
 }
 
+impl From<user::User> for User {
+	fn from(u: user::User) -> Self {
+		Self {
+			username: u.name,
+			is_admin: u.admin != 0,
+		}
+	}
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct NewUser {
 	pub name: String,
 	pub password: String,
-	pub admin: bool,
+	pub is_admin: bool,
 }
 
 impl From<NewUser> for user::NewUser {
@@ -64,14 +73,15 @@ impl From<NewUser> for user::NewUser {
 		Self {
 			name: u.name,
 			password: u.password,
-			admin: u.admin,
+			is_admin: u.is_admin,
 		}
 	}
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct Users {
-	users: Vec<User>,
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct UserUpdate {
+	pub new_password: Option<String>,
+	pub new_is_admin: Option<bool>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]

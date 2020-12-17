@@ -14,7 +14,7 @@ fn apply_config_cannot_unadmin_self() {
 	configuration.users = Some(vec![dto::NewUser {
 		name: TEST_USERNAME_ADMIN.into(),
 		password: "".into(),
-		admin: false,
+		is_admin: false,
 	}]);
 	let request = protocol::apply_config(configuration);
 	let response = service.fetch(&request);

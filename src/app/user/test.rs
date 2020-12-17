@@ -24,7 +24,7 @@ fn create_delete_user_golden_path() {
 	let new_user = NewUser {
 		name: "Walter".to_owned(),
 		password: "super_secret!".to_owned(),
-		admin: false,
+		is_admin: false,
 	};
 
 	assert_eq!(user_manager.list().unwrap().len(), 0);
@@ -42,7 +42,7 @@ fn cannot_create_user_with_blank_username() {
 	let new_user = NewUser {
 		name: "".to_owned(),
 		password: "super_secret!".to_owned(),
-		admin: false,
+		is_admin: false,
 	};
 
 	assert_eq!(
@@ -59,7 +59,7 @@ fn cannot_create_user_with_blank_password() {
 	let new_user = NewUser {
 		name: "Walter".to_owned(),
 		password: "".to_owned(),
-		admin: false,
+		is_admin: false,
 	};
 
 	assert_eq!(
@@ -82,7 +82,7 @@ fn can_read_write_preferences() {
 	let new_user = NewUser {
 		name: "Walter".to_owned(),
 		password: "super_secret!".to_owned(),
-		admin: false,
+		is_admin: false,
 	};
 	user_manager.create(&new_user).unwrap();
 

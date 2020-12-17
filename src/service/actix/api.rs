@@ -36,6 +36,10 @@ pub fn make_config() -> impl FnOnce(&mut ServiceConfig) + Clone {
 			.service(apply_config)
 			.service(get_settings)
 			.service(put_settings)
+			.service(list_users)
+			.service(create_user)
+			.service(update_user)
+			.service(delete_user)
 			.service(get_preferences)
 			.service(put_preferences)
 			.service(trigger_index)
@@ -379,7 +383,7 @@ async fn apply_config(
 	if let Some(auth) = &admin_rights.auth {
 		if let Some(users) = &config.users {
 			for user in users {
-				if auth.username == user.name && !user.admin {
+				if auth.username == user.name && !user.is_admin {
 					return Err(APIError::OwnAdminPrivilegeRemoval);
 				}
 			}
@@ -406,6 +410,57 @@ async fn put_settings(
 	new_settings: Json<dto::NewSettings>,
 ) -> Result<HttpResponse, APIError> {
 	block(move || settings_manager.amend(&new_settings.to_owned().into())).await?;
+	Ok(HttpResponse::new(StatusCode::OK))
+}
+
+#[get("/users")]
+async fn list_users(
+	user_manager: Data<user::Manager>,
+	_admin_rights: AdminRights,
+) -> Result<Json<Vec<dto::User>>, APIError> {
+	let users = block(move || user_manager.list()).await?;
+	let users = users.into_iter().map(|u| u.into()).collect();
+	Ok(Json(users))
+}
+
+#[post("/user")]
+async fn create_user(
+	user_manager: Data<user::Manager>,
+	_admin_rights: AdminRights,
+	new_user: Json<dto::NewUser>,
+) -> Result<HttpResponse, APIError> {
+	let new_user = new_user.to_owned().into();
+	block(move || user_manager.create(&new_user)).await?;
+	Ok(HttpResponse::new(StatusCode::OK))
+}
+
+#[put("/user/{name}")]
+async fn update_user(
+	user_manager: Data<user::Manager>,
+	_admin_rights: AdminRights,
+	name: web::Path<String>,
+	user_update: Json<dto::UserUpdate>,
+) -> Result<HttpResponse, APIError> {
+	block(move || -> Result<(), APIError> {
+		if let Some(password) = &user_update.new_password {
+			user_manager.set_password(&name, password)?;
+		}
+		if let Some(is_admin) = &user_update.new_is_admin {
+			user_manager.set_is_admin(&name, *is_admin)?;
+		}
+		Ok(())
+	})
+	.await?;
+	Ok(HttpResponse::new(StatusCode::OK))
+}
+
+#[delete("/user/{name}")]
+async fn delete_user(
+	user_manager: Data<user::Manager>,
+	_admin_rights: AdminRights,
+	name: web::Path<String>,
+) -> Result<HttpResponse, APIError> {
+	block(move || user_manager.delete(&name)).await?;
 	Ok(HttpResponse::new(StatusCode::OK))
 }
 

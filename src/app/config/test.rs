@@ -111,7 +111,7 @@ fn apply_preserves_password_hashes() {
 		users: Some(vec![user::NewUser {
 			name: "Walter".into(),
 			password: "Tasty🍖".into(),
-			admin: false,
+			is_admin: false,
 		}]),
 		..Default::default()
 	};
@@ -122,7 +122,7 @@ fn apply_preserves_password_hashes() {
 		users: Some(vec![user::NewUser {
 			name: "Walter".into(),
 			password: "".into(),
-			admin: false,
+			is_admin: false,
 		}]),
 		..Default::default()
 	};
@@ -143,7 +143,7 @@ fn apply_can_toggle_admin() {
 		users: Some(vec![user::NewUser {
 			name: "Walter".into(),
 			password: "Tasty🍖".into(),
-			admin: true,
+			is_admin: true,
 		}]),
 		..Default::default()
 	};
@@ -154,7 +154,7 @@ fn apply_can_toggle_admin() {
 		users: Some(vec![user::NewUser {
 			name: "Walter".into(),
 			password: "".into(),
-			admin: false,
+			is_admin: false,
 		}]),
 		..Default::default()
 	};

@@ -43,12 +43,12 @@ pub trait TestService {
 				dto::NewUser {
 					name: TEST_USERNAME_ADMIN.into(),
 					password: TEST_PASSWORD_ADMIN.into(),
-					admin: true,
+					is_admin: true,
 				},
 				dto::NewUser {
 					name: TEST_USERNAME.into(),
 					password: TEST_PASSWORD.into(),
-					admin: false,
+					is_admin: false,
 				},
 			]),
 			settings: Some(dto::NewSettings {

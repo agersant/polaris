@@ -31,7 +31,7 @@ impl Manager {
 		let new_user = User {
 			name: new_user.name.to_owned(),
 			password_hash,
-			admin: new_user.admin as i32,
+			admin: new_user.is_admin as i32,
 		};
 
 		diesel::insert_into(users::table)

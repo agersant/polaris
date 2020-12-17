@@ -17,18 +17,18 @@ pub use preferences::*;
 pub struct User {
 	pub name: String,
 	pub password_hash: String,
-	admin: i32,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct NewUser {
-	pub name: String,
-	pub password: String,
-	pub admin: bool,
+	pub admin: i32,
 }
 
 impl User {
 	pub fn is_admin(&self) -> bool {
 		self.admin != 0
 	}
+}
+
+#[derive(Debug, Deserialize)]
+pub struct NewUser {
+	pub name: String,
+	pub password: String,
+	pub is_admin: bool,
 }
