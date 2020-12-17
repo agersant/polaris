@@ -56,7 +56,7 @@ impl Manager {
 						.map_err(|_| Error::Unspecified)?;
 				}
 				self.user_manager
-					.set_is_admin(&user.name, user.is_admin)
+					.set_is_admin(&user.name, user.admin)
 					.map_err(|_| Error::Unspecified)?;
 			}
 		}

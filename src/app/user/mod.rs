@@ -30,5 +30,5 @@ impl User {
 pub struct NewUser {
 	pub name: String,
 	pub password: String,
-	pub is_admin: bool,
+	pub admin: bool,
 }

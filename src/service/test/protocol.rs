@@ -73,6 +73,38 @@ pub fn put_settings(settings: dto::NewSettings) -> Request<dto::NewSettings> {
 		.unwrap()
 }
 
+pub fn list_users() -> Request<()> {
+	Request::builder()
+		.method(Method::GET)
+		.uri("/api/users")
+		.body(())
+		.unwrap()
+}
+
+pub fn create_user(new_user: dto::NewUser) -> Request<dto::NewUser> {
+	Request::builder()
+		.method(Method::POST)
+		.uri("/api/user")
+		.body(new_user)
+		.unwrap()
+}
+
+pub fn update_user(username: &str, user_update: dto::UserUpdate) -> Request<dto::UserUpdate> {
+	Request::builder()
+		.method(Method::PUT)
+		.uri(format!("/api/user/{}", username))
+		.body(user_update)
+		.unwrap()
+}
+
+pub fn delete_user(username: &str) -> Request<()> {
+	Request::builder()
+		.method(Method::DELETE)
+		.uri(format!("/api/user/{}", username))
+		.body(())
+		.unwrap()
+}
+
 pub fn get_preferences() -> Request<()> {
 	Request::builder()
 		.method(Method::GET)

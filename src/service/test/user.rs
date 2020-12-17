@@ -1,8 +1,117 @@
 use http::StatusCode;
 
 use crate::app::user;
+use crate::service::dto;
 use crate::service::test::{protocol, ServiceType, TestService};
 use crate::test_name;
+
+#[test]
+fn list_users_requires_admin() {
+	let mut service = ServiceType::new(&test_name!());
+	service.complete_initial_setup();
+	let request = protocol::list_users();
+
+	let response = service.fetch(&request);
+	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+
+	service.login();
+	let response = service.fetch(&request);
+	assert_eq!(response.status(), StatusCode::FORBIDDEN);
+}
+
+#[test]
+fn list_users_golden_path() {
+	let mut service = ServiceType::new(&test_name!());
+	service.complete_initial_setup();
+	service.login_admin();
+	let request = protocol::list_users();
+	let response = service.fetch(&request);
+	assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[test]
+fn create_user_requires_admin() {
+	let mut service = ServiceType::new(&test_name!());
+	service.complete_initial_setup();
+	let request = protocol::create_user(dto::NewUser {
+		name: "Walter".into(),
+		password: "secret".into(),
+		is_admin: false,
+	});
+
+	let response = service.fetch(&request);
+	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+
+	service.login();
+	let response = service.fetch(&request);
+	assert_eq!(response.status(), StatusCode::FORBIDDEN);
+}
+
+#[test]
+fn create_user_golden_path() {
+	let mut service = ServiceType::new(&test_name!());
+	service.complete_initial_setup();
+	service.login_admin();
+
+	let new_user = dto::NewUser {
+		name: "Walter".into(),
+		password: "secret".into(),
+		is_admin: false,
+	};
+	let request = protocol::create_user(new_user);
+	let response = service.fetch(&request);
+	assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[test]
+fn update_user_requires_admin() {
+	let mut service = ServiceType::new(&test_name!());
+	service.complete_initial_setup();
+	let request = protocol::update_user("Walter", dto::UserUpdate::default());
+
+	let response = service.fetch(&request);
+	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+
+	service.login();
+	let response = service.fetch(&request);
+	assert_eq!(response.status(), StatusCode::FORBIDDEN);
+}
+
+#[test]
+fn update_user_golden_path() {
+	let mut service = ServiceType::new(&test_name!());
+	service.complete_initial_setup();
+	let request = protocol::update_user("Walter", dto::UserUpdate::default());
+
+	service.login_admin();
+	let response = service.fetch(&request);
+	assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[test]
+fn delete_user_requires_admin() {
+	let mut service = ServiceType::new(&test_name!());
+	service.complete_initial_setup();
+	let request = protocol::delete_user("Walter");
+
+	let response = service.fetch(&request);
+	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+
+	service.login();
+	let response = service.fetch(&request);
+	assert_eq!(response.status(), StatusCode::FORBIDDEN);
+}
+
+#[test]
+fn delete_user_golden_path() {
+	let mut service = ServiceType::new(&test_name!());
+	service.complete_initial_setup();
+	let request = protocol::delete_user("Walter");
+
+	service.login_admin();
+	let response = service.fetch(&request);
+	assert_eq!(response.status(), StatusCode::OK);
+}
 
 #[test]
 fn get_preferences_requires_auth() {

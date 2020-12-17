@@ -73,12 +73,12 @@ impl From<NewUser> for user::NewUser {
 		Self {
 			name: u.name,
 			password: u.password,
-			is_admin: u.is_admin,
+			admin: u.is_admin,
 		}
 	}
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct UserUpdate {
 	pub new_password: Option<String>,
 	pub new_is_admin: Option<bool>,
