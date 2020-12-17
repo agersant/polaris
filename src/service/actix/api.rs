@@ -65,6 +65,7 @@ impl ResponseError for APIError {
 	fn status_code(&self) -> StatusCode {
 		match self {
 			APIError::IncorrectCredentials => StatusCode::UNAUTHORIZED,
+			APIError::EmptyUsername => StatusCode::BAD_REQUEST,
 			APIError::EmptyPassword => StatusCode::BAD_REQUEST,
 			APIError::OwnAdminPrivilegeRemoval => StatusCode::CONFLICT,
 			APIError::AudioFileIOError => StatusCode::NOT_FOUND,

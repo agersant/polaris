@@ -7,6 +7,8 @@ use crate::app::{config, playlist, settings, user};
 pub enum APIError {
 	#[error("Incorrect Credentials")]
 	IncorrectCredentials,
+	#[error("EmptyUsername")]
+	EmptyUsername,
 	#[error("EmptyPassword")]
 	EmptyPassword,
 	#[error("Cannot remove own admin privilege")]
@@ -80,6 +82,7 @@ impl From<settings::Error> for APIError {
 impl From<user::Error> for APIError {
 	fn from(error: user::Error) -> APIError {
 		match error {
+			user::Error::EmptyUsername => APIError::EmptyUsername,
 			user::Error::EmptyPassword => APIError::EmptyPassword,
 			user::Error::IncorrectUsername => APIError::IncorrectCredentials,
 			user::Error::Unspecified => APIError::Unspecified,

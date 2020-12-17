@@ -18,6 +18,10 @@ impl Manager {
 	}
 
 	pub fn create(&self, new_user: &NewUser) -> Result<(), Error> {
+		if new_user.name.is_empty() {
+			return Err(Error::EmptyUsername);
+		}
+
 		if new_user.password.is_empty() {
 			return Err(Error::EmptyPassword);
 		}

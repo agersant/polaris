@@ -1,5 +1,7 @@
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum Error {
+	#[error("Cannot use empty username")]
+	EmptyUsername,
 	#[error("Cannot use empty password")]
 	EmptyPassword,
 	#[error("Username does not exist")]
