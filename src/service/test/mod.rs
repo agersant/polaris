@@ -14,9 +14,9 @@ mod config;
 mod lastfm;
 mod media;
 mod playlist;
-mod preferences;
 mod settings;
 mod swagger;
+mod user;
 mod web;
 
 use crate::app::index;
