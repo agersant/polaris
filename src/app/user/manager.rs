@@ -22,10 +22,6 @@ impl Manager {
 			return Err(Error::EmptyUsername);
 		}
 
-		if new_user.password.is_empty() {
-			return Err(Error::EmptyPassword);
-		}
-
 		let password_hash = hash_password(&new_user.password)?;
 		let connection = self.db.connect()?;
 		let new_user = User {
@@ -168,11 +164,11 @@ impl Manager {
 	}
 }
 
-fn hash_password(password: &str) -> anyhow::Result<String> {
-	match pbkdf2::pbkdf2_simple(password, HASH_ITERATIONS) {
-		Ok(hash) => Ok(hash),
-		Err(e) => Err(e.into()),
+fn hash_password(password: &str) -> Result<String, Error> {
+	if password.is_empty() {
+		return Err(Error::EmptyPassword);
 	}
+	pbkdf2::pbkdf2_simple(password, HASH_ITERATIONS).map_err(|_| Error::Unspecified)
 }
 
 fn verify_password(password_hash: &str, attempted_password: &str) -> bool {

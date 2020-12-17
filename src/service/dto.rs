@@ -48,14 +48,14 @@ pub struct LastFMLink {
 
 #[derive(Serialize, Deserialize)]
 pub struct User {
-	pub username: String,
+	pub name: String,
 	pub is_admin: bool,
 }
 
 impl From<user::User> for User {
 	fn from(u: user::User) -> Self {
 		Self {
-			username: u.name,
+			name: u.name,
 			is_admin: u.admin != 0,
 		}
 	}
