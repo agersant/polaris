@@ -209,6 +209,34 @@
                         "auth_cookie": []
                     }
                 ]
+            },
+            "put": {
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Saves the preferences of the current user",
+                "operationId": "putPreferences",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#components/schemas/Preferences"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful operation"
+                    }
+                },
+                "security": [
+                    {
+                        "auth_http_header": [],
+                        "auth_cookie": []
+                    }
+                ]
             }
         },
         "/auth": {
