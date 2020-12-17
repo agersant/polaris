@@ -17,16 +17,20 @@
             "description": "Browsing the music collection"
         },
         {
+            "name": "Configuration",
+            "description": "Managing the polaris installation"
+        },
+        {
             "name": "Last.fm",
             "description": "Integrating with Last.fm"
         },
         {
-            "name": "Settings",
-            "description": "Managing the polaris installation"
-        },
-        {
             "name": "Playlists",
             "description": "Managing playlists"
+        },
+        {
+            "name": "Users",
+            "description": "Managing user accounts"
         },
         {
             "name": "Other"
@@ -95,38 +99,13 @@
                 ]
             }
         },
-        "/settings": {
-            "get": {
-                "tags": [
-                    "Settings"
-                ],
-                "summary": "Reads the existing server configuration",
-                "operationId": "getSettings",
-                "responses": {
-                    "200": {
-                        "description": "Successful operation",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#components/schemas/Config"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "admin_http_header": [],
-                        "admin_cookie": []
-                    }
-                ]
-            },
+        "/config": {
             "put": {
                 "tags": [
-                    "Settings"
+                    "Configuration"
                 ],
-                "summary": "Overwrites the server configuration",
-                "operationId": "getSettings",
+                "summary": "Amends the server settings and list of users",
+                "operationId": "putConfig",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -150,10 +129,65 @@
                 ]
             }
         },
+        "/settings": {
+            "get": {
+                "tags": [
+                    "Configuration"
+                ],
+                "summary": "Reads the existing server settings",
+                "operationId": "getSettings",
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#components/schemas/Settings"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "admin_http_header": [],
+                        "admin_cookie": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Configuration"
+                ],
+                "summary": "Amends the server settings",
+                "operationId": "putSettings",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#components/schemas/Settings"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful operation"
+                    }
+                },
+                "security": [
+                    {
+                        "admin_http_header": [],
+                        "admin_cookie": []
+                    }
+                ]
+            }
+        },
         "/preferences": {
             "get": {
                 "tags": [
-                    "Settings"
+                    "Users"
                 ],
                 "summary": "Reads the preferences of the current user",
                 "operationId": "getPreferences",
@@ -180,7 +214,7 @@
         "/auth": {
             "post": {
                 "tags": [
-                    "Other"
+                    "Users"
                 ],
                 "summary": "Signs in a user. Response has Set-Cookie headers for the session, username and admin permission of the user.",
                 "operationId": "postAuth",
@@ -810,7 +844,7 @@
                     }
                 }
             },
-            "Config": {
+            "Settings": {
                 "type": "object",
                 "properties": {
                     "album_art_pattern": {
@@ -825,12 +859,6 @@
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/MountPoint"
-                        }
-                    },
-                    "users": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/ConfigUser"
                         }
                     },
                     "ydns": {
@@ -852,15 +880,39 @@
                     }
                 }
             },
-            "ConfigUser": {
+            "Config": {
+                "type": "object",
+                "properties": {
+                    "settings": {
+                        "$ref": "#/components/schemas/Settings"
+                    },
+                    "users": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/User"
+                        }
+                    }
+                }
+            },
+            "User": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "admin": {
+                        "type": "boolean"
+                    }
+                }
+            },
+            "NewUser": {
                 "type": "object",
                 "properties": {
                     "name": {
                         "type": "string"
                     },
                     "password": {
-                        "type": "string",
-                        "description": "Always blank when this field appear in a server response"
+                        "type": "string"
                     },
                     "admin": {
                         "type": "boolean"
