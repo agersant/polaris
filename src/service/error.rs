@@ -11,7 +11,9 @@ pub enum APIError {
 	EmptyUsername,
 	#[error("EmptyPassword")]
 	EmptyPassword,
-	#[error("Cannot remove own admin privilege")]
+	#[error("Cannot delete your own account")]
+	DeletingOwnAccount,
+	#[error("Cannot remove your own admin privilege")]
 	OwnAdminPrivilegeRemoval,
 	#[error("Audio file could not be opened")]
 	AudioFileIOError,

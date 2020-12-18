@@ -1,8 +1,9 @@
 use http::StatusCode;
+use std::default::Default;
 
 use crate::app::user;
 use crate::service::dto;
-use crate::service::test::{protocol, ServiceType, TestService};
+use crate::service::test::{constants::*, protocol, ServiceType, TestService};
 use crate::test_name;
 
 #[test]
@@ -89,6 +90,23 @@ fn update_user_golden_path() {
 }
 
 #[test]
+fn update_user_cannot_unadmin_self() {
+	let mut service = ServiceType::new(&test_name!());
+	service.complete_initial_setup();
+	let request = protocol::update_user(
+		TEST_USERNAME_ADMIN,
+		dto::UserUpdate {
+			new_is_admin: Some(false),
+			..Default::default()
+		},
+	);
+
+	service.login_admin();
+	let response = service.fetch(&request);
+	assert_eq!(response.status(), StatusCode::CONFLICT);
+}
+
+#[test]
 fn delete_user_requires_admin() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
@@ -111,6 +129,16 @@ fn delete_user_golden_path() {
 	service.login_admin();
 	let response = service.fetch(&request);
 	assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[test]
+fn delete_user_cannot_delete_self() {
+	let mut service = ServiceType::new(&test_name!());
+	service.complete_initial_setup();
+	let request = protocol::delete_user(TEST_USERNAME_ADMIN);
+	service.login_admin();
+	let response = service.fetch(&request);
+	assert_eq!(response.status(), StatusCode::CONFLICT);
 }
 
 #[test]

@@ -71,6 +71,7 @@ impl ResponseError for APIError {
 			APIError::IncorrectCredentials => StatusCode::UNAUTHORIZED,
 			APIError::EmptyUsername => StatusCode::BAD_REQUEST,
 			APIError::EmptyPassword => StatusCode::BAD_REQUEST,
+			APIError::DeletingOwnAccount => StatusCode::CONFLICT,
 			APIError::OwnAdminPrivilegeRemoval => StatusCode::CONFLICT,
 			APIError::AudioFileIOError => StatusCode::NOT_FOUND,
 			APIError::ThumbnailFileIOError => StatusCode::NOT_FOUND,
@@ -379,9 +380,11 @@ async fn apply_config(
 	config_manager: Data<config::Manager>,
 	config: Json<dto::Config>,
 ) -> Result<HttpResponse, APIError> {
-	// Do not let users remove their own admin rights
 	if let Some(auth) = &admin_rights.auth {
 		if let Some(users) = &config.users {
+			if !users.iter().any(|u| u.name == auth.username) {
+				return Err(APIError::DeletingOwnAccount);
+			}
 			for user in users {
 				if auth.username == user.name && !user.is_admin {
 					return Err(APIError::OwnAdminPrivilegeRemoval);
@@ -437,10 +440,18 @@ async fn create_user(
 #[put("/user/{name}")]
 async fn update_user(
 	user_manager: Data<user::Manager>,
-	_admin_rights: AdminRights,
+	admin_rights: AdminRights,
 	name: web::Path<String>,
 	user_update: Json<dto::UserUpdate>,
 ) -> Result<HttpResponse, APIError> {
+	if let Some(auth) = &admin_rights.auth {
+		if auth.username == name.as_str() {
+			if user_update.new_is_admin == Some(false) {
+				return Err(APIError::OwnAdminPrivilegeRemoval);
+			}
+		}
+	}
+
 	block(move || -> Result<(), APIError> {
 		if let Some(password) = &user_update.new_password {
 			user_manager.set_password(&name, password)?;
@@ -457,9 +468,14 @@ async fn update_user(
 #[delete("/user/{name}")]
 async fn delete_user(
 	user_manager: Data<user::Manager>,
-	_admin_rights: AdminRights,
+	admin_rights: AdminRights,
 	name: web::Path<String>,
 ) -> Result<HttpResponse, APIError> {
+	if let Some(auth) = &admin_rights.auth {
+		if auth.username == name.as_str() {
+			return Err(APIError::DeletingOwnAccount);
+		}
+	}
 	block(move || user_manager.delete(&name)).await?;
 	Ok(HttpResponse::new(StatusCode::OK))
 }
