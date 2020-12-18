@@ -73,6 +73,22 @@ pub fn put_settings(settings: dto::NewSettings) -> Request<dto::NewSettings> {
 		.unwrap()
 }
 
+pub fn get_ddns_config() -> Request<()> {
+	Request::builder()
+		.method(Method::GET)
+		.uri("/api/ddns")
+		.body(())
+		.unwrap()
+}
+
+pub fn put_ddns_config(ddns_config: dto::DDNSConfig) -> Request<dto::DDNSConfig> {
+	Request::builder()
+		.method(Method::PUT)
+		.uri("/api/ddns")
+		.body(ddns_config)
+		.unwrap()
+}
+
 pub fn list_users() -> Request<()> {
 	Request::builder()
 		.method(Method::GET)

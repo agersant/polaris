@@ -89,7 +89,7 @@ impl DB {
 
 #[cfg(test)]
 pub fn get_test_db(name: &str) -> DB {
-	use crate::app::{config, settings, user, vfs};
+	use crate::app::{config, ddns, settings, user, vfs};
 
 	let mut db_path = std::path::PathBuf::new();
 	db_path.push("test-output");
@@ -104,7 +104,9 @@ pub fn get_test_db(name: &str) -> DB {
 	let settings_manager = settings::Manager::new(db.clone());
 	let user_manager = user::Manager::new(db.clone());
 	let vfs_manager = vfs::Manager::new(db.clone());
-	let config_manager = config::Manager::new(settings_manager, user_manager, vfs_manager);
+	let ddns_manager = ddns::Manager::new(db.clone());
+	let config_manager =
+		config::Manager::new(settings_manager, user_manager, vfs_manager, ddns_manager);
 
 	let config_path = Path::new("test-data/config.toml");
 	let config = config::Config::from_path(&config_path).unwrap();

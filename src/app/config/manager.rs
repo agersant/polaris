@@ -37,6 +37,12 @@ impl Manager {
 				.map_err(|_| Error::Unspecified)?;
 		}
 
+		if let Some(ddns_config) = &config.ydns {
+			self.ddns_manager
+				.set_config(&ddns_config)
+				.map_err(|_| Error::Unspecified)?;
+		}
+
 		if let Some(ref users) = config.users {
 			let old_users: Vec<user::User> =
 				self.user_manager.list().map_err(|_| Error::Unspecified)?;
