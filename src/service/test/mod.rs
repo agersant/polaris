@@ -10,7 +10,6 @@ pub mod protocol;
 mod admin;
 mod auth;
 mod collection;
-mod config;
 mod ddns;
 mod lastfm;
 mod media;
