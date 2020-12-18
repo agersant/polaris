@@ -1,32 +1,42 @@
 use cookie::Cookie;
 use headers::{self, HeaderMapExt};
 use http::{Response, StatusCode};
+use time::Duration;
 
 use crate::service::dto;
 use crate::service::test::{constants::*, protocol, ServiceType, TestService};
 use crate::test_name;
 
-fn validate_cookies<T>(response: &Response<T>) {
+fn validate_added_cookies<T>(response: &Response<T>) {
+	let twenty_years = Duration::days(365 * 20);
+
 	let cookies: Vec<Cookie> = response
 		.headers()
 		.get_all(http::header::SET_COOKIE)
 		.iter()
 		.map(|c| Cookie::parse(c.to_str().unwrap()).unwrap())
 		.collect();
+
 	let session = cookies
 		.iter()
-		.find_map(|c| {
-			if c.name() == dto::COOKIE_SESSION {
-				Some(c.value())
-			} else {
-				None
-			}
-		})
+		.find(|c| c.name() == dto::COOKIE_SESSION)
 		.unwrap();
-	assert_ne!(session, TEST_USERNAME);
-	assert_ne!(session, TEST_USERNAME_ADMIN);
-	assert!(cookies.iter().any(|c| c.name() == dto::COOKIE_USERNAME));
-	assert!(cookies.iter().any(|c| c.name() == dto::COOKIE_ADMIN));
+	assert_ne!(session.value(), TEST_USERNAME);
+	assert!(session.max_age().unwrap() >= twenty_years);
+
+	let username = cookies
+		.iter()
+		.find(|c| c.name() == dto::COOKIE_USERNAME)
+		.unwrap();
+	assert_eq!(username.value(), TEST_USERNAME);
+	assert!(session.max_age().unwrap() >= twenty_years);
+
+	let is_admin = cookies
+		.iter()
+		.find(|c| c.name() == dto::COOKIE_ADMIN)
+		.unwrap();
+	assert_eq!(is_admin.value(), false.to_string());
+	assert!(session.max_age().unwrap() >= twenty_years);
 }
 
 fn validate_no_cookies<T>(response: &Response<T>) {
@@ -70,7 +80,7 @@ fn test_login_golden_path() {
 	let response = service.fetch(&request);
 	assert_eq!(response.status(), StatusCode::OK);
 
-	validate_cookies(&response);
+	validate_added_cookies(&response);
 }
 
 #[test]
@@ -124,5 +134,5 @@ fn test_authentication_via_http_header_golden_path() {
 	let response = service.fetch(&request);
 	assert_eq!(response.status(), StatusCode::OK);
 
-	validate_cookies(&response);
+	validate_added_cookies(&response);
 }

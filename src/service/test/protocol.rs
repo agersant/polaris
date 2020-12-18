@@ -2,7 +2,7 @@ use http::{method::Method, Request};
 use percent_encoding::{percent_encode, NON_ALPHANUMERIC};
 use std::path::Path;
 
-use crate::app::{config, user};
+use crate::app::user;
 use crate::service::dto;
 
 pub fn web_index() -> Request<()> {
@@ -49,6 +49,14 @@ pub fn login(username: &str, password: &str) -> Request<dto::AuthCredentials> {
 		.unwrap()
 }
 
+pub fn apply_config(config: dto::Config) -> Request<dto::Config> {
+	Request::builder()
+		.method(Method::PUT)
+		.uri("/api/config")
+		.body(config)
+		.unwrap()
+}
+
 pub fn get_settings() -> Request<()> {
 	Request::builder()
 		.method(Method::GET)
@@ -57,11 +65,59 @@ pub fn get_settings() -> Request<()> {
 		.unwrap()
 }
 
-pub fn put_settings(configuration: config::Config) -> Request<config::Config> {
+pub fn put_settings(settings: dto::NewSettings) -> Request<dto::NewSettings> {
 	Request::builder()
 		.method(Method::PUT)
 		.uri("/api/settings")
-		.body(configuration)
+		.body(settings)
+		.unwrap()
+}
+
+pub fn get_ddns_config() -> Request<()> {
+	Request::builder()
+		.method(Method::GET)
+		.uri("/api/ddns")
+		.body(())
+		.unwrap()
+}
+
+pub fn put_ddns_config(ddns_config: dto::DDNSConfig) -> Request<dto::DDNSConfig> {
+	Request::builder()
+		.method(Method::PUT)
+		.uri("/api/ddns")
+		.body(ddns_config)
+		.unwrap()
+}
+
+pub fn list_users() -> Request<()> {
+	Request::builder()
+		.method(Method::GET)
+		.uri("/api/users")
+		.body(())
+		.unwrap()
+}
+
+pub fn create_user(new_user: dto::NewUser) -> Request<dto::NewUser> {
+	Request::builder()
+		.method(Method::POST)
+		.uri("/api/user")
+		.body(new_user)
+		.unwrap()
+}
+
+pub fn update_user(username: &str, user_update: dto::UserUpdate) -> Request<dto::UserUpdate> {
+	Request::builder()
+		.method(Method::PUT)
+		.uri(format!("/api/user/{}", username))
+		.body(user_update)
+		.unwrap()
+}
+
+pub fn delete_user(username: &str) -> Request<()> {
+	Request::builder()
+		.method(Method::DELETE)
+		.uri(format!("/api/user/{}", username))
+		.body(())
 		.unwrap()
 }
 

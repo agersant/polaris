@@ -2,16 +2,15 @@ use diesel::prelude::*;
 use std::path::{Path, PathBuf};
 
 use super::*;
-use crate::app::{config, user, vfs};
+use crate::app::{index::Index, settings, vfs};
 use crate::db::{self, directories, songs};
 use crate::test_name;
 
 fn get_context(test_name: &str) -> (db::DB, Index) {
 	let db = db::get_test_db(test_name);
 	let vfs_manager = vfs::Manager::new(db.clone());
-	let user_manager = user::Manager::new(db.clone());
-	let config_manager = config::Manager::new(db.clone(), user_manager);
-	let index = Index::new(db.clone(), vfs_manager, config_manager);
+	let settings_manager = settings::Manager::new(db.clone());
+	let index = Index::new(db.clone(), vfs_manager, settings_manager);
 	(db, index)
 }
 

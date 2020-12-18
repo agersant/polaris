@@ -1,13 +1,19 @@
 use thiserror::Error;
 
 use crate::app::index::QueryError;
-use crate::app::playlist;
+use crate::app::{config, playlist, settings, user};
 
 #[derive(Error, Debug)]
 pub enum APIError {
 	#[error("Incorrect Credentials")]
 	IncorrectCredentials,
-	#[error("Cannot remove own admin privilege")]
+	#[error("EmptyUsername")]
+	EmptyUsername,
+	#[error("EmptyPassword")]
+	EmptyPassword,
+	#[error("Cannot delete your own account")]
+	DeletingOwnAccount,
+	#[error("Cannot remove your own admin privilege")]
 	OwnAdminPrivilegeRemoval,
 	#[error("Audio file could not be opened")]
 	AudioFileIOError,
@@ -35,6 +41,14 @@ impl From<anyhow::Error> for APIError {
 	}
 }
 
+impl From<config::Error> for APIError {
+	fn from(error: config::Error) -> APIError {
+		match error {
+			config::Error::Unspecified => APIError::Unspecified,
+		}
+	}
+}
+
 impl From<playlist::Error> for APIError {
 	fn from(error: playlist::Error) -> APIError {
 		match error {
@@ -50,6 +64,30 @@ impl From<QueryError> for APIError {
 		match error {
 			QueryError::VFSPathNotFound => APIError::VFSPathNotFound,
 			QueryError::Unspecified => APIError::Unspecified,
+		}
+	}
+}
+
+impl From<settings::Error> for APIError {
+	fn from(error: settings::Error) -> APIError {
+		match error {
+			settings::Error::AuthSecretNotFound => APIError::Unspecified,
+			settings::Error::InvalidAuthSecret => APIError::Unspecified,
+			settings::Error::IndexSleepDurationNotFound => APIError::Unspecified,
+			settings::Error::IndexAlbumArtPatternNotFound => APIError::Unspecified,
+			settings::Error::IndexAlbumArtPatternInvalid => APIError::Unspecified,
+			settings::Error::Unspecified => APIError::Unspecified,
+		}
+	}
+}
+
+impl From<user::Error> for APIError {
+	fn from(error: user::Error) -> APIError {
+		match error {
+			user::Error::EmptyUsername => APIError::EmptyUsername,
+			user::Error::EmptyPassword => APIError::EmptyPassword,
+			user::Error::IncorrectUsername => APIError::IncorrectCredentials,
+			user::Error::Unspecified => APIError::Unspecified,
 		}
 	}
 }

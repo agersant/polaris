@@ -17,17 +17,19 @@ impl Manager {
 		Self { db }
 	}
 
-	pub fn create_user(&self, username: &str, password: &str) -> Result<(), Error> {
-		if password.is_empty() {
-			return Err(Error::EmptyPassword);
+	pub fn create(&self, new_user: &NewUser) -> Result<(), Error> {
+		if new_user.name.is_empty() {
+			return Err(Error::EmptyUsername);
 		}
-		let password_hash = hash_password(password)?;
+
+		let password_hash = hash_password(&new_user.password)?;
 		let connection = self.db.connect()?;
 		let new_user = User {
-			name: username.to_owned(),
+			name: new_user.name.to_owned(),
 			password_hash,
-			admin: 0,
+			admin: new_user.admin as i32,
 		};
+
 		diesel::insert_into(users::table)
 			.values(&new_user)
 			.execute(&connection)
@@ -35,17 +37,37 @@ impl Manager {
 		Ok(())
 	}
 
-	pub fn set_password(&self, username: &str, password: &str) -> Result<(), Error> {
-		let password_hash = hash_password(password)?;
+	pub fn delete(&self, username: &str) -> Result<(), Error> {
+		use crate::db::users::dsl::*;
 		let connection = self.db.connect()?;
-		diesel::update(users::table.filter(users::name.eq(username)))
-			.set(users::password_hash.eq(password_hash))
+		diesel::delete(users.filter(name.eq(username)))
 			.execute(&connection)
 			.map_err(|_| Error::Unspecified)?;
 		Ok(())
 	}
 
-	pub fn auth(&self, username: &str, password: &str) -> anyhow::Result<bool> {
+	pub fn set_password(&self, username: &str, password: &str) -> Result<(), Error> {
+		let hash = hash_password(password)?;
+		let connection = self.db.connect()?;
+		use crate::db::users::dsl::*;
+		diesel::update(users.filter(name.eq(username)))
+			.set(password_hash.eq(hash))
+			.execute(&connection)
+			.map_err(|_| Error::Unspecified)?;
+		Ok(())
+	}
+
+	pub fn set_is_admin(&self, username: &str, is_admin: bool) -> Result<(), Error> {
+		use crate::db::users::dsl::*;
+		let connection = self.db.connect()?;
+		diesel::update(users.filter(name.eq(username)))
+			.set(admin.eq(is_admin as i32))
+			.execute(&connection)
+			.map_err(|_| Error::Unspecified)?;
+		Ok(())
+	}
+
+	pub fn login(&self, username: &str, password: &str) -> Result<bool, Error> {
 		use crate::db::users::dsl::*;
 		let connection = self.db.connect()?;
 		match users
@@ -53,15 +75,14 @@ impl Manager {
 			.filter(name.eq(username))
 			.get_result(&connection)
 		{
-			Err(diesel::result::Error::NotFound) => Ok(false),
+			Err(diesel::result::Error::NotFound) => Err(Error::IncorrectUsername),
 			Ok(hash) => {
 				let hash: String = hash;
 				Ok(verify_password(&hash, password))
 			}
-			Err(e) => Err(e.into()),
+			Err(_) => Err(Error::Unspecified),
 		}
 	}
-
 	pub fn count(&self) -> anyhow::Result<i64> {
 		use crate::db::users::dsl::*;
 		let connection = self.db.connect()?;
@@ -69,13 +90,23 @@ impl Manager {
 		Ok(count)
 	}
 
-	pub fn exists(&self, username: &str) -> anyhow::Result<bool> {
+	pub fn list(&self) -> Result<Vec<User>, Error> {
+		use crate::db::users::dsl::*;
+		let connection = self.db.connect()?;
+		users
+			.select((name, password_hash, admin))
+			.get_results(&connection)
+			.map_err(|_| Error::Unspecified)
+	}
+
+	pub fn exists(&self, username: &str) -> Result<bool, Error> {
 		use crate::db::users::dsl::*;
 		let connection = self.db.connect()?;
 		let results: Vec<String> = users
 			.select(name)
 			.filter(name.eq(username))
-			.get_results(&connection)?;
+			.get_results(&connection)
+			.map_err(|_| Error::Unspecified)?;
 		Ok(results.len() > 0)
 	}
 
@@ -134,11 +165,11 @@ impl Manager {
 	}
 }
 
-fn hash_password(password: &str) -> anyhow::Result<String> {
-	match pbkdf2::pbkdf2_simple(password, HASH_ITERATIONS) {
-		Ok(hash) => Ok(hash),
-		Err(e) => Err(e.into()),
+fn hash_password(password: &str) -> Result<String, Error> {
+	if password.is_empty() {
+		return Err(Error::EmptyPassword);
 	}
+	pbkdf2::pbkdf2_simple(password, HASH_ITERATIONS).map_err(|_| Error::Unspecified)
 }
 
 fn verify_password(password_hash: &str, attempted_password: &str) -> bool {

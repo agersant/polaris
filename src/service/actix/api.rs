@@ -19,12 +19,11 @@ use std::ops::Deref;
 use std::path::Path;
 use std::pin::Pin;
 use std::str;
-use time::Duration;
 
 use crate::app::{
-	config,
+	config, ddns,
 	index::{self, Index},
-	lastfm, playlist, thumbnail, user, vfs,
+	lastfm, playlist, settings, thumbnail, user, vfs,
 };
 use crate::service::{dto, error::*};
 
@@ -34,8 +33,17 @@ pub fn make_config() -> impl FnOnce(&mut ServiceConfig) + Clone {
 		cfg.app_data(JsonConfig::default().limit(4 * megabyte)) // 4MB
 			.service(version)
 			.service(initial_setup)
+			.service(apply_config)
 			.service(get_settings)
 			.service(put_settings)
+			.service(list_mount_dirs)
+			.service(put_mount_dirs)
+			.service(get_ddns_config)
+			.service(put_ddns_config)
+			.service(list_users)
+			.service(create_user)
+			.service(update_user)
+			.service(delete_user)
 			.service(get_preferences)
 			.service(put_preferences)
 			.service(trigger_index)
@@ -65,6 +73,9 @@ impl ResponseError for APIError {
 	fn status_code(&self) -> StatusCode {
 		match self {
 			APIError::IncorrectCredentials => StatusCode::UNAUTHORIZED,
+			APIError::EmptyUsername => StatusCode::BAD_REQUEST,
+			APIError::EmptyPassword => StatusCode::BAD_REQUEST,
+			APIError::DeletingOwnAccount => StatusCode::CONFLICT,
 			APIError::OwnAdminPrivilegeRemoval => StatusCode::CONFLICT,
 			APIError::AudioFileIOError => StatusCode::NOT_FOUND,
 			APIError::ThumbnailFileIOError => StatusCode::NOT_FOUND,
@@ -190,7 +201,7 @@ impl FromRequest for Auth {
 					.map(|s| s.as_ref())
 					.unwrap_or("")
 					.to_string();
-				let auth_result = block(move || user_manager.auth(&username, &password)).await?;
+				let auth_result = block(move || user_manager.login(&username, &password)).await?;
 				if auth_result {
 					Ok(Auth {
 						username: auth.user_id().to_string(),
@@ -294,15 +305,13 @@ fn add_auth_cookies<T>(
 	username: &str,
 	is_admin: bool,
 ) -> Result<(), HttpError> {
-	let duration = Duration::days(1);
-
 	let mut cookies = cookies.clone();
 
 	cookies.add_signed(
 		Cookie::build(dto::COOKIE_SESSION, username.to_owned())
 			.same_site(cookie::SameSite::Lax)
 			.http_only(true)
-			.max_age(duration)
+			.permanent()
 			.finish(),
 	);
 
@@ -310,7 +319,7 @@ fn add_auth_cookies<T>(
 		Cookie::build(dto::COOKIE_USERNAME, username.to_owned())
 			.same_site(cookie::SameSite::Lax)
 			.http_only(false)
-			.max_age(duration)
+			.permanent()
 			.path("/")
 			.finish(),
 	);
@@ -319,7 +328,7 @@ fn add_auth_cookies<T>(
 		Cookie::build(dto::COOKIE_ADMIN, format!("{}", is_admin))
 			.same_site(cookie::SameSite::Lax)
 			.http_only(false)
-			.max_age(duration)
+			.permanent()
 			.path("/")
 			.finish(),
 	);
@@ -360,42 +369,150 @@ async fn initial_setup(
 	user_manager: Data<user::Manager>,
 ) -> Result<Json<dto::InitialSetup>, APIError> {
 	let initial_setup = block(move || -> Result<dto::InitialSetup, APIError> {
-		let user_count = user_manager.count()?;
+		let users = user_manager.list()?;
+		let has_any_admin = users.iter().any(|u| u.is_admin());
 		Ok(dto::InitialSetup {
-			has_any_users: user_count > 0,
+			has_any_users: has_any_admin,
 		})
 	})
 	.await?;
 	Ok(Json(initial_setup))
 }
 
+#[put("/config")]
+async fn apply_config(
+	_admin_rights: AdminRights,
+	config_manager: Data<config::Manager>,
+	config: Json<dto::Config>,
+) -> Result<HttpResponse, APIError> {
+	block(move || config_manager.apply(&config.to_owned().into())).await?;
+	Ok(HttpResponse::new(StatusCode::OK))
+}
+
 #[get("/settings")]
 async fn get_settings(
-	config_manager: Data<config::Manager>,
+	settings_manager: Data<settings::Manager>,
 	_admin_rights: AdminRights,
-) -> Result<Json<config::Config>, APIError> {
-	let config = block(move || config_manager.read()).await?;
-	Ok(Json(config))
+) -> Result<Json<dto::Settings>, APIError> {
+	let settings = block(move || settings_manager.read()).await?;
+	Ok(Json(settings.into()))
 }
 
 #[put("/settings")]
 async fn put_settings(
-	admin_rights: AdminRights,
-	config_manager: Data<config::Manager>,
-	config: Json<config::Config>,
+	_admin_rights: AdminRights,
+	settings_manager: Data<settings::Manager>,
+	new_settings: Json<dto::NewSettings>,
 ) -> Result<HttpResponse, APIError> {
-	// Do not let users remove their own admin rights
+	block(move || settings_manager.amend(&new_settings.to_owned().into())).await?;
+	Ok(HttpResponse::new(StatusCode::OK))
+}
+
+#[get("/mount_dirs")]
+async fn list_mount_dirs(
+	vfs_manager: Data<vfs::Manager>,
+	_admin_rights: AdminRights,
+) -> Result<Json<Vec<dto::MountDir>>, APIError> {
+	let mount_dirs = block(move || vfs_manager.mount_dirs()).await?;
+	let mount_dirs = mount_dirs.into_iter().map(|m| m.into()).collect();
+	Ok(Json(mount_dirs))
+}
+
+#[put("/mount_dirs")]
+async fn put_mount_dirs(
+	_admin_rights: AdminRights,
+	vfs_manager: Data<vfs::Manager>,
+	new_mount_dirs: Json<Vec<dto::MountDir>>,
+) -> Result<HttpResponse, APIError> {
+	let new_mount_dirs = new_mount_dirs
+		.to_owned()
+		.into_iter()
+		.map(|m| m.into())
+		.collect();
+	block(move || vfs_manager.set_mount_dirs(&new_mount_dirs)).await?;
+	Ok(HttpResponse::new(StatusCode::OK))
+}
+
+#[get("/ddns")]
+async fn get_ddns_config(
+	ddns_manager: Data<ddns::Manager>,
+	_admin_rights: AdminRights,
+) -> Result<Json<dto::DDNSConfig>, APIError> {
+	let ddns_config = block(move || ddns_manager.config()).await?;
+	Ok(Json(ddns_config.into()))
+}
+
+#[put("/ddns")]
+async fn put_ddns_config(
+	_admin_rights: AdminRights,
+	ddns_manager: Data<ddns::Manager>,
+	new_ddns_config: Json<dto::DDNSConfig>,
+) -> Result<HttpResponse, APIError> {
+	block(move || ddns_manager.set_config(&new_ddns_config.to_owned().into())).await?;
+	Ok(HttpResponse::new(StatusCode::OK))
+}
+
+#[get("/users")]
+async fn list_users(
+	user_manager: Data<user::Manager>,
+	_admin_rights: AdminRights,
+) -> Result<Json<Vec<dto::User>>, APIError> {
+	let users = block(move || user_manager.list()).await?;
+	let users = users.into_iter().map(|u| u.into()).collect();
+	Ok(Json(users))
+}
+
+#[post("/user")]
+async fn create_user(
+	user_manager: Data<user::Manager>,
+	_admin_rights: AdminRights,
+	new_user: Json<dto::NewUser>,
+) -> Result<HttpResponse, APIError> {
+	let new_user = new_user.to_owned().into();
+	block(move || user_manager.create(&new_user)).await?;
+	Ok(HttpResponse::new(StatusCode::OK))
+}
+
+#[put("/user/{name}")]
+async fn update_user(
+	user_manager: Data<user::Manager>,
+	admin_rights: AdminRights,
+	name: web::Path<String>,
+	user_update: Json<dto::UserUpdate>,
+) -> Result<HttpResponse, APIError> {
 	if let Some(auth) = &admin_rights.auth {
-		if let Some(users) = &config.users {
-			for user in users {
-				if auth.username == user.name && !user.admin {
-					return Err(APIError::OwnAdminPrivilegeRemoval);
-				}
+		if auth.username == name.as_str() {
+			if user_update.new_is_admin == Some(false) {
+				return Err(APIError::OwnAdminPrivilegeRemoval);
 			}
 		}
 	}
 
-	block(move || config_manager.amend(&config)).await?;
+	block(move || -> Result<(), APIError> {
+		if let Some(password) = &user_update.new_password {
+			user_manager.set_password(&name, password)?;
+		}
+		if let Some(is_admin) = &user_update.new_is_admin {
+			user_manager.set_is_admin(&name, *is_admin)?;
+		}
+		Ok(())
+	})
+	.await?;
+	Ok(HttpResponse::new(StatusCode::OK))
+}
+
+#[delete("/user/{name}")]
+async fn delete_user(
+	user_manager: Data<user::Manager>,
+	admin_rights: AdminRights,
+	name: web::Path<String>,
+) -> Result<HttpResponse, APIError> {
+	if let Some(auth) = &admin_rights.auth {
+		if auth.username == name.as_str() {
+			return Err(APIError::DeletingOwnAccount);
+		}
+	}
+	block(move || user_manager.delete(&name)).await?;
 	Ok(HttpResponse::new(StatusCode::OK))
 }
 
@@ -435,7 +552,7 @@ async fn login(
 ) -> Result<HttpResponse, APIError> {
 	let username = credentials.username.clone();
 	let is_admin = block(move || {
-		if !user_manager.auth(&credentials.username, &credentials.password)? {
+		if !user_manager.login(&credentials.username, &credentials.password)? {
 			return Err(APIError::IncorrectCredentials);
 		}
 		user_manager

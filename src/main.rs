@@ -148,10 +148,7 @@ fn main() -> Result<()> {
 	context.index.begin_periodic_updates();
 
 	// Start DDNS updates
-	let ddns_manager = app::ddns::Manager::new(context.db.clone());
-	std::thread::spawn(move || {
-		ddns_manager.run();
-	});
+	context.ddns_manager.begin_periodic_updates();
 
 	// Start server
 	info!("Starting up server");
