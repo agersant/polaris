@@ -31,7 +31,7 @@ impl From<MountDir> for Mount {
 		let mut correct_separator = String::new();
 		correct_separator.push(path::MAIN_SEPARATOR);
 		let path_string = separator_regex.replace_all(&m.source, correct_separator.as_str());
-		let source = Path::new(path_string.deref()).to_path_buf();
+		let source = PathBuf::from(path_string.deref());
 		Self {
 			name: m.name,
 			source: source,

@@ -57,7 +57,7 @@ pub trait TestService {
 			}]),
 			..Default::default()
 		};
-		let request = protocol::apply_config(configuration.into());
+		let request = protocol::apply_config(configuration);
 		let response = self.fetch(&request);
 		assert_eq!(response.status(), StatusCode::OK);
 	}
