@@ -44,12 +44,12 @@ pub trait TestService {
 				dto::NewUser {
 					name: TEST_USERNAME_ADMIN.into(),
 					password: TEST_PASSWORD_ADMIN.into(),
-					is_admin: true,
+					admin: true,
 				},
 				dto::NewUser {
 					name: TEST_USERNAME.into(),
 					password: TEST_PASSWORD.into(),
-					is_admin: false,
+					admin: false,
 				},
 			]),
 			mount_dirs: Some(vec![dto::MountDir {

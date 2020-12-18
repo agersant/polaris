@@ -65,7 +65,7 @@ impl From<user::User> for User {
 pub struct NewUser {
 	pub name: String,
 	pub password: String,
-	pub is_admin: bool,
+	pub admin: bool,
 }
 
 impl From<NewUser> for user::NewUser {
@@ -73,7 +73,7 @@ impl From<NewUser> for user::NewUser {
 		Self {
 			name: u.name,
 			password: u.password,
-			admin: u.is_admin,
+			admin: u.admin,
 		}
 	}
 }

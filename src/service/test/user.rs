@@ -37,7 +37,7 @@ fn create_user_requires_admin() {
 	let request = protocol::create_user(dto::NewUser {
 		name: "Walter".into(),
 		password: "secret".into(),
-		is_admin: false,
+		admin: false,
 	});
 
 	let response = service.fetch(&request);
@@ -57,7 +57,7 @@ fn create_user_golden_path() {
 	let new_user = dto::NewUser {
 		name: "Walter".into(),
 		password: "secret".into(),
-		is_admin: false,
+		admin: false,
 	};
 	let request = protocol::create_user(new_user);
 	let response = service.fetch(&request);

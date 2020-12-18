@@ -391,7 +391,7 @@ async fn apply_config(
 				return Err(APIError::DeletingOwnAccount);
 			}
 			for user in users {
-				if auth.username == user.name && !user.is_admin {
+				if auth.username == user.name && !user.admin {
 					return Err(APIError::OwnAdminPrivilegeRemoval);
 				}
 			}
