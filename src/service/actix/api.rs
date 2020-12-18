@@ -68,7 +68,7 @@ impl ResponseError for APIError {
 			APIError::OwnAdminPrivilegeRemoval => StatusCode::CONFLICT,
 			APIError::AudioFileIOError => StatusCode::NOT_FOUND,
 			APIError::ThumbnailFileIOError => StatusCode::NOT_FOUND,
-			APIError::LastFMAccountNotLinked => StatusCode::UNAUTHORIZED,
+			APIError::LastFMAccountNotLinked => StatusCode::NO_CONTENT,
 			APIError::LastFMLinkContentBase64DecodeError => StatusCode::BAD_REQUEST,
 			APIError::LastFMLinkContentEncodingError => StatusCode::BAD_REQUEST,
 			APIError::UserNotFound => StatusCode::NOT_FOUND,

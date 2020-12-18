@@ -126,8 +126,9 @@ impl Manager {
 	pub fn lastfm_unlink(&self, username: &str) -> anyhow::Result<()> {
 		use crate::db::users::dsl::*;
 		let connection = self.db.connect()?;
+		let null: Option<String> = None;
 		diesel::update(users.filter(name.eq(username)))
-			.set((lastfm_session_key.eq(""), lastfm_username.eq("")))
+			.set((lastfm_session_key.eq(&null), lastfm_username.eq(&null)))
 			.execute(&connection)?;
 		Ok(())
 	}
