@@ -84,8 +84,9 @@ impl ContextBuilder {
 
 		let vfs_manager = vfs::Manager::new(db.clone());
 		let settings_manager = settings::Manager::new(db.clone());
+		let auth_secret = settings_manager.get_auth_secret()?;
 		let ddns_manager = ddns::Manager::new(db.clone());
-		let user_manager = user::Manager::new(db.clone());
+		let user_manager = user::Manager::new(db.clone(), auth_secret);
 		let index = Index::new(db.clone(), vfs_manager.clone(), settings_manager.clone());
 		let config_manager = config::Manager::new(
 			settings_manager.clone(),

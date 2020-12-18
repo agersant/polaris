@@ -201,8 +201,8 @@ impl FromRequest for Auth {
 					.map(|s| s.as_ref())
 					.unwrap_or("")
 					.to_string();
-				let auth_result = block(move || user_manager.login(&username, &password)).await?;
-				if auth_result {
+				let auth_result = block(move || user_manager.login(&username, &password)).await;
+				if auth_result.is_ok() {
 					Ok(Auth {
 						username: auth.user_id().to_string(),
 						source: AuthSource::AuthorizationHeader,
@@ -552,9 +552,7 @@ async fn login(
 ) -> Result<HttpResponse, APIError> {
 	let username = credentials.username.clone();
 	let is_admin = block(move || {
-		if !user_manager.login(&credentials.username, &credentials.password)? {
-			return Err(APIError::IncorrectCredentials);
-		}
+		user_manager.login(&credentials.username, &credentials.password)?;
 		user_manager
 			.is_admin(&credentials.username)
 			.map_err(|_| APIError::Unspecified)

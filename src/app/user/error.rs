@@ -6,6 +6,8 @@ pub enum Error {
 	EmptyPassword,
 	#[error("Username does not exist")]
 	IncorrectUsername,
+	#[error("Password does not match username")]
+	IncorrectPassword,
 	#[error("Unspecified")]
 	Unspecified,
 }

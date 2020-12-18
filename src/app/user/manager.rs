@@ -1,20 +1,24 @@
 use anyhow::anyhow;
 use diesel;
 use diesel::prelude::*;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::*;
+use crate::app::settings::AuthSecret;
 use crate::db::DB;
 
 const HASH_ITERATIONS: u32 = 10000;
 
 #[derive(Clone)]
 pub struct Manager {
+	// TODO make this private and move preferences methods in this file
 	pub db: DB,
+	auth_secret: AuthSecret,
 }
 
 impl Manager {
-	pub fn new(db: DB) -> Self {
-		Self { db }
+	pub fn new(db: DB, auth_secret: AuthSecret) -> Self {
+		Self { db, auth_secret }
 	}
 
 	pub fn create(&self, new_user: &NewUser) -> Result<(), Error> {
@@ -67,7 +71,7 @@ impl Manager {
 		Ok(())
 	}
 
-	pub fn login(&self, username: &str, password: &str) -> Result<bool, Error> {
+	pub fn login(&self, username: &str, password: &str) -> Result<AuthToken, Error> {
 		use crate::db::users::dsl::*;
 		let connection = self.db.connect()?;
 		match users
@@ -78,11 +82,46 @@ impl Manager {
 			Err(diesel::result::Error::NotFound) => Err(Error::IncorrectUsername),
 			Ok(hash) => {
 				let hash: String = hash;
-				Ok(verify_password(&hash, password))
+				if verify_password(&hash, password) {
+					self.generate_auth_token(username)
+				} else {
+					Err(Error::IncorrectPassword)
+				}
 			}
 			Err(_) => Err(Error::Unspecified),
 		}
 	}
+
+	pub fn authenticate(&self, auth_token: &AuthToken) -> Result<String, Error> {
+		let username = self.decode_auth_token(auth_token)?;
+		if self.exists(&username)? {
+			Ok(username)
+		} else {
+			Err(Error::IncorrectUsername)
+		}
+	}
+
+	fn decode_auth_token(&self, auth_token: &AuthToken) -> Result<String, Error> {
+		let username = branca::decode(&auth_token.data, &self.auth_secret.key, 0)
+			.map_err(|_| Error::Unspecified)?;
+		std::str::from_utf8(&username[..])
+			.map_err(|_| Error::Unspecified)
+			.map(|s| s.to_owned())
+	}
+
+	fn generate_auth_token(&self, username: &str) -> Result<AuthToken, Error> {
+		branca::encode(
+			&username[..].as_bytes(),
+			&self.auth_secret.key,
+			SystemTime::now()
+				.duration_since(UNIX_EPOCH)
+				.map_err(|_| Error::Unspecified)?
+				.as_secs() as u32,
+		)
+		.map_err(|_| Error::Unspecified)
+		.map(|data| AuthToken { data })
+	}
+
 	pub fn count(&self) -> anyhow::Result<i64> {
 		use crate::db::users::dsl::*;
 		let connection = self.db.connect()?;

@@ -1,4 +1,5 @@
 use super::*;
+use crate::app::settings;
 use crate::db::DB;
 use crate::test_name;
 
@@ -19,7 +20,9 @@ pub fn get_test_db(name: &str) -> DB {
 #[test]
 fn create_delete_user_golden_path() {
 	let db = get_test_db(&test_name!());
-	let user_manager = Manager::new(db);
+	let settings_manager = settings::Manager::new(db.clone());
+	let auth_secret = settings_manager.get_auth_secret().unwrap();
+	let user_manager = Manager::new(db, auth_secret);
 
 	let new_user = NewUser {
 		name: "Walter".to_owned(),
@@ -37,7 +40,9 @@ fn create_delete_user_golden_path() {
 #[test]
 fn cannot_create_user_with_blank_username() {
 	let db = get_test_db(&test_name!());
-	let user_manager = Manager::new(db);
+	let settings_manager = settings::Manager::new(db.clone());
+	let auth_secret = settings_manager.get_auth_secret().unwrap();
+	let user_manager = Manager::new(db, auth_secret);
 
 	let new_user = NewUser {
 		name: "".to_owned(),
@@ -54,7 +59,9 @@ fn cannot_create_user_with_blank_username() {
 #[test]
 fn cannot_create_user_with_blank_password() {
 	let db = get_test_db(&test_name!());
-	let user_manager = Manager::new(db);
+	let settings_manager = settings::Manager::new(db.clone());
+	let auth_secret = settings_manager.get_auth_secret().unwrap();
+	let user_manager = Manager::new(db, auth_secret);
 
 	let new_user = NewUser {
 		name: "Walter".to_owned(),
@@ -71,7 +78,9 @@ fn cannot_create_user_with_blank_password() {
 #[test]
 fn cannot_create_duplicate_user() {
 	let db = get_test_db(&test_name!());
-	let user_manager = Manager::new(db);
+	let settings_manager = settings::Manager::new(db.clone());
+	let auth_secret = settings_manager.get_auth_secret().unwrap();
+	let user_manager = Manager::new(db, auth_secret);
 
 	let new_user = NewUser {
 		name: "Walter".to_owned(),
@@ -86,7 +95,9 @@ fn cannot_create_duplicate_user() {
 #[test]
 fn can_read_write_preferences() {
 	let db = get_test_db(&test_name!());
-	let user_manager = Manager::new(db);
+	let settings_manager = settings::Manager::new(db.clone());
+	let auth_secret = settings_manager.get_auth_secret().unwrap();
+	let user_manager = Manager::new(db, auth_secret);
 
 	let new_preferences = Preferences {
 		web_theme_base: Some("very-dark-theme".to_owned()),
@@ -107,4 +118,25 @@ fn can_read_write_preferences() {
 
 	let read_preferences = user_manager.read_preferences("Walter").unwrap();
 	assert_eq!(new_preferences, read_preferences);
+}
+
+#[test]
+fn recognizes_auth_token() {
+	let db = get_test_db(&test_name!());
+	let settings_manager = settings::Manager::new(db.clone());
+	let auth_secret = settings_manager.get_auth_secret().unwrap();
+	let user_manager = Manager::new(db, auth_secret);
+
+	let username = "Walter";
+	let password = "super_secret!";
+
+	let new_user = NewUser {
+		name: username.to_owned(),
+		password: password.to_owned(),
+		admin: false,
+	};
+
+	user_manager.create(&new_user).unwrap();
+	let token = user_manager.login(username, password).unwrap();
+	assert_eq!(user_manager.authenticate(&token).unwrap(), username)
 }
