@@ -2,7 +2,7 @@ use serde::Deserialize;
 use std::io::Read;
 use std::path;
 
-use crate::app::{settings, user, vfs};
+use crate::app::{ddns, settings, user, vfs};
 
 mod error;
 mod manager;
@@ -16,6 +16,7 @@ pub use manager::*;
 pub struct Config {
 	pub settings: Option<settings::NewSettings>,
 	pub mount_dirs: Option<Vec<vfs::MountDir>>,
+	pub ydns: Option<ddns::Config>,
 	pub users: Option<Vec<user::NewUser>>,
 }
 

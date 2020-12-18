@@ -26,10 +26,12 @@ fn apply_saves_misc_settings() {
 	let settings_manager = settings::Manager::new(db.clone());
 	let user_manager = user::Manager::new(db.clone());
 	let vfs_manager = vfs::Manager::new(db.clone());
+	let ddns_manager = ddns::Manager::new(db.clone());
 	let config_manager = Manager::new(
 		settings_manager.clone(),
 		user_manager.clone(),
 		vfs_manager.clone(),
+		ddns_manager.clone(),
 	);
 
 	let new_config = Config {
@@ -60,10 +62,12 @@ fn apply_saves_mount_points() {
 	let settings_manager = settings::Manager::new(db.clone());
 	let user_manager = user::Manager::new(db.clone());
 	let vfs_manager = vfs::Manager::new(db.clone());
+	let ddns_manager = ddns::Manager::new(db.clone());
 	let config_manager = Manager::new(
 		settings_manager.clone(),
 		user_manager.clone(),
 		vfs_manager.clone(),
+		ddns_manager.clone(),
 	);
 
 	let new_config = Config {
@@ -87,28 +91,26 @@ fn apply_saves_ddns_settings() {
 	let settings_manager = settings::Manager::new(db.clone());
 	let user_manager = user::Manager::new(db.clone());
 	let vfs_manager = vfs::Manager::new(db.clone());
+	let ddns_manager = ddns::Manager::new(db.clone());
 	let config_manager = Manager::new(
 		settings_manager.clone(),
 		user_manager.clone(),
 		vfs_manager.clone(),
+		ddns_manager.clone(),
 	);
 
 	let new_config = Config {
-		settings: Some(settings::NewSettings {
-			ydns: Some(ddns::Config {
-				host: "🐸🐸🐸.ydns.eu".into(),
-				username: "kfr🐸g".into(),
-				password: "tasty🐞".into(),
-			}),
-			..Default::default()
+		ydns: Some(ddns::Config {
+			host: "🐸🐸🐸.ydns.eu".into(),
+			username: "kfr🐸g".into(),
+			password: "tasty🐞".into(),
 		}),
 		..Default::default()
 	};
 
 	config_manager.apply(&new_config).unwrap();
-	let settings = settings_manager.read().unwrap();
-	let new_settings = new_config.settings.unwrap();
-	assert_eq!(settings.ydns, new_settings.ydns);
+	let actual_ddns = ddns_manager.config().unwrap();
+	assert_eq!(actual_ddns, new_config.ydns.unwrap());
 }
 
 #[test]
@@ -117,10 +119,12 @@ fn apply_preserves_password_hashes() {
 	let settings_manager = settings::Manager::new(db.clone());
 	let user_manager = user::Manager::new(db.clone());
 	let vfs_manager = vfs::Manager::new(db.clone());
+	let ddns_manager = ddns::Manager::new(db.clone());
 	let config_manager = Manager::new(
 		settings_manager.clone(),
 		user_manager.clone(),
 		vfs_manager.clone(),
+		ddns_manager.clone(),
 	);
 
 	let initial_config = Config {
@@ -154,10 +158,12 @@ fn apply_can_toggle_admin() {
 	let settings_manager = settings::Manager::new(db.clone());
 	let user_manager = user::Manager::new(db.clone());
 	let vfs_manager = vfs::Manager::new(db.clone());
+	let ddns_manager = ddns::Manager::new(db.clone());
 	let config_manager = Manager::new(
 		settings_manager.clone(),
 		user_manager.clone(),
 		vfs_manager.clone(),
+		ddns_manager.clone(),
 	);
 
 	let initial_config = Config {

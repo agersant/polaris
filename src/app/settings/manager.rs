@@ -5,7 +5,7 @@ use std::convert::TryInto;
 use std::time::Duration;
 
 use super::*;
-use crate::db::{ddns_config, misc_settings, DB};
+use crate::db::{misc_settings, DB};
 
 #[derive(Clone)]
 pub struct Manager {
@@ -68,20 +68,10 @@ impl Manager {
 			.get_result(&connection)
 			.map_err(|_| Error::Unspecified)?;
 
-		let ydns = ddns_config::table
-			.select((
-				ddns_config::host,
-				ddns_config::username,
-				ddns_config::password,
-			))
-			.get_result(&connection)
-			.ok();
-
 		Ok(Settings {
 			auth_secret: misc.auth_secret,
 			album_art_pattern: misc.index_album_art_pattern,
 			reindex_every_n_seconds: misc.index_sleep_duration_seconds,
-			ydns,
 		})
 	}
 
@@ -98,18 +88,6 @@ impl Manager {
 		if let Some(ref album_art_pattern) = new_settings.album_art_pattern {
 			diesel::update(misc_settings::table)
 				.set(misc_settings::index_album_art_pattern.eq(album_art_pattern))
-				.execute(&connection)
-				.map_err(|_| Error::Unspecified)?;
-		}
-
-		if let Some(ref ydns) = new_settings.ydns {
-			use self::ddns_config::dsl::*;
-			diesel::update(ddns_config)
-				.set((
-					host.eq(ydns.host.clone()),
-					username.eq(ydns.username.clone()),
-					password.eq(ydns.password.clone()),
-				))
 				.execute(&connection)
 				.map_err(|_| Error::Unspecified)?;
 		}

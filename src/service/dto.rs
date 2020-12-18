@@ -151,6 +151,7 @@ impl From<Config> for config::Config {
 				.mount_dirs
 				.map(|v| v.into_iter().map(|m| m.into()).collect()),
 			users: s.users.map(|v| v.into_iter().map(|u| u.into()).collect()),
+			ydns: s.ydns.map(|c| c.into()),
 		}
 	}
 }
@@ -159,7 +160,6 @@ impl From<Config> for config::Config {
 pub struct NewSettings {
 	pub album_art_pattern: Option<String>,
 	pub reindex_every_n_seconds: Option<i32>,
-	pub ydns: Option<DDNSConfig>,
 }
 
 impl From<NewSettings> for settings::NewSettings {
@@ -167,7 +167,6 @@ impl From<NewSettings> for settings::NewSettings {
 		Self {
 			album_art_pattern: s.album_art_pattern,
 			reindex_every_n_seconds: s.reindex_every_n_seconds,
-			ydns: s.ydns.map(|c| c.into()),
 		}
 	}
 }
@@ -176,7 +175,6 @@ impl From<NewSettings> for settings::NewSettings {
 pub struct Settings {
 	pub album_art_pattern: String,
 	pub reindex_every_n_seconds: i32,
-	pub ydns: Option<DDNSConfig>,
 }
 
 impl From<settings::Settings> for Settings {
@@ -184,7 +182,6 @@ impl From<settings::Settings> for Settings {
 		Self {
 			album_art_pattern: s.album_art_pattern,
 			reindex_every_n_seconds: s.reindex_every_n_seconds,
-			ydns: s.ydns.map(|c| c.into()),
 		}
 	}
 }

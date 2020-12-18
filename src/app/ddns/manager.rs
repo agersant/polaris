@@ -10,6 +10,7 @@ use crate::db::DB;
 
 const DDNS_UPDATE_URL: &str = "https://ydns.io/api/v1/update/";
 
+#[derive(Clone)]
 pub struct Manager {
 	db: DB,
 }
@@ -20,7 +21,7 @@ impl Manager {
 	}
 
 	fn update_my_ip(&self) -> Result<()> {
-		let config = self.get_config()?;
+		let config = self.config()?;
 		if config.host.is_empty() || config.username.is_empty() {
 			info!("Skipping DDNS update because credentials are missing");
 			return Ok(());
@@ -41,7 +42,7 @@ impl Manager {
 		Ok(())
 	}
 
-	fn get_config(&self) -> Result<Config> {
+	pub fn config(&self) -> Result<Config> {
 		use crate::db::ddns_config::dsl::*;
 		let connection = self.db.connect()?;
 		Ok(ddns_config
@@ -49,7 +50,27 @@ impl Manager {
 			.get_result(&connection)?)
 	}
 
-	pub fn run(&self) {
+	pub fn set_config(&self, new_config: &Config) -> Result<()> {
+		use crate::db::ddns_config::dsl::*;
+		let connection = self.db.connect()?;
+		diesel::update(ddns_config)
+			.set((
+				host.eq(&new_config.host),
+				username.eq(&new_config.username),
+				password.eq(&new_config.password),
+			))
+			.execute(&connection)?;
+		Ok(())
+	}
+
+	pub fn begin_periodic_updates(&self) {
+		let cloned = self.clone();
+		std::thread::spawn(move || {
+			cloned.run();
+		});
+	}
+
+	fn run(&self) {
 		loop {
 			if let Err(e) = self.update_my_ip() {
 				error!("Dynamic DNS update error: {:?}", e);

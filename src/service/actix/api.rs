@@ -21,7 +21,7 @@ use std::pin::Pin;
 use std::str;
 
 use crate::app::{
-	config,
+	config, ddns,
 	index::{self, Index},
 	lastfm, playlist, settings, thumbnail, user, vfs,
 };
@@ -38,6 +38,8 @@ pub fn make_config() -> impl FnOnce(&mut ServiceConfig) + Clone {
 			.service(put_settings)
 			.service(list_mount_dirs)
 			.service(put_mount_dirs)
+			.service(get_ddns_config)
+			.service(put_ddns_config)
 			.service(list_users)
 			.service(create_user)
 			.service(update_user)
@@ -441,6 +443,25 @@ async fn put_mount_dirs(
 		.map(|m| m.into())
 		.collect();
 	block(move || vfs_manager.set_mount_dirs(&new_mount_dirs)).await?;
+	Ok(HttpResponse::new(StatusCode::OK))
+}
+
+#[get("/ddns")]
+async fn get_ddns_config(
+	ddns_manager: Data<ddns::Manager>,
+	_admin_rights: AdminRights,
+) -> Result<Json<dto::DDNSConfig>, APIError> {
+	let ddns_config = block(move || ddns_manager.config()).await?;
+	Ok(Json(ddns_config.into()))
+}
+
+#[put("/ddns")]
+async fn put_ddns_config(
+	_admin_rights: AdminRights,
+	ddns_manager: Data<ddns::Manager>,
+	new_ddns_config: Json<dto::DDNSConfig>,
+) -> Result<HttpResponse, APIError> {
+	block(move || ddns_manager.set_config(&new_ddns_config.to_owned().into())).await?;
 	Ok(HttpResponse::new(StatusCode::OK))
 }
 

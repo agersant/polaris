@@ -1,11 +1,12 @@
 use super::*;
-use crate::app::{settings, user, vfs};
+use crate::app::{ddns, settings, user, vfs};
 
 #[derive(Clone)]
 pub struct Manager {
 	settings_manager: settings::Manager,
 	user_manager: user::Manager,
 	vfs_manager: vfs::Manager,
+	ddns_manager: ddns::Manager,
 }
 
 impl Manager {
@@ -13,11 +14,13 @@ impl Manager {
 		settings_manager: settings::Manager,
 		user_manager: user::Manager,
 		vfs_manager: vfs::Manager,
+		ddns_manager: ddns::Manager,
 	) -> Self {
 		Self {
 			settings_manager,
 			user_manager,
 			vfs_manager,
+			ddns_manager,
 		}
 	}
 

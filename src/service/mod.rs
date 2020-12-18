@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use crate::app::{config, index::Index, lastfm, playlist, settings, thumbnail, user, vfs};
+use crate::app::{config, ddns, index::Index, lastfm, playlist, settings, thumbnail, user, vfs};
 use crate::db::DB;
 
 mod dto;
@@ -25,6 +25,7 @@ pub struct Context {
 	pub db: DB,
 	pub index: Index,
 	pub config_manager: config::Manager,
+	pub ddns_manager: ddns::Manager,
 	pub lastfm_manager: lastfm::Manager,
 	pub playlist_manager: playlist::Manager,
 	pub settings_manager: settings::Manager,
@@ -83,12 +84,14 @@ impl ContextBuilder {
 
 		let vfs_manager = vfs::Manager::new(db.clone());
 		let settings_manager = settings::Manager::new(db.clone());
+		let ddns_manager = ddns::Manager::new(db.clone());
 		let user_manager = user::Manager::new(db.clone());
 		let index = Index::new(db.clone(), vfs_manager.clone(), settings_manager.clone());
 		let config_manager = config::Manager::new(
 			settings_manager.clone(),
 			user_manager.clone(),
 			vfs_manager.clone(),
+			ddns_manager.clone(),
 		);
 		let playlist_manager = playlist::Manager::new(db.clone(), vfs_manager.clone());
 		let thumbnail_manager = thumbnail::Manager::new(thumbnails_dir_path);
@@ -111,6 +114,7 @@ impl ContextBuilder {
 			swagger_dir_path,
 			index,
 			config_manager,
+			ddns_manager,
 			lastfm_manager,
 			playlist_manager,
 			settings_manager,
