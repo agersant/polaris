@@ -50,7 +50,8 @@ impl ActixTestService {
 			Method::PUT => self.server.put(url),
 			Method::DELETE => self.server.delete(url),
 			_ => unimplemented!(),
-		};
+		}
+		.timeout(std::time::Duration::from_secs(30));
 
 		for (name, value) in request.headers() {
 			actix_request = actix_request.set_header(name, value.clone());
