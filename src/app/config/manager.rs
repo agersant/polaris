@@ -58,11 +58,10 @@ impl Manager {
 			}
 
 			// Insert new users
-			for new_user in users.iter().filter(|u| {
-				!u.name.is_empty()
-					&& !u.password.is_empty()
-					&& !old_users.iter().any(|old_user| old_user.name == u.name)
-			}) {
+			for new_user in users
+				.iter()
+				.filter(|u| !old_users.iter().any(|old_user| old_user.name == u.name))
+			{
 				self.user_manager
 					.create(new_user)
 					.map_err(|_| Error::Unspecified)?;
@@ -70,12 +69,9 @@ impl Manager {
 
 			// Update users
 			for user in users {
-				// Update password if provided
-				if !user.password.is_empty() {
-					self.user_manager
-						.set_password(&user.name, &user.password)
-						.map_err(|_| Error::Unspecified)?;
-				}
+				self.user_manager
+					.set_password(&user.name, &user.password)
+					.map_err(|_| Error::Unspecified)?;
 				self.user_manager
 					.set_is_admin(&user.name, user.admin)
 					.map_err(|_| Error::Unspecified)?;

@@ -114,45 +114,6 @@ fn apply_saves_ddns_settings() {
 }
 
 #[test]
-fn apply_preserves_password_hashes() {
-	let db = get_test_db(&test_name!());
-	let settings_manager = settings::Manager::new(db.clone());
-	let user_manager = user::Manager::new(db.clone());
-	let vfs_manager = vfs::Manager::new(db.clone());
-	let ddns_manager = ddns::Manager::new(db.clone());
-	let config_manager = Manager::new(
-		settings_manager.clone(),
-		user_manager.clone(),
-		vfs_manager.clone(),
-		ddns_manager.clone(),
-	);
-
-	let initial_config = Config {
-		users: Some(vec![user::NewUser {
-			name: "Walter".into(),
-			password: "Tasty🍖".into(),
-			admin: false,
-		}]),
-		..Default::default()
-	};
-	config_manager.apply(&initial_config).unwrap();
-	let initial_hash = &user_manager.list().unwrap()[0].password_hash;
-
-	let new_config = Config {
-		users: Some(vec![user::NewUser {
-			name: "Walter".into(),
-			password: "".into(),
-			admin: false,
-		}]),
-		..Default::default()
-	};
-	config_manager.apply(&new_config).unwrap();
-	let new_hash = &user_manager.list().unwrap()[0].password_hash;
-
-	assert_eq!(new_hash, initial_hash);
-}
-
-#[test]
 fn apply_can_toggle_admin() {
 	let db = get_test_db(&test_name!());
 	let settings_manager = settings::Manager::new(db.clone());
@@ -180,7 +141,7 @@ fn apply_can_toggle_admin() {
 	let new_config = Config {
 		users: Some(vec![user::NewUser {
 			name: "Walter".into(),
-			password: "".into(),
+			password: "Tasty🍖".into(),
 			admin: false,
 		}]),
 		..Default::default()
