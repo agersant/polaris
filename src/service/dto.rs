@@ -112,13 +112,13 @@ impl From<ddns::Config> for DDNSConfig {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-pub struct MountPoint {
+pub struct MountDir {
 	pub source: String,
 	pub name: String,
 }
 
-impl From<MountPoint> for vfs::MountPoint {
-	fn from(m: MountPoint) -> Self {
+impl From<MountDir> for vfs::MountDir {
+	fn from(m: MountDir) -> Self {
 		Self {
 			name: m.name,
 			source: m.source,
@@ -126,8 +126,8 @@ impl From<MountPoint> for vfs::MountPoint {
 	}
 }
 
-impl From<vfs::MountPoint> for MountPoint {
-	fn from(m: vfs::MountPoint) -> Self {
+impl From<vfs::MountDir> for MountDir {
+	fn from(m: vfs::MountDir) -> Self {
 		Self {
 			name: m.name,
 			source: m.source,
@@ -139,6 +139,7 @@ impl From<vfs::MountPoint> for MountPoint {
 pub struct Config {
 	pub settings: Option<NewSettings>,
 	pub users: Option<Vec<NewUser>>,
+	pub mount_dirs: Option<Vec<MountDir>>,
 	pub ydns: Option<DDNSConfig>,
 }
 
@@ -146,6 +147,9 @@ impl From<Config> for config::Config {
 	fn from(s: Config) -> Self {
 		Self {
 			settings: s.settings.map(|s| s.into()),
+			mount_dirs: s
+				.mount_dirs
+				.map(|v| v.into_iter().map(|m| m.into()).collect()),
 			users: s.users.map(|v| v.into_iter().map(|u| u.into()).collect()),
 		}
 	}
@@ -155,7 +159,6 @@ impl From<Config> for config::Config {
 pub struct NewSettings {
 	pub album_art_pattern: Option<String>,
 	pub reindex_every_n_seconds: Option<i32>,
-	pub mount_dirs: Option<Vec<MountPoint>>,
 	pub ydns: Option<DDNSConfig>,
 }
 
@@ -164,10 +167,6 @@ impl From<NewSettings> for settings::NewSettings {
 		Self {
 			album_art_pattern: s.album_art_pattern,
 			reindex_every_n_seconds: s.reindex_every_n_seconds,
-			mount_dirs: s
-				.mount_dirs
-				.map(|v| Some(v.into_iter().map(|m| m.into()).collect()))
-				.unwrap_or(None),
 			ydns: s.ydns.map(|c| c.into()),
 		}
 	}
@@ -177,7 +176,6 @@ impl From<NewSettings> for settings::NewSettings {
 pub struct Settings {
 	pub album_art_pattern: String,
 	pub reindex_every_n_seconds: i32,
-	pub mount_dirs: Vec<MountPoint>,
 	pub ydns: Option<DDNSConfig>,
 }
 
@@ -186,7 +184,6 @@ impl From<settings::Settings> for Settings {
 		Self {
 			album_art_pattern: s.album_art_pattern,
 			reindex_every_n_seconds: s.reindex_every_n_seconds,
-			mount_dirs: s.mount_dirs.into_iter().map(|m| m.into()).collect(),
 			ydns: s.ydns.map(|c| c.into()),
 		}
 	}

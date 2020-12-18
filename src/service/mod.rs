@@ -85,7 +85,11 @@ impl ContextBuilder {
 		let settings_manager = settings::Manager::new(db.clone());
 		let user_manager = user::Manager::new(db.clone());
 		let index = Index::new(db.clone(), vfs_manager.clone(), settings_manager.clone());
-		let config_manager = config::Manager::new(settings_manager.clone(), user_manager.clone());
+		let config_manager = config::Manager::new(
+			settings_manager.clone(),
+			user_manager.clone(),
+			vfs_manager.clone(),
+		);
 		let playlist_manager = playlist::Manager::new(db.clone(), vfs_manager.clone());
 		let thumbnail_manager = thumbnail::Manager::new(thumbnails_dir_path);
 		let lastfm_manager = lastfm::Manager::new(index.clone(), user_manager.clone());

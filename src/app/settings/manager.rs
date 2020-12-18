@@ -5,7 +5,7 @@ use std::convert::TryInto;
 use std::time::Duration;
 
 use super::*;
-use crate::db::{ddns_config, misc_settings, mount_points, DB};
+use crate::db::{ddns_config, misc_settings, DB};
 
 #[derive(Clone)]
 pub struct Manager {
@@ -68,14 +68,6 @@ impl Manager {
 			.get_result(&connection)
 			.map_err(|_| Error::Unspecified)?;
 
-		let mount_dirs = {
-			use self::mount_points::dsl::*;
-			mount_points
-				.select((source, name))
-				.get_results(&connection)
-				.map_err(|_| Error::Unspecified)?
-		};
-
 		let ydns = ddns_config::table
 			.select((
 				ddns_config::host,
@@ -89,23 +81,12 @@ impl Manager {
 			auth_secret: misc.auth_secret,
 			album_art_pattern: misc.index_album_art_pattern,
 			reindex_every_n_seconds: misc.index_sleep_duration_seconds,
-			mount_dirs,
 			ydns,
 		})
 	}
 
 	pub fn amend(&self, new_settings: &NewSettings) -> Result<(), Error> {
 		let connection = self.db.connect()?;
-
-		if let Some(ref mount_dirs) = new_settings.mount_dirs {
-			diesel::delete(mount_points::table)
-				.execute(&connection)
-				.map_err(|_| Error::Unspecified)?;
-			diesel::insert_into(mount_points::table)
-				.values(mount_dirs)
-				.execute(&*connection)
-				.map_err(|_| Error::Unspecified)?; // TODO https://github.com/diesel-rs/diesel/issues/1822
-		}
 
 		if let Some(sleep_duration) = new_settings.reindex_every_n_seconds {
 			diesel::update(misc_settings::table)

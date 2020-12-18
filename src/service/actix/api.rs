@@ -36,6 +36,8 @@ pub fn make_config() -> impl FnOnce(&mut ServiceConfig) + Clone {
 			.service(apply_config)
 			.service(get_settings)
 			.service(put_settings)
+			.service(list_mount_dirs)
+			.service(put_mount_dirs)
 			.service(list_users)
 			.service(create_user)
 			.service(update_user)
@@ -413,6 +415,31 @@ async fn put_settings(
 	new_settings: Json<dto::NewSettings>,
 ) -> Result<HttpResponse, APIError> {
 	block(move || settings_manager.amend(&new_settings.to_owned().into())).await?;
+	Ok(HttpResponse::new(StatusCode::OK))
+}
+
+#[get("/mount_dirs")]
+async fn list_mount_dirs(
+	vfs_manager: Data<vfs::Manager>,
+	_admin_rights: AdminRights,
+) -> Result<Json<Vec<dto::MountDir>>, APIError> {
+	let mount_dirs = block(move || vfs_manager.mount_dirs()).await?;
+	let mount_dirs = mount_dirs.into_iter().map(|m| m.into()).collect();
+	Ok(Json(mount_dirs))
+}
+
+#[put("/mount_dirs")]
+async fn put_mount_dirs(
+	_admin_rights: AdminRights,
+	vfs_manager: Data<vfs::Manager>,
+	new_mount_dirs: Json<Vec<dto::MountDir>>,
+) -> Result<HttpResponse, APIError> {
+	let new_mount_dirs = new_mount_dirs
+		.to_owned()
+		.into_iter()
+		.map(|m| m.into())
+		.collect();
+	block(move || vfs_manager.set_mount_dirs(&new_mount_dirs)).await?;
 	Ok(HttpResponse::new(StatusCode::OK))
 }
 

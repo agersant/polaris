@@ -1,6 +1,5 @@
 use anyhow::*;
 use diesel::prelude::*;
-use std::path::Path;
 
 use super::*;
 use crate::db::mount_points;
@@ -17,15 +16,27 @@ impl Manager {
 	}
 
 	pub fn get_vfs(&self) -> Result<VFS> {
+		let mount_dirs = self.mount_dirs()?;
+		let mounts = mount_dirs.into_iter().map(|p| p.into()).collect();
+		Ok(VFS::new(mounts))
+	}
+
+	pub fn mount_dirs(&self) -> Result<Vec<MountDir>> {
 		use self::mount_points::dsl::*;
-		let mut vfs = VFS::new();
 		let connection = self.db.connect()?;
-		let points: Vec<MountPoint> = mount_points
+		let mount_dirs: Vec<MountDir> = mount_points
 			.select((source, name))
 			.get_results(&connection)?;
-		for point in points {
-			vfs.mount(&Path::new(&point.source), &point.name)?;
-		}
-		Ok(vfs)
+		Ok(mount_dirs)
+	}
+
+	pub fn set_mount_dirs(&self, mount_dirs: &Vec<MountDir>) -> Result<()> {
+		use self::mount_points::dsl::*;
+		let connection = self.db.connect()?;
+		diesel::delete(mount_points).execute(&connection)?;
+		diesel::insert_into(mount_points)
+			.values(mount_dirs)
+			.execute(&*connection)?; // TODO https://github.com/diesel-rs/diesel/issues/1822
+		Ok(())
 	}
 }

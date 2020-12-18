@@ -1,17 +1,23 @@
 use super::*;
-use crate::app::{settings, user};
+use crate::app::{settings, user, vfs};
 
 #[derive(Clone)]
 pub struct Manager {
 	settings_manager: settings::Manager,
 	user_manager: user::Manager,
+	vfs_manager: vfs::Manager,
 }
 
 impl Manager {
-	pub fn new(settings_manager: settings::Manager, user_manager: user::Manager) -> Self {
+	pub fn new(
+		settings_manager: settings::Manager,
+		user_manager: user::Manager,
+		vfs_manager: vfs::Manager,
+	) -> Self {
 		Self {
 			settings_manager,
 			user_manager,
+			vfs_manager,
 		}
 	}
 
@@ -19,6 +25,12 @@ impl Manager {
 		if let Some(new_settings) = &config.settings {
 			self.settings_manager
 				.amend(new_settings)
+				.map_err(|_| Error::Unspecified)?;
+		}
+
+		if let Some(mount_dirs) = &config.mount_dirs {
+			self.vfs_manager
+				.set_mount_dirs(&mount_dirs)
 				.map_err(|_| Error::Unspecified)?;
 		}
 

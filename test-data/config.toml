@@ -1,7 +1,7 @@
 [settings]
 album_art_pattern = '^Folder\.(png|jpg|jpeg)$'
 
-[[settings.mount_dirs]]
+[[mount_dirs]]
 name = 'root'
 source = 'test-data/small-collection'
 

@@ -3,7 +3,7 @@ use serde::Deserialize;
 mod error;
 mod manager;
 
-use crate::app::{ddns, vfs};
+use crate::app::ddns;
 
 pub use error::*;
 pub use manager::*;
@@ -26,7 +26,6 @@ pub struct Settings {
 	auth_secret: Vec<u8>,
 	pub reindex_every_n_seconds: i32,
 	pub album_art_pattern: String,
-	pub mount_dirs: Vec<vfs::MountPoint>,
 	pub ydns: Option<ddns::Config>,
 }
 
@@ -34,6 +33,5 @@ pub struct Settings {
 pub struct NewSettings {
 	pub reindex_every_n_seconds: Option<i32>,
 	pub album_art_pattern: Option<String>,
-	pub mount_dirs: Option<Vec<vfs::MountPoint>>,
 	pub ydns: Option<ddns::Config>,
 }

@@ -104,7 +104,7 @@
                 "tags": [
                     "Configuration"
                 ],
-                "summary": "Amends the server settings and list of users",
+                "summary": "Amends the server settings, mount directories and list of users",
                 "operationId": "putConfig",
                 "requestBody": {
                     "required": true,
@@ -112,6 +112,63 @@
                         "application/json": {
                             "schema": {
                                 "$ref": "#components/schemas/Config"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful operation"
+                    }
+                },
+                "security": [
+                    {
+                        "admin_http_header": [],
+                        "admin_cookie": []
+                    }
+                ]
+            }
+        },
+        "/mount_dirs": {
+            "get": {
+                "tags": [
+                    "Configuration"
+                ],
+                "summary": "Reads the existing collection mount directories",
+                "operationId": "getMountDirs",
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "$ref": "#components/schemas/MountDir"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "admin_http_header": [],
+                        "admin_cookie": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Configuration"
+                ],
+                "summary": "Replaces the list collection mount directories",
+                "operationId": "putMountDirs",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "array",
+                                "$ref": "#components/schemas/MountDir"
                             }
                         }
                     }
@@ -1011,12 +1068,6 @@
                         "type": "integer",
                         "example": 3600
                     },
-                    "mount_dirs": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/MountPoint"
-                        }
-                    },
                     "ydns": {
                         "type": "object",
                         "properties": {
@@ -1041,6 +1092,12 @@
                 "properties": {
                     "settings": {
                         "$ref": "#/components/schemas/Settings"
+                    },
+                    "mount_dirs": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/MountDir"
+                        }
                     },
                     "users": {
                         "type": "array",
@@ -1095,7 +1152,7 @@
                     }
                 }
             },
-            "MountPoint": {
+            "MountDir": {
                 "type": "object",
                 "properties": {
                     "source": {
@@ -1106,7 +1163,11 @@
                         "type": "string",
                         "example": "My Music"
                     }
-                }
+                },
+                "required": [
+                    "source",
+                    "name"
+                ]
             },
             "Preferences": {
                 "type": "object",

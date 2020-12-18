@@ -51,13 +51,10 @@ pub trait TestService {
 					is_admin: false,
 				},
 			]),
-			settings: Some(dto::NewSettings {
-				mount_dirs: Some(vec![dto::MountPoint {
-					name: TEST_MOUNT_NAME.into(),
-					source: TEST_MOUNT_SOURCE.into(),
-				}]),
-				..Default::default()
-			}),
+			mount_dirs: Some(vec![dto::MountDir {
+				name: TEST_MOUNT_NAME.into(),
+				source: TEST_MOUNT_SOURCE.into(),
+			}]),
 			..Default::default()
 		};
 		let request = protocol::apply_config(configuration.into());
