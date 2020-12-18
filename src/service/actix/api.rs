@@ -367,9 +367,10 @@ async fn initial_setup(
 	user_manager: Data<user::Manager>,
 ) -> Result<Json<dto::InitialSetup>, APIError> {
 	let initial_setup = block(move || -> Result<dto::InitialSetup, APIError> {
-		let user_count = user_manager.count()?;
+		let users = user_manager.list()?;
+		let has_any_admin = users.iter().any(|u| u.is_admin());
 		Ok(dto::InitialSetup {
-			has_any_users: user_count > 0,
+			has_any_users: has_any_admin,
 		})
 	})
 	.await?;
