@@ -121,7 +121,75 @@ fn can_read_write_preferences() {
 }
 
 #[test]
-fn recognizes_auth_token() {
+fn login_rejects_bad_password() {
+	let db = get_test_db(&test_name!());
+	let settings_manager = settings::Manager::new(db.clone());
+	let auth_secret = settings_manager.get_auth_secret().unwrap();
+	let user_manager = Manager::new(db, auth_secret);
+
+	let username = "Walter";
+	let password = "super_secret!";
+
+	let new_user = NewUser {
+		name: username.to_owned(),
+		password: password.to_owned(),
+		admin: false,
+	};
+
+	user_manager.create(&new_user).unwrap();
+	assert_eq!(
+		user_manager
+			.login(username, "not the password")
+			.unwrap_err(),
+		Error::IncorrectPassword
+	)
+}
+
+#[test]
+fn login_golden_path() {
+	let db = get_test_db(&test_name!());
+	let settings_manager = settings::Manager::new(db.clone());
+	let auth_secret = settings_manager.get_auth_secret().unwrap();
+	let user_manager = Manager::new(db, auth_secret);
+
+	let username = "Walter";
+	let password = "super_secret!";
+
+	let new_user = NewUser {
+		name: username.to_owned(),
+		password: password.to_owned(),
+		admin: false,
+	};
+
+	user_manager.create(&new_user).unwrap();
+	assert!(user_manager.login(username, password).is_ok())
+}
+
+#[test]
+fn authenticate_rejects_bad_token() {
+	let db = get_test_db(&test_name!());
+	let settings_manager = settings::Manager::new(db.clone());
+	let auth_secret = settings_manager.get_auth_secret().unwrap();
+	let user_manager = Manager::new(db, auth_secret);
+
+	let username = "Walter";
+	let password = "super_secret!";
+
+	let new_user = NewUser {
+		name: username.to_owned(),
+		password: password.to_owned(),
+		admin: false,
+	};
+
+	user_manager.create(&new_user).unwrap();
+	let token = AuthToken {
+		data: "fake token".to_owned(),
+	};
+	assert!(user_manager.authenticate(&token).is_err())
+}
+
+#[test]
+fn authenticate_golden_path() {
 	let db = get_test_db(&test_name!());
 	let settings_manager = settings::Manager::new(db.clone());
 	let auth_secret = settings_manager.get_auth_secret().unwrap();

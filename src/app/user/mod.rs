@@ -32,6 +32,7 @@ pub struct NewUser {
 	pub password: String,
 	pub admin: bool,
 }
+#[derive(Debug)]
 pub struct AuthToken {
 	data: String,
 }
