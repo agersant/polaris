@@ -77,8 +77,13 @@ fn test_login_golden_path() {
 	service.complete_initial_setup();
 
 	let request = protocol::login(TEST_USERNAME, TEST_PASSWORD);
-	let response = service.fetch(&request);
+	let response = service.fetch_json::<_, dto::Authorization>(&request);
 	assert_eq!(response.status(), StatusCode::OK);
+
+	let authorization = response.body();
+	assert_eq!(authorization.username, TEST_USERNAME);
+	assert_eq!(authorization.is_admin, false);
+	assert!(!authorization.token.is_empty());
 
 	validate_added_cookies(&response);
 }
@@ -97,7 +102,7 @@ fn test_requests_without_auth_header_do_not_set_cookies() {
 }
 
 #[test]
-fn test_authentication_via_http_header_rejects_bad_username() {
+fn test_authentication_via_basic_http_header_rejects_bad_username() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 
@@ -110,7 +115,7 @@ fn test_authentication_via_http_header_rejects_bad_username() {
 }
 
 #[test]
-fn test_authentication_via_http_header_rejects_bad_password() {
+fn test_authentication_via_basic_http_header_rejects_bad_password() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 
@@ -123,7 +128,7 @@ fn test_authentication_via_http_header_rejects_bad_password() {
 }
 
 #[test]
-fn test_authentication_via_http_header_golden_path() {
+fn test_authentication_via_basic_http_header_golden_path() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 
@@ -135,4 +140,40 @@ fn test_authentication_via_http_header_golden_path() {
 	assert_eq!(response.status(), StatusCode::OK);
 
 	validate_added_cookies(&response);
+}
+
+#[test]
+fn test_authentication_via_bearer_http_header_rejects_bad_token() {
+	let mut service = ServiceType::new(&test_name!());
+	service.complete_initial_setup();
+
+	let mut request = protocol::random();
+	let bearer = headers::Authorization::bearer("garbage").unwrap();
+	request.headers_mut().typed_insert(bearer);
+
+	let response = service.fetch(&request);
+	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[test]
+fn test_authentication_via_bearer_http_header_golden_path() {
+	let mut service = ServiceType::new(&test_name!());
+	service.complete_initial_setup();
+
+	let authorization = {
+		let request = protocol::login(TEST_USERNAME, TEST_PASSWORD);
+		let response = service.fetch_json::<_, dto::Authorization>(&request);
+		assert_eq!(response.status(), StatusCode::OK);
+		response.into_body()
+	};
+
+	service.clear_client_cookies();
+
+	let mut request = protocol::random();
+	let bearer = headers::Authorization::bearer(&authorization.token).unwrap();
+	request.headers_mut().typed_insert(bearer);
+	let response = service.fetch(&request);
+	assert_eq!(response.status(), StatusCode::OK);
+
+	validate_no_cookies(&response);
 }

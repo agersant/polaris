@@ -151,4 +151,8 @@ impl TestService for ActixTestService {
 		let body = serde_json::from_slice(&body.unwrap()).unwrap();
 		response_builder.body(body).unwrap()
 	}
+
+	fn clear_client_cookies(&mut self) {
+		self.cookies.clear();
+	}
 }

@@ -83,7 +83,11 @@ impl Manager {
 			Ok(hash) => {
 				let hash: String = hash;
 				if verify_password(&hash, password) {
-					self.generate_auth_token(username)
+					let authorization = Authorization {
+						username: username.to_owned(),
+						scope: AuthorizationScope::PolarisAuth,
+					};
+					self.generate_auth_token(&authorization)
 				} else {
 					Err(Error::IncorrectPassword)
 				}
@@ -92,26 +96,44 @@ impl Manager {
 		}
 	}
 
-	pub fn authenticate(&self, auth_token: &AuthToken) -> Result<String, Error> {
-		let username = self.decode_auth_token(auth_token)?;
-		if self.exists(&username)? {
-			Ok(username)
+	pub fn authenticate(
+		&self,
+		auth_token: &AuthToken,
+		scope: AuthorizationScope,
+	) -> Result<Authorization, Error> {
+		let authorization = self.decode_auth_token(auth_token, scope)?;
+		if self.exists(&authorization.username)? {
+			Ok(authorization)
 		} else {
 			Err(Error::IncorrectUsername)
 		}
 	}
 
-	fn decode_auth_token(&self, auth_token: &AuthToken) -> Result<String, Error> {
-		let username = branca::decode(&auth_token.data, &self.auth_secret.key, 0)
-			.map_err(|_| Error::Unspecified)?;
-		std::str::from_utf8(&username[..])
-			.map_err(|_| Error::Unspecified)
-			.map(|s| s.to_owned())
+	fn decode_auth_token(
+		&self,
+		auth_token: &AuthToken,
+		scope: AuthorizationScope,
+	) -> Result<Authorization, Error> {
+		let AuthToken(data) = auth_token;
+		let ttl = match scope {
+			AuthorizationScope::PolarisAuth => 0,      // permanent
+			AuthorizationScope::LastFMLink => 10 * 60, // 10 minutes
+		};
+		let authorization = branca::decode(data, &self.auth_secret.key, ttl)
+			.map_err(|_| Error::InvalidAuthToken)?;
+		let authorization: Authorization =
+			serde_json::from_slice(&authorization[..]).map_err(|_| Error::InvalidAuthToken)?;
+		if authorization.scope != scope {
+			return Err(Error::IncorrectAuthorizationScope);
+		}
+		Ok(authorization)
 	}
 
-	fn generate_auth_token(&self, username: &str) -> Result<AuthToken, Error> {
+	fn generate_auth_token(&self, authorization: &Authorization) -> Result<AuthToken, Error> {
+		let serialized_authorization =
+			serde_json::to_string(&authorization).map_err(|_| Error::Unspecified)?;
 		branca::encode(
-			&username[..].as_bytes(),
+			serialized_authorization.as_bytes(),
 			&self.auth_secret.key,
 			SystemTime::now()
 				.duration_since(UNIX_EPOCH)
@@ -119,7 +141,7 @@ impl Manager {
 				.as_secs() as u32,
 		)
 		.map_err(|_| Error::Unspecified)
-		.map(|data| AuthToken { data })
+		.map(AuthToken)
 	}
 
 	pub fn count(&self) -> anyhow::Result<i64> {
@@ -149,13 +171,14 @@ impl Manager {
 		Ok(results.len() > 0)
 	}
 
-	pub fn is_admin(&self, username: &str) -> anyhow::Result<bool> {
+	pub fn is_admin(&self, username: &str) -> Result<bool, Error> {
 		use crate::db::users::dsl::*;
 		let connection = self.db.connect()?;
 		let is_admin: i32 = users
 			.filter(name.eq(username))
 			.select(admin)
-			.get_result(&connection)?;
+			.get_result(&connection)
+			.map_err(|_| Error::Unspecified)?;
 		Ok(is_admin != 0)
 	}
 
@@ -164,7 +187,7 @@ impl Manager {
 		username: &str,
 		lastfm_login: &str,
 		session_key: &str,
-	) -> anyhow::Result<()> {
+	) -> Result<(), Error> {
 		use crate::db::users::dsl::*;
 		let connection = self.db.connect()?;
 		diesel::update(users.filter(name.eq(username)))
@@ -172,8 +195,16 @@ impl Manager {
 				lastfm_username.eq(lastfm_login),
 				lastfm_session_key.eq(session_key),
 			))
-			.execute(&connection)?;
+			.execute(&connection)
+			.map_err(|_| Error::Unspecified)?;
 		Ok(())
+	}
+
+	pub fn generate_lastfm_link_token(&self, username: &str) -> Result<AuthToken, Error> {
+		self.generate_auth_token(&Authorization {
+			username: username.to_owned(),
+			scope: AuthorizationScope::LastFMLink,
+		})
 	}
 
 	pub fn get_lastfm_session_key(&self, username: &str) -> anyhow::Result<String> {

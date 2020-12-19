@@ -88,6 +88,8 @@ impl From<user::Error> for APIError {
 			user::Error::EmptyPassword => APIError::EmptyPassword,
 			user::Error::IncorrectUsername => APIError::IncorrectCredentials,
 			user::Error::IncorrectPassword => APIError::IncorrectCredentials,
+			user::Error::InvalidAuthToken => APIError::IncorrectCredentials,
+			user::Error::IncorrectAuthorizationScope => APIError::IncorrectCredentials,
 			user::Error::Unspecified => APIError::Unspecified,
 		}
 	}

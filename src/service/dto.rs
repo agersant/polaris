@@ -20,9 +20,16 @@ pub struct InitialSetup {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct AuthCredentials {
+pub struct Credentials {
 	pub username: String,
 	pub password: String,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct Authorization {
+	pub username: String,
+	pub token: String,
+	pub is_admin: bool,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -42,8 +49,14 @@ pub struct SavePlaylistInput {
 
 #[derive(Serialize, Deserialize)]
 pub struct LastFMLink {
-	pub token: String,
-	pub content: String,
+	pub auth_token: String, // user::AuthToken emitted by Polaris, valid for LastFMLink scope
+	pub token: String,      // LastFM token for use in scrobble calls
+	pub content: String,    // Payload to send back to client after successful link
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct LastFMLinkToken {
+	pub value: String,
 }
 
 #[derive(Serialize, Deserialize)]

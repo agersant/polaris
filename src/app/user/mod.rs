@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::db::users;
 
@@ -32,7 +32,18 @@ pub struct NewUser {
 	pub password: String,
 	pub admin: bool,
 }
+
 #[derive(Debug)]
-pub struct AuthToken {
-	data: String,
+pub struct AuthToken(pub String);
+
+#[derive(Debug, PartialEq, Deserialize, Serialize)]
+pub enum AuthorizationScope {
+	PolarisAuth,
+	LastFMLink,
+}
+
+#[derive(Debug, PartialEq, Deserialize, Serialize)]
+pub struct Authorization {
+	pub username: String,
+	pub scope: AuthorizationScope,
 }

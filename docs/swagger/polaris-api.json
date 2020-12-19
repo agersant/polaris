@@ -93,7 +93,8 @@
                 },
                 "security": [
                     {
-                        "admin_http_header": [],
+                        "admin_http_basic": [],
+                        "admin_http_bearer": [],
                         "admin_cookie": []
                     }
                 ]
@@ -123,7 +124,8 @@
                 },
                 "security": [
                     {
-                        "admin_http_header": [],
+                        "admin_http_basic": [],
+                        "admin_http_bearer": [],
                         "admin_cookie": []
                     }
                 ]
@@ -151,7 +153,8 @@
                 },
                 "security": [
                     {
-                        "admin_http_header": [],
+                        "admin_http_basic": [],
+                        "admin_http_bearer": [],
                         "admin_cookie": []
                     }
                 ]
@@ -180,7 +183,8 @@
                 },
                 "security": [
                     {
-                        "admin_http_header": [],
+                        "admin_http_basic": [],
+                        "admin_http_bearer": [],
                         "admin_cookie": []
                     }
                 ]
@@ -207,7 +211,8 @@
                 },
                 "security": [
                     {
-                        "admin_http_header": [],
+                        "admin_http_basic": [],
+                        "admin_http_bearer": [],
                         "admin_cookie": []
                     }
                 ]
@@ -235,7 +240,8 @@
                 },
                 "security": [
                     {
-                        "admin_http_header": [],
+                        "admin_http_basic": [],
+                        "admin_http_bearer": [],
                         "admin_cookie": []
                     }
                 ]
@@ -265,7 +271,8 @@
                 },
                 "security": [
                     {
-                        "admin_http_header": [],
+                        "admin_http_basic": [],
+                        "admin_http_bearer": [],
                         "admin_cookie": []
                     }
                 ]
@@ -295,7 +302,8 @@
                 },
                 "security": [
                     {
-                        "admin_http_header": [],
+                        "admin_http_basic": [],
+                        "admin_http_bearer": [],
                         "admin_cookie": []
                     }
                 ]
@@ -335,7 +343,8 @@
                 },
                 "security": [
                     {
-                        "admin_http_header": [],
+                        "admin_http_basic": [],
+                        "admin_http_bearer": [],
                         "admin_cookie": []
                     }
                 ]
@@ -363,7 +372,8 @@
                 },
                 "security": [
                     {
-                        "admin_http_header": [],
+                        "admin_http_basic": [],
+                        "admin_http_bearer": [],
                         "admin_cookie": []
                     }
                 ]
@@ -390,7 +400,8 @@
                 },
                 "security": [
                     {
-                        "auth_http_header": [],
+                        "auth_http_basic": [],
+                        "auth_http_bearer": [],
                         "auth_cookie": []
                     }
                 ]
@@ -418,7 +429,8 @@
                 },
                 "security": [
                     {
-                        "auth_http_header": [],
+                        "auth_http_basic": [],
+                        "auth_http_bearer": [],
                         "auth_cookie": []
                     }
                 ]
@@ -436,14 +448,21 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#components/schemas/AuthCredentials"
+                                "$ref": "#components/schemas/Credentials"
                             }
                         }
                     }
                 },
                 "responses": {
                     "200": {
-                        "description": "Successful operation"
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Authorization"
+                                }
+                            }
+                        }
                     },
                     "401": {
                         "description": "Invalid credentials"
@@ -475,7 +494,8 @@
                 },
                 "security": [
                     {
-                        "auth_http_header": [],
+                        "auth_http_basic": [],
+                        "auth_http_bearer": [],
                         "auth_cookie": []
                     }
                 ]
@@ -515,7 +535,8 @@
                 },
                 "security": [
                     {
-                        "auth_http_header": [],
+                        "auth_http_basic": [],
+                        "auth_http_bearer": [],
                         "auth_cookie": []
                     }
                 ]
@@ -545,7 +566,8 @@
                 },
                 "security": [
                     {
-                        "auth_http_header": [],
+                        "auth_http_basic": [],
+                        "auth_http_bearer": [],
                         "auth_cookie": []
                     }
                 ]
@@ -585,7 +607,8 @@
                 },
                 "security": [
                     {
-                        "auth_http_header": [],
+                        "auth_http_basic": [],
+                        "auth_http_bearer": [],
                         "auth_cookie": []
                     }
                 ]
@@ -615,7 +638,8 @@
                 },
                 "security": [
                     {
-                        "auth_http_header": [],
+                        "auth_http_basic": [],
+                        "auth_http_bearer": [],
                         "auth_cookie": []
                     }
                 ]
@@ -645,7 +669,8 @@
                 },
                 "security": [
                     {
-                        "auth_http_header": [],
+                        "auth_http_basic": [],
+                        "auth_http_bearer": [],
                         "auth_cookie": []
                     }
                 ]
@@ -685,7 +710,8 @@
                 },
                 "security": [
                     {
-                        "auth_http_header": [],
+                        "auth_http_basic": [],
+                        "auth_http_bearer": [],
                         "auth_cookie": []
                     }
                 ]
@@ -722,7 +748,8 @@
                 },
                 "security": [
                     {
-                        "auth_http_header": [],
+                        "auth_http_basic": [],
+                        "auth_http_bearer": [],
                         "auth_cookie": []
                     }
                 ]
@@ -768,7 +795,8 @@
                 },
                 "security": [
                     {
-                        "auth_http_header": [],
+                        "auth_http_basic": [],
+                        "auth_http_bearer": [],
                         "auth_cookie": []
                     }
                 ]
@@ -798,7 +826,8 @@
                 },
                 "security": [
                     {
-                        "auth_http_header": [],
+                        "auth_http_basic": [],
+                        "auth_http_bearer": [],
                         "auth_cookie": []
                     }
                 ]
@@ -838,7 +867,8 @@
                 },
                 "security": [
                     {
-                        "auth_http_header": [],
+                        "auth_http_basic": [],
+                        "auth_http_bearer": [],
                         "auth_cookie": []
                     }
                 ]
@@ -876,7 +906,8 @@
                 },
                 "security": [
                     {
-                        "auth_http_header": [],
+                        "auth_http_basic": [],
+                        "auth_http_bearer": [],
                         "auth_cookie": []
                     }
                 ]
@@ -904,7 +935,8 @@
                 },
                 "security": [
                     {
-                        "auth_http_header": [],
+                        "auth_http_basic": [],
+                        "auth_http_bearer": [],
                         "auth_cookie": []
                     }
                 ]
@@ -934,7 +966,8 @@
                 },
                 "security": [
                     {
-                        "auth_http_header": [],
+                        "auth_http_basic": [],
+                        "auth_http_bearer": [],
                         "auth_cookie": []
                     }
                 ]
@@ -964,10 +997,32 @@
                 },
                 "security": [
                     {
-                        "auth_http_header": [],
+                        "auth_http_basic": [],
+                        "auth_http_bearer": [],
                         "auth_cookie": []
                     }
                 ]
+            }
+        },
+        "/lastfm/link_token": {
+            "get": {
+                "tags": [
+                    "Last.fm"
+                ],
+                "summary": "Obtain an authentication token to be used when linking a Polaris account to a Last.fm account. The token is only valid for 10 minutes.",
+                "operationId": "getLastFMLinkToken",
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LastFMLinkToken"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "/lastfm/link": {
@@ -982,6 +1037,15 @@
                 },
                 "operationId": "getLastFMLink",
                 "parameters": [
+                    {
+                        "name": "auth_token",
+                        "in": "query",
+                        "required": true,
+                        "description": "Polaris authentication token received from the `lastfm/link_token` endpoint",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
                     {
                         "name": "token",
                         "in": "query",
@@ -1025,7 +1089,8 @@
                 },
                 "security": [
                     {
-                        "auth_http_header": [],
+                        "auth_http_basic": [],
+                        "auth_http_bearer": [],
                         "auth_cookie": []
                     }
                 ]
@@ -1183,13 +1248,35 @@
                     }
                 }
             },
-            "AuthCredentials": {
+            "Credentials": {
                 "type": "object",
                 "properties": {
                     "username": {
                         "type": "string"
                     },
                     "password": {
+                        "type": "string"
+                    }
+                }
+            },
+            "Authorization": {
+                "type": "object",
+                "properties": {
+                    "username": {
+                        "type": "string"
+                    },
+                    "token": {
+                        "type": "string"
+                    },
+                    "is_admin": {
+                        "type": "bool"
+                    }
+                }
+            },
+            "LastFMLinkToken": {
+                "type": "object",
+                "properties": {
+                    "value": {
                         "type": "string"
                     }
                 }
@@ -1320,26 +1407,37 @@
             }
         },
         "securitySchemes": {
-            "auth_http_header": {
+            "auth_http_bearer": {
                 "type": "http",
-                "scheme": "basic"
+                "scheme": "bearer",
+                "description": "A session token obtained in the output of the `auth` endpoint."
+            },
+            "admin_http_bearer": {
+                "type": "http",
+                "scheme": "bearer",
+                "description": "Identical to the auth_http_bearer scheme but only for users recognized as admin by the Polaris server"
+            },
+            "auth_http_basic": {
+                "type": "http",
+                "scheme": "basic",
+                "description": "[deprecated]"
+            },
+            "admin_http_basic": {
+                "type": "http",
+                "scheme": "basic",
+                "description": "[deprecated] Identical to the auth_http_basic scheme but only for users recognized as admin by the Polaris server"
             },
             "auth_cookie": {
                 "type": "apikey",
                 "in": "cookie",
                 "name": "session",
-                "description": "A session token obtained returned as a server cookie by making a request via the auth_http_header scheme."
-            },
-            "admin_http_header": {
-                "type": "http",
-                "scheme": "basic",
-                "description": "Identical to the auth_http_header scheme but only for users recognized as admin by the Polaris server"
+                "description": "[deprecated] A token obtained via the SET-COOKIE header in a response to a request via the auth_http_basic scheme, or a request to the `auth` endpoint."
             },
             "admin_cookie": {
                 "type": "apikey",
                 "in": "cookie",
                 "name": "session",
-                "description": "Identical to the auth_cookie scheme but only for users recognized as admin by the Polaris server"
+                "description": "[deprecated] Identical to the auth_cookie scheme but only for users recognized as admin by the Polaris server"
             }
         },
         "links": {},

@@ -182,10 +182,10 @@ fn authenticate_rejects_bad_token() {
 	};
 
 	user_manager.create(&new_user).unwrap();
-	let token = AuthToken {
-		data: "fake token".to_owned(),
-	};
-	assert!(user_manager.authenticate(&token).is_err())
+	let fake_token = AuthToken("fake token".to_owned());
+	assert!(user_manager
+		.authenticate(&fake_token, AuthorizationScope::PolarisAuth)
+		.is_err())
 }
 
 #[test]
@@ -206,5 +206,39 @@ fn authenticate_golden_path() {
 
 	user_manager.create(&new_user).unwrap();
 	let token = user_manager.login(username, password).unwrap();
-	assert_eq!(user_manager.authenticate(&token).unwrap(), username)
+	let authorization = user_manager
+		.authenticate(&token, AuthorizationScope::PolarisAuth)
+		.unwrap();
+	assert_eq!(
+		authorization,
+		Authorization {
+			username: username.to_owned(),
+			scope: AuthorizationScope::PolarisAuth,
+		}
+	)
+}
+
+#[test]
+fn authenticate_validates_scope() {
+	let db = get_test_db(&test_name!());
+	let settings_manager = settings::Manager::new(db.clone());
+	let auth_secret = settings_manager.get_auth_secret().unwrap();
+	let user_manager = Manager::new(db, auth_secret);
+
+	let username = "Walter";
+	let password = "super_secret!";
+
+	let new_user = NewUser {
+		name: username.to_owned(),
+		password: password.to_owned(),
+		admin: false,
+	};
+
+	user_manager.create(&new_user).unwrap();
+	let token = user_manager.generate_lastfm_link_token(username).unwrap();
+	let authorization = user_manager.authenticate(&token, AuthorizationScope::PolarisAuth);
+	assert_eq!(
+		authorization.unwrap_err(),
+		Error::IncorrectAuthorizationScope
+	)
 }

@@ -37,8 +37,8 @@ pub fn initial_setup() -> Request<()> {
 		.unwrap()
 }
 
-pub fn login(username: &str, password: &str) -> Request<dto::AuthCredentials> {
-	let credentials = dto::AuthCredentials {
+pub fn login(username: &str, password: &str) -> Request<dto::Credentials> {
+	let credentials = dto::Credentials {
 		username: username.into(),
 		password: password.into(),
 	};
@@ -249,6 +249,14 @@ pub fn delete_playlist(name: &str) -> Request<()> {
 	Request::builder()
 		.method(Method::DELETE)
 		.uri(&endpoint)
+		.body(())
+		.unwrap()
+}
+
+pub fn lastfm_link_token() -> Request<()> {
+	Request::builder()
+		.method(Method::GET)
+		.uri("/api/lastfm/link_token")
 		.body(())
 		.unwrap()
 }

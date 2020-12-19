@@ -74,6 +74,8 @@ pub trait TestService {
 		assert_eq!(response.status(), StatusCode::OK);
 	}
 
+	fn clear_client_cookies(&mut self);
+
 	fn index(&mut self) {
 		let request = protocol::trigger_index();
 		let response = self.fetch(&request);

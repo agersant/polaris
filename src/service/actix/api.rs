@@ -10,7 +10,7 @@ use actix_web::{
 	web::{self, Data, Json, JsonConfig, ServiceConfig},
 	FromRequest, HttpMessage, HttpRequest, HttpResponse, ResponseError,
 };
-use actix_web_httpauth::extractors::basic::BasicAuth;
+use actix_web_httpauth::extractors::{basic::BasicAuth, bearer::BearerAuth};
 use cookie::{self, *};
 use futures_util::future::{err, ok};
 use percent_encoding::percent_decode_str;
@@ -64,6 +64,7 @@ pub fn make_config() -> impl FnOnce(&mut ServiceConfig) + Clone {
 			.service(delete_playlist)
 			.service(lastfm_now_playing)
 			.service(lastfm_scrobble)
+			.service(lastfm_link_token)
 			.service(lastfm_link)
 			.service(lastfm_unlink);
 	}
@@ -151,7 +152,8 @@ impl FromRequest for Cookies {
 
 #[derive(Debug)]
 enum AuthSource {
-	AuthorizationHeader,
+	AuthorizationBasic,
+	AuthorizationBearer,
 	Cookie,
 }
 
@@ -173,7 +175,8 @@ impl FromRequest for Auth {
 		};
 
 		let cookies_future = Cookies::from_request(request, payload);
-		let http_auth_future = BasicAuth::from_request(request, payload);
+		let basic_auth_future = BasicAuth::from_request(request, payload);
+		let bearer_auth_future = BearerAuth::from_request(request, payload);
 
 		Box::pin(async move {
 			// Auth via session cookie
@@ -192,11 +195,24 @@ impl FromRequest for Auth {
 				}
 			}
 
-			// Auth via HTTP header
+			// Auth via bearer authorization header
+			if let Ok(bearer_auth) = bearer_auth_future.await {
+				let auth_token = user::AuthToken(bearer_auth.token().to_owned());
+				let authorization = block(move || {
+					user_manager.authenticate(&auth_token, user::AuthorizationScope::PolarisAuth)
+				})
+				.await?;
+				return Ok(Auth {
+					username: authorization.username.to_owned(),
+					source: AuthSource::AuthorizationBearer,
+				});
+			}
+
+			// Auth via basic authorization header
 			{
-				let auth = http_auth_future.await?;
-				let username = auth.user_id().to_string();
-				let password = auth
+				let basic_auth = basic_auth_future.await?;
+				let username = basic_auth.user_id().to_string();
+				let password = basic_auth
 					.password()
 					.map(|s| s.as_ref())
 					.unwrap_or("")
@@ -204,8 +220,8 @@ impl FromRequest for Auth {
 				let auth_result = block(move || user_manager.login(&username, &password)).await;
 				if auth_result.is_ok() {
 					Ok(Auth {
-						username: auth.user_id().to_string(),
-						source: AuthSource::AuthorizationHeader,
+						username: basic_auth.user_id().to_string(),
+						source: AuthSource::AuthorizationBasic,
 					})
 				} else {
 					Err(ErrorUnauthorized(APIError::Unspecified))
@@ -280,7 +296,8 @@ pub fn http_auth_middleware<
 		let mut response = response_future.await?;
 		if let Ok(auth) = auth_future.await {
 			let set_cookies = match auth.source {
-				AuthSource::AuthorizationHeader => true,
+				AuthSource::AuthorizationBasic => true,
+				AuthSource::AuthorizationBearer => false,
 				AuthSource::Cookie => false,
 			};
 			if set_cookies {
@@ -547,18 +564,23 @@ async fn trigger_index(
 #[post("/auth")]
 async fn login(
 	user_manager: Data<user::Manager>,
-	credentials: Json<dto::AuthCredentials>,
+	credentials: Json<dto::Credentials>,
 	cookies: Cookies,
 ) -> Result<HttpResponse, APIError> {
 	let username = credentials.username.clone();
-	let is_admin = block(move || {
-		user_manager.login(&credentials.username, &credentials.password)?;
-		user_manager
-			.is_admin(&credentials.username)
-			.map_err(|_| APIError::Unspecified)
-	})
-	.await?;
-	let mut response = HttpResponse::Ok().finish();
+	let (user::AuthToken(token), is_admin) =
+		block(move || -> Result<(user::AuthToken, bool), APIError> {
+			let auth_token = user_manager.login(&credentials.username, &credentials.password)?;
+			let is_admin = user_manager.is_admin(&credentials.username)?;
+			Ok((auth_token, is_admin))
+		})
+		.await?;
+	let authorization = dto::Authorization {
+		username: username.clone(),
+		token,
+		is_admin,
+	};
+	let mut response = HttpResponse::Ok().json(authorization);
 	add_auth_cookies(&mut response, &cookies, &username, is_admin)
 		.map_err(|_| APIError::Unspecified)?;
 	Ok(response)
@@ -768,14 +790,29 @@ async fn lastfm_scrobble(
 	Ok(HttpResponse::new(StatusCode::OK))
 }
 
+#[get("/lastfm/link_token")]
+async fn lastfm_link_token(
+	lastfm_manager: Data<lastfm::Manager>,
+	auth: Auth,
+) -> Result<Json<dto::LastFMLinkToken>, APIError> {
+	let user::AuthToken(value) =
+		block(move || lastfm_manager.generate_link_token(&auth.username)).await?;
+	Ok(Json(dto::LastFMLinkToken { value }))
+}
+
 #[get("/lastfm/link")]
 async fn lastfm_link(
 	lastfm_manager: Data<lastfm::Manager>,
-	auth: Auth,
+	user_manager: Data<user::Manager>,
 	payload: web::Query<dto::LastFMLink>,
 ) -> Result<HttpResponse, APIError> {
 	let popup_content_string = block(move || {
-		lastfm_manager.link(&auth.username, &payload.token)?;
+		let auth_token = user::AuthToken(payload.auth_token.clone());
+		let authorization =
+			user_manager.authenticate(&auth_token, user::AuthorizationScope::LastFMLink)?;
+		let lastfm_token = &payload.token;
+		lastfm_manager.link(&authorization.username, lastfm_token)?;
+
 		// Percent decode
 		let base64_content = percent_decode_str(&payload.content).decode_utf8_lossy();
 
