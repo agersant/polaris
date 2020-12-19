@@ -62,19 +62,27 @@ pub trait TestService {
 		assert_eq!(response.status(), StatusCode::OK);
 	}
 
-	fn login_admin(&mut self) {
-		let request = protocol::login(TEST_USERNAME_ADMIN, TEST_PASSWORD_ADMIN);
-		let response = self.fetch(&request);
+	fn login_internal(&mut self, username: &str, password: &str) {
+		let request = protocol::login(username, password);
+		let response = self.fetch_json::<_, dto::Authorization>(&request);
 		assert_eq!(response.status(), StatusCode::OK);
+		let authorization = response.into_body();
+		self.set_authorization(Some(authorization));
+	}
+
+	fn login_admin(&mut self) {
+		self.login_internal(TEST_USERNAME_ADMIN, TEST_PASSWORD_ADMIN);
 	}
 
 	fn login(&mut self) {
-		let request = protocol::login(TEST_USERNAME, TEST_PASSWORD);
-		let response = self.fetch(&request);
-		assert_eq!(response.status(), StatusCode::OK);
+		self.login_internal(TEST_USERNAME, TEST_PASSWORD);
 	}
 
-	fn clear_client_cookies(&mut self);
+	fn logout(&mut self) {
+		self.set_authorization(None);
+	}
+
+	fn set_authorization(&mut self, authorization: Option<dto::Authorization>);
 
 	fn index(&mut self) {
 		let request = protocol::trigger_index();

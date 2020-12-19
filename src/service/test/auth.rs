@@ -167,7 +167,7 @@ fn test_authentication_via_bearer_http_header_golden_path() {
 		response.into_body()
 	};
 
-	service.clear_client_cookies();
+	service.logout();
 
 	let mut request = protocol::random();
 	let bearer = headers::Authorization::bearer(&authorization.token).unwrap();

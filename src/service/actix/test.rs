@@ -1,5 +1,4 @@
 use actix_web::{
-	client::ClientResponse,
 	middleware::{Compress, Logger},
 	rt::{System, SystemRunner},
 	test,
@@ -7,36 +6,26 @@ use actix_web::{
 	web::Bytes,
 	App,
 };
-use cookie::Cookie;
 use http::{header, response::Builder, Method, Request, Response};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use std::collections::HashMap;
 use std::fs;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 
 use crate::service::actix::*;
+use crate::service::dto;
 use crate::service::test::TestService;
 
 pub struct ActixTestService {
 	system_runner: SystemRunner,
-	cookies: HashMap<String, String>,
+	authorization: Option<dto::Authorization>,
 	server: TestServer,
 }
 
 pub type ServiceType = ActixTestService;
 
 impl ActixTestService {
-	fn update_cookies<T>(&mut self, actix_response: &ClientResponse<T>) {
-		let cookies = actix_response.headers().get_all(header::SET_COOKIE);
-		for raw_cookie in cookies {
-			let cookie = Cookie::parse(raw_cookie.to_str().unwrap()).unwrap();
-			self.cookies
-				.insert(cookie.name().to_owned(), cookie.value().to_owned());
-		}
-	}
-
 	fn process_internal<T: Serialize + Clone + 'static>(
 		&mut self,
 		request: &Request<T>,
@@ -57,21 +46,16 @@ impl ActixTestService {
 			actix_request = actix_request.set_header(name, value.clone());
 		}
 
-		actix_request = {
-			let cookies_value = self
-				.cookies
-				.iter()
-				.map(|(name, value)| format!("{}={}", name, value))
-				.collect::<Vec<_>>()
-				.join("; ");
-			actix_request.set_header(header::COOKIE, cookies_value)
-		};
+		if let Some(ref authorization) = self.authorization {
+			actix_request = {
+				let bearer_auth = format!("Bearer {}", authorization.token);
+				actix_request.set_header(header::AUTHORIZATION, bearer_auth)
+			};
+		}
 
 		let mut actix_response = self
 			.system_runner
 			.block_on(async move { actix_request.send_json(&body).await.unwrap() });
-
-		self.update_cookies(&actix_response);
 
 		let mut response_builder = Response::builder().status(actix_response.status());
 		let headers = response_builder.headers_mut().unwrap();
@@ -122,7 +106,7 @@ impl TestService for ActixTestService {
 		});
 
 		ActixTestService {
-			cookies: HashMap::new(),
+			authorization: None,
 			system_runner,
 			server,
 		}
@@ -152,7 +136,7 @@ impl TestService for ActixTestService {
 		response_builder.body(body).unwrap()
 	}
 
-	fn clear_client_cookies(&mut self) {
-		self.cookies.clear();
+	fn set_authorization(&mut self, authorization: Option<dto::Authorization>) {
+		self.authorization = authorization;
 	}
 }
