@@ -1022,7 +1022,14 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "auth_http_basic": [],
+                        "auth_http_bearer": [],
+                        "auth_cookie": []
+                    }
+                ]
             }
         },
         "/lastfm/link": {
