@@ -155,6 +155,7 @@ enum AuthSource {
 	AuthorizationBasic,
 	AuthorizationBearer,
 	Cookie,
+	QueryParameter,
 }
 
 #[derive(Debug)]
@@ -177,6 +178,8 @@ impl FromRequest for Auth {
 		let cookies_future = Cookies::from_request(request, payload);
 		let basic_auth_future = BasicAuth::from_request(request, payload);
 		let bearer_auth_future = BearerAuth::from_request(request, payload);
+		let query_params_future =
+			web::Query::<dto::AuthQueryParameters>::from_request(request, payload);
 
 		Box::pin(async move {
 			// Auth via session cookie
@@ -195,7 +198,20 @@ impl FromRequest for Auth {
 				}
 			}
 
-			// Auth via bearer authorization header
+			// Auth via bearer token in query parameter
+			if let Ok(query) = query_params_future.await {
+				let auth_token = user::AuthToken(query.auth_token.clone());
+				let authorization = block(move || {
+					user_manager.authenticate(&auth_token, user::AuthorizationScope::PolarisAuth)
+				})
+				.await?;
+				return Ok(Auth {
+					username: authorization.username.to_owned(),
+					source: AuthSource::QueryParameter,
+				});
+			}
+
+			// Auth via bearer token in authorization header
 			if let Ok(bearer_auth) = bearer_auth_future.await {
 				let auth_token = user::AuthToken(bearer_auth.token().to_owned());
 				let authorization = block(move || {
@@ -299,6 +315,7 @@ pub fn http_auth_middleware<
 				AuthSource::AuthorizationBasic => true,
 				AuthSource::AuthorizationBearer => false,
 				AuthSource::Cookie => false,
+				AuthSource::QueryParameter => false,
 			};
 			if set_cookies {
 				let cookies = cookies_future.await?;

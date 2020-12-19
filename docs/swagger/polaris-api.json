@@ -95,6 +95,7 @@
                     {
                         "admin_http_basic": [],
                         "admin_http_bearer": [],
+                        "admin_query_parameter": [],
                         "admin_cookie": []
                     }
                 ]
@@ -126,6 +127,7 @@
                     {
                         "admin_http_basic": [],
                         "admin_http_bearer": [],
+                        "admin_query_parameter": [],
                         "admin_cookie": []
                     }
                 ]
@@ -155,6 +157,7 @@
                     {
                         "admin_http_basic": [],
                         "admin_http_bearer": [],
+                        "admin_query_parameter": [],
                         "admin_cookie": []
                     }
                 ]
@@ -185,6 +188,7 @@
                     {
                         "admin_http_basic": [],
                         "admin_http_bearer": [],
+                        "admin_query_parameter": [],
                         "admin_cookie": []
                     }
                 ]
@@ -213,6 +217,7 @@
                     {
                         "admin_http_basic": [],
                         "admin_http_bearer": [],
+                        "admin_query_parameter": [],
                         "admin_cookie": []
                     }
                 ]
@@ -242,6 +247,7 @@
                     {
                         "admin_http_basic": [],
                         "admin_http_bearer": [],
+                        "admin_query_parameter": [],
                         "admin_cookie": []
                     }
                 ]
@@ -273,6 +279,7 @@
                     {
                         "admin_http_basic": [],
                         "admin_http_bearer": [],
+                        "admin_query_parameter": [],
                         "admin_cookie": []
                     }
                 ]
@@ -304,6 +311,7 @@
                     {
                         "admin_http_basic": [],
                         "admin_http_bearer": [],
+                        "admin_query_parameter": [],
                         "admin_cookie": []
                     }
                 ]
@@ -345,6 +353,7 @@
                     {
                         "admin_http_basic": [],
                         "admin_http_bearer": [],
+                        "admin_query_parameter": [],
                         "admin_cookie": []
                     }
                 ]
@@ -374,6 +383,7 @@
                     {
                         "admin_http_basic": [],
                         "admin_http_bearer": [],
+                        "admin_query_parameter": [],
                         "admin_cookie": []
                     }
                 ]
@@ -402,6 +412,7 @@
                     {
                         "auth_http_basic": [],
                         "auth_http_bearer": [],
+                        "auth_query_parameter": [],
                         "auth_cookie": []
                     }
                 ]
@@ -431,6 +442,7 @@
                     {
                         "auth_http_basic": [],
                         "auth_http_bearer": [],
+                        "auth_query_parameter": [],
                         "auth_cookie": []
                     }
                 ]
@@ -496,6 +508,7 @@
                     {
                         "auth_http_basic": [],
                         "auth_http_bearer": [],
+                        "auth_query_parameter": [],
                         "auth_cookie": []
                     }
                 ]
@@ -537,6 +550,7 @@
                     {
                         "auth_http_basic": [],
                         "auth_http_bearer": [],
+                        "auth_query_parameter": [],
                         "auth_cookie": []
                     }
                 ]
@@ -568,6 +582,7 @@
                     {
                         "auth_http_basic": [],
                         "auth_http_bearer": [],
+                        "auth_query_parameter": [],
                         "auth_cookie": []
                     }
                 ]
@@ -609,6 +624,7 @@
                     {
                         "auth_http_basic": [],
                         "auth_http_bearer": [],
+                        "auth_query_parameter": [],
                         "auth_cookie": []
                     }
                 ]
@@ -640,6 +656,7 @@
                     {
                         "auth_http_basic": [],
                         "auth_http_bearer": [],
+                        "auth_query_parameter": [],
                         "auth_cookie": []
                     }
                 ]
@@ -671,6 +688,7 @@
                     {
                         "auth_http_basic": [],
                         "auth_http_bearer": [],
+                        "auth_query_parameter": [],
                         "auth_cookie": []
                     }
                 ]
@@ -712,6 +730,7 @@
                     {
                         "auth_http_basic": [],
                         "auth_http_bearer": [],
+                        "auth_query_parameter": [],
                         "auth_cookie": []
                     }
                 ]
@@ -750,6 +769,7 @@
                     {
                         "auth_http_basic": [],
                         "auth_http_bearer": [],
+                        "auth_query_parameter": [],
                         "auth_cookie": []
                     }
                 ]
@@ -797,6 +817,7 @@
                     {
                         "auth_http_basic": [],
                         "auth_http_bearer": [],
+                        "auth_query_parameter": [],
                         "auth_cookie": []
                     }
                 ]
@@ -828,6 +849,7 @@
                     {
                         "auth_http_basic": [],
                         "auth_http_bearer": [],
+                        "auth_query_parameter": [],
                         "auth_cookie": []
                     }
                 ]
@@ -869,6 +891,7 @@
                     {
                         "auth_http_basic": [],
                         "auth_http_bearer": [],
+                        "auth_query_parameter": [],
                         "auth_cookie": []
                     }
                 ]
@@ -908,6 +931,7 @@
                     {
                         "auth_http_basic": [],
                         "auth_http_bearer": [],
+                        "auth_query_parameter": [],
                         "auth_cookie": []
                     }
                 ]
@@ -937,6 +961,7 @@
                     {
                         "auth_http_basic": [],
                         "auth_http_bearer": [],
+                        "auth_query_parameter": [],
                         "auth_cookie": []
                     }
                 ]
@@ -968,6 +993,7 @@
                     {
                         "auth_http_basic": [],
                         "auth_http_bearer": [],
+                        "auth_query_parameter": [],
                         "auth_cookie": []
                     }
                 ]
@@ -999,6 +1025,7 @@
                     {
                         "auth_http_basic": [],
                         "auth_http_bearer": [],
+                        "auth_query_parameter": [],
                         "auth_cookie": []
                     }
                 ]
@@ -1027,6 +1054,7 @@
                     {
                         "auth_http_basic": [],
                         "auth_http_bearer": [],
+                        "auth_query_parameter": [],
                         "auth_cookie": []
                     }
                 ]
@@ -1098,6 +1126,7 @@
                     {
                         "auth_http_basic": [],
                         "auth_http_bearer": [],
+                        "auth_query_parameter": [],
                         "auth_cookie": []
                     }
                 ]
@@ -1417,12 +1446,24 @@
             "auth_http_bearer": {
                 "type": "http",
                 "scheme": "bearer",
-                "description": "A session token obtained in the output of the `auth` endpoint."
+                "description": "An authentication token obtained in the output of the `auth` endpoint"
             },
             "admin_http_bearer": {
                 "type": "http",
                 "scheme": "bearer",
                 "description": "Identical to the auth_http_bearer scheme but only for users recognized as admin by the Polaris server"
+            },
+            "auth_query_parameter": {
+                "type": "apikey",
+                "in": "query",
+                "name": "auth_token",
+                "description": "An authentication token obtained in the output of the `auth` endpoint"
+            },
+            "admin_query_parameter": {
+                "type": "apikey",
+                "in": "query",
+                "name": "auth_token",
+                "description": "Identical to the auth_query_parameter scheme but only for users recognized as admin by the Polaris server"
             },
             "auth_http_basic": {
                 "type": "http",

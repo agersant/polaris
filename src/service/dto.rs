@@ -32,6 +32,11 @@ pub struct Authorization {
 	pub is_admin: bool,
 }
 
+#[derive(Clone, Serialize, Deserialize)]
+pub struct AuthQueryParameters {
+	pub auth_token: String,
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct ThumbnailOptions {
 	pub pad: Option<bool>,
