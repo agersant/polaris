@@ -6,7 +6,7 @@ mod manager;
 pub use error::*;
 pub use manager::*;
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct AuthSecret {
 	pub key: [u8; 32],
 }

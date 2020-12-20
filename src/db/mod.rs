@@ -102,7 +102,8 @@ pub fn get_test_db(name: &str) -> DB {
 
 	let db = DB::new(&db_path).unwrap();
 	let settings_manager = settings::Manager::new(db.clone());
-	let user_manager = user::Manager::new(db.clone());
+	let auth_secret = settings_manager.get_auth_secret().unwrap();
+	let user_manager = user::Manager::new(db.clone(), auth_secret);
 	let vfs_manager = vfs::Manager::new(db.clone());
 	let ddns_manager = ddns::Manager::new(db.clone());
 	let config_manager =

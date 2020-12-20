@@ -24,7 +24,8 @@ fn get_test_db(name: &str) -> DB {
 fn apply_saves_misc_settings() {
 	let db = get_test_db(&test_name!());
 	let settings_manager = settings::Manager::new(db.clone());
-	let user_manager = user::Manager::new(db.clone());
+	let auth_secret = settings_manager.get_auth_secret().unwrap();
+	let user_manager = user::Manager::new(db.clone(), auth_secret);
 	let vfs_manager = vfs::Manager::new(db.clone());
 	let ddns_manager = ddns::Manager::new(db.clone());
 	let config_manager = Manager::new(
@@ -60,7 +61,8 @@ fn apply_saves_misc_settings() {
 fn apply_saves_mount_points() {
 	let db = get_test_db(&test_name!());
 	let settings_manager = settings::Manager::new(db.clone());
-	let user_manager = user::Manager::new(db.clone());
+	let auth_secret = settings_manager.get_auth_secret().unwrap();
+	let user_manager = user::Manager::new(db.clone(), auth_secret);
 	let vfs_manager = vfs::Manager::new(db.clone());
 	let ddns_manager = ddns::Manager::new(db.clone());
 	let config_manager = Manager::new(
@@ -89,7 +91,8 @@ fn apply_saves_ddns_settings() {
 
 	let db = get_test_db(&test_name!());
 	let settings_manager = settings::Manager::new(db.clone());
-	let user_manager = user::Manager::new(db.clone());
+	let auth_secret = settings_manager.get_auth_secret().unwrap();
+	let user_manager = user::Manager::new(db.clone(), auth_secret);
 	let vfs_manager = vfs::Manager::new(db.clone());
 	let ddns_manager = ddns::Manager::new(db.clone());
 	let config_manager = Manager::new(
@@ -117,7 +120,8 @@ fn apply_saves_ddns_settings() {
 fn apply_can_toggle_admin() {
 	let db = get_test_db(&test_name!());
 	let settings_manager = settings::Manager::new(db.clone());
-	let user_manager = user::Manager::new(db.clone());
+	let auth_secret = settings_manager.get_auth_secret().unwrap();
+	let user_manager = user::Manager::new(db.clone(), auth_secret);
 	let vfs_manager = vfs::Manager::new(db.clone());
 	let ddns_manager = ddns::Manager::new(db.clone());
 	let config_manager = Manager::new(

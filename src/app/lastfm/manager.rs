@@ -2,6 +2,7 @@ use anyhow::*;
 use rustfm_scrobble::{Scrobble, Scrobbler};
 use serde::Deserialize;
 use std::path::Path;
+use user::AuthToken;
 
 use crate::app::{index::Index, user};
 
@@ -53,12 +54,19 @@ impl Manager {
 		}
 	}
 
-	pub fn link(&self, username: &str, token: &str) -> Result<()> {
+	pub fn generate_link_token(&self, username: &str) -> Result<AuthToken> {
+		self.user_manager
+			.generate_lastfm_link_token(username)
+			.map_err(|e| e.into())
+	}
+
+	pub fn link(&self, username: &str, lastfm_token: &str) -> Result<()> {
 		let mut scrobbler = Scrobbler::new(LASTFM_API_KEY.into(), LASTFM_API_SECRET.into());
-		let auth_response = scrobbler.authenticate_with_token(token)?;
+		let auth_response = scrobbler.authenticate_with_token(lastfm_token)?;
 
 		self.user_manager
 			.lastfm_link(username, &auth_response.name, &auth_response.key)
+			.map_err(|e| e.into())
 	}
 
 	pub fn unlink(&self, username: &str) -> Result<()> {
