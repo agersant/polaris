@@ -6,7 +6,7 @@ use actix_web::{
 	web::Bytes,
 	App,
 };
-use http::{header, response::Builder, Method, Request, Response};
+use http::{response::Builder, Method, Request, Response};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::fs;
