@@ -47,10 +47,7 @@ impl ActixTestService {
 		}
 
 		if let Some(ref authorization) = self.authorization {
-			actix_request = {
-				let bearer_auth = format!("Bearer {}", authorization.token);
-				actix_request.set_header(header::AUTHORIZATION, bearer_auth)
-			};
+			actix_request = actix_request.bearer_auth(&authorization.token);
 		}
 
 		let mut actix_response = self
