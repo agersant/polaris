@@ -6,7 +6,7 @@ use std::path::*;
 use crate::app::thumbnail::{read, Options};
 
 pub fn generate_thumbnail(image_path: &Path, options: &Options) -> Result<DynamicImage> {
-	let source_image = read(image_path)?;
+	let source_image = DynamicImage::ImageRgb8(read(image_path)?.into_rgb8());
 	let (source_width, source_height) = source_image.dimensions();
 	let largest_dimension = cmp::max(source_width, source_height);
 	let out_dimension = cmp::min(options.max_dimension, largest_dimension);
