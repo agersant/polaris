@@ -18,7 +18,7 @@ impl Index {
 		let start = time::Instant::now();
 		info!("Beginning library index update");
 
-		let album_art_pattern = self.config_manager.get_index_album_art_pattern()?;
+		let album_art_pattern = self.settings_manager.get_index_album_art_pattern()?;
 
 		let cleaner = Cleaner::new(self.db.clone(), self.vfs_manager.clone());
 		cleaner.clean()?;
@@ -38,9 +38,9 @@ impl Index {
 
 		let vfs = self.vfs_manager.get_vfs()?;
 		let traverser_thread = std::thread::spawn(move || {
-			let mount_points = vfs.get_mount_points();
+			let mounts = vfs.mounts();
 			let traverser = Traverser::new(collect_sender);
-			traverser.traverse(mount_points.values().map(|p| p.clone()).collect());
+			traverser.traverse(mounts.iter().map(|p| p.source.clone()).collect());
 		});
 
 		if let Err(e) = traverser_thread.join() {

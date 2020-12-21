@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use crate::app::{config, index::Index, lastfm, playlist, thumbnail, user, vfs};
+use crate::app::{config, ddns, index::Index, lastfm, playlist, settings, thumbnail, user, vfs};
 use crate::db::DB;
 
 mod dto;
@@ -10,14 +10,13 @@ mod error;
 #[cfg(test)]
 mod test;
 
-#[cfg(feature = "service-rocket")]
-mod rocket;
-#[cfg(feature = "service-rocket")]
-pub use self::rocket::*;
+mod actix;
+pub use actix::*;
 
+#[derive(Clone)]
 pub struct Context {
 	pub port: u16,
-	pub auth_secret: Vec<u8>,
+	pub auth_secret: settings::AuthSecret,
 	pub web_dir_path: PathBuf,
 	pub swagger_dir_path: PathBuf,
 	pub web_url: String,
@@ -26,8 +25,10 @@ pub struct Context {
 	pub db: DB,
 	pub index: Index,
 	pub config_manager: config::Manager,
+	pub ddns_manager: ddns::Manager,
 	pub lastfm_manager: lastfm::Manager,
 	pub playlist_manager: playlist::Manager,
+	pub settings_manager: settings::Manager,
 	pub thumbnail_manager: thumbnail::Manager,
 	pub user_manager: user::Manager,
 	pub vfs_manager: vfs::Manager,
@@ -82,18 +83,27 @@ impl ContextBuilder {
 		thumbnails_dir_path.push("thumbnails");
 
 		let vfs_manager = vfs::Manager::new(db.clone());
-		let user_manager = user::Manager::new(db.clone());
-		let config_manager = config::Manager::new(db.clone(), user_manager.clone());
-		let index = Index::new(db.clone(), vfs_manager.clone(), config_manager.clone());
+		let settings_manager = settings::Manager::new(db.clone());
+		let auth_secret = settings_manager.get_auth_secret()?;
+		let ddns_manager = ddns::Manager::new(db.clone());
+		let user_manager = user::Manager::new(db.clone(), auth_secret);
+		let index = Index::new(db.clone(), vfs_manager.clone(), settings_manager.clone());
+		let config_manager = config::Manager::new(
+			settings_manager.clone(),
+			user_manager.clone(),
+			vfs_manager.clone(),
+			ddns_manager.clone(),
+		);
 		let playlist_manager = playlist::Manager::new(db.clone(), vfs_manager.clone());
 		let thumbnail_manager = thumbnail::Manager::new(thumbnails_dir_path);
 		let lastfm_manager = lastfm::Manager::new(index.clone(), user_manager.clone());
 
 		if let Some(config_path) = self.config_file_path {
 			let config = config::Config::from_path(&config_path)?;
-			config_manager.amend(&config)?;
+			config_manager.apply(&config)?;
 		}
-		let auth_secret = config_manager.get_auth_secret()?;
+
+		let auth_secret = settings_manager.get_auth_secret()?;
 
 		Ok(Context {
 			port: self.port.unwrap_or(5050),
@@ -105,8 +115,10 @@ impl ContextBuilder {
 			swagger_dir_path,
 			index,
 			config_manager,
+			ddns_manager,
 			lastfm_manager,
 			playlist_manager,
+			settings_manager,
 			thumbnail_manager,
 			user_manager,
 			vfs_manager,

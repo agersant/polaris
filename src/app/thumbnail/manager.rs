@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 
 use crate::app::thumbnail::*;
 
+#[derive(Clone)]
 pub struct Manager {
 	thumbnails_dir_path: PathBuf,
 }

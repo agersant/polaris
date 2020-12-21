@@ -2,13 +2,13 @@ use http::StatusCode;
 use std::path::{Path, PathBuf};
 
 use crate::app::index;
-use crate::service::test::{add_trailing_slash, constants::*, ServiceType, TestService};
+use crate::service::test::{add_trailing_slash, constants::*, protocol, ServiceType, TestService};
 use crate::test_name;
 
 #[test]
 fn test_browse_requires_auth() {
 	let mut service = ServiceType::new(&test_name!());
-	let request = service.request_builder().browse(&PathBuf::new());
+	let request = protocol::browse(&PathBuf::new());
 	let response = service.fetch(&request);
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
@@ -21,7 +21,7 @@ fn test_browse_root() {
 	service.index();
 	service.login();
 
-	let request = service.request_builder().browse(&PathBuf::new());
+	let request = protocol::browse(&PathBuf::new());
 	let response = service.fetch_json::<_, Vec<index::CollectionFile>>(&request);
 	assert_eq!(response.status(), StatusCode::OK);
 	let entries = response.body();
@@ -37,7 +37,7 @@ fn test_browse_directory() {
 	service.login();
 
 	let path: PathBuf = [TEST_MOUNT_NAME, "Khemmis", "Hunted"].iter().collect();
-	let request = service.request_builder().browse(&path);
+	let request = protocol::browse(&path);
 	let response = service.fetch_json::<_, Vec<index::CollectionFile>>(&request);
 	assert_eq!(response.status(), StatusCode::OK);
 	let entries = response.body();
@@ -51,7 +51,7 @@ fn test_browse_bad_directory() {
 	service.login();
 
 	let path: PathBuf = ["not_my_collection"].iter().collect();
-	let request = service.request_builder().browse(&path);
+	let request = protocol::browse(&path);
 	let response = service.fetch(&request);
 	assert_eq!(response.status(), StatusCode::NOT_FOUND);
 }
@@ -59,7 +59,7 @@ fn test_browse_bad_directory() {
 #[test]
 fn test_flatten_requires_auth() {
 	let mut service = ServiceType::new(&test_name!());
-	let request = service.request_builder().flatten(&PathBuf::new());
+	let request = protocol::flatten(&PathBuf::new());
 	let response = service.fetch(&request);
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
@@ -72,7 +72,7 @@ fn test_flatten_root() {
 	service.index();
 	service.login();
 
-	let request = service.request_builder().flatten(&PathBuf::new());
+	let request = protocol::flatten(&PathBuf::new());
 	let response = service.fetch_json::<_, Vec<index::Song>>(&request);
 	assert_eq!(response.status(), StatusCode::OK);
 	let entries = response.body();
@@ -87,9 +87,7 @@ fn test_flatten_directory() {
 	service.index();
 	service.login();
 
-	let request = service
-		.request_builder()
-		.flatten(Path::new(TEST_MOUNT_NAME));
+	let request = protocol::flatten(Path::new(TEST_MOUNT_NAME));
 	let response = service.fetch_json::<_, Vec<index::Song>>(&request);
 	assert_eq!(response.status(), StatusCode::OK);
 	let entries = response.body();
@@ -103,7 +101,7 @@ fn test_flatten_bad_directory() {
 	service.login();
 
 	let path: PathBuf = ["not_my_collection"].iter().collect();
-	let request = service.request_builder().flatten(&path);
+	let request = protocol::flatten(&path);
 	let response = service.fetch(&request);
 	assert_eq!(response.status(), StatusCode::NOT_FOUND);
 }
@@ -111,7 +109,7 @@ fn test_flatten_bad_directory() {
 #[test]
 fn test_random_requires_auth() {
 	let mut service = ServiceType::new(&test_name!());
-	let request = service.request_builder().random();
+	let request = protocol::random();
 	let response = service.fetch(&request);
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
@@ -124,7 +122,7 @@ fn test_random_golden_path() {
 	service.index();
 	service.login();
 
-	let request = service.request_builder().random();
+	let request = protocol::random();
 	let response = service.fetch_json::<_, Vec<index::Directory>>(&request);
 	assert_eq!(response.status(), StatusCode::OK);
 	let entries = response.body();
@@ -139,7 +137,7 @@ fn test_random_with_trailing_slash() {
 	service.index();
 	service.login();
 
-	let mut request = service.request_builder().random();
+	let mut request = protocol::random();
 	add_trailing_slash(&mut request);
 	let response = service.fetch_json::<_, Vec<index::Directory>>(&request);
 	assert_eq!(response.status(), StatusCode::OK);
@@ -150,7 +148,7 @@ fn test_random_with_trailing_slash() {
 #[test]
 fn test_recent_requires_auth() {
 	let mut service = ServiceType::new(&test_name!());
-	let request = service.request_builder().recent();
+	let request = protocol::recent();
 	let response = service.fetch(&request);
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
@@ -163,7 +161,7 @@ fn test_recent_golden_path() {
 	service.index();
 	service.login();
 
-	let request = service.request_builder().recent();
+	let request = protocol::recent();
 	let response = service.fetch_json::<_, Vec<index::Directory>>(&request);
 	assert_eq!(response.status(), StatusCode::OK);
 	let entries = response.body();
@@ -178,7 +176,7 @@ fn test_recent_with_trailing_slash() {
 	service.index();
 	service.login();
 
-	let mut request = service.request_builder().recent();
+	let mut request = protocol::recent();
 	add_trailing_slash(&mut request);
 	let response = service.fetch_json::<_, Vec<index::Directory>>(&request);
 	assert_eq!(response.status(), StatusCode::OK);
@@ -189,7 +187,7 @@ fn test_recent_with_trailing_slash() {
 #[test]
 fn test_search_requires_auth() {
 	let mut service = ServiceType::new(&test_name!());
-	let request = service.request_builder().search("");
+	let request = protocol::search("");
 	let response = service.fetch(&request);
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
@@ -200,7 +198,7 @@ fn test_search_without_query() {
 	service.complete_initial_setup();
 	service.login();
 
-	let request = service.request_builder().search("");
+	let request = protocol::search("");
 	let response = service.fetch_json::<_, Vec<index::CollectionFile>>(&request);
 	assert_eq!(response.status(), StatusCode::OK);
 }
@@ -213,7 +211,7 @@ fn test_search_with_query() {
 	service.index();
 	service.login();
 
-	let request = service.request_builder().search("door");
+	let request = protocol::search("door");
 	let response = service.fetch_json::<_, Vec<index::CollectionFile>>(&request);
 	let results = response.body();
 	assert_eq!(results.len(), 1);

@@ -11,6 +11,7 @@ use crate::app::index::Song;
 use crate::app::vfs;
 use crate::db::{playlist_songs, playlists, users, DB};
 
+#[derive(Clone)]
 pub struct Manager {
 	db: DB,
 	vfs_manager: vfs::Manager,

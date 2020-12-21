@@ -1,33 +1,39 @@
 use anyhow::anyhow;
 use diesel;
 use diesel::prelude::*;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::*;
+use crate::app::settings::AuthSecret;
 use crate::db::DB;
 
 const HASH_ITERATIONS: u32 = 10000;
 
 #[derive(Clone)]
 pub struct Manager {
+	// TODO make this private and move preferences methods in this file
 	pub db: DB,
+	auth_secret: AuthSecret,
 }
 
 impl Manager {
-	pub fn new(db: DB) -> Self {
-		Self { db }
+	pub fn new(db: DB, auth_secret: AuthSecret) -> Self {
+		Self { db, auth_secret }
 	}
 
-	pub fn create_user(&self, username: &str, password: &str) -> Result<(), Error> {
-		if password.is_empty() {
-			return Err(Error::EmptyPassword);
+	pub fn create(&self, new_user: &NewUser) -> Result<(), Error> {
+		if new_user.name.is_empty() {
+			return Err(Error::EmptyUsername);
 		}
-		let password_hash = hash_password(password)?;
+
+		let password_hash = hash_password(&new_user.password)?;
 		let connection = self.db.connect()?;
 		let new_user = User {
-			name: username.to_owned(),
+			name: new_user.name.to_owned(),
 			password_hash,
-			admin: 0,
+			admin: new_user.admin as i32,
 		};
+
 		diesel::insert_into(users::table)
 			.values(&new_user)
 			.execute(&connection)
@@ -35,17 +41,37 @@ impl Manager {
 		Ok(())
 	}
 
-	pub fn set_password(&self, username: &str, password: &str) -> Result<(), Error> {
-		let password_hash = hash_password(password)?;
+	pub fn delete(&self, username: &str) -> Result<(), Error> {
+		use crate::db::users::dsl::*;
 		let connection = self.db.connect()?;
-		diesel::update(users::table.filter(users::name.eq(username)))
-			.set(users::password_hash.eq(password_hash))
+		diesel::delete(users.filter(name.eq(username)))
 			.execute(&connection)
 			.map_err(|_| Error::Unspecified)?;
 		Ok(())
 	}
 
-	pub fn auth(&self, username: &str, password: &str) -> anyhow::Result<bool> {
+	pub fn set_password(&self, username: &str, password: &str) -> Result<(), Error> {
+		let hash = hash_password(password)?;
+		let connection = self.db.connect()?;
+		use crate::db::users::dsl::*;
+		diesel::update(users.filter(name.eq(username)))
+			.set(password_hash.eq(hash))
+			.execute(&connection)
+			.map_err(|_| Error::Unspecified)?;
+		Ok(())
+	}
+
+	pub fn set_is_admin(&self, username: &str, is_admin: bool) -> Result<(), Error> {
+		use crate::db::users::dsl::*;
+		let connection = self.db.connect()?;
+		diesel::update(users.filter(name.eq(username)))
+			.set(admin.eq(is_admin as i32))
+			.execute(&connection)
+			.map_err(|_| Error::Unspecified)?;
+		Ok(())
+	}
+
+	pub fn login(&self, username: &str, password: &str) -> Result<AuthToken, Error> {
 		use crate::db::users::dsl::*;
 		let connection = self.db.connect()?;
 		match users
@@ -53,13 +79,69 @@ impl Manager {
 			.filter(name.eq(username))
 			.get_result(&connection)
 		{
-			Err(diesel::result::Error::NotFound) => Ok(false),
+			Err(diesel::result::Error::NotFound) => Err(Error::IncorrectUsername),
 			Ok(hash) => {
 				let hash: String = hash;
-				Ok(verify_password(&hash, password))
+				if verify_password(&hash, password) {
+					let authorization = Authorization {
+						username: username.to_owned(),
+						scope: AuthorizationScope::PolarisAuth,
+					};
+					self.generate_auth_token(&authorization)
+				} else {
+					Err(Error::IncorrectPassword)
+				}
 			}
-			Err(e) => Err(e.into()),
+			Err(_) => Err(Error::Unspecified),
 		}
+	}
+
+	pub fn authenticate(
+		&self,
+		auth_token: &AuthToken,
+		scope: AuthorizationScope,
+	) -> Result<Authorization, Error> {
+		let authorization = self.decode_auth_token(auth_token, scope)?;
+		if self.exists(&authorization.username)? {
+			Ok(authorization)
+		} else {
+			Err(Error::IncorrectUsername)
+		}
+	}
+
+	fn decode_auth_token(
+		&self,
+		auth_token: &AuthToken,
+		scope: AuthorizationScope,
+	) -> Result<Authorization, Error> {
+		let AuthToken(data) = auth_token;
+		let ttl = match scope {
+			AuthorizationScope::PolarisAuth => 0,      // permanent
+			AuthorizationScope::LastFMLink => 10 * 60, // 10 minutes
+		};
+		let authorization = branca::decode(data, &self.auth_secret.key, ttl)
+			.map_err(|_| Error::InvalidAuthToken)?;
+		let authorization: Authorization =
+			serde_json::from_slice(&authorization[..]).map_err(|_| Error::InvalidAuthToken)?;
+		if authorization.scope != scope {
+			return Err(Error::IncorrectAuthorizationScope);
+		}
+		Ok(authorization)
+	}
+
+	fn generate_auth_token(&self, authorization: &Authorization) -> Result<AuthToken, Error> {
+		let serialized_authorization =
+			serde_json::to_string(&authorization).map_err(|_| Error::Unspecified)?;
+		branca::encode(
+			serialized_authorization.as_bytes(),
+			&self.auth_secret.key,
+			SystemTime::now()
+				.duration_since(UNIX_EPOCH)
+				.map_err(|_| Error::Unspecified)?
+				.as_secs() as u32,
+		)
+		.map_err(|_| Error::Unspecified)
+		.map(AuthToken)
 	}
 
 	pub fn count(&self) -> anyhow::Result<i64> {
@@ -69,23 +151,34 @@ impl Manager {
 		Ok(count)
 	}
 
-	pub fn exists(&self, username: &str) -> anyhow::Result<bool> {
+	pub fn list(&self) -> Result<Vec<User>, Error> {
+		use crate::db::users::dsl::*;
+		let connection = self.db.connect()?;
+		users
+			.select((name, password_hash, admin))
+			.get_results(&connection)
+			.map_err(|_| Error::Unspecified)
+	}
+
+	pub fn exists(&self, username: &str) -> Result<bool, Error> {
 		use crate::db::users::dsl::*;
 		let connection = self.db.connect()?;
 		let results: Vec<String> = users
 			.select(name)
 			.filter(name.eq(username))
-			.get_results(&connection)?;
+			.get_results(&connection)
+			.map_err(|_| Error::Unspecified)?;
 		Ok(results.len() > 0)
 	}
 
-	pub fn is_admin(&self, username: &str) -> anyhow::Result<bool> {
+	pub fn is_admin(&self, username: &str) -> Result<bool, Error> {
 		use crate::db::users::dsl::*;
 		let connection = self.db.connect()?;
 		let is_admin: i32 = users
 			.filter(name.eq(username))
 			.select(admin)
-			.get_result(&connection)?;
+			.get_result(&connection)
+			.map_err(|_| Error::Unspecified)?;
 		Ok(is_admin != 0)
 	}
 
@@ -94,7 +187,7 @@ impl Manager {
 		username: &str,
 		lastfm_login: &str,
 		session_key: &str,
-	) -> anyhow::Result<()> {
+	) -> Result<(), Error> {
 		use crate::db::users::dsl::*;
 		let connection = self.db.connect()?;
 		diesel::update(users.filter(name.eq(username)))
@@ -102,8 +195,16 @@ impl Manager {
 				lastfm_username.eq(lastfm_login),
 				lastfm_session_key.eq(session_key),
 			))
-			.execute(&connection)?;
+			.execute(&connection)
+			.map_err(|_| Error::Unspecified)?;
 		Ok(())
+	}
+
+	pub fn generate_lastfm_link_token(&self, username: &str) -> Result<AuthToken, Error> {
+		self.generate_auth_token(&Authorization {
+			username: username.to_owned(),
+			scope: AuthorizationScope::LastFMLink,
+		})
 	}
 
 	pub fn get_lastfm_session_key(&self, username: &str) -> anyhow::Result<String> {
@@ -126,18 +227,19 @@ impl Manager {
 	pub fn lastfm_unlink(&self, username: &str) -> anyhow::Result<()> {
 		use crate::db::users::dsl::*;
 		let connection = self.db.connect()?;
+		let null: Option<String> = None;
 		diesel::update(users.filter(name.eq(username)))
-			.set((lastfm_session_key.eq(""), lastfm_username.eq("")))
+			.set((lastfm_session_key.eq(&null), lastfm_username.eq(&null)))
 			.execute(&connection)?;
 		Ok(())
 	}
 }
 
-fn hash_password(password: &str) -> anyhow::Result<String> {
-	match pbkdf2::pbkdf2_simple(password, HASH_ITERATIONS) {
-		Ok(hash) => Ok(hash),
-		Err(e) => Err(e.into()),
+fn hash_password(password: &str) -> Result<String, Error> {
+	if password.is_empty() {
+		return Err(Error::EmptyPassword);
 	}
+	pbkdf2::pbkdf2_simple(password, HASH_ITERATIONS).map_err(|_| Error::Unspecified)
 }
 
 fn verify_password(password_hash: &str, attempted_password: &str) -> bool {

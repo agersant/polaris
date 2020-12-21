@@ -3,7 +3,7 @@ use log::error;
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::Duration;
 
-use crate::app::{config, vfs};
+use crate::app::{settings, vfs};
 use crate::db::DB;
 
 mod metadata;
@@ -21,16 +21,16 @@ pub use self::update::*;
 pub struct Index {
 	db: DB,
 	vfs_manager: vfs::Manager,
-	config_manager: config::Manager,
+	settings_manager: settings::Manager,
 	pending_reindex: Arc<(Mutex<bool>, Condvar)>,
 }
 
 impl Index {
-	pub fn new(db: DB, vfs_manager: vfs::Manager, config_manager: config::Manager) -> Self {
+	pub fn new(db: DB, vfs_manager: vfs::Manager, settings_manager: settings::Manager) -> Self {
 		let index = Self {
 			db,
 			vfs_manager,
-			config_manager,
+			settings_manager,
 			pending_reindex: Arc::new((Mutex::new(false), Condvar::new())),
 		};
 
@@ -76,7 +76,7 @@ impl Index {
 		loop {
 			self.trigger_reindex();
 			let sleep_duration = self
-				.config_manager
+				.settings_manager
 				.get_index_sleep_duration()
 				.unwrap_or_else(|e| {
 					error!("Could not retrieve index sleep duration: {}", e);
