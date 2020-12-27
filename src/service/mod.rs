@@ -34,6 +34,62 @@ pub struct Context {
 	pub vfs_manager: vfs::Manager,
 }
 
+struct Paths {
+	db_dir_path: PathBuf,
+	web_dir_path: PathBuf,
+	swagger_dir_path: PathBuf,
+	cache_dir_path: PathBuf,
+}
+
+// TODO Make this the only implementation when we can expand %LOCALAPPDATA% correctly on Windows
+// And fix the installer accordingly (`release_script.ps1`)
+#[cfg(not(windows))]
+impl Default for Paths {
+	fn default() -> Self {
+		Self {
+			db_dir_path: ["."].iter().collect(),
+			web_dir_path: [".", "web"].iter().collect(),
+			swagger_dir_path: [".", "docs", "swagger"].iter().collect(),
+			cache_dir_path: ["."].iter().collect(),
+		}
+	}
+}
+
+#[cfg(windows)]
+impl Default for Paths {
+	fn default() -> Self {
+		let local_app_data = winfolder::Folder::LocalAppData.path();
+		let install_directory: PathBuf =
+			local_app_data.join(["Permafrost", "Polaris"].iter().collect::<PathBuf>());
+		Self {
+			db_dir_path: install_directory.clone(),
+			web_dir_path: install_directory.join("web"),
+			swagger_dir_path: install_directory.join("swagger"),
+			cache_dir_path: install_directory.clone(),
+		}
+	}
+}
+
+impl Paths {
+	fn new() -> Self {
+		let defaults = Self::default();
+		Self {
+			db_dir_path: option_env!("POLARIS_DB_DIR")
+				.map(PathBuf::from)
+				.unwrap_or(defaults.db_dir_path),
+			web_dir_path: option_env!("POLARIS_WEB_DIR")
+				.map(PathBuf::from)
+				.unwrap_or(defaults.web_dir_path),
+			swagger_dir_path: option_env!("POLARIS_SWAGGER_DIR")
+				.map(PathBuf::from)
+				.unwrap_or(defaults.swagger_dir_path),
+			cache_dir_path: option_env!("POLARIS_CACHE_DIR")
+				.map(PathBuf::from)
+				.unwrap_or(defaults.cache_dir_path),
+		}
+	}
+}
+
 pub struct ContextBuilder {
 	port: Option<u16>,
 	config_file_path: Option<PathBuf>,
@@ -56,31 +112,24 @@ impl ContextBuilder {
 	}
 
 	pub fn build(self) -> anyhow::Result<Context> {
-		let db_path = self.database_file_path.unwrap_or_else(|| {
-			let mut path = PathBuf::from(option_env!("POLARIS_DB_DIR").unwrap_or("."));
-			path.push("db.sqlite");
-			path
-		});
+		let paths = Paths::new();
+
+		let db_path = self
+			.database_file_path
+			.unwrap_or(paths.db_dir_path.join("db.sqlite"));
 		fs::create_dir_all(&db_path.parent().unwrap())?;
 		let db = DB::new(&db_path)?;
 
-		let web_dir_path = self
-			.web_dir_path
-			.or(option_env!("POLARIS_WEB_DIR").map(PathBuf::from))
-			.unwrap_or([".", "web"].iter().collect());
+		let web_dir_path = self.web_dir_path.unwrap_or(paths.web_dir_path);
 		fs::create_dir_all(&web_dir_path)?;
 
-		let swagger_dir_path = self
-			.swagger_dir_path
-			.or(option_env!("POLARIS_SWAGGER_DIR").map(PathBuf::from))
-			.unwrap_or([".", "docs", "swagger"].iter().collect());
+		let swagger_dir_path = self.swagger_dir_path.unwrap_or(paths.swagger_dir_path);
 		fs::create_dir_all(&swagger_dir_path)?;
 
-		let mut thumbnails_dir_path = self
+		let thumbnails_dir_path = self
 			.cache_dir_path
-			.or(option_env!("POLARIS_CACHE_DIR").map(PathBuf::from))
-			.unwrap_or(PathBuf::from(".").to_owned());
-		thumbnails_dir_path.push("thumbnails");
+			.unwrap_or(paths.cache_dir_path)
+			.join("thumbnails");
 
 		let vfs_manager = vfs::Manager::new(db.clone());
 		let settings_manager = settings::Manager::new(db.clone());
