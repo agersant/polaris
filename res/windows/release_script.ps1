@@ -8,7 +8,7 @@ $rc_exe = Join-Path "C:\Program Files (x86)\Windows Kits\10\bin\10.0.18362.0\x64
 
 ""
 "Compiling executable"
-$script:INSTALL_DIR = "$env:LOCALAPPDATA\Permafrost\Polaris"
+$script:INSTALL_DIR = "%LOCALAPPDATA%\Permafrost\Polaris"
 $env:POLARIS_WEB_DIR = "$INSTALL_DIR\web"
 $env:POLARIS_SWAGGER_DIR = "$INSTALL_DIR\swagger"
 $env:POLARIS_DB_DIR = "$INSTALL_DIR"
