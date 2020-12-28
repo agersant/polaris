@@ -61,7 +61,6 @@ features = ["bmp", "gif", "jpeg", "png"]
 [target.'cfg(windows)'.dependencies]
 uuid = { version="0.8", optional = true }
 winapi = { version = "0.3.3", features = ["winuser", "libloaderapi", "shellapi", "errhandlingapi"], optional = true }
-winfolder = { version = "0.1.1" }
 
 [target.'cfg(unix)'.dependencies]
 sd-notify = "0.1.0"
