@@ -58,7 +58,7 @@ impl Default for Paths {
 #[cfg(windows)]
 impl Default for Paths {
 	fn default() -> Self {
-		let local_app_data = winfolder::Folder::LocalAppData.path();
+		let local_app_data = std::env::var("LOCALAPPDATA").map(PathBuf::from).unwrap();
 		let install_directory: PathBuf =
 			local_app_data.join(["Permafrost", "Polaris"].iter().collect::<PathBuf>());
 		Self {
