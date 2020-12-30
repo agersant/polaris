@@ -205,7 +205,8 @@ fn indexes_embedded_artwork() {
 }
 
 #[test]
-fn album_art_pattern_is_case_insensitive() {
+#[cfg(windows)]
+fn album_art_pattern_is_case_insensitive_on_windows() {
 	let ctx = test::ContextBuilder::new(test_name!())
 		.mount(TEST_MOUNT_NAME, "test-data/small-collection")
 		.build();
