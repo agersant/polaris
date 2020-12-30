@@ -25,6 +25,47 @@ fn update_adds_new_content() {
 }
 
 #[test]
+fn update_removes_missing_content() {
+	let builder = test::ContextBuilder::new(test_name!());
+
+	let original_collection_dir: PathBuf = ["test-data", "small-collection"].iter().collect();
+	let test_collection_dir: PathBuf = builder.test_directory.join("small-collection");
+
+	let copy_options = fs_extra::dir::CopyOptions::new();
+	fs_extra::dir::copy(
+		&original_collection_dir,
+		&builder.test_directory,
+		&copy_options,
+	)
+	.unwrap();
+
+	let ctx = builder
+		.mount(TEST_MOUNT_NAME, test_collection_dir.to_str().unwrap())
+		.build();
+
+	ctx.index.update().unwrap();
+
+	{
+		let connection = ctx.db.connect().unwrap();
+		let all_directories: Vec<Directory> = directories::table.load(&connection).unwrap();
+		let all_songs: Vec<Song> = songs::table.load(&connection).unwrap();
+		assert_eq!(all_directories.len(), 6);
+		assert_eq!(all_songs.len(), 13);
+	}
+
+	let khemmis_directory = test_collection_dir.join("Khemmis");
+	std::fs::remove_dir_all(&khemmis_directory).unwrap();
+	ctx.index.update().unwrap();
+	{
+		let connection = ctx.db.connect().unwrap();
+		let all_directories: Vec<Directory> = directories::table.load(&connection).unwrap();
+		let all_songs: Vec<Song> = songs::table.load(&connection).unwrap();
+		assert_eq!(all_directories.len(), 4);
+		assert_eq!(all_songs.len(), 8);
+	}
+}
+
+#[test]
 fn can_browse_top_level() {
 	let ctx = test::ContextBuilder::new(test_name!())
 		.mount(TEST_MOUNT_NAME, "test-data/small-collection")

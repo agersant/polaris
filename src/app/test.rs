@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use crate::app::{config, ddns, index::Index, lastfm, playlist, settings, thumbnail, user, vfs};
 use crate::db::DB;
 use crate::test::*;
@@ -13,17 +15,18 @@ pub struct Context {
 	pub thumbnail_manager: thumbnail::Manager,
 	pub user_manager: user::Manager,
 	pub vfs_manager: vfs::Manager,
+	pub test_directory: PathBuf,
 }
 
 pub struct ContextBuilder {
-	test_name: String,
 	config: config::Config,
+	pub test_directory: PathBuf,
 }
 
 impl ContextBuilder {
 	pub fn new(test_name: String) -> Self {
 		Self {
-			test_name,
+			test_directory: get_test_directory(&test_name),
 			config: config::Config::default(),
 		}
 	}
@@ -52,9 +55,8 @@ impl ContextBuilder {
 	}
 
 	pub fn build(self) -> Context {
-		let output_dir = get_test_directory(&self.test_name);
-		let cache_output_dir = output_dir.join("cache");
-		let db_path = output_dir.join("db.sqlite");
+		let cache_output_dir = self.test_directory.join("cache");
+		let db_path = self.test_directory.join("db.sqlite");
 
 		let db = DB::new(&db_path).unwrap();
 		let settings_manager = settings::Manager::new(db.clone());
@@ -86,6 +88,7 @@ impl ContextBuilder {
 			thumbnail_manager,
 			user_manager,
 			vfs_manager,
+			test_directory: self.test_directory,
 		}
 	}
 }
