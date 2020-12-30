@@ -9,13 +9,13 @@ use actix_web::{
 use http::{response::Builder, Method, Request, Response};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use std::fs;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 
 use crate::service::actix::*;
 use crate::service::dto;
 use crate::service::test::TestService;
+use crate::test::*;
 
 pub struct ActixTestService {
 	system_runner: SystemRunner,
@@ -76,13 +76,8 @@ impl ActixTestService {
 
 impl TestService for ActixTestService {
 	fn new(test_name: &str) -> Self {
-		let mut db_path: PathBuf = ["test-output", test_name].iter().collect();
-		fs::create_dir_all(&db_path).unwrap();
-		db_path.push("db.sqlite");
-
-		if db_path.exists() {
-			fs::remove_file(&db_path).unwrap();
-		}
+		let output_dir = get_test_directory(test_name);
+		let db_path: PathBuf = output_dir.join("db.sqlite");
 
 		let context = service::ContextBuilder::new()
 			.port(5050)

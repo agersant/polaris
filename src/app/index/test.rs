@@ -2,25 +2,22 @@ use diesel::prelude::*;
 use std::path::{Path, PathBuf};
 
 use super::*;
-use crate::app::{index::Index, settings, vfs};
-use crate::db::{self, directories, songs};
+use crate::app::test;
+use crate::db::{directories, songs};
 use crate::test_name;
 
-fn get_context(test_name: &str) -> (db::DB, Index) {
-	let db = db::get_test_db(test_name);
-	let vfs_manager = vfs::Manager::new(db.clone());
-	let settings_manager = settings::Manager::new(db.clone());
-	let index = Index::new(db.clone(), vfs_manager, settings_manager);
-	(db, index)
-}
+const TEST_MOUNT_NAME: &str = "root";
 
 #[test]
 fn update_adds_new_content() {
-	let (db, index) = get_context(&test_name!());
-	index.update().unwrap();
-	index.update().unwrap(); // Validates that subsequent updates don't run into conflicts
+	let ctx = test::ContextBuilder::new(test_name!())
+		.mount(TEST_MOUNT_NAME, "test-data/small-collection")
+		.build();
 
-	let connection = db.connect().unwrap();
+	ctx.index.update().unwrap();
+	ctx.index.update().unwrap(); // Validates that subsequent updates don't run into conflicts
+
+	let connection = ctx.db.connect().unwrap();
 	let all_directories: Vec<Directory> = directories::table.load(&connection).unwrap();
 	let all_songs: Vec<Song> = songs::table.load(&connection).unwrap();
 	assert_eq!(all_directories.len(), 6);
@@ -28,29 +25,113 @@ fn update_adds_new_content() {
 }
 
 #[test]
-fn update_reads_metadata() {
-	let target: PathBuf = ["test-data", "small-collection", "Tobokegao", "Picnic"]
-		.iter()
-		.collect();
+fn can_browse_top_level() {
+	let ctx = test::ContextBuilder::new(test_name!())
+		.mount(TEST_MOUNT_NAME, "test-data/small-collection")
+		.build();
+	ctx.index.update().unwrap();
 
-	let mut song_path = target.clone();
-	song_path.push("05 - シャーベット (Sherbet).mp3");
+	let root_path = Path::new(TEST_MOUNT_NAME);
+	let files = ctx.index.browse(Path::new("")).unwrap();
+	assert_eq!(files.len(), 1);
+	match files[0] {
+		CollectionFile::Directory(ref d) => assert_eq!(d.path, root_path.to_str().unwrap()),
+		_ => panic!("Expected directory"),
+	}
+}
 
-	let mut artwork_path = target.clone();
-	artwork_path.push("Folder.png");
+#[test]
+fn can_browse_directory() {
+	let khemmis_path: PathBuf = [TEST_MOUNT_NAME, "Khemmis"].iter().collect();
+	let tobokegao_path: PathBuf = [TEST_MOUNT_NAME, "Tobokegao"].iter().collect();
 
-	let (db, index) = get_context(&test_name!());
-	index.update().unwrap();
+	let ctx = test::ContextBuilder::new(test_name!())
+		.mount(TEST_MOUNT_NAME, "test-data/small-collection")
+		.build();
+	ctx.index.update().unwrap();
 
-	let connection = db.connect().unwrap();
-	let songs: Vec<Song> = songs::table
-		.filter(songs::title.eq("シャーベット (Sherbet)"))
-		.load(&connection)
-		.unwrap();
+	let files = ctx.index.browse(Path::new(TEST_MOUNT_NAME)).unwrap();
 
-	assert_eq!(songs.len(), 1);
-	let song = &songs[0];
-	assert_eq!(song.path, song_path.to_string_lossy().as_ref());
+	assert_eq!(files.len(), 2);
+	match files[0] {
+		CollectionFile::Directory(ref d) => assert_eq!(d.path, khemmis_path.to_str().unwrap()),
+		_ => panic!("Expected directory"),
+	}
+
+	match files[1] {
+		CollectionFile::Directory(ref d) => assert_eq!(d.path, tobokegao_path.to_str().unwrap()),
+		_ => panic!("Expected directory"),
+	}
+}
+
+#[test]
+fn can_flatten_root() {
+	let ctx = test::ContextBuilder::new(test_name!())
+		.mount(TEST_MOUNT_NAME, "test-data/small-collection")
+		.build();
+	ctx.index.update().unwrap();
+	let songs = ctx.index.flatten(Path::new(TEST_MOUNT_NAME)).unwrap();
+	assert_eq!(songs.len(), 13);
+	assert_eq!(songs[0].title, Some("Above The Water".to_owned()));
+}
+
+#[test]
+fn can_flatten_directory() {
+	let ctx = test::ContextBuilder::new(test_name!())
+		.mount(TEST_MOUNT_NAME, "test-data/small-collection")
+		.build();
+	ctx.index.update().unwrap();
+	let path: PathBuf = [TEST_MOUNT_NAME, "Tobokegao"].iter().collect();
+	let songs = ctx.index.flatten(&path).unwrap();
+	assert_eq!(songs.len(), 8);
+}
+
+#[test]
+fn can_flatten_directory_with_shared_prefix() {
+	let ctx = test::ContextBuilder::new(test_name!())
+		.mount(TEST_MOUNT_NAME, "test-data/small-collection")
+		.build();
+	ctx.index.update().unwrap();
+	let path: PathBuf = [TEST_MOUNT_NAME, "Tobokegao", "Picnic"].iter().collect(); // Prefix of '(Picnic Remixes)'
+	let songs = ctx.index.flatten(&path).unwrap();
+	assert_eq!(songs.len(), 7);
+}
+
+#[test]
+fn can_get_random_albums() {
+	let ctx = test::ContextBuilder::new(test_name!())
+		.mount(TEST_MOUNT_NAME, "test-data/small-collection")
+		.build();
+	ctx.index.update().unwrap();
+	let albums = ctx.index.get_random_albums(1).unwrap();
+	assert_eq!(albums.len(), 1);
+}
+
+#[test]
+fn can_get_recent_albums() {
+	let ctx = test::ContextBuilder::new(test_name!())
+		.mount(TEST_MOUNT_NAME, "test-data/small-collection")
+		.build();
+	ctx.index.update().unwrap();
+	let albums = ctx.index.get_recent_albums(2).unwrap();
+	assert_eq!(albums.len(), 2);
+	assert!(albums[0].date_added >= albums[1].date_added);
+}
+
+#[test]
+fn can_get_a_song() {
+	let ctx = test::ContextBuilder::new(test_name!())
+		.mount(TEST_MOUNT_NAME, "test-data/small-collection")
+		.build();
+
+	ctx.index.update().unwrap();
+
+	let picnic_virtual_dir: PathBuf = [TEST_MOUNT_NAME, "Tobokegao", "Picnic"].iter().collect();
+	let song_virtual_path = picnic_virtual_dir.join("05 - シャーベット (Sherbet).mp3");
+	let artwork_virtual_path = picnic_virtual_dir.join("Folder.png");
+
+	let song = ctx.index.get_song(&song_virtual_path).unwrap();
+	assert_eq!(song.path, song_virtual_path.to_string_lossy().as_ref());
 	assert_eq!(song.track_number, Some(5));
 	assert_eq!(song.disc_number, None);
 	assert_eq!(song.title, Some("シャーベット (Sherbet)".to_owned()));
@@ -60,152 +141,53 @@ fn update_reads_metadata() {
 	assert_eq!(song.year, Some(2016));
 	assert_eq!(
 		song.artwork,
-		Some(artwork_path.to_string_lossy().into_owned())
+		Some(artwork_virtual_path.to_string_lossy().into_owned())
 	);
 }
 
 #[test]
-fn artwork_pattern_is_case_insensitive() {
-	let target: PathBuf = ["test-data", "small-collection", "Khemmis", "Hunted"]
-		.iter()
-		.collect();
+fn indexes_embedded_artwork() {
+	let ctx = test::ContextBuilder::new(test_name!())
+		.mount(TEST_MOUNT_NAME, "test-data/small-collection")
+		.build();
 
-	let mut song_path = target.clone();
-	song_path.push("05 - Hunted.mp3");
+	ctx.index.update().unwrap();
 
-	let mut artwork_path = target.clone();
-	artwork_path.push("folder.jpg");
+	let picnic_virtual_dir: PathBuf = [TEST_MOUNT_NAME, "Tobokegao", "Picnic"].iter().collect();
+	let song_virtual_path = picnic_virtual_dir.join("07 - なぜ (Why).mp3");
 
-	let (db, index) = get_context(&test_name!());
-	index.update().unwrap();
-
-	let connection = db.connect().unwrap();
-	let songs: Vec<Song> = songs::table
-		.filter(songs::title.eq("Hunted"))
-		.load(&connection)
-		.unwrap();
-
-	assert_eq!(songs.len(), 1);
-	let song = &songs[0];
+	let song = ctx.index.get_song(&song_virtual_path).unwrap();
 	assert_eq!(
-		song.artwork.as_ref().unwrap().to_lowercase(),
-		artwork_path.to_string_lossy().to_lowercase()
+		song.artwork,
+		Some(song_virtual_path.to_string_lossy().into_owned())
 	);
 }
 
 #[test]
-fn update_notices_embedded_artwork() {
-	let song_path: PathBuf = [
-		"test-data",
-		"small-collection",
-		"Tobokegao",
-		"Picnic",
-		"07 - なぜ (Why).mp3",
-	]
-	.iter()
-	.collect();
+fn album_art_pattern_is_case_insensitive() {
+	let ctx = test::ContextBuilder::new(test_name!())
+		.mount(TEST_MOUNT_NAME, "test-data/small-collection")
+		.build();
 
-	let (db, index) = get_context(&test_name!());
-	index.update().unwrap();
+	ctx.index.update().unwrap();
 
-	let connection = db.connect().unwrap();
-	let songs: Vec<Song> = songs::table
-		.filter(songs::title.eq("なぜ (Why?)"))
-		.load(&connection)
-		.unwrap();
-
-	assert_eq!(songs.len(), 1);
-	let song = &songs[0];
-	assert_eq!(song.artwork, Some(song_path.to_string_lossy().into_owned()));
-}
-
-#[test]
-fn can_browse_top_level() {
-	let mut root_path = PathBuf::new();
-	root_path.push("root");
-
-	let (_db, index) = get_context(&test_name!());
-	index.update().unwrap();
-
-	let results = index.browse(Path::new("")).unwrap();
-
-	assert_eq!(results.len(), 1);
-	match results[0] {
-		CollectionFile::Directory(ref d) => assert_eq!(d.path, root_path.to_str().unwrap()),
-		_ => panic!("Expected directory"),
+	{
+		let hunted_virtual_dir: PathBuf = [TEST_MOUNT_NAME, "Khemmis", "Hunted"].iter().collect();
+		let hunted_artwork_virtual_path = hunted_virtual_dir.join("folder.jpg");
+		let songs = ctx.index.flatten(&hunted_virtual_dir).unwrap();
+		assert_eq!(
+			songs[0].artwork,
+			Some(hunted_artwork_virtual_path.to_string_lossy().into_owned())
+		);
 	}
-}
 
-#[test]
-fn can_browse_directory() {
-	let khemmis_path: PathBuf = ["root", "Khemmis"].iter().collect();
-	let tobokegao_path: PathBuf = ["root", "Tobokegao"].iter().collect();
-
-	let (_db, index) = get_context(&test_name!());
-	index.update().unwrap();
-
-	let results = index.browse(Path::new("root")).unwrap();
-
-	assert_eq!(results.len(), 2);
-	match results[0] {
-		CollectionFile::Directory(ref d) => assert_eq!(d.path, khemmis_path.to_str().unwrap()),
-		_ => panic!("Expected directory"),
+	{
+		let picnic_virtual_dir: PathBuf = [TEST_MOUNT_NAME, "Tobokegao", "Picnic"].iter().collect();
+		let picnic_artwork_virtual_path = picnic_virtual_dir.join("Folder.png");
+		let songs = ctx.index.flatten(&picnic_virtual_dir).unwrap();
+		assert_eq!(
+			songs[0].artwork,
+			Some(picnic_artwork_virtual_path.to_string_lossy().into_owned())
+		);
 	}
-	match results[1] {
-		CollectionFile::Directory(ref d) => assert_eq!(d.path, tobokegao_path.to_str().unwrap()),
-		_ => panic!("Expected directory"),
-	}
-}
-
-#[test]
-fn can_flatten_directory() {
-	let (_db, index) = get_context(&test_name!());
-	index.update().unwrap();
-
-	// Flatten all
-	let results = index.flatten(Path::new("root")).unwrap();
-	assert_eq!(results.len(), 13);
-	assert_eq!(results[0].title, Some("Above The Water".to_owned()));
-
-	// Flatten a directory
-	let path: PathBuf = ["root", "Tobokegao"].iter().collect();
-	let results = index.flatten(&path).unwrap();
-	assert_eq!(results.len(), 8);
-
-	// Flatten a directory that is a prefix of another directory (Picnic Remixes)
-	let path: PathBuf = ["root", "Tobokegao", "Picnic"].iter().collect();
-	let results = index.flatten(&path).unwrap();
-	assert_eq!(results.len(), 7);
-}
-
-#[test]
-fn can_get_random_albums() {
-	let (_db, index) = get_context(&test_name!());
-	index.update().unwrap();
-
-	let results = index.get_random_albums(1).unwrap();
-	assert_eq!(results.len(), 1);
-}
-
-#[test]
-fn can_get_recent_albums() {
-	let (_db, index) = get_context(&test_name!());
-	index.update().unwrap();
-
-	let results = index.get_recent_albums(2).unwrap();
-	assert_eq!(results.len(), 2);
-	assert!(results[0].date_added >= results[1].date_added);
-}
-
-#[test]
-fn can_get_a_song() {
-	let (_db, index) = get_context(&test_name!());
-	index.update().unwrap();
-
-	let song_path: PathBuf = ["root", "Khemmis", "Hunted", "02 - Candlelight.mp3"]
-		.iter()
-		.collect();
-
-	let song = index.get_song(&song_path).unwrap();
-	assert_eq!(song.title.unwrap(), "Candlelight");
 }

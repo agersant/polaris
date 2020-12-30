@@ -1,99 +1,118 @@
-use core::clone::Clone;
 use std::path::{Path, PathBuf};
 
-use super::*;
-use crate::app::{index::Index, settings, vfs};
-use crate::db;
+use crate::app::test;
 use crate::test_name;
 
+const TEST_USER: &str = "test_user";
+const TEST_PASSWORD: &str = "password";
+const TEST_PLAYLIST_NAME: &str = "Chill & Grill";
+const TEST_MOUNT_NAME: &str = "root";
+
 #[test]
-fn test_create_playlist() {
-	let db = db::get_test_db(&test_name!());
-	let vfs_manager = vfs::Manager::new(db.clone());
-	let manager = Manager::new(db, vfs_manager);
+fn save_playlist_golden_path() {
+	let ctx = test::ContextBuilder::new(test_name!())
+		.user(TEST_USER, TEST_PASSWORD, false)
+		.build();
 
-	let found_playlists = manager.list_playlists("test_user").unwrap();
-	assert!(found_playlists.is_empty());
-
-	manager
-		.save_playlist("chill_and_grill", "test_user", &Vec::new())
+	ctx.playlist_manager
+		.save_playlist(TEST_PLAYLIST_NAME, TEST_USER, &Vec::new())
 		.unwrap();
-	let found_playlists = manager.list_playlists("test_user").unwrap();
-	assert_eq!(found_playlists.len(), 1);
-	assert_eq!(found_playlists[0], "chill_and_grill");
 
-	let found_playlists = manager.list_playlists("someone_else");
-	assert!(found_playlists.is_err());
+	let found_playlists = ctx.playlist_manager.list_playlists(TEST_USER).unwrap();
+	assert_eq!(found_playlists.len(), 1);
+	assert_eq!(found_playlists[0], TEST_PLAYLIST_NAME);
 }
 
 #[test]
-fn test_delete_playlist() {
-	let db = db::get_test_db(&test_name!());
-	let vfs_manager = vfs::Manager::new(db.clone());
-	let manager = Manager::new(db, vfs_manager);
+fn save_playlist_is_idempotent() {
+	let ctx = test::ContextBuilder::new(test_name!())
+		.user(TEST_USER, TEST_PASSWORD, false)
+		.mount(TEST_MOUNT_NAME, "test-data/small-collection")
+		.build();
 
-	let playlist_content = Vec::new();
+	ctx.index.update().unwrap();
 
-	manager
-		.save_playlist("chill_and_grill", "test_user", &playlist_content)
-		.unwrap();
-	manager
-		.save_playlist("mellow_bungalow", "test_user", &playlist_content)
-		.unwrap();
-	let found_playlists = manager.list_playlists("test_user").unwrap();
-	assert_eq!(found_playlists.len(), 2);
-
-	manager
-		.delete_playlist("chill_and_grill", "test_user")
-		.unwrap();
-	let found_playlists = manager.list_playlists("test_user").unwrap();
-	assert_eq!(found_playlists.len(), 1);
-	assert_eq!(found_playlists[0], "mellow_bungalow");
-
-	let delete_result = manager.delete_playlist("mellow_bungalow", "someone_else");
-	assert!(delete_result.is_err());
-}
-
-#[test]
-fn test_fill_playlist() {
-	let db = db::get_test_db(&test_name!());
-	let vfs_manager = vfs::Manager::new(db.clone());
-	let settings_manager = settings::Manager::new(db.clone());
-	let index = Index::new(db.clone(), vfs_manager.clone(), settings_manager);
-	let manager = Manager::new(db, vfs_manager);
-
-	index.update().unwrap();
-
-	let mut playlist_content: Vec<String> = index
-		.flatten(Path::new("root"))
+	let playlist_content: Vec<String> = ctx
+		.index
+		.flatten(Path::new(TEST_MOUNT_NAME))
 		.unwrap()
 		.into_iter()
 		.map(|s| s.path)
 		.collect();
 	assert_eq!(playlist_content.len(), 13);
 
-	let first_song = playlist_content[0].clone();
-	playlist_content.push(first_song);
-	assert_eq!(playlist_content.len(), 14);
-
-	manager
-		.save_playlist("all_the_music", "test_user", &playlist_content)
+	ctx.playlist_manager
+		.save_playlist(TEST_PLAYLIST_NAME, TEST_USER, &playlist_content)
 		.unwrap();
 
-	let songs = manager.read_playlist("all_the_music", "test_user").unwrap();
-	assert_eq!(songs.len(), 14);
-	assert_eq!(songs[0].title, Some("Above The Water".to_owned()));
-	assert_eq!(songs[13].title, Some("Above The Water".to_owned()));
+	ctx.playlist_manager
+		.save_playlist(TEST_PLAYLIST_NAME, TEST_USER, &playlist_content)
+		.unwrap();
 
-	let first_song_path: PathBuf = ["root", "Khemmis", "Hunted", "01 - Above The Water.mp3"]
-		.iter()
+	let songs = ctx
+		.playlist_manager
+		.read_playlist(TEST_PLAYLIST_NAME, TEST_USER)
+		.unwrap();
+	assert_eq!(songs.len(), 13);
+}
+
+#[test]
+fn delete_playlist_golden_path() {
+	let ctx = test::ContextBuilder::new(test_name!())
+		.user(TEST_USER, TEST_PASSWORD, false)
+		.build();
+
+	let playlist_content = Vec::new();
+
+	ctx.playlist_manager
+		.save_playlist(TEST_PLAYLIST_NAME, TEST_USER, &playlist_content)
+		.unwrap();
+
+	ctx.playlist_manager
+		.delete_playlist(TEST_PLAYLIST_NAME, TEST_USER)
+		.unwrap();
+
+	let found_playlists = ctx.playlist_manager.list_playlists(TEST_USER).unwrap();
+	assert_eq!(found_playlists.len(), 0);
+}
+
+#[test]
+fn read_playlist_golden_path() {
+	let ctx = test::ContextBuilder::new(test_name!())
+		.user(TEST_USER, TEST_PASSWORD, false)
+		.mount(TEST_MOUNT_NAME, "test-data/small-collection")
+		.build();
+
+	ctx.index.update().unwrap();
+
+	let playlist_content: Vec<String> = ctx
+		.index
+		.flatten(Path::new(TEST_MOUNT_NAME))
+		.unwrap()
+		.into_iter()
+		.map(|s| s.path)
 		.collect();
-	assert_eq!(songs[0].path, first_song_path.to_str().unwrap());
+	assert_eq!(playlist_content.len(), 13);
 
-	// Save again to verify that we don't dupe the content
-	manager
-		.save_playlist("all_the_music", "test_user", &playlist_content)
+	ctx.playlist_manager
+		.save_playlist(TEST_PLAYLIST_NAME, TEST_USER, &playlist_content)
 		.unwrap();
-	let songs = manager.read_playlist("all_the_music", "test_user").unwrap();
-	assert_eq!(songs.len(), 14);
+
+	let songs = ctx
+		.playlist_manager
+		.read_playlist(TEST_PLAYLIST_NAME, TEST_USER)
+		.unwrap();
+
+	assert_eq!(songs.len(), 13);
+	assert_eq!(songs[0].title, Some("Above The Water".to_owned()));
+
+	let first_song_path: PathBuf = [
+		TEST_MOUNT_NAME,
+		"Khemmis",
+		"Hunted",
+		"01 - Above The Water.mp3",
+	]
+	.iter()
+	.collect();
+	assert_eq!(songs[0].path, first_song_path.to_str().unwrap());
 }
