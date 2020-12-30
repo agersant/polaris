@@ -1,4 +1,5 @@
 use diesel::prelude::*;
+use std::default::Default;
 use std::path::{Path, PathBuf};
 
 use super::*;
@@ -205,31 +206,31 @@ fn indexes_embedded_artwork() {
 }
 
 #[test]
-#[cfg(windows)]
-fn album_art_pattern_is_case_insensitive_on_windows() {
+fn album_art_pattern_is_case_insensitive() {
 	let ctx = test::ContextBuilder::new(test_name!())
 		.mount(TEST_MOUNT_NAME, "test-data/small-collection")
 		.build();
 
-	ctx.index.update().unwrap();
+	let patterns = vec!["folder", "FOLDER"]
+		.iter()
+		.map(|s| s.to_string())
+		.collect::<Vec<_>>();
 
-	{
+	for pattern in patterns.into_iter() {
+		ctx.settings_manager
+			.amend(&settings::NewSettings {
+				album_art_pattern: Some(pattern),
+				..Default::default()
+			})
+			.unwrap();
+		ctx.index.update().unwrap();
+
 		let hunted_virtual_dir: PathBuf = [TEST_MOUNT_NAME, "Khemmis", "Hunted"].iter().collect();
-		let hunted_artwork_virtual_path = hunted_virtual_dir.join("folder.jpg");
-		let songs = ctx.index.flatten(&hunted_virtual_dir).unwrap();
+		let artwork_virtual_path = hunted_virtual_dir.join("Folder.jpg");
+		let song = &ctx.index.flatten(&hunted_virtual_dir).unwrap()[0];
 		assert_eq!(
-			songs[0].artwork,
-			Some(hunted_artwork_virtual_path.to_string_lossy().into_owned())
-		);
-	}
-
-	{
-		let picnic_virtual_dir: PathBuf = [TEST_MOUNT_NAME, "Tobokegao", "Picnic"].iter().collect();
-		let picnic_artwork_virtual_path = picnic_virtual_dir.join("Folder.png");
-		let songs = ctx.index.flatten(&picnic_virtual_dir).unwrap();
-		assert_eq!(
-			songs[0].artwork,
-			Some(picnic_artwork_virtual_path.to_string_lossy().into_owned())
+			song.artwork,
+			Some(artwork_virtual_path.to_string_lossy().into_owned())
 		);
 	}
 }
