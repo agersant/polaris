@@ -10,7 +10,7 @@ macro_rules! test_name {
 		}};
 }
 
-pub fn get_test_directory<T: AsRef<str>>(test_name: T) -> PathBuf {
+pub fn prepare_test_directory<T: AsRef<str>>(test_name: T) -> PathBuf {
 	let output_dir: PathBuf = [".", "test-output", test_name.as_ref()].iter().collect();
 	if output_dir.is_dir() {
 		std::fs::remove_dir_all(&output_dir).unwrap();

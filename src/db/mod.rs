@@ -91,7 +91,7 @@ impl DB {
 fn test_migrations() {
 	use crate::test::*;
 	use crate::test_name;
-	let output_dir = get_test_directory(test_name!());
+	let output_dir = prepare_test_directory(test_name!());
 	let db_path = output_dir.join("db.sqlite");
 	let db = DB::new(&db_path).unwrap();
 

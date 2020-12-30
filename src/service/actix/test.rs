@@ -76,7 +76,7 @@ impl ActixTestService {
 
 impl TestService for ActixTestService {
 	fn new(test_name: &str) -> Self {
-		let output_dir = get_test_directory(test_name);
+		let output_dir = prepare_test_directory(test_name);
 		let db_path: PathBuf = output_dir.join("db.sqlite");
 
 		let context = service::ContextBuilder::new()

@@ -26,7 +26,7 @@ pub struct ContextBuilder {
 impl ContextBuilder {
 	pub fn new(test_name: String) -> Self {
 		Self {
-			test_directory: get_test_directory(&test_name),
+			test_directory: prepare_test_directory(&test_name),
 			config: config::Config::default(),
 		}
 	}
