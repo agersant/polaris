@@ -258,7 +258,7 @@ fn read_mp4(path: &Path) -> Result<SongTags> {
 }
 
 #[test]
-fn test_read_metadata() {
+fn reads_file_metadata() {
 	let sample_tags = SongTags {
 		disc_number: Some(3),
 		track_number: Some(1),
@@ -309,7 +309,7 @@ fn test_read_metadata() {
 }
 
 #[test]
-fn test_read_artwork() {
+fn reads_embedded_artwork() {
 	assert!(
 		read(Path::new("test-data/artwork/sample.mp3"))
 			.unwrap()

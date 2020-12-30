@@ -1,40 +1,10 @@
-use std::fs;
-use std::path::PathBuf;
-
 use super::*;
-use crate::app::{settings, user, vfs};
-use crate::db::DB;
+use crate::app::{ddns, settings, test, user, vfs};
 use crate::test_name;
-
-#[cfg(test)]
-fn get_test_db(name: &str) -> DB {
-	let mut db_path = PathBuf::new();
-	db_path.push("test-output");
-	fs::create_dir_all(&db_path).unwrap();
-
-	db_path.push(name);
-	if db_path.exists() {
-		fs::remove_file(&db_path).unwrap();
-	}
-
-	DB::new(&db_path).unwrap()
-}
 
 #[test]
 fn apply_saves_misc_settings() {
-	let db = get_test_db(&test_name!());
-	let settings_manager = settings::Manager::new(db.clone());
-	let auth_secret = settings_manager.get_auth_secret().unwrap();
-	let user_manager = user::Manager::new(db.clone(), auth_secret);
-	let vfs_manager = vfs::Manager::new(db.clone());
-	let ddns_manager = ddns::Manager::new(db.clone());
-	let config_manager = Manager::new(
-		settings_manager.clone(),
-		user_manager.clone(),
-		vfs_manager.clone(),
-		ddns_manager.clone(),
-	);
-
+	let ctx = test::ContextBuilder::new(test_name!()).build();
 	let new_config = Config {
 		settings: Some(settings::NewSettings {
 			album_art_pattern: Some("🖼️\\.jpg".into()),
@@ -44,8 +14,8 @@ fn apply_saves_misc_settings() {
 		..Default::default()
 	};
 
-	config_manager.apply(&new_config).unwrap();
-	let settings = settings_manager.read().unwrap();
+	ctx.config_manager.apply(&new_config).unwrap();
+	let settings = ctx.settings_manager.read().unwrap();
 	let new_settings = new_config.settings.unwrap();
 	assert_eq!(
 		settings.album_art_pattern,
@@ -59,18 +29,7 @@ fn apply_saves_misc_settings() {
 
 #[test]
 fn apply_saves_mount_points() {
-	let db = get_test_db(&test_name!());
-	let settings_manager = settings::Manager::new(db.clone());
-	let auth_secret = settings_manager.get_auth_secret().unwrap();
-	let user_manager = user::Manager::new(db.clone(), auth_secret);
-	let vfs_manager = vfs::Manager::new(db.clone());
-	let ddns_manager = ddns::Manager::new(db.clone());
-	let config_manager = Manager::new(
-		settings_manager.clone(),
-		user_manager.clone(),
-		vfs_manager.clone(),
-		ddns_manager.clone(),
-	);
+	let ctx = test::ContextBuilder::new(test_name!()).build();
 
 	let new_config = Config {
 		mount_dirs: Some(vec![vfs::MountDir {
@@ -80,27 +39,14 @@ fn apply_saves_mount_points() {
 		..Default::default()
 	};
 
-	config_manager.apply(&new_config).unwrap();
-	let actual_mount_dirs: Vec<vfs::MountDir> = vfs_manager.mount_dirs().unwrap();
+	ctx.config_manager.apply(&new_config).unwrap();
+	let actual_mount_dirs: Vec<vfs::MountDir> = ctx.vfs_manager.mount_dirs().unwrap();
 	assert_eq!(actual_mount_dirs, new_config.mount_dirs.unwrap());
 }
 
 #[test]
 fn apply_saves_ddns_settings() {
-	use crate::app::ddns;
-
-	let db = get_test_db(&test_name!());
-	let settings_manager = settings::Manager::new(db.clone());
-	let auth_secret = settings_manager.get_auth_secret().unwrap();
-	let user_manager = user::Manager::new(db.clone(), auth_secret);
-	let vfs_manager = vfs::Manager::new(db.clone());
-	let ddns_manager = ddns::Manager::new(db.clone());
-	let config_manager = Manager::new(
-		settings_manager.clone(),
-		user_manager.clone(),
-		vfs_manager.clone(),
-		ddns_manager.clone(),
-	);
+	let ctx = test::ContextBuilder::new(test_name!()).build();
 
 	let new_config = Config {
 		ydns: Some(ddns::Config {
@@ -111,36 +57,18 @@ fn apply_saves_ddns_settings() {
 		..Default::default()
 	};
 
-	config_manager.apply(&new_config).unwrap();
-	let actual_ddns = ddns_manager.config().unwrap();
+	ctx.config_manager.apply(&new_config).unwrap();
+	let actual_ddns = ctx.ddns_manager.config().unwrap();
 	assert_eq!(actual_ddns, new_config.ydns.unwrap());
 }
 
 #[test]
 fn apply_can_toggle_admin() {
-	let db = get_test_db(&test_name!());
-	let settings_manager = settings::Manager::new(db.clone());
-	let auth_secret = settings_manager.get_auth_secret().unwrap();
-	let user_manager = user::Manager::new(db.clone(), auth_secret);
-	let vfs_manager = vfs::Manager::new(db.clone());
-	let ddns_manager = ddns::Manager::new(db.clone());
-	let config_manager = Manager::new(
-		settings_manager.clone(),
-		user_manager.clone(),
-		vfs_manager.clone(),
-		ddns_manager.clone(),
-	);
+	let ctx = test::ContextBuilder::new(test_name!())
+		.user("Walter", "Tasty🍖", true)
+		.build();
 
-	let initial_config = Config {
-		users: Some(vec![user::NewUser {
-			name: "Walter".into(),
-			password: "Tasty🍖".into(),
-			admin: true,
-		}]),
-		..Default::default()
-	};
-	config_manager.apply(&initial_config).unwrap();
-	assert!(user_manager.list().unwrap()[0].is_admin());
+	assert!(ctx.user_manager.list().unwrap()[0].is_admin());
 
 	let new_config = Config {
 		users: Some(vec![user::NewUser {
@@ -150,6 +78,6 @@ fn apply_can_toggle_admin() {
 		}]),
 		..Default::default()
 	};
-	config_manager.apply(&new_config).unwrap();
-	assert!(!user_manager.list().unwrap()[0].is_admin());
+	ctx.config_manager.apply(&new_config).unwrap();
+	assert!(!ctx.user_manager.list().unwrap()[0].is_admin());
 }

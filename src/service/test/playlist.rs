@@ -6,7 +6,7 @@ use crate::service::test::{constants::*, protocol, ServiceType, TestService};
 use crate::test_name;
 
 #[test]
-fn test_list_playlists_requires_auth() {
+fn list_playlists_requires_auth() {
 	let mut service = ServiceType::new(&test_name!());
 	let request = protocol::playlists();
 	let response = service.fetch(&request);
@@ -14,7 +14,7 @@ fn test_list_playlists_requires_auth() {
 }
 
 #[test]
-fn test_list_playlists_golden_path() {
+fn list_playlists_golden_path() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login();
@@ -24,7 +24,7 @@ fn test_list_playlists_golden_path() {
 }
 
 #[test]
-fn test_save_playlist_requires_auth() {
+fn save_playlist_requires_auth() {
 	let mut service = ServiceType::new(&test_name!());
 	let my_playlist = dto::SavePlaylistInput { tracks: Vec::new() };
 	let request = protocol::save_playlist(TEST_PLAYLIST_NAME, my_playlist);
@@ -33,7 +33,7 @@ fn test_save_playlist_requires_auth() {
 }
 
 #[test]
-fn test_save_playlist_golden_path() {
+fn save_playlist_golden_path() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login();
@@ -45,7 +45,7 @@ fn test_save_playlist_golden_path() {
 }
 
 #[test]
-fn test_save_playlist_large() {
+fn save_playlist_large() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login();
@@ -60,7 +60,7 @@ fn test_save_playlist_large() {
 }
 
 #[test]
-fn test_get_playlist_requires_auth() {
+fn get_playlist_requires_auth() {
 	let mut service = ServiceType::new(&test_name!());
 	let request = protocol::read_playlist(TEST_PLAYLIST_NAME);
 	let response = service.fetch(&request);
@@ -68,7 +68,7 @@ fn test_get_playlist_requires_auth() {
 }
 
 #[test]
-fn test_get_playlist_golden_path() {
+fn get_playlist_golden_path() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login();
@@ -86,7 +86,7 @@ fn test_get_playlist_golden_path() {
 }
 
 #[test]
-fn test_get_playlist_bad_name_returns_not_found() {
+fn get_playlist_bad_name_returns_not_found() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login();
@@ -97,7 +97,7 @@ fn test_get_playlist_bad_name_returns_not_found() {
 }
 
 #[test]
-fn test_delete_playlist_requires_auth() {
+fn delete_playlist_requires_auth() {
 	let mut service = ServiceType::new(&test_name!());
 	let request = protocol::delete_playlist(TEST_PLAYLIST_NAME);
 	let response = service.fetch(&request);
@@ -105,7 +105,7 @@ fn test_delete_playlist_requires_auth() {
 }
 
 #[test]
-fn test_delete_playlist_golden_path() {
+fn delete_playlist_golden_path() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login();
@@ -123,7 +123,7 @@ fn test_delete_playlist_golden_path() {
 }
 
 #[test]
-fn test_delete_playlist_bad_name_returns_not_found() {
+fn delete_playlist_bad_name_returns_not_found() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login();

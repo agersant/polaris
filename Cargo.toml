@@ -68,3 +68,4 @@ unix-daemonize = "0.1.2"
 
 [dev-dependencies]
 headers = "0.3"
+fs_extra = "1.2.0"

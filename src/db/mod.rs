@@ -87,42 +87,14 @@ impl DB {
 	}
 }
 
-#[cfg(test)]
-pub fn get_test_db(name: &str) -> DB {
-	use crate::app::{config, ddns, settings, user, vfs};
-
-	let mut db_path = std::path::PathBuf::new();
-	db_path.push("test-output");
-	std::fs::create_dir_all(&db_path).unwrap();
-
-	db_path.push(name);
-	if db_path.exists() {
-		std::fs::remove_file(&db_path).unwrap();
-	}
-
+#[test]
+fn run_migrations() {
+	use crate::test::*;
+	use crate::test_name;
+	let output_dir = prepare_test_directory(test_name!());
+	let db_path = output_dir.join("db.sqlite");
 	let db = DB::new(&db_path).unwrap();
-	let settings_manager = settings::Manager::new(db.clone());
-	let auth_secret = settings_manager.get_auth_secret().unwrap();
-	let user_manager = user::Manager::new(db.clone(), auth_secret);
-	let vfs_manager = vfs::Manager::new(db.clone());
-	let ddns_manager = ddns::Manager::new(db.clone());
-	let config_manager =
-		config::Manager::new(settings_manager, user_manager, vfs_manager, ddns_manager);
 
-	let config_path = Path::new("test-data/config.toml");
-	let config = config::Config::from_path(&config_path).unwrap();
-	config_manager.apply(&config).unwrap();
-	db
-}
-
-#[test]
-fn test_migrations_up() {
-	get_test_db("migrations_up.sqlite");
-}
-
-#[test]
-fn test_migrations_down() {
-	let db = get_test_db("migrations_down.sqlite");
 	db.migrate_down().unwrap();
 	db.migrate_up().unwrap();
 }
