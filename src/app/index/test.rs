@@ -15,7 +15,7 @@ fn get_context(test_name: &str) -> (db::DB, Index) {
 }
 
 #[test]
-fn test_populate() {
+fn update_adds_new_content() {
 	let (db, index) = get_context(&test_name!());
 	index.update().unwrap();
 	index.update().unwrap(); // Validates that subsequent updates don't run into conflicts
@@ -28,7 +28,7 @@ fn test_populate() {
 }
 
 #[test]
-fn test_metadata() {
+fn update_reads_metadata() {
 	let target: PathBuf = ["test-data", "small-collection", "Tobokegao", "Picnic"]
 		.iter()
 		.collect();
@@ -65,7 +65,7 @@ fn test_metadata() {
 }
 
 #[test]
-fn test_artwork_pattern_case_insensitive() {
+fn artwork_pattern_is_case_insensitive() {
 	let target: PathBuf = ["test-data", "small-collection", "Khemmis", "Hunted"]
 		.iter()
 		.collect();
@@ -94,7 +94,7 @@ fn test_artwork_pattern_case_insensitive() {
 }
 
 #[test]
-fn test_embedded_artwork() {
+fn update_notices_embedded_artwork() {
 	let song_path: PathBuf = [
 		"test-data",
 		"small-collection",
@@ -120,7 +120,7 @@ fn test_embedded_artwork() {
 }
 
 #[test]
-fn test_browse_top_level() {
+fn can_browse_top_level() {
 	let mut root_path = PathBuf::new();
 	root_path.push("root");
 
@@ -137,7 +137,7 @@ fn test_browse_top_level() {
 }
 
 #[test]
-fn test_browse() {
+fn can_browse_directory() {
 	let khemmis_path: PathBuf = ["root", "Khemmis"].iter().collect();
 	let tobokegao_path: PathBuf = ["root", "Tobokegao"].iter().collect();
 
@@ -158,7 +158,7 @@ fn test_browse() {
 }
 
 #[test]
-fn test_flatten() {
+fn can_flatten_directory() {
 	let (_db, index) = get_context(&test_name!());
 	index.update().unwrap();
 
@@ -179,7 +179,7 @@ fn test_flatten() {
 }
 
 #[test]
-fn test_random() {
+fn can_get_random_albums() {
 	let (_db, index) = get_context(&test_name!());
 	index.update().unwrap();
 
@@ -188,7 +188,7 @@ fn test_random() {
 }
 
 #[test]
-fn test_recent() {
+fn can_get_recent_albums() {
 	let (_db, index) = get_context(&test_name!());
 	index.update().unwrap();
 
@@ -198,7 +198,7 @@ fn test_recent() {
 }
 
 #[test]
-fn test_get_song() {
+fn can_get_a_song() {
 	let (_db, index) = get_context(&test_name!());
 	index.update().unwrap();
 
