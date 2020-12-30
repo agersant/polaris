@@ -55,7 +55,7 @@ impl Cleaner {
 		};
 
 		let thread_pool = rayon::ThreadPoolBuilder::new().build()?;
-		let (missing_songs, missing_directories) =
+		let (missing_directories, missing_songs) =
 			thread_pool.join(list_missing_directories, list_missing_songs);
 
 		{
