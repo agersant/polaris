@@ -88,7 +88,7 @@ impl DB {
 }
 
 #[test]
-fn test_migrations() {
+fn run_migrations() {
 	use crate::test::*;
 	use crate::test_name;
 	let output_dir = prepare_test_directory(test_name!());

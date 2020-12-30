@@ -5,7 +5,7 @@ use crate::service::test::{constants::*, protocol, ServiceType, TestService};
 use crate::test_name;
 
 #[test]
-fn test_audio_requires_auth() {
+fn audio_requires_auth() {
 	let mut service = ServiceType::new(&test_name!());
 
 	let path: PathBuf = [TEST_MOUNT_NAME, "Khemmis", "Hunted", "02 - Candlelight.mp3"]
@@ -18,7 +18,7 @@ fn test_audio_requires_auth() {
 }
 
 #[test]
-fn test_audio_golden_path() {
+fn audio_golden_path() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login_admin();
@@ -36,7 +36,7 @@ fn test_audio_golden_path() {
 }
 
 #[test]
-fn test_audio_partial_content() {
+fn audio_partial_content() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login_admin();
@@ -64,7 +64,7 @@ fn test_audio_partial_content() {
 }
 
 #[test]
-fn test_audio_bad_path_returns_not_found() {
+fn audio_bad_path_returns_not_found() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login();
@@ -77,7 +77,7 @@ fn test_audio_bad_path_returns_not_found() {
 }
 
 #[test]
-fn test_thumbnail_requires_auth() {
+fn thumbnail_requires_auth() {
 	let mut service = ServiceType::new(&test_name!());
 
 	let path: PathBuf = [TEST_MOUNT_NAME, "Khemmis", "Hunted", "Folder.jpg"]
@@ -91,7 +91,7 @@ fn test_thumbnail_requires_auth() {
 }
 
 #[test]
-fn test_thumbnail_golden_path() {
+fn thumbnail_golden_path() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login_admin();
@@ -109,7 +109,7 @@ fn test_thumbnail_golden_path() {
 }
 
 #[test]
-fn test_thumbnail_bad_path_returns_not_found() {
+fn thumbnail_bad_path_returns_not_found() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login();

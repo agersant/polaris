@@ -52,7 +52,7 @@ fn validate_no_cookies<T>(response: &Response<T>) {
 }
 
 #[test]
-fn test_login_rejects_bad_username() {
+fn login_rejects_bad_username() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 
@@ -62,7 +62,7 @@ fn test_login_rejects_bad_username() {
 }
 
 #[test]
-fn test_login_rejects_bad_password() {
+fn login_rejects_bad_password() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 
@@ -72,7 +72,7 @@ fn test_login_rejects_bad_password() {
 }
 
 #[test]
-fn test_login_golden_path() {
+fn login_golden_path() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 
@@ -89,7 +89,7 @@ fn test_login_golden_path() {
 }
 
 #[test]
-fn test_requests_without_auth_header_do_not_set_cookies() {
+fn requests_without_auth_header_do_not_set_cookies() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login();
@@ -102,7 +102,7 @@ fn test_requests_without_auth_header_do_not_set_cookies() {
 }
 
 #[test]
-fn test_authentication_via_basic_http_header_rejects_bad_username() {
+fn authentication_via_basic_http_header_rejects_bad_username() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 
@@ -115,7 +115,7 @@ fn test_authentication_via_basic_http_header_rejects_bad_username() {
 }
 
 #[test]
-fn test_authentication_via_basic_http_header_rejects_bad_password() {
+fn authentication_via_basic_http_header_rejects_bad_password() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 
@@ -128,7 +128,7 @@ fn test_authentication_via_basic_http_header_rejects_bad_password() {
 }
 
 #[test]
-fn test_authentication_via_basic_http_header_golden_path() {
+fn authentication_via_basic_http_header_golden_path() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 
@@ -143,7 +143,7 @@ fn test_authentication_via_basic_http_header_golden_path() {
 }
 
 #[test]
-fn test_authentication_via_bearer_http_header_rejects_bad_token() {
+fn authentication_via_bearer_http_header_rejects_bad_token() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 
@@ -156,7 +156,7 @@ fn test_authentication_via_bearer_http_header_rejects_bad_token() {
 }
 
 #[test]
-fn test_authentication_via_bearer_http_header_golden_path() {
+fn authentication_via_bearer_http_header_golden_path() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 
@@ -179,7 +179,7 @@ fn test_authentication_via_bearer_http_header_golden_path() {
 }
 
 #[test]
-fn test_authentication_via_query_param_rejects_bad_token() {
+fn authentication_via_query_param_rejects_bad_token() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 
@@ -193,7 +193,7 @@ fn test_authentication_via_query_param_rejects_bad_token() {
 }
 
 #[test]
-fn test_authentication_via_query_param_golden_path() {
+fn authentication_via_query_param_golden_path() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 

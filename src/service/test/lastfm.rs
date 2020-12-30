@@ -6,7 +6,7 @@ use crate::service::test::{constants::*, protocol, ServiceType, TestService};
 use crate::test_name;
 
 #[test]
-fn test_lastfm_scrobble_ignores_unlinked_user() {
+fn lastfm_scrobble_ignores_unlinked_user() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login_admin();
@@ -23,7 +23,7 @@ fn test_lastfm_scrobble_ignores_unlinked_user() {
 }
 
 #[test]
-fn test_lastfm_now_playing_ignores_unlinked_user() {
+fn lastfm_now_playing_ignores_unlinked_user() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login_admin();
@@ -59,4 +59,3 @@ fn lastfm_link_token_golden_path() {
 	let link_token = response.body();
 	assert!(!link_token.value.is_empty());
 }
-

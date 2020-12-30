@@ -5,7 +5,7 @@ use crate::service::test::{protocol, ServiceType, TestService};
 use crate::test_name;
 
 #[test]
-fn test_get_ddns_config_requires_admin() {
+fn get_ddns_config_requires_admin() {
 	let mut service = ServiceType::new(&test_name!());
 	let request = protocol::get_ddns_config();
 	service.complete_initial_setup();
@@ -19,7 +19,7 @@ fn test_get_ddns_config_requires_admin() {
 }
 
 #[test]
-fn test_get_ddns_config_golden_path() {
+fn get_ddns_config_golden_path() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login_admin();
@@ -30,7 +30,7 @@ fn test_get_ddns_config_golden_path() {
 }
 
 #[test]
-fn test_put_ddns_config_requires_admin() {
+fn put_ddns_config_requires_admin() {
 	let mut service = ServiceType::new(&test_name!());
 	let request = protocol::put_ddns_config(dto::DDNSConfig {
 		host: "test".to_owned(),
@@ -48,7 +48,7 @@ fn test_put_ddns_config_requires_admin() {
 }
 
 #[test]
-fn test_put_ddns_config_golden_path() {
+fn put_ddns_config_golden_path() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login_admin();

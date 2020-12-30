@@ -6,7 +6,7 @@ use crate::service::test::{add_trailing_slash, constants::*, protocol, ServiceTy
 use crate::test_name;
 
 #[test]
-fn test_browse_requires_auth() {
+fn browse_requires_auth() {
 	let mut service = ServiceType::new(&test_name!());
 	let request = protocol::browse(&PathBuf::new());
 	let response = service.fetch(&request);
@@ -14,7 +14,7 @@ fn test_browse_requires_auth() {
 }
 
 #[test]
-fn test_browse_root() {
+fn browse_root() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login_admin();
@@ -29,7 +29,7 @@ fn test_browse_root() {
 }
 
 #[test]
-fn test_browse_directory() {
+fn browse_directory() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login_admin();
@@ -45,7 +45,7 @@ fn test_browse_directory() {
 }
 
 #[test]
-fn test_browse_bad_directory() {
+fn browse_bad_directory() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login();
@@ -57,7 +57,7 @@ fn test_browse_bad_directory() {
 }
 
 #[test]
-fn test_flatten_requires_auth() {
+fn flatten_requires_auth() {
 	let mut service = ServiceType::new(&test_name!());
 	let request = protocol::flatten(&PathBuf::new());
 	let response = service.fetch(&request);
@@ -65,7 +65,7 @@ fn test_flatten_requires_auth() {
 }
 
 #[test]
-fn test_flatten_root() {
+fn flatten_root() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login_admin();
@@ -80,7 +80,7 @@ fn test_flatten_root() {
 }
 
 #[test]
-fn test_flatten_directory() {
+fn flatten_directory() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login_admin();
@@ -95,7 +95,7 @@ fn test_flatten_directory() {
 }
 
 #[test]
-fn test_flatten_bad_directory() {
+fn flatten_bad_directory() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login();
@@ -107,7 +107,7 @@ fn test_flatten_bad_directory() {
 }
 
 #[test]
-fn test_random_requires_auth() {
+fn random_requires_auth() {
 	let mut service = ServiceType::new(&test_name!());
 	let request = protocol::random();
 	let response = service.fetch(&request);
@@ -115,7 +115,7 @@ fn test_random_requires_auth() {
 }
 
 #[test]
-fn test_random_golden_path() {
+fn random_golden_path() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login_admin();
@@ -130,7 +130,7 @@ fn test_random_golden_path() {
 }
 
 #[test]
-fn test_random_with_trailing_slash() {
+fn random_with_trailing_slash() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login_admin();
@@ -146,7 +146,7 @@ fn test_random_with_trailing_slash() {
 }
 
 #[test]
-fn test_recent_requires_auth() {
+fn recent_requires_auth() {
 	let mut service = ServiceType::new(&test_name!());
 	let request = protocol::recent();
 	let response = service.fetch(&request);
@@ -154,7 +154,7 @@ fn test_recent_requires_auth() {
 }
 
 #[test]
-fn test_recent_golden_path() {
+fn recent_golden_path() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login_admin();
@@ -169,7 +169,7 @@ fn test_recent_golden_path() {
 }
 
 #[test]
-fn test_recent_with_trailing_slash() {
+fn recent_with_trailing_slash() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login_admin();
@@ -185,7 +185,7 @@ fn test_recent_with_trailing_slash() {
 }
 
 #[test]
-fn test_search_requires_auth() {
+fn search_requires_auth() {
 	let mut service = ServiceType::new(&test_name!());
 	let request = protocol::search("");
 	let response = service.fetch(&request);
@@ -193,7 +193,7 @@ fn test_search_requires_auth() {
 }
 
 #[test]
-fn test_search_without_query() {
+fn search_without_query() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login();
@@ -204,7 +204,7 @@ fn test_search_without_query() {
 }
 
 #[test]
-fn test_search_with_query() {
+fn search_with_query() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login_admin();

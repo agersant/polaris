@@ -6,7 +6,7 @@ use crate::service::test::{protocol, ServiceType, TestService};
 use crate::test_name;
 
 #[test]
-fn test_returns_api_version() {
+fn returns_api_version() {
 	let mut service = ServiceType::new(&test_name!());
 	let request = protocol::version();
 	let response = service.fetch_json::<_, dto::Version>(&request);
@@ -14,7 +14,7 @@ fn test_returns_api_version() {
 }
 
 #[test]
-fn test_initial_setup_golden_path() {
+fn initial_setup_golden_path() {
 	let mut service = ServiceType::new(&test_name!());
 	let request = protocol::initial_setup();
 	{
@@ -43,7 +43,7 @@ fn test_initial_setup_golden_path() {
 }
 
 #[test]
-fn test_trigger_index_golden_path() {
+fn trigger_index_golden_path() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login_admin();
@@ -62,7 +62,7 @@ fn test_trigger_index_golden_path() {
 }
 
 #[test]
-fn test_trigger_index_requires_auth() {
+fn trigger_index_requires_auth() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	let request = protocol::trigger_index();
@@ -71,7 +71,7 @@ fn test_trigger_index_requires_auth() {
 }
 
 #[test]
-fn test_trigger_index_requires_admin() {
+fn trigger_index_requires_admin() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login();
