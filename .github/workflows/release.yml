@@ -2,43 +2,42 @@ on:
   workflow_dispatch:
     inputs:
       versionNumber:
-        description: 'User-facing version number (eg: 0.13.0)'
+        description: "User-facing version number (eg: 0.13.0)"
         required: true
 
 name: Make Release
 
 jobs:
-
   branch_and_tag:
     name: Update Release Branch
     runs-on: ubuntu-latest
 
     steps:
-    - name: Merge to Release Branch
-      uses: devmasx/merge-branch@v1.3.1
-      with:
-        type: now
-        target_branch: release
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-    - name: Checkout Release Branch
-      uses: actions/checkout@master
-      with:
-        ref: release
-    - name: Update Polaris Version in Cargo.toml
-      run: gawk -i inplace '/^version/ { if (count == 0) { $3 = "\"${{ github.event.inputs.versionNumber }}\""; count++ } } 1' Cargo.toml
-    - name: Commit Cargo.toml Version Change
-      uses: EndBug/add-and-commit@v5
-      with:
-        branch: release
-        message: 'Updated version number'
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    - name: Add <version number> Git Tag
-      run: |
-        git config --global user.name ${{ github.actor }}
-        git config --global user.email "<>"
-        git tag -f -a ${{ github.event.inputs.versionNumber }} -m "Version number"
-        git push -f --tags
+      - name: Merge to Release Branch
+        uses: devmasx/merge-branch@v1.3.1
+        with:
+          type: now
+          target_branch: release
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Checkout Release Branch
+        uses: actions/checkout@master
+        with:
+          ref: release
+      - name: Update Polaris Version in Cargo.toml
+        run: gawk -i inplace '/^version/ { if (count == 0) { $3 = "\"${{ github.event.inputs.versionNumber }}\""; count++ } } 1' Cargo.toml
+      - name: Commit Cargo.toml Version Change
+        uses: EndBug/add-and-commit@v5
+        with:
+          branch: release
+          message: "Updated version number"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Add <version number> Git Tag
+        run: |
+          git config --global user.name ${{ github.actor }}
+          git config --global user.email "<>"
+          git tag -f -a ${{ github.event.inputs.versionNumber }} -m "Version number"
+          git push -f --tags
 
   create_release:
     name: Create Github Release
@@ -46,23 +45,23 @@ jobs:
     needs: branch_and_tag
 
     steps:
-    - name: Create Github Release
-      id: create_release
-      uses: actions/create-release@v1.0.0
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.event.inputs.versionNumber }}
-        release_name: Polaris ${{ github.event.inputs.versionNumber }}
-        draft: true
-        prerelease: false
-    - name: Write Upload URL To Disk
-      run: echo "${{ steps.create_release.outputs.upload_url }}" > upload-url
-    - name: Store Upload URL
-      uses: actions/upload-artifact@v1
-      with:
-        name: release
-        path: upload-url
+      - name: Create Github Release
+        id: create_release
+        uses: actions/create-release@v1.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.event.inputs.versionNumber }}
+          release_name: Polaris ${{ github.event.inputs.versionNumber }}
+          draft: true
+          prerelease: false
+      - name: Write Upload URL To Disk
+        run: echo "${{ steps.create_release.outputs.upload_url }}" > upload-url
+      - name: Store Upload URL
+        uses: actions/upload-artifact@v1
+        with:
+          name: release
+          path: upload-url
 
   windows:
     name: Windows
@@ -70,33 +69,35 @@ jobs:
     needs: create_release
 
     steps:
-    - name: Checkout Polaris
-      uses: actions/checkout@v1
-    - name: Install Rust Toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-    - name: Make release
-      uses: ./.github/actions/make-windows-release
-      with:
-        version-number: ${{ github.event.inputs.versionNumber }}
-        output-file: polaris.msi
-    - name: Retrieve Upload URL
-      uses: actions/download-artifact@v1
-      with:
-        name: release
-    - name: Read Upload URL
-      shell: bash
-      run: echo "UPLOAD_URL=$(cat release/upload-url)" >> $GITHUB_ENV
-    - name: Upload Installer To Github Release
-      uses: actions/upload-release-asset@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ env.UPLOAD_URL }}
-        asset_path: polaris.msi
-        asset_name: Polaris_${{ github.event.inputs.versionNumber }}.msi
-        asset_content_type: application/x-msi
+      - name: Checkout Polaris
+        uses: actions/checkout@v1
+        with:
+          ref: release
+      - name: Install Rust Toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+      - name: Make release
+        uses: ./.github/actions/make-windows-release
+        with:
+          version-number: ${{ github.event.inputs.versionNumber }}
+          output-file: polaris.msi
+      - name: Retrieve Upload URL
+        uses: actions/download-artifact@v1
+        with:
+          name: release
+      - name: Read Upload URL
+        shell: bash
+        run: echo "UPLOAD_URL=$(cat release/upload-url)" >> $GITHUB_ENV
+      - name: Upload Installer To Github Release
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ env.UPLOAD_URL }}
+          asset_path: polaris.msi
+          asset_name: Polaris_${{ github.event.inputs.versionNumber }}.msi
+          asset_content_type: application/x-msi
 
   linux:
     name: Linux
@@ -104,25 +105,27 @@ jobs:
     needs: create_release
 
     steps:
-    - name: Checkout Polaris
-      uses: actions/checkout@v1
-    - name: Make release
-      uses: ./.github/actions/make-linux-release
-      with:
-        version-number: ${{ github.event.inputs.versionNumber }}
-        output-file: polaris.tar.gz
-    - name: Retrieve Upload URL
-      uses: actions/download-artifact@v1
-      with:
-        name: release
-    - name: Read Upload URL
-      run: echo "UPLOAD_URL=$(cat release/upload-url)" >> $GITHUB_ENV
-    - name: Upload To Github Release
-      uses: actions/upload-release-asset@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ env.UPLOAD_URL }}
-        asset_path: polaris.tar.gz
-        asset_name: Polaris_${{ github.event.inputs.versionNumber }}.tar.gz
-        asset_content_type: application/gzip
+      - name: Checkout Polaris
+        uses: actions/checkout@v1
+        with:
+          ref: release
+      - name: Make release
+        uses: ./.github/actions/make-linux-release
+        with:
+          version-number: ${{ github.event.inputs.versionNumber }}
+          output-file: polaris.tar.gz
+      - name: Retrieve Upload URL
+        uses: actions/download-artifact@v1
+        with:
+          name: release
+      - name: Read Upload URL
+        run: echo "UPLOAD_URL=$(cat release/upload-url)" >> $GITHUB_ENV
+      - name: Upload To Github Release
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ env.UPLOAD_URL }}
+          asset_path: polaris.tar.gz
+          asset_name: Polaris_${{ github.event.inputs.versionNumber }}.tar.gz
+          asset_content_type: application/gzip
