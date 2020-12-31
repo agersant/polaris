@@ -28,18 +28,18 @@ pub fn make_config(app: app::App) -> impl FnOnce(&mut ServiceConfig) + Clone {
 			.app_data(web::Data::new(app.vfs_manager))
 			.app_data(web::Data::new(encryption_key))
 			.service(
-				web::scope(&app.api_url)
+				web::scope("/api")
 					.configure(api::make_config())
 					.wrap_fn(api::http_auth_middleware)
 					.wrap(NormalizePath::new(TrailingSlash::Trim)),
 			)
 			.service(
-				actix_files::Files::new(&app.swagger_url, app.swagger_dir_path)
+				actix_files::Files::new("/swagger", app.swagger_dir_path)
 					.redirect_to_slash_directory()
 					.index_file("index.html"),
 			)
 			.service(
-				actix_files::Files::new(&app.web_url, app.web_dir_path)
+				actix_files::Files::new("/", app.web_dir_path)
 					.redirect_to_slash_directory()
 					.index_file("index.html"),
 			);
