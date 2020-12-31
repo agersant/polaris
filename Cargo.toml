@@ -7,7 +7,7 @@ edition = "2018"
 [features]
 default = ["bundle-sqlite"]
 bundle-sqlite = ["libsqlite3-sys"]
-ui = ["uuid", "winapi"]
+ui = ["native-windows-gui", "native-windows-derive"]
 
 [dependencies]
 actix-files = { version = "0.4" }
@@ -59,8 +59,8 @@ default_features = false
 features = ["bmp", "gif", "jpeg", "png"]
 
 [target.'cfg(windows)'.dependencies]
-uuid = { version="0.8", optional = true }
-winapi = { version = "0.3.3", features = ["winuser", "libloaderapi", "shellapi", "errhandlingapi"], optional = true }
+native-windows-gui = {version = "1.0.7", default-features = false, features = ["cursor", "image-decoder", "message-window", "menu", "tray-notification"], optional = true }
+native-windows-derive = {version = "1.0.2", optional = true }
 
 [target.'cfg(unix)'.dependencies]
 sd-notify = "0.1.0"

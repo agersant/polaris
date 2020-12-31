@@ -1,3 +1,4 @@
+#![cfg_attr(all(windows, feature = "ui"), windows_subsystem = "windows")]
 #![recursion_limit = "256"]
 
 #[macro_use]
@@ -6,8 +7,10 @@ extern crate diesel;
 extern crate diesel_migrations;
 
 use anyhow::*;
-use log::{error, info};
-use simplelog::{LevelFilter, SimpleLogger, TermLogger, TerminalMode};
+use log::info;
+use simplelog::{CombinedLogger, LevelFilter, TermLogger, TerminalMode, WriteLogger};
+use std::fs;
+use std::path::PathBuf;
 
 mod app;
 mod db;
@@ -19,19 +22,14 @@ mod ui;
 mod utils;
 
 #[cfg(unix)]
-fn daemonize(
-	foreground: bool,
-	pid_file_path: &Option<std::path::PathBuf>,
-	log_file_path: &Option<std::path::PathBuf>,
-) -> Result<()> {
-	use std::fs;
-	use std::io::Write;
-	use std::path::PathBuf;
+fn daemonize(foreground: bool, pid_file_path: &Option<std::path::PathBuf>) -> Result<()> {
 	use unix_daemonize::{daemonize_redirect, ChdirMode};
 
 	if foreground {
 		return Ok(());
 	}
+
+	// TODO fix me
 
 	let log_path = log_file_path.clone().unwrap_or_else(|| {
 		let mut path = PathBuf::from(option_env!("POLARIS_LOG_DIR").unwrap_or("."));
@@ -69,25 +67,20 @@ fn notify_ready() {
 #[cfg(not(unix))]
 fn notify_ready() {}
 
-fn init_logging(cli_options: &options::CLIOptions) -> Result<()> {
-	let log_level = cli_options.log_level.unwrap_or(LevelFilter::Info);
+fn init_logging(log_level: LevelFilter, log_file_path: &PathBuf) -> Result<()> {
 	let log_config = simplelog::ConfigBuilder::new()
 		.set_location_level(LevelFilter::Error)
 		.build();
 
-	#[cfg(unix)]
-	let prefer_term_logger = cli_options.foreground;
+	CombinedLogger::init(vec![
+		TermLogger::new(log_level, log_config.clone(), TerminalMode::Mixed),
+		WriteLogger::new(
+			log_level,
+			log_config.clone(),
+			fs::File::create(log_file_path)?,
+		),
+	])?;
 
-	#[cfg(not(unix))]
-	let prefer_term_logger = true;
-
-	if prefer_term_logger {
-		match TermLogger::init(log_level, log_config.clone(), TerminalMode::Stdout) {
-			Ok(_) => return Ok(()),
-			Err(e) => error!("Error starting terminal logger: {}", e),
-		}
-	}
-	SimpleLogger::init(log_level, log_config)?;
 	Ok(())
 }
 
@@ -111,7 +104,15 @@ fn main() -> Result<()> {
 		&cli_options.log_file_path,
 	)?;
 
-	init_logging(&cli_options)?;
+	// Logging
+	let log_level = cli_options.log_level.unwrap_or(LevelFilter::Info);
+	// TODO default path on windows
+	let log_file_path = cli_options.log_file_path.clone().unwrap_or(
+		PathBuf::from(option_env!("POLARIS_LOG_DIR").unwrap_or(".")).join("polaris.log"),
+	);
+	fs::create_dir_all(&log_file_path.parent().unwrap())?;
+	info!("Log file location is {:#?}", log_file_path);
+	init_logging(log_level, &log_file_path)?;
 
 	// Create service context
 	let mut context_builder = service::ContextBuilder::new();
