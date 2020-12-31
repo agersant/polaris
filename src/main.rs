@@ -122,19 +122,15 @@ fn main() -> Result<()> {
 	info!("Swagger files location is {:#?}", paths.swagger_dir_path);
 	info!("Web client files location is {:#?}", paths.web_dir_path);
 
-	// Create service context
-	let context = service::Context::new(cli_options.port.unwrap_or(5050), paths)?;
-
-	// Begin collection scans
-	context.index.begin_periodic_updates();
-
-	// Start DDNS updates
-	context.ddns_manager.begin_periodic_updates();
+	// Create and run app
+	let app = app::App::new(cli_options.port.unwrap_or(5050), paths)?;
+	app.index.begin_periodic_updates();
+	app.ddns_manager.begin_periodic_updates();
 
 	// Start server
 	info!("Starting up server");
 	std::thread::spawn(move || {
-		let _ = service::run(context);
+		let _ = service::run(app);
 	});
 
 	// Send readiness notification

@@ -11,6 +11,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::ops::Deref;
 
+use crate::app;
 use crate::paths::Paths;
 use crate::service::actix::*;
 use crate::service::dto;
@@ -87,7 +88,7 @@ impl TestService for ActixTestService {
 			web_dir_path: ["test-data", "web"].iter().collect(),
 		};
 
-		let context = service::Context::new(5050, paths).unwrap();
+		let context = app::App::new(5050, paths).unwrap();
 
 		let system_runner = System::new("test");
 		let server = test::start(move || {
