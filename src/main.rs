@@ -91,7 +91,7 @@ fn main() -> Result<()> {
 	info!("Database file location is {:#?}", paths.db_file_path);
 	info!("Log file location is {:#?}", paths.log_file_path);
 	#[cfg(unix)]
-	if (!cli_options.foreground) {
+	if !cli_options.foreground {
 		info!("Pid file location is {:#?}", paths.pid_file_path);
 	}
 	info!("Swagger files location is {:#?}", paths.swagger_dir_path);
