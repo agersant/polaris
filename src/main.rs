@@ -123,11 +123,7 @@ fn main() -> Result<()> {
 	info!("Web client files location is {:#?}", paths.web_dir_path);
 
 	// Create service context
-	let mut context_builder = service::ContextBuilder::new(paths);
-	if let Some(port) = cli_options.port {
-		context_builder = context_builder.port(port);
-	}
-	let context = context_builder.build()?;
+	let context = service::Context::new(cli_options.port.unwrap_or(5050), paths)?;
 
 	// Begin collection scans
 	context.index.begin_periodic_updates();

@@ -35,22 +35,13 @@ pub struct Context {
 	pub vfs_manager: vfs::Manager,
 }
 
-pub struct ContextBuilder {
-	port: Option<u16>,
-	paths: Paths,
-}
+impl Context {
+	pub fn new(port: u16, paths: Paths) -> anyhow::Result<Self> {
+		let db = DB::new(&paths.db_file_path)?;
+		fs::create_dir_all(&paths.web_dir_path)?;
+		fs::create_dir_all(&paths.swagger_dir_path)?;
 
-impl ContextBuilder {
-	pub fn new(paths: Paths) -> Self {
-		Self { port: None, paths }
-	}
-
-	pub fn build(self) -> anyhow::Result<Context> {
-		let db = DB::new(&self.paths.db_file_path)?;
-		fs::create_dir_all(&self.paths.web_dir_path)?;
-		fs::create_dir_all(&self.paths.swagger_dir_path)?;
-
-		let thumbnails_dir_path = self.paths.cache_dir_path.join("thumbnails");
+		let thumbnails_dir_path = paths.cache_dir_path.join("thumbnails");
 
 		let vfs_manager = vfs::Manager::new(db.clone());
 		let settings_manager = settings::Manager::new(db.clone());
@@ -68,7 +59,7 @@ impl ContextBuilder {
 		let thumbnail_manager = thumbnail::Manager::new(thumbnails_dir_path);
 		let lastfm_manager = lastfm::Manager::new(index.clone(), user_manager.clone());
 
-		if let Some(config_path) = self.paths.config_file_path {
+		if let Some(config_path) = paths.config_file_path {
 			let config = config::Config::from_path(&config_path)?;
 			config_manager.apply(&config)?;
 		}
@@ -76,13 +67,13 @@ impl ContextBuilder {
 		let auth_secret = settings_manager.get_auth_secret()?;
 
 		Ok(Context {
-			port: self.port.unwrap_or(5050),
+			port,
 			auth_secret,
 			api_url: "/api".to_owned(),
 			swagger_url: "/swagger".to_owned(),
 			web_url: "/".to_owned(),
-			web_dir_path: self.paths.web_dir_path,
-			swagger_dir_path: self.paths.swagger_dir_path,
+			web_dir_path: paths.web_dir_path,
+			swagger_dir_path: paths.swagger_dir_path,
 			index,
 			config_manager,
 			ddns_manager,
@@ -94,10 +85,5 @@ impl ContextBuilder {
 			vfs_manager,
 			db,
 		})
-	}
-
-	pub fn port(mut self, port: u16) -> Self {
-		self.port = Some(port);
-		self
 	}
 }

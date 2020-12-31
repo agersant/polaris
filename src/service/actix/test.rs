@@ -87,10 +87,7 @@ impl TestService for ActixTestService {
 			web_dir_path: ["test-data", "web"].iter().collect(),
 		};
 
-		let context = service::ContextBuilder::new(paths)
-			.port(5050)
-			.build()
-			.unwrap();
+		let context = service::Context::new(5050, paths).unwrap();
 
 		let system_runner = System::new("test");
 		let server = test::start(move || {
