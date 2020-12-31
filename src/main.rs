@@ -39,7 +39,7 @@ fn daemonize(foreground: bool, pid_file_path: &PathBuf) -> Result<()> {
 
 #[cfg(unix)]
 fn notify_ready() -> Result<()> {
-	if sd_notify::booted()? {
+	if let Ok(true) = sd_notify::booted() {
 		sd_notify::notify(true, &[sd_notify::NotifyState::Ready])?;
 	}
 	Ok(())
