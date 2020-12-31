@@ -108,7 +108,7 @@ fn main() -> Result<()> {
 
 	// Send readiness notification
 	#[cfg(unix)]
-	notify_ready();
+	notify_ready()?;
 
 	// Run UI
 	ui::run();
