@@ -27,6 +27,9 @@ fn daemonize(foreground: bool, pid_file_path: &PathBuf) -> Result<()> {
 	if foreground {
 		return Ok(());
 	}
+	if let Some(parent) = pid_file_path.parent() {
+		fs::create_dir_all(parent)?;
+	}
 	let daemonize = daemonize::Daemonize::new()
 		.pid_file(pid_file_path)
 		.working_directory(".");
