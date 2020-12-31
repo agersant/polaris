@@ -2,19 +2,19 @@ use actix_web::{
 	middleware::{normalize::TrailingSlash, Compress, Logger, NormalizePath},
 	rt::System,
 	web::{self, ServiceConfig},
-	App, HttpServer,
+	App as ActixApp, HttpServer,
 };
 use anyhow::*;
 use log::error;
 
-use crate::app;
+use crate::app::App;
 
 mod api;
 
 #[cfg(test)]
 pub mod test;
 
-pub fn make_config(app: app::App) -> impl FnOnce(&mut ServiceConfig) + Clone {
+pub fn make_config(app: App) -> impl FnOnce(&mut ServiceConfig) + Clone {
 	move |cfg: &mut ServiceConfig| {
 		let encryption_key = cookie::Key::derive_from(&app.auth_secret.key[..]);
 		cfg.app_data(web::Data::new(app.index))
@@ -46,11 +46,11 @@ pub fn make_config(app: app::App) -> impl FnOnce(&mut ServiceConfig) + Clone {
 	}
 }
 
-pub fn run(app: app::App) -> Result<()> {
+pub fn run(app: App) -> Result<()> {
 	System::run(move || {
 		let address = format!("0.0.0.0:{}", app.port);
 		HttpServer::new(move || {
-			App::new()
+			ActixApp::new()
 				.wrap(Logger::default())
 				.wrap(Compress::default())
 				.configure(make_config(app.clone()))

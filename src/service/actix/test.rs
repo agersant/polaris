@@ -4,14 +4,14 @@ use actix_web::{
 	test,
 	test::*,
 	web::Bytes,
-	App,
+	App as ActixApp,
 };
 use http::{response::Builder, Method, Request, Response};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::ops::Deref;
 
-use crate::app;
+use crate::app::App;
 use crate::paths::Paths;
 use crate::service::actix::*;
 use crate::service::dto;
@@ -90,12 +90,12 @@ impl TestService for ActixTestService {
 			web_dir_path: ["test-data", "web"].iter().collect(),
 		};
 
-		let context = app::App::new(5050, paths).unwrap();
+		let app = App::new(5050, paths).unwrap();
 
 		let system_runner = System::new("test");
 		let server = test::start(move || {
-			let config = make_config(context.clone());
-			App::new()
+			let config = make_config(app.clone());
+			ActixApp::new()
 				.wrap(Logger::default())
 				.wrap(Compress::default())
 				.configure(config)
