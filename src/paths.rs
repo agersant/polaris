@@ -7,6 +7,8 @@ pub struct Paths {
 	pub config_file_path: Option<PathBuf>,
 	pub db_file_path: PathBuf,
 	pub log_file_path: PathBuf,
+	#[cfg(unix)]
+	pub pid_file_path: PathBuf,
 	pub swagger_dir_path: PathBuf,
 	pub web_dir_path: PathBuf,
 }
@@ -18,8 +20,10 @@ impl Default for Paths {
 	fn default() -> Self {
 		Self {
 			cache_dir_path: ["."].iter().collect(),
-			db_dir_path: ["."].iter().collect(),
-			log_dir_path: ["."].iter().collect(),
+			config_file_path: None,
+			db_file_path: [".", "db.sqlite"].iter().collect(),
+			log_file_path: [".", "polaris.log"].iter().collect(),
+			pid_file_path: [".", "polaris.pid"].iter().collect(),
 			swagger_dir_path: [".", "docs", "swagger"].iter().collect(),
 			web_dir_path: [".", "web"].iter().collect(),
 		}
@@ -59,6 +63,11 @@ impl Paths {
 				.map(PathBuf::from)
 				.map(|p| p.join("polaris.log"))
 				.unwrap_or(defaults.log_file_path),
+			#[cfg(unix)]
+			pid_file_path: option_env!("POLARIS_PID_DIR")
+				.map(PathBuf::from)
+				.map(|p| p.join("polaris.pid"))
+				.unwrap_or(defaults.pid_file_path),
 			swagger_dir_path: option_env!("POLARIS_SWAGGER_DIR")
 				.map(PathBuf::from)
 				.unwrap_or(defaults.swagger_dir_path),
@@ -81,6 +90,10 @@ impl Paths {
 		}
 		if let Some(path) = &cli_options.log_file_path {
 			paths.log_file_path = path.clone();
+		}
+		#[cfg(unix)]
+		if let Some(path) = &cli_options.pid_file_path {
+			paths.pid_file_path = path.clone();
 		}
 		if let Some(path) = &cli_options.swagger_dir_path {
 			paths.swagger_dir_path = path.clone();

@@ -449,6 +449,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "boxfnonce"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5988cb1d626264ac94100be357308f29ff7cbdd3b36bda27f450a4ee3f713426"
+
+[[package]]
 name = "branca"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -689,6 +695,16 @@ checksum = "4857fd85a0c34b3c3297875b747c1e02e06b6a0ea32dd892d8192b9ce0813ea6"
 dependencies = [
  "generic-array 0.14.4",
  "subtle",
+]
+
+[[package]]
+name = "daemonize"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "70c24513e34f53b640819f0ac9f705b673fcf4006d7aab8778bee72ebfc89815"
+dependencies = [
+ "boxfnonce",
+ "libc",
 ]
 
 [[package]]
@@ -1842,6 +1858,7 @@ dependencies = [
  "branca",
  "cookie",
  "crossbeam-channel",
+ "daemonize",
  "diesel",
  "diesel_migrations",
  "fs_extra",
@@ -1875,7 +1892,6 @@ dependencies = [
  "thiserror",
  "time 0.2.23",
  "toml",
- "unix-daemonize",
  "ureq",
  "url",
 ]
@@ -2688,15 +2704,6 @@ name = "unicode-xid"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f7fe0bb3479651439c9112f72b6c505038574c9fbb575ed1bf3b797fa39dd564"
-
-[[package]]
-name = "unix-daemonize"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "531faed80732acaa13d1016c66d6a9180b5045c4fcef8daa20bb2baf46b13907"
-dependencies = [
- "libc",
-]
 
 [[package]]
 name = "untrusted"

@@ -63,8 +63,8 @@ native-windows-gui = {version = "1.0.7", default-features = false, features = ["
 native-windows-derive = {version = "1.0.2", optional = true }
 
 [target.'cfg(unix)'.dependencies]
+daemonize = "0.4.1"
 sd-notify = "0.1.0"
-unix-daemonize = "0.1.2"
 
 [dev-dependencies]
 headers = "0.3"

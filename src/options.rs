@@ -7,6 +7,7 @@ pub struct CLIOptions {
 	#[cfg(unix)]
 	pub foreground: bool,
 	pub log_file_path: Option<PathBuf>,
+	#[cfg(unix)]
 	pub pid_file_path: Option<PathBuf>,
 	pub config_file_path: Option<PathBuf>,
 	pub database_file_path: Option<PathBuf>,
@@ -36,6 +37,7 @@ impl Manager {
 			#[cfg(unix)]
 			foreground: matches.opt_present("f"),
 			log_file_path: matches.opt_str("log").map(PathBuf::from),
+			#[cfg(unix)]
 			pid_file_path: matches.opt_str("pid").map(PathBuf::from),
 			config_file_path: matches.opt_str("c").map(PathBuf::from),
 			database_file_path: matches.opt_str("d").map(PathBuf::from),

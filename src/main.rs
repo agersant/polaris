@@ -23,36 +23,14 @@ mod ui;
 mod utils;
 
 #[cfg(unix)]
-fn daemonize(foreground: bool, pid_file_path: &Option<std::path::PathBuf>) -> Result<()> {
-	use unix_daemonize::{daemonize_redirect, ChdirMode};
-
+fn daemonize(foreground: bool, pid_file_path: &Path) -> Result<()> {
 	if foreground {
 		return Ok(());
 	}
-
-	// TODO fix me
-
-	let log_path = log_file_path.clone().unwrap_or_else(|| {
-		let mut path = PathBuf::from(option_env!("POLARIS_LOG_DIR").unwrap_or("."));
-		path.push("polaris.log");
-		path
-	});
-	fs::create_dir_all(&log_path.parent().unwrap())?;
-
-	let pid = match daemonize_redirect(Some(&log_path), Some(&log_path), ChdirMode::NoChdir) {
-		Ok(p) => p,
-		Err(e) => bail!("Daemonize error: {:#?}", e),
-	};
-
-	let pid_path = pid_file_path.clone().unwrap_or_else(|| {
-		let mut path = PathBuf::from(option_env!("POLARIS_PID_DIR").unwrap_or("."));
-		path.push("polaris.pid");
-		path
-	});
-	fs::create_dir_all(&pid_path.parent().unwrap())?;
-
-	let mut file = fs::File::create(pid_path)?;
-	file.write_all(pid.to_string().as_bytes())?;
+	let daemonize = daemonize::Daemonize::new()
+		.pid_file(pid_file_path)
+		.working_directory(".");
+	daemonize.start()?;
 	Ok(())
 }
 
@@ -64,9 +42,6 @@ fn notify_ready() {
 		}
 	}
 }
-
-#[cfg(not(unix))]
-fn notify_ready() {}
 
 fn init_logging(log_level: LevelFilter, log_file_path: &PathBuf) -> Result<()> {
 	let log_config = simplelog::ConfigBuilder::new()
@@ -102,23 +77,22 @@ fn main() -> Result<()> {
 		return Ok(());
 	}
 
-	#[cfg(unix)]
-	daemonize(
-		cli_options.foreground,
-		&cli_options.pid_file_path,
-		&cli_options.log_file_path,
-	)?;
-
 	let paths = paths::Paths::new(&cli_options);
 
 	// Logging
 	let log_level = cli_options.log_level.unwrap_or(LevelFilter::Info);
 	init_logging(log_level, &paths.log_file_path)?;
 
+	// Fork
+	#[cfg(unix)]
+	daemonize(cli_options.foreground, &paths.pid_file_path)?;
+
 	info!("Cache files location is {:#?}", paths.cache_dir_path);
 	info!("Config files location is {:#?}", paths.config_file_path);
 	info!("Database file location is {:#?}", paths.db_file_path);
 	info!("Log file location is {:#?}", paths.log_file_path);
+	#[cfg(unix)]
+	info!("Pid file location is {:#?}", paths.pid_file_path);
 	info!("Swagger files location is {:#?}", paths.swagger_dir_path);
 	info!("Web client files location is {:#?}", paths.web_dir_path);
 
@@ -134,6 +108,7 @@ fn main() -> Result<()> {
 	});
 
 	// Send readiness notification
+	#[cfg(unix)]
 	notify_ready();
 
 	// Run UI
