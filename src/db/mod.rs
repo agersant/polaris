@@ -3,7 +3,7 @@ use diesel::r2d2::{self, ConnectionManager, PooledConnection};
 use diesel::sqlite::SqliteConnection;
 use diesel::RunQueryDsl;
 use diesel_migrations;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 mod schema;
 
@@ -16,7 +16,6 @@ embed_migrations!("migrations");
 #[derive(Clone)]
 pub struct DB {
 	pool: r2d2::Pool<ConnectionManager<SqliteConnection>>,
-	location: PathBuf,
 }
 
 #[derive(Debug)]
@@ -42,20 +41,14 @@ impl diesel::r2d2::CustomizeConnection<SqliteConnection, diesel::r2d2::Error>
 
 impl DB {
 	pub fn new(path: &Path) -> Result<DB> {
+		std::fs::create_dir_all(&path.parent().unwrap())?;
 		let manager = ConnectionManager::<SqliteConnection>::new(path.to_string_lossy());
 		let pool = diesel::r2d2::Pool::builder()
 			.connection_customizer(Box::new(ConnectionCustomizer {}))
 			.build(manager)?;
-		let db = DB {
-			pool: pool,
-			location: path.to_owned(),
-		};
+		let db = DB { pool: pool };
 		db.migrate_up()?;
 		Ok(db)
-	}
-
-	pub fn location(&self) -> &Path {
-		&self.location
 	}
 
 	pub fn connect(&self) -> Result<PooledConnection<ConnectionManager<SqliteConnection>>> {

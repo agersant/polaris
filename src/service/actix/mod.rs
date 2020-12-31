@@ -2,58 +2,58 @@ use actix_web::{
 	middleware::{normalize::TrailingSlash, Compress, Logger, NormalizePath},
 	rt::System,
 	web::{self, ServiceConfig},
-	App, HttpServer,
+	App as ActixApp, HttpServer,
 };
 use anyhow::*;
 use log::error;
 
-use crate::service;
+use crate::app::App;
 
 mod api;
 
 #[cfg(test)]
 pub mod test;
 
-pub fn make_config(context: service::Context) -> impl FnOnce(&mut ServiceConfig) + Clone {
+pub fn make_config(app: App) -> impl FnOnce(&mut ServiceConfig) + Clone {
 	move |cfg: &mut ServiceConfig| {
-		let encryption_key = cookie::Key::derive_from(&context.auth_secret.key[..]);
-		cfg.app_data(web::Data::new(context.index))
-			.app_data(web::Data::new(context.config_manager))
-			.app_data(web::Data::new(context.ddns_manager))
-			.app_data(web::Data::new(context.lastfm_manager))
-			.app_data(web::Data::new(context.playlist_manager))
-			.app_data(web::Data::new(context.settings_manager))
-			.app_data(web::Data::new(context.thumbnail_manager))
-			.app_data(web::Data::new(context.user_manager))
-			.app_data(web::Data::new(context.vfs_manager))
+		let encryption_key = cookie::Key::derive_from(&app.auth_secret.key[..]);
+		cfg.app_data(web::Data::new(app.index))
+			.app_data(web::Data::new(app.config_manager))
+			.app_data(web::Data::new(app.ddns_manager))
+			.app_data(web::Data::new(app.lastfm_manager))
+			.app_data(web::Data::new(app.playlist_manager))
+			.app_data(web::Data::new(app.settings_manager))
+			.app_data(web::Data::new(app.thumbnail_manager))
+			.app_data(web::Data::new(app.user_manager))
+			.app_data(web::Data::new(app.vfs_manager))
 			.app_data(web::Data::new(encryption_key))
 			.service(
-				web::scope(&context.api_url)
+				web::scope("/api")
 					.configure(api::make_config())
 					.wrap_fn(api::http_auth_middleware)
 					.wrap(NormalizePath::new(TrailingSlash::Trim)),
 			)
 			.service(
-				actix_files::Files::new(&context.swagger_url, context.swagger_dir_path)
+				actix_files::Files::new("/swagger", app.swagger_dir_path)
 					.redirect_to_slash_directory()
 					.index_file("index.html"),
 			)
 			.service(
-				actix_files::Files::new(&context.web_url, context.web_dir_path)
+				actix_files::Files::new("/", app.web_dir_path)
 					.redirect_to_slash_directory()
 					.index_file("index.html"),
 			);
 	}
 }
 
-pub fn run(context: service::Context) -> Result<()> {
+pub fn run(app: App) -> Result<()> {
 	System::run(move || {
-		let address = format!("0.0.0.0:{}", context.port);
+		let address = format!("0.0.0.0:{}", app.port);
 		HttpServer::new(move || {
-			App::new()
+			ActixApp::new()
 				.wrap(Logger::default())
 				.wrap(Compress::default())
-				.configure(make_config(context.clone()))
+				.configure(make_config(app.clone()))
 		})
 		.disable_signals()
 		.bind(address)
