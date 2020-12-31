@@ -10,8 +10,8 @@ use http::{response::Builder, Method, Request, Response};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::ops::Deref;
-use std::path::{Path, PathBuf};
 
+use crate::paths::Paths;
 use crate::service::actix::*;
 use crate::service::dto;
 use crate::service::test::TestService;
@@ -77,14 +77,18 @@ impl ActixTestService {
 impl TestService for ActixTestService {
 	fn new(test_name: &str) -> Self {
 		let output_dir = prepare_test_directory(test_name);
-		let db_path: PathBuf = output_dir.join("db.sqlite");
 
-		let context = service::ContextBuilder::new()
+		let paths = Paths {
+			cache_dir_path: ["test-output", test_name].iter().collect(),
+			config_file_path: None,
+			db_file_path: output_dir.join("db.sqlite"),
+			log_file_path: output_dir.join("polaris.log"),
+			swagger_dir_path: ["docs", "swagger"].iter().collect(),
+			web_dir_path: ["test-data", "web"].iter().collect(),
+		};
+
+		let context = service::ContextBuilder::new(paths)
 			.port(5050)
-			.database_file_path(db_path)
-			.web_dir_path(Path::new("test-data/web").into())
-			.swagger_dir_path(["docs", "swagger"].iter().collect())
-			.cache_dir_path(["test-output", test_name].iter().collect())
 			.build()
 			.unwrap();
 

@@ -15,6 +15,7 @@ use std::path::PathBuf;
 mod app;
 mod db;
 mod options;
+mod paths;
 mod service;
 #[cfg(test)]
 mod test;
@@ -72,6 +73,10 @@ fn init_logging(log_level: LevelFilter, log_file_path: &PathBuf) -> Result<()> {
 		.set_location_level(LevelFilter::Error)
 		.build();
 
+	if let Some(parent) = log_file_path.parent() {
+		fs::create_dir_all(parent)?;
+	}
+
 	CombinedLogger::init(vec![
 		TermLogger::new(log_level, log_config.clone(), TerminalMode::Mixed),
 		WriteLogger::new(
@@ -104,46 +109,25 @@ fn main() -> Result<()> {
 		&cli_options.log_file_path,
 	)?;
 
+	let paths = paths::Paths::new(&cli_options);
+
 	// Logging
 	let log_level = cli_options.log_level.unwrap_or(LevelFilter::Info);
-	// TODO default path on windows
-	let log_file_path = cli_options.log_file_path.clone().unwrap_or(
-		PathBuf::from(option_env!("POLARIS_LOG_DIR").unwrap_or(".")).join("polaris.log"),
-	);
-	fs::create_dir_all(&log_file_path.parent().unwrap())?;
-	info!("Log file location is {:#?}", log_file_path);
-	init_logging(log_level, &log_file_path)?;
+	init_logging(log_level, &paths.log_file_path)?;
+
+	info!("Cache files location is {:#?}", paths.cache_dir_path);
+	info!("Config files location is {:#?}", paths.config_file_path);
+	info!("Database file location is {:#?}", paths.db_file_path);
+	info!("Log file location is {:#?}", paths.log_file_path);
+	info!("Swagger files location is {:#?}", paths.swagger_dir_path);
+	info!("Web client files location is {:#?}", paths.web_dir_path);
 
 	// Create service context
-	let mut context_builder = service::ContextBuilder::new();
+	let mut context_builder = service::ContextBuilder::new(paths);
 	if let Some(port) = cli_options.port {
 		context_builder = context_builder.port(port);
 	}
-	if let Some(path) = cli_options.config_file_path {
-		info!("Config file location is {:#?}", path);
-		context_builder = context_builder.config_file_path(path);
-	}
-	if let Some(path) = cli_options.database_file_path {
-		context_builder = context_builder.database_file_path(path);
-	}
-	if let Some(path) = cli_options.web_dir_path {
-		context_builder = context_builder.web_dir_path(path);
-	}
-	if let Some(path) = cli_options.swagger_dir_path {
-		context_builder = context_builder.swagger_dir_path(path);
-	}
-	if let Some(path) = cli_options.cache_dir_path {
-		context_builder = context_builder.cache_dir_path(path);
-	}
-
 	let context = context_builder.build()?;
-	info!("Database file location is {:#?}", context.db.location());
-	info!("Web client files location is {:#?}", context.web_dir_path);
-	info!("Swagger files location is {:#?}", context.swagger_dir_path);
-	info!(
-		"Thumbnails files location is {:#?}",
-		context.thumbnail_manager.get_directory()
-	);
 
 	// Begin collection scans
 	context.index.begin_periodic_updates();
