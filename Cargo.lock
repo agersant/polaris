@@ -449,6 +449,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "boxfnonce"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5988cb1d626264ac94100be357308f29ff7cbdd3b36bda27f450a4ee3f713426"
+
+[[package]]
 name = "branca"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -692,6 +698,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "daemonize"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "70c24513e34f53b640819f0ac9f705b673fcf4006d7aab8778bee72ebfc89815"
+dependencies = [
+ "boxfnonce",
+ "libc",
+]
+
+[[package]]
 name = "deflate"
 version = "0.8.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -902,6 +918,12 @@ dependencies = [
  "matches",
  "percent-encoding",
 ]
+
+[[package]]
+name = "fs_extra"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2022715d62ab30faffd124d40b76f4134a550a87792276512b18d63272333394"
 
 [[package]]
 name = "fuchsia-zircon"
@@ -1556,6 +1578,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b78760a249b7611363d02cfbd56974e1957faf2caa4fce36d4207b7edc803b1"
 
 [[package]]
+name = "native-windows-derive"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5e12bdd46113e604a98d04f19f79249e1679be21a65eaa1dbadec16ba00c94f7"
+dependencies = [
+ "proc-macro2",
+ "quote 1.0.7",
+ "syn 1.0.54",
+]
+
+[[package]]
+name = "native-windows-gui"
+version = "1.0.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fe8d44e6cea6bba40a302d1ab3ee50c6d9f9714ab94a776b0db0a5521c49c9ce"
+dependencies = [
+ "bitflags",
+ "lazy_static",
+ "winapi 0.3.9",
+ "winapi-build",
+]
+
+[[package]]
 name = "net2"
 version = "0.2.36"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1813,8 +1858,10 @@ dependencies = [
  "branca",
  "cookie",
  "crossbeam-channel",
+ "daemonize",
  "diesel",
  "diesel_migrations",
+ "fs_extra",
  "futures-util",
  "getopts",
  "headers",
@@ -1827,6 +1874,8 @@ dependencies = [
  "metaflac",
  "mp3-duration",
  "mp4ameta",
+ "native-windows-derive",
+ "native-windows-gui",
  "num_cpus",
  "opus_headers",
  "pbkdf2",
@@ -1843,11 +1892,9 @@ dependencies = [
  "thiserror",
  "time 0.2.23",
  "toml",
- "unix-daemonize",
  "ureq",
  "url",
- "uuid",
- "winapi 0.3.9",
+ "winres",
 ]
 
 [[package]]
@@ -2660,15 +2707,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f7fe0bb3479651439c9112f72b6c505038574c9fbb575ed1bf3b797fa39dd564"
 
 [[package]]
-name = "unix-daemonize"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "531faed80732acaa13d1016c66d6a9180b5045c4fcef8daa20bb2baf46b13907"
-dependencies = [
- "libc",
-]
-
-[[package]]
 name = "untrusted"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2704,12 +2742,6 @@ dependencies = [
  "matches",
  "percent-encoding",
 ]
-
-[[package]]
-name = "uuid"
-version = "0.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9fde2f6a4bea1d6e007c4ad38c6839fa71cbb63b6dbf5b595aa38dc9b1093c11"
 
 [[package]]
 name = "v_escape"
@@ -2918,6 +2950,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b2986deb581c4fe11b621998a5e53361efe6b48a151178d0cd9eeffa4dc6acc9"
 dependencies = [
  "winapi 0.3.9",
+]
+
+[[package]]
+name = "winres"
+version = "0.1.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ff4fb510bbfe5b8992ff15f77a2e6fe6cf062878f0eda00c0f44963a807ca5dc"
+dependencies = [
+ "toml",
 ]
 
 [[package]]

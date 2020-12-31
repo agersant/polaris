@@ -4,18 +4,19 @@ use actix_web::{
 	test,
 	test::*,
 	web::Bytes,
-	App,
+	App as ActixApp,
 };
 use http::{response::Builder, Method, Request, Response};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use std::fs;
 use std::ops::Deref;
-use std::path::{Path, PathBuf};
 
+use crate::app::App;
+use crate::paths::Paths;
 use crate::service::actix::*;
 use crate::service::dto;
 use crate::service::test::TestService;
+use crate::test::*;
 
 pub struct ActixTestService {
 	system_runner: SystemRunner,
@@ -76,27 +77,25 @@ impl ActixTestService {
 
 impl TestService for ActixTestService {
 	fn new(test_name: &str) -> Self {
-		let mut db_path: PathBuf = ["test-output", test_name].iter().collect();
-		fs::create_dir_all(&db_path).unwrap();
-		db_path.push("db.sqlite");
+		let output_dir = prepare_test_directory(test_name);
 
-		if db_path.exists() {
-			fs::remove_file(&db_path).unwrap();
-		}
+		let paths = Paths {
+			cache_dir_path: ["test-output", test_name].iter().collect(),
+			config_file_path: None,
+			db_file_path: output_dir.join("db.sqlite"),
+			#[cfg(unix)]
+			pid_file_path: output_dir.join("polaris.pid"),
+			log_file_path: output_dir.join("polaris.log"),
+			swagger_dir_path: ["docs", "swagger"].iter().collect(),
+			web_dir_path: ["test-data", "web"].iter().collect(),
+		};
 
-		let context = service::ContextBuilder::new()
-			.port(5050)
-			.database_file_path(db_path)
-			.web_dir_path(Path::new("test-data/web").into())
-			.swagger_dir_path(["docs", "swagger"].iter().collect())
-			.cache_dir_path(["test-output", test_name].iter().collect())
-			.build()
-			.unwrap();
+		let app = App::new(5050, paths).unwrap();
 
 		let system_runner = System::new("test");
 		let server = test::start(move || {
-			let config = make_config(context.clone());
-			App::new()
+			let config = make_config(app.clone());
+			ActixApp::new()
 				.wrap(Logger::default())
 				.wrap(Compress::default())
 				.configure(config)

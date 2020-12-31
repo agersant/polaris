@@ -1,103 +1,70 @@
 use super::*;
-use crate::app::settings;
-use crate::db::DB;
+use crate::app::test;
 use crate::test_name;
 
-#[cfg(test)]
-pub fn get_test_db(name: &str) -> DB {
-	let mut db_path = std::path::PathBuf::new();
-	db_path.push("test-output");
-	std::fs::create_dir_all(&db_path).unwrap();
-
-	db_path.push(name);
-	if db_path.exists() {
-		std::fs::remove_file(&db_path).unwrap();
-	}
-
-	DB::new(&db_path).unwrap()
-}
+const TEST_USERNAME: &str = "Walter";
+const TEST_PASSWORD: &str = "super_secret!";
 
 #[test]
 fn create_delete_user_golden_path() {
-	let db = get_test_db(&test_name!());
-	let settings_manager = settings::Manager::new(db.clone());
-	let auth_secret = settings_manager.get_auth_secret().unwrap();
-	let user_manager = Manager::new(db, auth_secret);
+	let ctx = test::ContextBuilder::new(test_name!()).build();
 
 	let new_user = NewUser {
-		name: "Walter".to_owned(),
-		password: "super_secret!".to_owned(),
+		name: TEST_USERNAME.to_owned(),
+		password: TEST_PASSWORD.to_owned(),
 		admin: false,
 	};
 
-	assert_eq!(user_manager.list().unwrap().len(), 0);
-	user_manager.create(&new_user).unwrap();
-	assert_eq!(user_manager.list().unwrap().len(), 1);
-	user_manager.delete(&new_user.name).unwrap();
-	assert_eq!(user_manager.list().unwrap().len(), 0);
+	ctx.user_manager.create(&new_user).unwrap();
+	assert_eq!(ctx.user_manager.list().unwrap().len(), 1);
+
+	ctx.user_manager.delete(&new_user.name).unwrap();
+	assert_eq!(ctx.user_manager.list().unwrap().len(), 0);
 }
 
 #[test]
 fn cannot_create_user_with_blank_username() {
-	let db = get_test_db(&test_name!());
-	let settings_manager = settings::Manager::new(db.clone());
-	let auth_secret = settings_manager.get_auth_secret().unwrap();
-	let user_manager = Manager::new(db, auth_secret);
-
+	let ctx = test::ContextBuilder::new(test_name!()).build();
 	let new_user = NewUser {
 		name: "".to_owned(),
-		password: "super_secret!".to_owned(),
+		password: TEST_PASSWORD.to_owned(),
 		admin: false,
 	};
-
 	assert_eq!(
-		user_manager.create(&new_user).unwrap_err(),
+		ctx.user_manager.create(&new_user).unwrap_err(),
 		Error::EmptyUsername
 	);
 }
 
 #[test]
 fn cannot_create_user_with_blank_password() {
-	let db = get_test_db(&test_name!());
-	let settings_manager = settings::Manager::new(db.clone());
-	let auth_secret = settings_manager.get_auth_secret().unwrap();
-	let user_manager = Manager::new(db, auth_secret);
-
+	let ctx = test::ContextBuilder::new(test_name!()).build();
 	let new_user = NewUser {
-		name: "Walter".to_owned(),
+		name: TEST_USERNAME.to_owned(),
 		password: "".to_owned(),
 		admin: false,
 	};
-
 	assert_eq!(
-		user_manager.create(&new_user).unwrap_err(),
+		ctx.user_manager.create(&new_user).unwrap_err(),
 		Error::EmptyPassword
 	);
 }
 
 #[test]
 fn cannot_create_duplicate_user() {
-	let db = get_test_db(&test_name!());
-	let settings_manager = settings::Manager::new(db.clone());
-	let auth_secret = settings_manager.get_auth_secret().unwrap();
-	let user_manager = Manager::new(db, auth_secret);
-
+	let ctx = test::ContextBuilder::new(test_name!()).build();
 	let new_user = NewUser {
-		name: "Walter".to_owned(),
-		password: "super_secret!".to_owned(),
+		name: TEST_USERNAME.to_owned(),
+		password: TEST_PASSWORD.to_owned(),
 		admin: false,
 	};
-
-	user_manager.create(&new_user).unwrap();
-	user_manager.create(&new_user).unwrap_err();
+	ctx.user_manager.create(&new_user).unwrap();
+	ctx.user_manager.create(&new_user).unwrap_err();
 }
 
 #[test]
 fn can_read_write_preferences() {
-	let db = get_test_db(&test_name!());
-	let settings_manager = settings::Manager::new(db.clone());
-	let auth_secret = settings_manager.get_auth_secret().unwrap();
-	let user_manager = Manager::new(db, auth_secret);
+	let ctx = test::ContextBuilder::new(test_name!()).build();
 
 	let new_preferences = Preferences {
 		web_theme_base: Some("very-dark-theme".to_owned()),
@@ -106,40 +73,34 @@ fn can_read_write_preferences() {
 	};
 
 	let new_user = NewUser {
-		name: "Walter".to_owned(),
-		password: "super_secret!".to_owned(),
+		name: TEST_USERNAME.to_owned(),
+		password: TEST_PASSWORD.to_owned(),
 		admin: false,
 	};
-	user_manager.create(&new_user).unwrap();
+	ctx.user_manager.create(&new_user).unwrap();
 
-	user_manager
-		.write_preferences("Walter", &new_preferences)
+	ctx.user_manager
+		.write_preferences(TEST_USERNAME, &new_preferences)
 		.unwrap();
 
-	let read_preferences = user_manager.read_preferences("Walter").unwrap();
+	let read_preferences = ctx.user_manager.read_preferences("Walter").unwrap();
 	assert_eq!(new_preferences, read_preferences);
 }
 
 #[test]
 fn login_rejects_bad_password() {
-	let db = get_test_db(&test_name!());
-	let settings_manager = settings::Manager::new(db.clone());
-	let auth_secret = settings_manager.get_auth_secret().unwrap();
-	let user_manager = Manager::new(db, auth_secret);
-
-	let username = "Walter";
-	let password = "super_secret!";
+	let ctx = test::ContextBuilder::new(test_name!()).build();
 
 	let new_user = NewUser {
-		name: username.to_owned(),
-		password: password.to_owned(),
+		name: TEST_USERNAME.to_owned(),
+		password: TEST_PASSWORD.to_owned(),
 		admin: false,
 	};
 
-	user_manager.create(&new_user).unwrap();
+	ctx.user_manager.create(&new_user).unwrap();
 	assert_eq!(
-		user_manager
-			.login(username, "not the password")
+		ctx.user_manager
+			.login(TEST_USERNAME, "not the password")
 			.unwrap_err(),
 		Error::IncorrectPassword
 	)
@@ -147,72 +108,57 @@ fn login_rejects_bad_password() {
 
 #[test]
 fn login_golden_path() {
-	let db = get_test_db(&test_name!());
-	let settings_manager = settings::Manager::new(db.clone());
-	let auth_secret = settings_manager.get_auth_secret().unwrap();
-	let user_manager = Manager::new(db, auth_secret);
-
-	let username = "Walter";
-	let password = "super_secret!";
-
+	let ctx = test::ContextBuilder::new(test_name!()).build();
 	let new_user = NewUser {
-		name: username.to_owned(),
-		password: password.to_owned(),
+		name: TEST_USERNAME.to_owned(),
+		password: TEST_PASSWORD.to_owned(),
 		admin: false,
 	};
-
-	user_manager.create(&new_user).unwrap();
-	assert!(user_manager.login(username, password).is_ok())
+	ctx.user_manager.create(&new_user).unwrap();
+	assert!(ctx.user_manager.login(TEST_USERNAME, TEST_PASSWORD).is_ok())
 }
 
 #[test]
 fn authenticate_rejects_bad_token() {
-	let db = get_test_db(&test_name!());
-	let settings_manager = settings::Manager::new(db.clone());
-	let auth_secret = settings_manager.get_auth_secret().unwrap();
-	let user_manager = Manager::new(db, auth_secret);
-
-	let username = "Walter";
-	let password = "super_secret!";
+	let ctx = test::ContextBuilder::new(test_name!()).build();
 
 	let new_user = NewUser {
-		name: username.to_owned(),
-		password: password.to_owned(),
+		name: TEST_USERNAME.to_owned(),
+		password: TEST_PASSWORD.to_owned(),
 		admin: false,
 	};
 
-	user_manager.create(&new_user).unwrap();
+	ctx.user_manager.create(&new_user).unwrap();
 	let fake_token = AuthToken("fake token".to_owned());
-	assert!(user_manager
+	assert!(ctx
+		.user_manager
 		.authenticate(&fake_token, AuthorizationScope::PolarisAuth)
 		.is_err())
 }
 
 #[test]
 fn authenticate_golden_path() {
-	let db = get_test_db(&test_name!());
-	let settings_manager = settings::Manager::new(db.clone());
-	let auth_secret = settings_manager.get_auth_secret().unwrap();
-	let user_manager = Manager::new(db, auth_secret);
-
-	let username = "Walter";
-	let password = "super_secret!";
+	let ctx = test::ContextBuilder::new(test_name!()).build();
 
 	let new_user = NewUser {
-		name: username.to_owned(),
-		password: password.to_owned(),
+		name: TEST_USERNAME.to_owned(),
+		password: TEST_PASSWORD.to_owned(),
 		admin: false,
 	};
 
-	user_manager.create(&new_user).unwrap();
-	let token = user_manager.login(username, password).unwrap();
-	let authorization = user_manager
+	ctx.user_manager.create(&new_user).unwrap();
+	let token = ctx
+		.user_manager
+		.login(TEST_USERNAME, TEST_PASSWORD)
+		.unwrap();
+	let authorization = ctx
+		.user_manager
 		.authenticate(&token, AuthorizationScope::PolarisAuth)
 		.unwrap();
 	assert_eq!(
 		authorization,
 		Authorization {
-			username: username.to_owned(),
+			username: TEST_USERNAME.to_owned(),
 			scope: AuthorizationScope::PolarisAuth,
 		}
 	)
@@ -220,23 +166,22 @@ fn authenticate_golden_path() {
 
 #[test]
 fn authenticate_validates_scope() {
-	let db = get_test_db(&test_name!());
-	let settings_manager = settings::Manager::new(db.clone());
-	let auth_secret = settings_manager.get_auth_secret().unwrap();
-	let user_manager = Manager::new(db, auth_secret);
-
-	let username = "Walter";
-	let password = "super_secret!";
+	let ctx = test::ContextBuilder::new(test_name!()).build();
 
 	let new_user = NewUser {
-		name: username.to_owned(),
-		password: password.to_owned(),
+		name: TEST_USERNAME.to_owned(),
+		password: TEST_PASSWORD.to_owned(),
 		admin: false,
 	};
 
-	user_manager.create(&new_user).unwrap();
-	let token = user_manager.generate_lastfm_link_token(username).unwrap();
-	let authorization = user_manager.authenticate(&token, AuthorizationScope::PolarisAuth);
+	ctx.user_manager.create(&new_user).unwrap();
+	let token = ctx
+		.user_manager
+		.generate_lastfm_link_token(TEST_USERNAME)
+		.unwrap();
+	let authorization = ctx
+		.user_manager
+		.authenticate(&token, AuthorizationScope::PolarisAuth);
 	assert_eq!(
 		authorization.unwrap_err(),
 		Error::IncorrectAuthorizationScope

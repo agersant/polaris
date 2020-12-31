@@ -19,10 +19,6 @@ impl Manager {
 		}
 	}
 
-	pub fn get_directory(&self) -> &Path {
-		&self.thumbnails_dir_path
-	}
-
 	pub fn get_thumbnail(&self, image_path: &Path, thumbnailoptions: &Options) -> Result<PathBuf> {
 		match self.retrieve_thumbnail(image_path, thumbnailoptions) {
 			Some(path) => Ok(path),

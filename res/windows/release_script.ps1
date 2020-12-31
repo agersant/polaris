@@ -2,10 +2,6 @@ if (!(Test-Path env:POLARIS_VERSION)) {
   throw "POLARIS_VERSION environment variable is not defined"
 }
 
-"Compiling resource file"
-$rc_exe = Join-Path "C:\Program Files (x86)\Windows Kits\10\bin\10.0.18362.0\x64" RC.exe
-& $rc_exe /fo res\windows\application\application.res res\windows\application\application.rc
-
 ""
 "Compiling executable"
 # TODO: Uncomment the following once Polaris can do variable expansion of %LOCALAPPDATA%
@@ -17,8 +13,8 @@ $rc_exe = Join-Path "C:\Program Files (x86)\Windows Kits\10\bin\10.0.18362.0\x64
 # $env:POLARIS_LOG_DIR = "$INSTALL_DIR"
 # $env:POLARIS_CACHE_DIR = "$INSTALL_DIR"
 # $env:POLARIS_PID_DIR = "$INSTALL_DIR"
-cargo rustc --release --features "ui" -- -C link-args="/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup res\windows\application\application.res"
-cargo rustc --release -- -o ".\target\release\polaris-cli.exe" -C link-args="res\windows\application\application.res"
+cargo rustc --release --features "ui" -- -o ".\target\release\polaris.exe"
+cargo rustc --release -- -o ".\target\release\polaris-cli.exe"
 
 ""
 "Creating output directory"

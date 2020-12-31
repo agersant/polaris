@@ -5,7 +5,7 @@ use crate::service::test::{protocol, ServiceType, TestService};
 use crate::test_name;
 
 #[test]
-fn test_get_settings_requires_auth() {
+fn get_settings_requires_auth() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 
@@ -15,7 +15,7 @@ fn test_get_settings_requires_auth() {
 }
 
 #[test]
-fn test_get_settings_requires_admin() {
+fn get_settings_requires_admin() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login();
@@ -26,7 +26,7 @@ fn test_get_settings_requires_admin() {
 }
 
 #[test]
-fn test_get_settings_golden_path() {
+fn get_settings_golden_path() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login_admin();
@@ -37,7 +37,7 @@ fn test_get_settings_golden_path() {
 }
 
 #[test]
-fn test_put_settings_requires_auth() {
+fn put_settings_requires_auth() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	let request = protocol::put_settings(dto::NewSettings::default());
@@ -46,7 +46,7 @@ fn test_put_settings_requires_auth() {
 }
 
 #[test]
-fn test_put_settings_requires_admin() {
+fn put_settings_requires_admin() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login();
@@ -56,7 +56,7 @@ fn test_put_settings_requires_admin() {
 }
 
 #[test]
-fn test_put_settings_golden_path() {
+fn put_settings_golden_path() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login_admin();
