@@ -23,7 +23,7 @@ mod ui;
 mod utils;
 
 #[cfg(unix)]
-fn daemonize(foreground: bool, pid_file_path: &Path) -> Result<()> {
+fn daemonize(foreground: bool, pid_file_path: &PathBuf) -> Result<()> {
 	if foreground {
 		return Ok(());
 	}
@@ -35,12 +35,11 @@ fn daemonize(foreground: bool, pid_file_path: &Path) -> Result<()> {
 }
 
 #[cfg(unix)]
-fn notify_ready() {
-	if let Ok(true) = sd_notify::booted() {
-		if let Err(e) = sd_notify::notify(true, &[sd_notify::NotifyState::Ready]) {
-			error!("Unable to send ready notification: {}", e);
-		}
+fn notify_ready() -> Result<()> {
+	if sd_notify::booted()? {
+		sd_notify::notify(true, &[sd_notify::NotifyState::Ready])?;
 	}
+	Ok(())
 }
 
 fn init_logging(log_level: LevelFilter, log_file_path: &PathBuf) -> Result<()> {

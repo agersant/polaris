@@ -83,6 +83,8 @@ impl TestService for ActixTestService {
 			cache_dir_path: ["test-output", test_name].iter().collect(),
 			config_file_path: None,
 			db_file_path: output_dir.join("db.sqlite"),
+			#[cfg(unix)]
+			pid_file_path: output_dir.join("polaris.pid"),
 			log_file_path: output_dir.join("polaris.log"),
 			swagger_dir_path: ["docs", "swagger"].iter().collect(),
 			web_dir_path: ["test-data", "web"].iter().collect(),
