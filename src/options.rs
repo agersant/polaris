@@ -4,7 +4,6 @@ use std::path::PathBuf;
 
 pub struct CLIOptions {
 	pub show_help: bool,
-	#[cfg(unix)]
 	pub foreground: bool,
 	pub log_file_path: Option<PathBuf>,
 	#[cfg(unix)]
@@ -36,6 +35,8 @@ impl Manager {
 			show_help: matches.opt_present("h"),
 			#[cfg(unix)]
 			foreground: matches.opt_present("f"),
+			#[cfg(windows)]
+			foreground: !cfg!(feature = "ui"),
 			log_file_path: matches.opt_str("log").map(PathBuf::from),
 			#[cfg(unix)]
 			pid_file_path: matches.opt_str("pid").map(PathBuf::from),
