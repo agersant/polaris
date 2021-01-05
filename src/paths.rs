@@ -6,7 +6,7 @@ pub struct Paths {
 	pub cache_dir_path: PathBuf,
 	pub config_file_path: Option<PathBuf>,
 	pub db_file_path: PathBuf,
-	pub log_file_path: PathBuf,
+	pub log_file_path: Option<PathBuf>,
 	#[cfg(unix)]
 	pub pid_file_path: PathBuf,
 	pub swagger_dir_path: PathBuf,
@@ -22,7 +22,7 @@ impl Default for Paths {
 			cache_dir_path: ["."].iter().collect(),
 			config_file_path: None,
 			db_file_path: [".", "db.sqlite"].iter().collect(),
-			log_file_path: [".", "polaris.log"].iter().collect(),
+			log_file_path: Some([".", "polaris.log"].iter().collect()),
 			pid_file_path: [".", "polaris.pid"].iter().collect(),
 			swagger_dir_path: [".", "docs", "swagger"].iter().collect(),
 			web_dir_path: [".", "web"].iter().collect(),
@@ -40,7 +40,7 @@ impl Default for Paths {
 			cache_dir_path: install_directory.clone(),
 			config_file_path: None,
 			db_file_path: install_directory.join("db.sqlite"),
-			log_file_path: install_directory.join("polaris.log"),
+			log_file_path: Some(install_directory.join("polaris.log")),
 			swagger_dir_path: install_directory.join("swagger"),
 			web_dir_path: install_directory.join("web"),
 		}
@@ -62,7 +62,7 @@ impl Paths {
 			log_file_path: option_env!("POLARIS_LOG_DIR")
 				.map(PathBuf::from)
 				.map(|p| p.join("polaris.log"))
-				.unwrap_or(defaults.log_file_path),
+				.or(defaults.log_file_path),
 			#[cfg(unix)]
 			pid_file_path: option_env!("POLARIS_PID_DIR")
 				.map(PathBuf::from)
@@ -88,9 +88,6 @@ impl Paths {
 		if let Some(path) = &cli_options.database_file_path {
 			paths.db_file_path = path.clone();
 		}
-		if let Some(path) = &cli_options.log_file_path {
-			paths.log_file_path = path.clone();
-		}
 		#[cfg(unix)]
 		if let Some(path) = &cli_options.pid_file_path {
 			paths.pid_file_path = path.clone();
@@ -101,6 +98,14 @@ impl Paths {
 		if let Some(path) = &cli_options.web_dir_path {
 			paths.web_dir_path = path.clone();
 		}
+
+		let log_to_file = cli_options.log_file_path.is_some() || !cli_options.foreground;
+		if log_to_file {
+			paths.log_file_path = cli_options.log_file_path.clone().or(paths.log_file_path);
+		} else {
+			paths.log_file_path = None;
+		};
+
 		return paths;
 	}
 }

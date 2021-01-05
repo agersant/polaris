@@ -8,9 +8,9 @@ extern crate diesel_migrations;
 
 use anyhow::*;
 use log::info;
-use simplelog::{CombinedLogger, LevelFilter, TermLogger, TerminalMode, WriteLogger};
+use simplelog::{CombinedLogger, LevelFilter, SharedLogger, TermLogger, TerminalMode, WriteLogger};
 use std::fs;
-use std::path::PathBuf;
+use std::path::Path;
 
 mod app;
 mod db;
@@ -23,15 +23,15 @@ mod ui;
 mod utils;
 
 #[cfg(unix)]
-fn daemonize(foreground: bool, pid_file_path: &PathBuf) -> Result<()> {
+fn daemonize<T: AsRef<Path>>(foreground: bool, pid_file_path: T) -> Result<()> {
 	if foreground {
 		return Ok(());
 	}
-	if let Some(parent) = pid_file_path.parent() {
+	if let Some(parent) = pid_file_path.as_ref().parent() {
 		fs::create_dir_all(parent)?;
 	}
 	let daemonize = daemonize::Daemonize::new()
-		.pid_file(pid_file_path)
+		.pid_file(pid_file_path.as_ref())
 		.working_directory(".");
 	daemonize.start()?;
 	Ok(())
@@ -45,23 +45,29 @@ fn notify_ready() -> Result<()> {
 	Ok(())
 }
 
-fn init_logging(log_level: LevelFilter, log_file_path: &PathBuf) -> Result<()> {
+fn init_logging<T: AsRef<Path>>(log_level: LevelFilter, log_file_path: &Option<T>) -> Result<()> {
 	let log_config = simplelog::ConfigBuilder::new()
 		.set_location_level(LevelFilter::Error)
 		.build();
 
-	if let Some(parent) = log_file_path.parent() {
-		fs::create_dir_all(parent)?;
-	}
+	let mut loggers: Vec<Box<dyn SharedLogger>> = vec![TermLogger::new(
+		log_level,
+		log_config.clone(),
+		TerminalMode::Mixed,
+	)];
 
-	CombinedLogger::init(vec![
-		TermLogger::new(log_level, log_config.clone(), TerminalMode::Mixed),
-		WriteLogger::new(
+	if let Some(path) = log_file_path {
+		if let Some(parent) = path.as_ref().parent() {
+			fs::create_dir_all(parent)?;
+		}
+		loggers.push(WriteLogger::new(
 			log_level,
 			log_config.clone(),
-			fs::File::create(log_file_path)?,
-		),
-	])?;
+			fs::File::create(path)?,
+		));
+	}
+
+	CombinedLogger::init(loggers)?;
 
 	Ok(())
 }
