@@ -1497,9 +1497,9 @@ dependencies = [
 
 [[package]]
 name = "mp4ameta"
-version = "0.7.1"
+version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d43d4114a72b4a4a1196473852cd4fb592b45968c57a78be63a98b28749ae31"
+checksum = "56aa1f053b7548af6e63752982912d0f4171c338947c96eaed640f3282ae1e30"
 dependencies = [
  "lazy_static",
  "mp4ameta_proc",
@@ -1507,9 +1507,9 @@ dependencies = [
 
 [[package]]
 name = "mp4ameta_proc"
-version = "0.2.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b78760a249b7611363d02cfbd56974e1957faf2caa4fce36d4207b7edc803b1"
+checksum = "ae8c32135ae7714c28698b429c7054846d420de755f7f5470a30795782565c94"
 
 [[package]]
 name = "native-windows-derive"

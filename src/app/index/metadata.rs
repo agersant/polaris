@@ -14,16 +14,20 @@ use std::path::Path;
 use crate::utils;
 use crate::utils::AudioFormat;
 
+/// For reference: https://wiki.hydrogenaud.io/index.php?title=Tag_Mapping
 #[derive(Debug, Clone, PartialEq)]
 pub struct SongTags {
-	pub disc_number: Option<u32>,
-	pub track_number: Option<u32>,
-	pub title: Option<String>,
-	pub duration: Option<u32>,
 	pub artist: Option<String>,
 	pub album_artist: Option<String>,
+	pub composer: Option<String>,
+	pub lyricist: Option<String>,
 	pub album: Option<String>,
+	pub title: Option<String>,
+	pub disc_number: Option<u32>,
+	pub track_number: Option<u32>,
+	pub genre: Option<String>,
 	pub year: Option<i32>,
+	pub duration: Option<u32>,
 	pub has_artwork: bool,
 }
 
@@ -31,26 +35,32 @@ impl From<id3::Tag> for SongTags {
 	fn from(tag: id3::Tag) -> Self {
 		let artist = tag.artist().map(|s| s.to_string());
 		let album_artist = tag.album_artist().map(|s| s.to_string());
+		let composer = tag.get("TCOM").map(|s| s.to_string());
+		let lyricist = tag.get("TEXT").map(|s| s.to_string());
 		let album = tag.album().map(|s| s.to_string());
 		let title = tag.title().map(|s| s.to_string());
-		let duration = tag.duration();
 		let disc_number = tag.disc();
 		let track_number = tag.track();
+		let genre = tag.genre().map(|s| s.to_string());
 		let year = tag
 			.year()
 			.map(|y| y as i32)
 			.or_else(|| tag.date_released().map(|d| d.year))
 			.or_else(|| tag.date_recorded().map(|d| d.year));
+		let duration = tag.duration();
 		let has_artwork = tag.pictures().count() > 0;
 
 		SongTags {
 			artist,
 			album_artist,
+			composer,
+			lyricist,
 			album,
 			title,
 			duration,
 			disc_number,
 			track_number,
+			genre,
 			year,
 			has_artwork,
 		}
@@ -152,22 +162,19 @@ fn read_ape_x_of_y(item: &ape::Item) -> Option<u32> {
 
 fn read_ape(path: &Path) -> Result<SongTags> {
 	let tag = ape::read(path)?;
-	let artist = tag.item("Artist").and_then(read_ape_string);
-	let album = tag.item("Album").and_then(read_ape_string);
-	let album_artist = tag.item("Album artist").and_then(read_ape_string);
-	let title = tag.item("Title").and_then(read_ape_string);
-	let year = tag.item("Year").and_then(read_ape_i32);
-	let disc_number = tag.item("Disc").and_then(read_ape_x_of_y);
-	let track_number = tag.item("Track").and_then(read_ape_x_of_y);
+
 	Ok(SongTags {
-		artist,
-		album_artist,
-		album,
-		title,
+		artist: tag.item("Artist").and_then(read_ape_string),
+		album_artist: tag.item("Album artist").and_then(read_ape_string),
+		composer: tag.item("Composer").and_then(read_ape_string),
+		lyricist: tag.item("Lyricist").and_then(read_ape_string),
+		album: tag.item("Album").and_then(read_ape_string),
+		title: tag.item("Title").and_then(read_ape_string),
+		disc_number: tag.item("Disc").and_then(read_ape_x_of_y),
+		track_number: tag.item("Track").and_then(read_ape_x_of_y),
+		genre: tag.item("Genre").and_then(read_ape_string),
+		year: tag.item("Year").and_then(read_ape_i32),
 		duration: None,
-		disc_number,
-		track_number,
-		year,
 		has_artwork: false,
 	})
 }
@@ -179,24 +186,30 @@ fn read_vorbis(path: &Path) -> Result<SongTags> {
 	let mut tags = SongTags {
 		artist: None,
 		album_artist: None,
+		composer: None,
+		lyricist: None,
 		album: None,
 		title: None,
-		duration: None,
 		disc_number: None,
 		track_number: None,
+		genre: None,
 		year: None,
+		duration: None,
 		has_artwork: false,
 	};
 
 	for (key, value) in source.comment_hdr.comment_list {
 		utils::match_ignore_case! {
 			match key {
-				"TITLE" => tags.title = Some(value),
-				"ALBUM" => tags.album = Some(value),
 				"ARTIST" => tags.artist = Some(value),
 				"ALBUMARTIST" => tags.album_artist = Some(value),
-				"TRACKNUMBER" => tags.track_number = value.parse::<u32>().ok(),
+				"COMPOSER" => tags.composer = Some(value),
+				"LYRICIST" => tags.lyricist = Some(value),
+				"ALBUM" => tags.album = Some(value),
+				"TITLE" => tags.title = Some(value),
 				"DISCNUMBER" => tags.disc_number = value.parse::<u32>().ok(),
+				"TRACKNUMBER" => tags.track_number = value.parse::<u32>().ok(),
+				"GENRE" => tags.genre = Some(value),
 				"DATE" => tags.year = value.parse::<i32>().ok(),
 				_ => (),
 			}
@@ -212,24 +225,30 @@ fn read_opus(path: &Path) -> Result<SongTags> {
 	let mut tags = SongTags {
 		artist: None,
 		album_artist: None,
+		composer: None,
+		lyricist: None,
 		album: None,
 		title: None,
-		duration: None,
 		disc_number: None,
 		track_number: None,
+		genre: None,
 		year: None,
+		duration: None,
 		has_artwork: false,
 	};
 
 	for (key, value) in headers.comments.user_comments {
 		utils::match_ignore_case! {
 			match key {
-				"TITLE" => tags.title = Some(value),
-				"ALBUM" => tags.album = Some(value),
 				"ARTIST" => tags.artist = Some(value),
 				"ALBUMARTIST" => tags.album_artist = Some(value),
-				"TRACKNUMBER" => tags.track_number = value.parse::<u32>().ok(),
+				"COMPOSER" => tags.composer = Some(value),
+				"LYRICIST" => tags.lyricist = Some(value),
+				"ALBUM" => tags.album = Some(value),
+				"TITLE" => tags.title = Some(value),
 				"DISCNUMBER" => tags.disc_number = value.parse::<u32>().ok(),
+				"TRACKNUMBER" => tags.track_number = value.parse::<u32>().ok(),
+				"GENRE" => tags.genre = Some(value),
 				"DATE" => tags.year = value.parse::<i32>().ok(),
 				_ => (),
 			}
@@ -244,10 +263,15 @@ fn read_flac(path: &Path) -> Result<SongTags> {
 	let vorbis = tag
 		.vorbis_comments()
 		.ok_or(anyhow!("Missing Vorbis comments"))?;
+	let first_str = |val: Option<&Vec<_>>| val.and_then(|v| v.first().map(String::to_owned));
+
 	let disc_number = vorbis
 		.get("DISCNUMBER")
-		.and_then(|d| d[0].parse::<u32>().ok());
-	let year = vorbis.get("DATE").and_then(|d| d[0].parse::<i32>().ok());
+		.and_then(|v| v.first().and_then(|d| d.parse::<u32>().ok()));
+	let year = vorbis
+		.get("DATE")
+		.and_then(|v| v.first().and_then(|d| d.parse::<i32>().ok()));
+
 	let mut streaminfo = tag.get_blocks(metaflac::BlockType::StreamInfo);
 	let duration = match streaminfo.next() {
 		Some(&metaflac::Block::StreamInfo(ref s)) => {
@@ -255,18 +279,20 @@ fn read_flac(path: &Path) -> Result<SongTags> {
 		}
 		_ => None,
 	};
-	let has_artwork = tag.pictures().count() > 0;
 
 	Ok(SongTags {
-		artist: vorbis.artist().map(|v| v[0].clone()),
-		album_artist: vorbis.album_artist().map(|v| v[0].clone()),
-		album: vorbis.album().map(|v| v[0].clone()),
-		title: vorbis.title().map(|v| v[0].clone()),
-		duration,
+		artist: first_str(vorbis.artist()),
+		album_artist: first_str(vorbis.album_artist()),
+		composer: first_str(vorbis.get("COMPOSER")),
+		lyricist: first_str(vorbis.get("LYRICIST")),
+		album: first_str(vorbis.album()),
+		title: first_str(vorbis.title()),
 		disc_number,
 		track_number: vorbis.track(),
+		genre: first_str(vorbis.genre()),
 		year,
-		has_artwork,
+		duration,
+		has_artwork: tag.pictures().count() > 0,
 	})
 }
 
@@ -276,12 +302,15 @@ fn read_mp4(path: &Path) -> Result<SongTags> {
 	Ok(SongTags {
 		artist: tag.take_artist(),
 		album_artist: tag.take_album_artist(),
+		composer: tag.take_composer(),
+		lyricist: tag.take_lyricist(),
 		album: tag.take_album(),
 		title: tag.take_title(),
-		duration: tag.duration().map(|v| v as u32),
 		disc_number: tag.disc_number().map(|d| d as u32),
 		track_number: tag.track_number().map(|d| d as u32),
+		genre: tag.take_genre(),
 		year: tag.year().and_then(|v| v.parse::<i32>().ok()),
+		duration: tag.duration().map(|d| d.as_secs() as u32),
 		has_artwork: tag.artwork().is_some(),
 	})
 }
@@ -289,13 +318,16 @@ fn read_mp4(path: &Path) -> Result<SongTags> {
 #[test]
 fn reads_file_metadata() {
 	let sample_tags = SongTags {
-		disc_number: Some(3),
-		track_number: Some(1),
-		title: Some("TEST TITLE".into()),
 		artist: Some("TEST ARTIST".into()),
 		album_artist: Some("TEST ALBUM ARTIST".into()),
+		composer: None,
+		lyricist: None,
 		album: Some("TEST ALBUM".into()),
+		title: Some("TEST TITLE".into()),
+		disc_number: Some(3),
+		track_number: Some(1),
 		duration: None,
+		genre: None,
 		year: Some(2016),
 		has_artwork: false,
 	};

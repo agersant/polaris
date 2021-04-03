@@ -27,6 +27,9 @@ pub struct Song {
 	pub album: Option<String>,
 	pub artwork: Option<String>,
 	pub duration: Option<i32>,
+	pub composer: Option<String>,
+	pub lyricist: Option<String>,
+	pub genre: Option<String>,
 }
 
 impl Song {
