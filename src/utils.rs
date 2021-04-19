@@ -21,6 +21,7 @@ pub enum AudioFormat {
 	MPC,
 	OGG,
 	OPUS,
+	WAVE,
 }
 
 pub fn get_audio_format(path: &Path) -> Option<AudioFormat> {
@@ -40,6 +41,7 @@ pub fn get_audio_format(path: &Path) -> Option<AudioFormat> {
 		"mpc" => Some(AudioFormat::MPC),
 		"ogg" => Some(AudioFormat::OGG),
 		"opus" => Some(AudioFormat::OPUS),
+		"wav" => Some(AudioFormat::WAVE),
 		_ => None,
 	}
 }
@@ -50,5 +52,9 @@ fn can_guess_audio_format() {
 	assert_eq!(
 		get_audio_format(Path::new("animals/🐷/my🐖file.flac")),
 		Some(AudioFormat::FLAC)
+	);
+	assert_eq!(
+		get_audio_format(Path::new("animals/🐷/my🐖file.wav")),
+		Some(AudioFormat::WAVE)
 	);
 }
