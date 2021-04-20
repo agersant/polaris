@@ -27,6 +27,36 @@ pub struct SongTags {
 	pub has_artwork: bool,
 }
 
+impl From<id3::Tag> for SongTags {
+	fn from(tag: id3::Tag) -> Self {
+		let artist = tag.artist().map(|s| s.to_string());
+		let album_artist = tag.album_artist().map(|s| s.to_string());
+		let album = tag.album().map(|s| s.to_string());
+		let title = tag.title().map(|s| s.to_string());
+		let duration = tag.duration();
+		let disc_number = tag.disc();
+		let track_number = tag.track();
+		let year = tag
+			.year()
+			.map(|y| y as i32)
+			.or_else(|| tag.date_released().map(|d| d.year))
+			.or_else(|| tag.date_recorded().map(|d| d.year));
+		let has_artwork = tag.pictures().count() > 0;
+
+		SongTags {
+			artist,
+			album_artist,
+			album,
+			title,
+			duration,
+			disc_number,
+			track_number,
+			year,
+			has_artwork,
+		}
+	}
+}
+
 pub fn read(path: &Path) -> Option<SongTags> {
 	let data = match utils::get_audio_format(path) {
 		Some(AudioFormat::APE) => Some(read_ape(path)),
@@ -49,34 +79,6 @@ pub fn read(path: &Path) -> Option<SongTags> {
 	}
 }
 
-fn read_id3(tag: &id3::Tag) -> SongTags {
-	let artist = tag.artist().map(|s| s.to_string());
-	let album_artist = tag.album_artist().map(|s| s.to_string());
-	let album = tag.album().map(|s| s.to_string());
-	let title = tag.title().map(|s| s.to_string());
-	let duration = tag.duration();
-	let disc_number = tag.disc();
-	let track_number = tag.track();
-	let year = tag
-		.year()
-		.map(|y| y as i32)
-		.or_else(|| tag.date_released().map(|d| d.year))
-		.or_else(|| tag.date_recorded().map(|d| d.year));
-	let has_artwork = tag.pictures().count() > 0;
-
-	SongTags {
-		artist,
-		album_artist,
-		album,
-		title,
-		duration,
-		disc_number,
-		track_number,
-		year,
-		has_artwork,
-	}
-}
-
 fn read_mp3(path: &Path) -> Result<SongTags> {
 	let tag = id3::Tag::read_from_path(&path).or_else(|error| {
 		if let Some(tag) = error.partial_tag {
@@ -92,10 +94,8 @@ fn read_mp3(path: &Path) -> Result<SongTags> {
 			.ok()
 	};
 
-	let mut song_tags = read_id3(&tag);
-
+	let mut song_tags: SongTags = tag.into();
 	song_tags.duration = duration; // Use duration from mp3_duration instead of from tags.
-
 	Ok(song_tags)
 }
 
@@ -107,8 +107,7 @@ fn read_wave(path: &Path) -> Result<SongTags> {
 			Err(error)
 		}
 	})?;
-
-	Ok(read_id3(&tag))
+	Ok(tag.into())
 }
 
 fn read_ape_string(item: &ape::Item) -> Option<String> {
