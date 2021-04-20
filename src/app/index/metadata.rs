@@ -27,15 +27,46 @@ pub struct SongTags {
 	pub has_artwork: bool,
 }
 
+impl From<id3::Tag> for SongTags {
+	fn from(tag: id3::Tag) -> Self {
+		let artist = tag.artist().map(|s| s.to_string());
+		let album_artist = tag.album_artist().map(|s| s.to_string());
+		let album = tag.album().map(|s| s.to_string());
+		let title = tag.title().map(|s| s.to_string());
+		let duration = tag.duration();
+		let disc_number = tag.disc();
+		let track_number = tag.track();
+		let year = tag
+			.year()
+			.map(|y| y as i32)
+			.or_else(|| tag.date_released().map(|d| d.year))
+			.or_else(|| tag.date_recorded().map(|d| d.year));
+		let has_artwork = tag.pictures().count() > 0;
+
+		SongTags {
+			artist,
+			album_artist,
+			album,
+			title,
+			duration,
+			disc_number,
+			track_number,
+			year,
+			has_artwork,
+		}
+	}
+}
+
 pub fn read(path: &Path) -> Option<SongTags> {
 	let data = match utils::get_audio_format(path) {
 		Some(AudioFormat::APE) => Some(read_ape(path)),
 		Some(AudioFormat::FLAC) => Some(read_flac(path)),
-		Some(AudioFormat::MP3) => Some(read_id3(path)),
+		Some(AudioFormat::MP3) => Some(read_mp3(path)),
 		Some(AudioFormat::MP4) => Some(read_mp4(path)),
 		Some(AudioFormat::MPC) => Some(read_ape(path)),
 		Some(AudioFormat::OGG) => Some(read_vorbis(path)),
 		Some(AudioFormat::OPUS) => Some(read_opus(path)),
+		Some(AudioFormat::WAVE) => Some(read_wave(path)),
 		None => None,
 	};
 	match data {
@@ -48,49 +79,35 @@ pub fn read(path: &Path) -> Option<SongTags> {
 	}
 }
 
-fn read_id3(path: &Path) -> Result<SongTags> {
-	let tag = {
-		match id3::Tag::read_from_path(&path) {
-			Ok(t) => Ok(t),
-			Err(e) => {
-				if let Some(t) = e.partial_tag {
-					Ok(t)
-				} else {
-					Err(e)
-				}
-			}
-		}?
-	};
+fn read_mp3(path: &Path) -> Result<SongTags> {
+	let tag = id3::Tag::read_from_path(&path).or_else(|error| {
+		if let Some(tag) = error.partial_tag {
+			Ok(tag)
+		} else {
+			Err(error)
+		}
+	})?;
+
 	let duration = {
 		mp3_duration::from_path(&path)
 			.map(|d| d.as_secs() as u32)
 			.ok()
 	};
 
-	let artist = tag.artist().map(|s| s.to_string());
-	let album_artist = tag.album_artist().map(|s| s.to_string());
-	let album = tag.album().map(|s| s.to_string());
-	let title = tag.title().map(|s| s.to_string());
-	let disc_number = tag.disc();
-	let track_number = tag.track();
-	let year = tag
-		.year()
-		.map(|y| y as i32)
-		.or_else(|| tag.date_released().and_then(|d| Some(d.year)))
-		.or_else(|| tag.date_recorded().and_then(|d| Some(d.year)));
-	let has_artwork = tag.pictures().count() > 0;
+	let mut song_tags: SongTags = tag.into();
+	song_tags.duration = duration; // Use duration from mp3_duration instead of from tags.
+	Ok(song_tags)
+}
 
-	Ok(SongTags {
-		artist,
-		album_artist,
-		album,
-		title,
-		duration,
-		disc_number,
-		track_number,
-		year,
-		has_artwork,
-	})
+fn read_wave(path: &Path) -> Result<SongTags> {
+	let tag = id3::Tag::read_from_wav(&path).or_else(|error| {
+		if let Some(tag) = error.partial_tag {
+			Ok(tag)
+		} else {
+			Err(error)
+		}
+	})?;
+	Ok(tag.into())
 }
 
 fn read_ape_string(item: &ape::Item) -> Option<String> {
@@ -306,6 +323,10 @@ fn reads_file_metadata() {
 		read(Path::new("test-data/formats/sample.ape")).unwrap(),
 		sample_tags
 	);
+	assert_eq!(
+		read(Path::new("test-data/formats/sample.wav")).unwrap(),
+		sample_tags
+	);
 }
 
 #[test]
@@ -322,6 +343,11 @@ fn reads_embedded_artwork() {
 	);
 	assert!(
 		read(Path::new("test-data/artwork/sample.m4a"))
+			.unwrap()
+			.has_artwork
+	);
+	assert!(
+		read(Path::new("test-data/artwork/sample.wav"))
 			.unwrap()
 			.has_artwork
 	);
