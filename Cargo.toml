@@ -30,7 +30,7 @@ lewton = "0.10.1"
 log = "0.4.5"
 metaflac = "0.2.3"
 mp3-duration = "0.1.9"
-mp4ameta = "0.7.1"
+mp4ameta = "0.10.0"
 num_cpus = "1.13.0"
 opus_headers = "0.1.2"
 percent-encoding = "2.1"
@@ -52,7 +52,7 @@ url = "2.1"
 [dependencies.diesel]
 version = "1.4.5"
 default_features = false
-features = ["libsqlite3-sys", "r2d2", "sqlite"]
+features = ["libsqlite3-sys", "r2d2", "sqlite", "64-column-tables"]
 
 [dependencies.image]
 version = "0.23.12"

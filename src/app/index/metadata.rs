@@ -25,6 +25,10 @@ pub struct SongTags {
 	pub album: Option<String>,
 	pub year: Option<i32>,
 	pub has_artwork: bool,
+	pub lyricist: Option<String>,
+	pub composer: Option<String>,
+	pub genre: Option<String>,
+	pub label: Option<String>,
 }
 
 impl From<id3::Tag> for SongTags {
@@ -42,6 +46,10 @@ impl From<id3::Tag> for SongTags {
 			.or_else(|| tag.date_released().map(|d| d.year))
 			.or_else(|| tag.date_recorded().map(|d| d.year));
 		let has_artwork = tag.pictures().count() > 0;
+		let lyricist = tag.get_text("TEXT");
+		let composer = tag.get_text("TCOM");
+		let genre = tag.genre().map(|s| s.to_string());
+		let label = tag.get_text("TPUB");
 
 		SongTags {
 			artist,
@@ -53,6 +61,10 @@ impl From<id3::Tag> for SongTags {
 			track_number,
 			year,
 			has_artwork,
+			lyricist,
+			composer,
+			genre,
+			label,
 		}
 	}
 }
@@ -77,6 +89,22 @@ pub fn read(path: &Path) -> Option<SongTags> {
 			None
 		}
 		None => None,
+	}
+}
+
+trait FrameContent {
+	/// Returns the value stored, if any, in the Frame.
+	/// Say "TCOM" returns composer field.
+	fn get_text(&self, key: &str) -> Option<String>;
+}
+
+impl FrameContent for id3::Tag {
+	fn get_text(&self, key: &str) -> Option<String> {
+		let frame = self.get(key)?;
+		match frame.content() {
+			id3::Content::Text(value) => Some(value.to_string()),
+			_ => None,
+		}
 	}
 }
 
@@ -159,9 +187,14 @@ fn read_ape(path: &Path) -> Result<SongTags> {
 	let year = tag.item("Year").and_then(read_ape_i32);
 	let disc_number = tag.item("Disc").and_then(read_ape_x_of_y);
 	let track_number = tag.item("Track").and_then(read_ape_x_of_y);
+	let lyricist = tag.item("LYRICIST").and_then(read_ape_string);
+	let composer = tag.item("COMPOSER").and_then(read_ape_string);
+	let genre = tag.item("GENRE").and_then(read_ape_string);
+	let label = tag.item("PUBLISHER").and_then(read_ape_string);
 	Ok(SongTags {
-		artist,
-		album_artist,
+		//
+		artist,       //
+		album_artist, //
 		album,
 		title,
 		duration: None,
@@ -169,6 +202,10 @@ fn read_ape(path: &Path) -> Result<SongTags> {
 		track_number,
 		year,
 		has_artwork: false,
+		lyricist,
+		composer,
+		genre,
+		label,
 	})
 }
 
@@ -186,6 +223,10 @@ fn read_vorbis(path: &Path) -> Result<SongTags> {
 		track_number: None,
 		year: None,
 		has_artwork: false,
+		lyricist: None,
+		composer: None,
+		genre: None,
+		label: None,
 	};
 
 	for (key, value) in source.comment_hdr.comment_list {
@@ -198,6 +239,10 @@ fn read_vorbis(path: &Path) -> Result<SongTags> {
 				"TRACKNUMBER" => tags.track_number = value.parse::<u32>().ok(),
 				"DISCNUMBER" => tags.disc_number = value.parse::<u32>().ok(),
 				"DATE" => tags.year = value.parse::<i32>().ok(),
+				"LYRICIST" => tags.lyricist = Some(value),
+				"COMPOSER" => tags.composer = Some(value),
+				"GENRE" => tags.genre = Some(value),
+				"PUBLISHER" => tags.label = Some(value),
 				_ => (),
 			}
 		}
@@ -219,6 +264,10 @@ fn read_opus(path: &Path) -> Result<SongTags> {
 		track_number: None,
 		year: None,
 		has_artwork: false,
+		lyricist: None,
+		composer: None,
+		genre: None,
+		label: None,
 	};
 
 	for (key, value) in headers.comments.user_comments {
@@ -231,6 +280,10 @@ fn read_opus(path: &Path) -> Result<SongTags> {
 				"TRACKNUMBER" => tags.track_number = value.parse::<u32>().ok(),
 				"DISCNUMBER" => tags.disc_number = value.parse::<u32>().ok(),
 				"DATE" => tags.year = value.parse::<i32>().ok(),
+				"LYRICIST" => tags.lyricist = Some(value),
+				"COMPOSER" => tags.composer = Some(value),
+				"GENRE" => tags.genre = Some(value),
+				"PUBLISHER" => tags.label = Some(value),
 				_ => (),
 			}
 		}
@@ -267,22 +320,31 @@ fn read_flac(path: &Path) -> Result<SongTags> {
 		track_number: vorbis.track(),
 		year,
 		has_artwork,
+		lyricist: vorbis.get("LYRICIST").map(|v| v[0].clone()),
+		composer: vorbis.get("COMPOSER").map(|v| v[0].clone()),
+		genre: vorbis.get("GENRE").map(|v| v[0].clone()),
+		label: vorbis.get("PUBLISHER").map(|v| v[0].clone()),
 	})
 }
 
 fn read_mp4(path: &Path) -> Result<SongTags> {
 	let mut tag = mp4ameta::Tag::read_from_path(path)?;
+	let label_ident = mp4ameta::FreeformIdent::new("com.apple.iTunes", "Label");
 
 	Ok(SongTags {
 		artist: tag.take_artist(),
 		album_artist: tag.take_album_artist(),
 		album: tag.take_album(),
 		title: tag.take_title(),
-		duration: tag.duration().map(|v| v as u32),
+		duration: tag.duration().map(|v| v.as_secs() as u32),
 		disc_number: tag.disc_number().map(|d| d as u32),
 		track_number: tag.track_number().map(|d| d as u32),
 		year: tag.year().and_then(|v| v.parse::<i32>().ok()),
 		has_artwork: tag.artwork().is_some(),
+		lyricist: tag.take_lyricist(),
+		composer: tag.take_composer(),
+		genre: tag.take_genre(),
+		label: tag.take_string(&label_ident).next(),
 	})
 }
 
@@ -298,6 +360,10 @@ fn reads_file_metadata() {
 		duration: None,
 		year: Some(2016),
 		has_artwork: false,
+		lyricist: Some("TEST LYRICIST".into()),
+		composer: Some("TEST COMPOSER".into()),
+		genre: Some("TEST GENRE".into()),
+		label: Some("TEST LABEL".into()),
 	};
 	let flac_sample_tag = SongTags {
 		duration: Some(0),
