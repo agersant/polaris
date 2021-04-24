@@ -59,6 +59,7 @@ impl From<id3::Tag> for SongTags {
 
 pub fn read(path: &Path) -> Option<SongTags> {
 	let data = match utils::get_audio_format(path) {
+		Some(AudioFormat::AIFF) => Some(read_aiff(path)),
 		Some(AudioFormat::APE) => Some(read_ape(path)),
 		Some(AudioFormat::FLAC) => Some(read_flac(path)),
 		Some(AudioFormat::MP3) => Some(read_mp3(path)),
@@ -97,6 +98,17 @@ fn read_mp3(path: &Path) -> Result<SongTags> {
 	let mut song_tags: SongTags = tag.into();
 	song_tags.duration = duration; // Use duration from mp3_duration instead of from tags.
 	Ok(song_tags)
+}
+
+fn read_aiff(path: &Path) -> Result<SongTags> {
+	let tag = id3::Tag::read_from_aiff(&path).or_else(|error| {
+		if let Some(tag) = error.partial_tag {
+			Ok(tag)
+		} else {
+			Err(error)
+		}
+	})?;
+	Ok(tag.into())
 }
 
 fn read_wave(path: &Path) -> Result<SongTags> {
@@ -300,6 +312,10 @@ fn reads_file_metadata() {
 		..sample_tags.clone()
 	};
 	assert_eq!(
+		read(Path::new("test-data/formats/sample.aif")).unwrap(),
+		sample_tags
+	);
+	assert_eq!(
 		read(Path::new("test-data/formats/sample.mp3")).unwrap(),
 		mp3_sample_tag
 	);
@@ -331,6 +347,11 @@ fn reads_file_metadata() {
 
 #[test]
 fn reads_embedded_artwork() {
+	assert!(
+		read(Path::new("test-data/artwork/sample.aif"))
+			.unwrap()
+			.has_artwork
+	);
 	assert!(
 		read(Path::new("test-data/artwork/sample.mp3"))
 			.unwrap()
