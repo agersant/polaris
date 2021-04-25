@@ -14,6 +14,7 @@ pub use crate::match_ignore_case;
 
 #[derive(Debug, PartialEq)]
 pub enum AudioFormat {
+	AIFF,
 	APE,
 	FLAC,
 	MP3,
@@ -21,6 +22,7 @@ pub enum AudioFormat {
 	MPC,
 	OGG,
 	OPUS,
+	WAVE,
 }
 
 pub fn get_audio_format(path: &Path) -> Option<AudioFormat> {
@@ -33,6 +35,8 @@ pub fn get_audio_format(path: &Path) -> Option<AudioFormat> {
 		_ => return None,
 	};
 	match extension.to_lowercase().as_str() {
+		"aif" => Some(AudioFormat::AIFF),
+		"aiff" => Some(AudioFormat::AIFF),
 		"ape" => Some(AudioFormat::APE),
 		"flac" => Some(AudioFormat::FLAC),
 		"mp3" => Some(AudioFormat::MP3),
@@ -40,6 +44,7 @@ pub fn get_audio_format(path: &Path) -> Option<AudioFormat> {
 		"mpc" => Some(AudioFormat::MPC),
 		"ogg" => Some(AudioFormat::OGG),
 		"opus" => Some(AudioFormat::OPUS),
+		"wav" => Some(AudioFormat::WAVE),
 		_ => None,
 	}
 }
@@ -48,7 +53,19 @@ pub fn get_audio_format(path: &Path) -> Option<AudioFormat> {
 fn can_guess_audio_format() {
 	assert_eq!(get_audio_format(Path::new("animals/🐷/my🐖file.jpg")), None);
 	assert_eq!(
+		get_audio_format(Path::new("animals/🐷/my🐖file.aif")),
+		Some(AudioFormat::AIFF)
+	);
+	assert_eq!(
+		get_audio_format(Path::new("animals/🐷/my🐖file.aiff")),
+		Some(AudioFormat::AIFF)
+	);
+	assert_eq!(
 		get_audio_format(Path::new("animals/🐷/my🐖file.flac")),
 		Some(AudioFormat::FLAC)
+	);
+	assert_eq!(
+		get_audio_format(Path::new("animals/🐷/my🐖file.wav")),
+		Some(AudioFormat::WAVE)
 	);
 }

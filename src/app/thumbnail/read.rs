@@ -7,13 +7,15 @@ use crate::utils::AudioFormat;
 
 pub fn read(image_path: &Path) -> Result<DynamicImage> {
 	match utils::get_audio_format(image_path) {
+		Some(AudioFormat::AIFF) => read_aiff(image_path),
 		Some(AudioFormat::APE) => read_ape(image_path),
 		Some(AudioFormat::FLAC) => read_flac(image_path),
-		Some(AudioFormat::MP3) => read_id3(image_path),
+		Some(AudioFormat::MP3) => read_mp3(image_path),
 		Some(AudioFormat::MP4) => read_mp4(image_path),
 		Some(AudioFormat::MPC) => read_ape(image_path),
 		Some(AudioFormat::OGG) => read_vorbis(image_path),
 		Some(AudioFormat::OPUS) => read_opus(image_path),
+		Some(AudioFormat::WAVE) => read_wave(image_path),
 		None => Ok(image::open(image_path)?),
 	}
 }
@@ -37,9 +39,25 @@ fn read_flac(path: &Path) -> Result<DynamicImage> {
 	)))
 }
 
-fn read_id3(path: &Path) -> Result<DynamicImage> {
+fn read_mp3(path: &Path) -> Result<DynamicImage> {
 	let tag = id3::Tag::read_from_path(path)?;
 
+	read_id3(&path, &tag)
+}
+
+fn read_aiff(path: &Path) -> Result<DynamicImage> {
+	let tag = id3::Tag::read_from_aiff(path)?;
+
+	read_id3(&path, &tag)
+}
+
+fn read_wave(path: &Path) -> Result<DynamicImage> {
+	let tag = id3::Tag::read_from_wav(path)?;
+
+	read_id3(&path, &tag)
+}
+
+fn read_id3(path: &Path, tag: &id3::Tag) -> Result<DynamicImage> {
 	if let Some(p) = tag.pictures().next() {
 		return Ok(image::load_from_memory(&p.data)?);
 	}
@@ -88,6 +106,11 @@ fn can_read_artwork_data() {
 		.to_rgb8();
 	assert_eq!(folder_img, ext_img);
 
+	let aiff_img = read(Path::new("test-data/artwork/sample.aif"))
+		.unwrap()
+		.to_rgb8();
+	assert_eq!(aiff_img, embedded_img);
+
 	let ape_img = read(Path::new("test-data/artwork/sample.ape"))
 		.map(|d| d.to_rgb8())
 		.ok();
@@ -117,4 +140,9 @@ fn can_read_artwork_data() {
 		.map(|d| d.to_rgb8())
 		.ok();
 	assert_eq!(opus_img, None);
+
+	let wave_img = read(Path::new("test-data/artwork/sample.wav"))
+		.unwrap()
+		.to_rgb8();
+	assert_eq!(wave_img, embedded_img);
 }
