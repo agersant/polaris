@@ -24,7 +24,7 @@ diesel_migrations = { version = "1.4", features = ["sqlite"] }
 futures-util = { version = "0.3" }
 getopts = "0.2.15"
 http = "0.2.2"
-id3 = "0.6.3"
+id3 = "0.6.4"
 libsqlite3-sys = { version = "0.18", features = ["bundled", "bundled-windows"], optional = true }
 lewton = "0.10.1"
 log = "0.4.5"

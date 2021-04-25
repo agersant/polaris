@@ -7,6 +7,7 @@ use crate::utils::AudioFormat;
 
 pub fn read(image_path: &Path) -> Result<DynamicImage> {
 	match utils::get_audio_format(image_path) {
+		Some(AudioFormat::AIFF) => read_aiff(image_path),
 		Some(AudioFormat::APE) => read_ape(image_path),
 		Some(AudioFormat::FLAC) => read_flac(image_path),
 		Some(AudioFormat::MP3) => read_mp3(image_path),
@@ -40,6 +41,12 @@ fn read_flac(path: &Path) -> Result<DynamicImage> {
 
 fn read_mp3(path: &Path) -> Result<DynamicImage> {
 	let tag = id3::Tag::read_from_path(path)?;
+
+	read_id3(&path, &tag)
+}
+
+fn read_aiff(path: &Path) -> Result<DynamicImage> {
+	let tag = id3::Tag::read_from_aiff(path)?;
 
 	read_id3(&path, &tag)
 }
@@ -98,6 +105,11 @@ fn can_read_artwork_data() {
 		.unwrap()
 		.to_rgb8();
 	assert_eq!(folder_img, ext_img);
+
+	let aiff_img = read(Path::new("test-data/artwork/sample.aif"))
+		.unwrap()
+		.to_rgb8();
+	assert_eq!(aiff_img, embedded_img);
 
 	let ape_img = read(Path::new("test-data/artwork/sample.ape"))
 		.map(|d| d.to_rgb8())
