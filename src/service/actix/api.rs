@@ -704,6 +704,7 @@ async fn get_thumbnail(
 	options_input: web::Query<dto::ThumbnailOptions>,
 ) -> Result<NamedFile, APIError> {
 	let mut options = thumbnail::Options::default();
+	options.max_dimension = options_input.size.map_or(options.max_dimension, Into::into);
 	options.pad_to_square = options_input.pad.unwrap_or(options.pad_to_square);
 
 	let thumbnail_path = block(move || {

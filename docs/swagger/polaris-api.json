@@ -792,6 +792,16 @@
                         }
                     },
                     {
+                        "name": "size",
+                        "in": "query",
+                        "description": "The maximum size of the thumbnail, either small (400x400), large (1200x1200) or native",
+                        "schema": {
+                            "type": "string",
+                            "enum": ["small", "large", "native"],
+                            "default": "small"
+                        }
+                    },
+                    {
                         "name": "pad",
                         "in": "query",
                         "description": "Indicates whether the thumbnail should be padded to a square aspect-ratio",

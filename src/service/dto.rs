@@ -39,7 +39,26 @@ pub struct AuthQueryParameters {
 
 #[derive(Serialize, Deserialize)]
 pub struct ThumbnailOptions {
+	pub size: Option<ThumbnailSize>,
 	pub pad: Option<bool>,
+}
+
+#[derive(Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ThumbnailSize {
+	Small,
+	Large,
+	Native,
+}
+
+impl Into<u32> for ThumbnailSize {
+	fn into(self) -> u32 {
+		match self {
+			Self::Small => 400,
+			Self::Large => 1200,
+			Self::Native => u32::MAX,
+		}
+	}
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
