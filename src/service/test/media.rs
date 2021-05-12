@@ -127,7 +127,7 @@ fn thumbnail_bad_path_returns_not_found() {
 }
 
 #[test]
-fn thumbnail_small_default() {
+fn thumbnail_default_size() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login_admin();
