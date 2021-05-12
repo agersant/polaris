@@ -1,9 +1,9 @@
-use http::{method::Method, Request};
+use http::{Method, Request};
 use percent_encoding::{percent_encode, NON_ALPHANUMERIC};
 use std::path::Path;
 
-use crate::app::user;
 use crate::service::dto;
+use crate::{app::user, service::dto::ThumbnailSize};
 
 pub fn web_index() -> Request<()> {
 	Request::builder()
@@ -200,9 +200,16 @@ pub fn audio(path: &Path) -> Request<()> {
 		.unwrap()
 }
 
-pub fn thumbnail(path: &Path, pad: Option<bool>) -> Request<()> {
+pub fn thumbnail(path: &Path, size: Option<ThumbnailSize>, pad: Option<bool>) -> Request<()> {
 	let path = path.to_string_lossy();
 	let mut endpoint = format!("/api/thumbnail/{}", url_encode(path.as_ref()));
+	if let Some(s) = size {
+		match s {
+			ThumbnailSize::Small => endpoint.push_str("?size=small"),
+			ThumbnailSize::Large => endpoint.push_str("?size=large"),
+			ThumbnailSize::Native => endpoint.push_str("?size=native"),
+		}
+	}
 	match pad {
 		Some(true) => endpoint.push_str("?pad=true"),
 		Some(false) => endpoint.push_str("?pad=false"),
