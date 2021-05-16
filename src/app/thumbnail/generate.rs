@@ -9,7 +9,10 @@ pub fn generate_thumbnail(image_path: &Path, options: &Options) -> Result<Dynami
 	let source_image = DynamicImage::ImageRgb8(read(image_path)?.into_rgb8());
 	let (source_width, source_height) = source_image.dimensions();
 	let largest_dimension = cmp::max(source_width, source_height);
-	let out_dimension = cmp::min(options.max_dimension.unwrap_or(u32::MAX), largest_dimension);
+	let out_dimension = cmp::min(
+		options.max_dimension.unwrap_or(largest_dimension),
+		largest_dimension,
+	);
 
 	let source_aspect_ratio: f32 = source_width as f32 / source_height as f32;
 	let is_almost_square = source_aspect_ratio > 0.8 && source_aspect_ratio < 1.2;
