@@ -127,89 +127,42 @@ fn thumbnail_bad_path_returns_not_found() {
 }
 
 #[test]
-fn thumbnail_default_size() {
+fn thumbnail_size() {
 	let mut service = ServiceType::new(&test_name!());
 	service.complete_initial_setup();
 	service.login_admin();
 	service.index();
 	service.login();
 
-	let path: PathBuf = [TEST_MOUNT_NAME, "Tobokegao", "Picnic", "Folder.png"]
-		.iter()
-		.collect();
+	let test_values = vec![
+		(None, None, 400),
+		(None, Some(true), 400),
+		(None, Some(false), 400),
+		(Some(ThumbnailSize::Small), None, 400),
+		(Some(ThumbnailSize::Small), Some(true), 400),
+		(Some(ThumbnailSize::Small), Some(false), 400),
+		(Some(ThumbnailSize::Large), None, 1200),
+		(Some(ThumbnailSize::Large), Some(true), 1200),
+		(Some(ThumbnailSize::Large), Some(false), 1200),
+		(Some(ThumbnailSize::Native), None, 1423),
+		(Some(ThumbnailSize::Native), Some(true), 1423),
+		(Some(ThumbnailSize::Native), Some(false), 1423),
+	];
 
-	let size = None;
-	let pad = None;
-	let request = protocol::thumbnail(&path, size, pad);
-	let response = service.fetch_bytes(&request);
-	assert_eq!(response.status(), StatusCode::OK);
-	let thumbnail = image::load_from_memory(response.body()).unwrap().to_rgb8();
-	assert_eq!(thumbnail.width(), 400);
-	assert_eq!(thumbnail.height(), 400);
-}
+	let mut i = 0;
+	for (size, pad, expexted) in test_values {
+		let path: PathBuf = [TEST_MOUNT_NAME, "Tobokegao", "Picnic", "Folder.png"]
+			.iter()
+			.collect();
 
-#[test]
-fn thumbnail_small_size() {
-	let mut service = ServiceType::new(&test_name!());
-	service.complete_initial_setup();
-	service.login_admin();
-	service.index();
-	service.login();
+		let request = protocol::thumbnail(&path, size, pad);
+		let response = service.fetch_bytes(&request);
+		assert_eq!(response.status(), StatusCode::OK);
+		let thumbnail = image::load_from_memory(response.body()).unwrap().to_rgb8();
+		assert_eq!(thumbnail.width(), expexted);
+		assert_eq!(thumbnail.height(), expexted);
 
-	let path: PathBuf = [TEST_MOUNT_NAME, "Tobokegao", "Picnic", "Folder.png"]
-		.iter()
-		.collect();
-
-	let size = Some(ThumbnailSize::Small);
-	let pad = None;
-	let request = protocol::thumbnail(&path, size, pad);
-	let response = service.fetch_bytes(&request);
-	assert_eq!(response.status(), StatusCode::OK);
-	let thumbnail = image::load_from_memory(response.body()).unwrap().to_rgb8();
-	assert_eq!(thumbnail.width(), 400);
-	assert_eq!(thumbnail.height(), 400);
-}
-
-#[test]
-fn thumbnail_large_size() {
-	let mut service = ServiceType::new(&test_name!());
-	service.complete_initial_setup();
-	service.login_admin();
-	service.index();
-	service.login();
-
-	let path: PathBuf = [TEST_MOUNT_NAME, "Tobokegao", "Picnic", "Folder.png"]
-		.iter()
-		.collect();
-
-	let size = Some(ThumbnailSize::Large);
-	let pad = None;
-	let request = protocol::thumbnail(&path, size, pad);
-	let response = service.fetch_bytes(&request);
-	assert_eq!(response.status(), StatusCode::OK);
-	let thumbnail = image::load_from_memory(response.body()).unwrap().to_rgb8();
-	assert_eq!(thumbnail.width(), 1200);
-	assert_eq!(thumbnail.height(), 1200);
-}
-
-#[test]
-fn thumbnail_native_size() {
-	let mut service = ServiceType::new(&test_name!());
-	service.complete_initial_setup();
-	service.login_admin();
-	service.index();
-	service.login();
-
-	let path: PathBuf = [TEST_MOUNT_NAME, "Tobokegao", "Picnic", "Folder.png"]
-		.iter()
-		.collect();
-
-	let size = Some(ThumbnailSize::Native);
-	let pad = None;
-	let request = protocol::thumbnail(&path, size, pad);
-	let response = service.fetch_bytes(&request);
-	assert_eq!(response.status(), StatusCode::OK);
-	let thumbnail = image::load_from_memory(response.body()).unwrap().to_rgb8();
-	assert_eq!(thumbnail.width(), 1423);
-	assert_eq!(thumbnail.height(), 1423);
+		println!("i: {}", i);
+		i += 1;
+	}
 }

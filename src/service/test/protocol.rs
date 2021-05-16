@@ -202,19 +202,30 @@ pub fn audio(path: &Path) -> Request<()> {
 
 pub fn thumbnail(path: &Path, size: Option<ThumbnailSize>, pad: Option<bool>) -> Request<()> {
 	let path = path.to_string_lossy();
-	let mut endpoint = format!("/api/thumbnail/{}", url_encode(path.as_ref()));
+	let mut params = String::new();
 	if let Some(s) = size {
+		params.push('?');
 		match s {
-			ThumbnailSize::Small => endpoint.push_str("?size=small"),
-			ThumbnailSize::Large => endpoint.push_str("?size=large"),
-			ThumbnailSize::Native => endpoint.push_str("?size=native"),
-		}
+			ThumbnailSize::Small => params.push_str("size=small"),
+			ThumbnailSize::Large => params.push_str("size=large"),
+			ThumbnailSize::Native => params.push_str("size=native"),
+		};
 	}
-	match pad {
-		Some(true) => endpoint.push_str("?pad=true"),
-		Some(false) => endpoint.push_str("?pad=false"),
-		None => (),
-	};
+	if let Some(p) = pad {
+		if params.is_empty() {
+			params.push('?');
+		} else {
+			params.push('&');
+		}
+		if p {
+			params.push_str("pad=true");
+		} else {
+			params.push_str("pad=false");
+		};
+	}
+
+	let endpoint = format!("/api/thumbnail/{}{}", url_encode(path.as_ref()), params);
+
 	Request::builder()
 		.method(Method::GET)
 		.uri(&endpoint)
