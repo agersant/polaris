@@ -23,7 +23,7 @@ jobs:
       uses: actions-rs/tarpaulin@v0.1
       with:
         args: '--all-features --ignore-tests'
-        timeout: 120
+        timeout: 240
         out-type: Xml
     - name: Upload Results
       uses: codecov/codecov-action@v1
