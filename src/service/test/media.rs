@@ -136,17 +136,9 @@ fn thumbnail_size() {
 
 	let test_values = vec![
 		(None, None, 400),
-		(None, Some(true), 400),
-		(None, Some(false), 400),
 		(Some(ThumbnailSize::Small), None, 400),
-		(Some(ThumbnailSize::Small), Some(true), 400),
-		(Some(ThumbnailSize::Small), Some(false), 400),
 		(Some(ThumbnailSize::Large), None, 1200),
-		(Some(ThumbnailSize::Large), Some(true), 1200),
-		(Some(ThumbnailSize::Large), Some(false), 1200),
 		(Some(ThumbnailSize::Native), None, 1423),
-		(Some(ThumbnailSize::Native), Some(true), 1423),
-		(Some(ThumbnailSize::Native), Some(false), 1423),
 	];
 
 	for (size, pad, expexted) in test_values {
