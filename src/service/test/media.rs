@@ -141,7 +141,7 @@ fn thumbnail_size() {
 		(Some(ThumbnailSize::Native), None, 1423),
 	];
 
-	for (size, pad, expexted) in test_values {
+	for (size, pad, expected) in test_values {
 		let path: PathBuf = [TEST_MOUNT_NAME, "Tobokegao", "Picnic", "Folder.png"]
 			.iter()
 			.collect();
@@ -150,7 +150,7 @@ fn thumbnail_size() {
 		let response = service.fetch_bytes(&request);
 		assert_eq!(response.status(), StatusCode::OK);
 		let thumbnail = image::load_from_memory(response.body()).unwrap().to_rgb8();
-		assert_eq!(thumbnail.width(), expexted);
-		assert_eq!(thumbnail.height(), expexted);
+		assert_eq!(thumbnail.width(), expected);
+		assert_eq!(thumbnail.height(), expected);
 	}
 }
