@@ -164,7 +164,7 @@ impl Manager {
 			// Select songs. Not using Diesel because we need to LEFT JOIN using a custom column
 			let query = diesel::sql_query(
 				r#"
-			SELECT s.id, s.path, s.parent, s.track_number, s.disc_number, s.title, s.artist, s.album_artist, s.year, s.album, s.artwork, s.duration
+			SELECT s.id, s.path, s.parent, s.track_number, s.disc_number, s.title, s.artist, s.album_artist, s.year, s.album, s.artwork, s.duration, s.lyricist, s.composer, s.genre, s.label
 			FROM playlist_songs ps
 			LEFT JOIN songs s ON ps.path = s.path
 			WHERE ps.playlist = ?

@@ -1417,6 +1417,22 @@
                     "duration": {
                         "type": "integer",
                         "example": 571
+                    },
+                    "lyricist": {
+                        "type": "string",
+                        "example": "Timo Tolkki"
+                    },
+                    "composer": {
+                        "type": "string",
+                        "example": "Timo Tolkki"
+                    },
+                    "genre": {
+                        "type": "string",
+                        "example": "Genre"
+                    },
+                    "label": {
+                        "type": "string",
+                        "example": "Noise Records"
                     }
                 }
             },

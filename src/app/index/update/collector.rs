@@ -88,6 +88,10 @@ impl Collector {
 				album: tags.album,
 				year: tags.year,
 				artwork: artwork_path,
+				lyricist: tags.lyricist,
+				composer: tags.composer,
+				genre: tags.genre,
+				label: tags.label,
 			})) {
 				error!("Error while sending song from collector: {}", e);
 			}
