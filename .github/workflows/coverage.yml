@@ -22,7 +22,7 @@ jobs:
     - name: Run Tarpaulin
       uses: actions-rs/tarpaulin@v0.1
       with:
-        args: '--all-features --ignore-tests'
+        args: '--all-features --ignore-tests -- --test-threads=$(nproc)'
         timeout: 240
         out-type: Xml
     - name: Upload Results

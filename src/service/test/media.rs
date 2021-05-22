@@ -127,30 +127,40 @@ fn thumbnail_bad_path_returns_not_found() {
 }
 
 #[test]
-fn thumbnail_size() {
-	let mut service = ServiceType::new(&test_name!());
+fn thumbnail_size_default() {
+	thumbnail_size(&test_name!(), None, None, 400);
+}
+
+#[test]
+fn thumbnail_size_small() {
+	thumbnail_size(&test_name!(), Some(ThumbnailSize::Small), None, 400);
+}
+
+#[test]
+fn thumbnail_size_large() {
+	thumbnail_size(&test_name!(), Some(ThumbnailSize::Large), None, 1200);
+}
+
+#[test]
+fn thumbnail_size_native() {
+	thumbnail_size(&test_name!(), Some(ThumbnailSize::Native), None, 1423);
+}
+
+fn thumbnail_size(name: &str, size: Option<ThumbnailSize>, pad: Option<bool>, expected: u32) {
+	let mut service = ServiceType::new(name);
 	service.complete_initial_setup();
 	service.login_admin();
 	service.index();
 	service.login();
 
-	let test_values = vec![
-		(None, None, 400),
-		(Some(ThumbnailSize::Small), None, 400),
-		(Some(ThumbnailSize::Large), None, 1200),
-		(Some(ThumbnailSize::Native), None, 1423),
-	];
+	let path: PathBuf = [TEST_MOUNT_NAME, "Tobokegao", "Picnic", "Folder.png"]
+		.iter()
+		.collect();
 
-	for (size, pad, expected) in test_values {
-		let path: PathBuf = [TEST_MOUNT_NAME, "Tobokegao", "Picnic", "Folder.png"]
-			.iter()
-			.collect();
-
-		let request = protocol::thumbnail(&path, size, pad);
-		let response = service.fetch_bytes(&request);
-		assert_eq!(response.status(), StatusCode::OK);
-		let thumbnail = image::load_from_memory(response.body()).unwrap().to_rgb8();
-		assert_eq!(thumbnail.width(), expected);
-		assert_eq!(thumbnail.height(), expected);
-	}
+	let request = protocol::thumbnail(&path, size, pad);
+	let response = service.fetch_bytes(&request);
+	assert_eq!(response.status(), StatusCode::OK);
+	let thumbnail = image::load_from_memory(response.body()).unwrap().to_rgb8();
+	assert_eq!(thumbnail.width(), expected);
+	assert_eq!(thumbnail.height(), expected);
 }
