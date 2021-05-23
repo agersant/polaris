@@ -19,10 +19,14 @@ jobs:
     - uses: actions-rs/toolchain@v1
       with:
         profile: minimal
+    - name: Get Thread count
+      run: |
+        echo "::set-output name=COUNT::$(nproc)"
+      id: threads
     - name: Run Tarpaulin
       uses: actions-rs/tarpaulin@v0.1
       with:
-        args: '--all-features --ignore-tests -- --test-threads=$(nproc)'
+        args: '--all-features --ignore-tests -- --test-threads=${{ steps.threads.output.COUNT }}'
         timeout: 240
         out-type: Xml
     - name: Upload Results
