@@ -22,11 +22,9 @@ jobs:
     - name: Run Tarpaulin
       uses: actions-rs/tarpaulin@v0.1
       with:
-        args: '--release --all-features --ignore-tests -- --test-threads=2'
-        timeout: 240
+        args: '--all-features --ignore-tests'
         out-type: Xml
-      env:
-        RUSTFLAGS: '-Copt-level=0'
+        timeout: 240
     - name: Upload Results
       uses: codecov/codecov-action@v1
       with:
