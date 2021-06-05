@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::app::{config, ddns, settings, user, vfs};
+use crate::app::{config, ddns, settings, thumbnail, user, vfs};
 
 pub const API_MAJOR_VERSION: i32 = 6;
 pub const API_MINOR_VERSION: i32 = 0;
@@ -39,7 +39,35 @@ pub struct AuthQueryParameters {
 
 #[derive(Serialize, Deserialize)]
 pub struct ThumbnailOptions {
+	pub size: Option<ThumbnailSize>,
 	pub pad: Option<bool>,
+}
+
+impl From<ThumbnailOptions> for thumbnail::Options {
+	fn from(dto: ThumbnailOptions) -> Self {
+		let mut options = thumbnail::Options::default();
+		options.max_dimension = dto.size.map_or(options.max_dimension, Into::into);
+		options.pad_to_square = dto.pad.unwrap_or(options.pad_to_square);
+		options
+	}
+}
+
+#[derive(Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ThumbnailSize {
+	Small,
+	Large,
+	Native,
+}
+
+impl Into<Option<u32>> for ThumbnailSize {
+	fn into(self) -> Option<u32> {
+		match self {
+			Self::Small => Some(400),
+			Self::Large => Some(1200),
+			Self::Native => None,
+		}
+	}
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]

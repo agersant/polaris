@@ -15,14 +15,16 @@ jobs:
 
     steps:
     - name: Checkout Polaris
-      uses: actions/checkout@v1
+      uses: actions/checkout@v2
     - uses: actions-rs/toolchain@v1
       with:
         profile: minimal
-    - name: Install Tarpaulin
-      run: cargo install cargo-tarpaulin
-    - name: Run Tests
-      run: cargo tarpaulin --all-features --ignore-tests --out Xml
+    - name: Run Tarpaulin
+      uses: actions-rs/tarpaulin@v0.1
+      with:
+        args: '--all-features --ignore-tests'
+        out-type: Xml
+        timeout: 240
     - name: Upload Results
       uses: codecov/codecov-action@v1
       with:

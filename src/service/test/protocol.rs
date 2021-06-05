@@ -1,9 +1,9 @@
-use http::{method::Method, Request};
+use http::{Method, Request};
 use percent_encoding::{percent_encode, NON_ALPHANUMERIC};
 use std::path::Path;
 
-use crate::app::user;
 use crate::service::dto;
+use crate::{app::user, service::dto::ThumbnailSize};
 
 pub fn web_index() -> Request<()> {
 	Request::builder()
@@ -200,14 +200,32 @@ pub fn audio(path: &Path) -> Request<()> {
 		.unwrap()
 }
 
-pub fn thumbnail(path: &Path, pad: Option<bool>) -> Request<()> {
+pub fn thumbnail(path: &Path, size: Option<ThumbnailSize>, pad: Option<bool>) -> Request<()> {
 	let path = path.to_string_lossy();
-	let mut endpoint = format!("/api/thumbnail/{}", url_encode(path.as_ref()));
-	match pad {
-		Some(true) => endpoint.push_str("?pad=true"),
-		Some(false) => endpoint.push_str("?pad=false"),
-		None => (),
-	};
+	let mut params = String::new();
+	if let Some(s) = size {
+		params.push('?');
+		match s {
+			ThumbnailSize::Small => params.push_str("size=small"),
+			ThumbnailSize::Large => params.push_str("size=large"),
+			ThumbnailSize::Native => params.push_str("size=native"),
+		};
+	}
+	if let Some(p) = pad {
+		if params.is_empty() {
+			params.push('?');
+		} else {
+			params.push('&');
+		}
+		if p {
+			params.push_str("pad=true");
+		} else {
+			params.push_str("pad=false");
+		};
+	}
+
+	let endpoint = format!("/api/thumbnail/{}{}", url_encode(path.as_ref()), params);
+
 	Request::builder()
 		.method(Method::GET)
 		.uri(&endpoint)
