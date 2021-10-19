@@ -66,7 +66,7 @@ impl Index {
 
 			let real_songs: Vec<Song> = songs::table
 				.filter(songs::parent.eq(&real_path_string))
-				.order(sql::<sql_types::Bool>("path COLLATE NOCASE ASC"))
+				.order(sql::<sql_types::Bool>("track_number"))
 				.load(&connection)
 				.map_err(anyhow::Error::new)?;
 			let virtual_songs = real_songs.into_iter().filter_map(|s| s.virtualize(&vfs));
@@ -95,12 +95,12 @@ impl Index {
 			};
 			songs
 				.filter(path.like(&song_path_filter))
-				.order(path)
+				.order(track_number)
 				.load(&connection)
 				.map_err(anyhow::Error::new)?
 		} else {
 			songs
-				.order(path)
+				.order(track_number)
 				.load(&connection)
 				.map_err(anyhow::Error::new)?
 		};
