@@ -14,19 +14,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Polaris
-      uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-    - name: Run Tarpaulin
-      uses: actions-rs/tarpaulin@v0.1
-      with:
-        args: '--all-features --ignore-tests'
-        out-type: Xml
-        timeout: 240
-    - name: Upload Results
-      uses: codecov/codecov-action@v1
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        fail_ci_if_error: true
+      - name: Checkout Polaris
+        uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+      - name: Run Tarpaulin
+        uses: actions-rs/tarpaulin@v0.1
+        with:
+          args: "--all-features --ignore-tests"
+          out-type: Xml
+          timeout: 240
+      - name: Upload Results
+        uses: codecov/codecov-action@v2
+        with:
+          fail_ci_if_error: true
