@@ -235,3 +235,4 @@ impl From<settings::Settings> for Settings {
 }
 
 // TODO: Preferences, CollectionFile, Song and Directory should have dto types
+// TODO Song dto type should skip `None` values when serializing, to lower payload sizes by a lot
