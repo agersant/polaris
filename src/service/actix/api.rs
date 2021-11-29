@@ -2,17 +2,17 @@ use actix_files::NamedFile;
 use actix_web::{
 	client::HttpError,
 	delete,
-	dev::{MessageBody, Payload, Service, ServiceRequest, ServiceResponse},
+	dev::{BodyEncoding, MessageBody, Payload, Service, ServiceRequest, ServiceResponse},
 	error::{BlockingError, ErrorForbidden, ErrorInternalServerError, ErrorUnauthorized},
 	get,
-	http::StatusCode,
+	http::{ContentEncoding, StatusCode},
 	post, put,
 	web::{self, Data, Json, JsonConfig, ServiceConfig},
-	FromRequest, HttpMessage, HttpRequest, HttpResponse, ResponseError,
+	FromRequest, HttpMessage, HttpRequest, HttpResponse, Responder, ResponseError,
 };
 use actix_web_httpauth::extractors::{basic::BasicAuth, bearer::BearerAuth};
 use cookie::{self, *};
-use futures_util::future::{err, ok};
+use futures_util::future::{err, ok, ready, Ready};
 use percent_encoding::percent_decode_str;
 use std::future::Future;
 use std::ops::Deref;
@@ -378,6 +378,34 @@ fn add_auth_cookies<T>(
 	Ok(())
 }
 
+struct MediaFile {
+	named_file: NamedFile,
+}
+
+impl MediaFile {
+	fn new(named_file: NamedFile) -> Self {
+		Self {
+			named_file: named_file,
+		}
+	}
+}
+
+impl Responder for MediaFile {
+	type Error = actix_web::Error;
+	type Future = Ready<Result<HttpResponse, actix_web::Error>>;
+
+	fn respond_to(self, req: &HttpRequest) -> Self::Future {
+		let mut response = self.named_file.into_response(req);
+		if let Ok(r) = response.as_mut() {
+			// Intentionally turn off content encoding for media files because:
+			// 1. There is little value in compressing files that are already compressed (mp3, jpg, etc.)
+			// 2. The Content-Length header is incompatible with content encoding (other than identity), and can be valuable for clients
+			r.encoding(ContentEncoding::Identity);
+		}
+		return ready(response);
+	}
+}
+
 async fn block<F, I, E>(f: F) -> Result<I, APIError>
 where
 	F: FnOnce() -> Result<I, E> + Send + 'static,
@@ -681,7 +709,7 @@ async fn get_audio(
 	vfs_manager: Data<vfs::Manager>,
 	_auth: Auth,
 	path: web::Path<String>,
-) -> Result<NamedFile, APIError> {
+) -> Result<MediaFile, APIError> {
 	let audio_path = block(move || {
 		let vfs = vfs_manager.get_vfs()?;
 		let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
@@ -691,7 +719,7 @@ async fn get_audio(
 	.await?;
 
 	let named_file = NamedFile::open(&audio_path).map_err(|_| APIError::AudioFileIOError)?;
-	Ok(named_file)
+	Ok(MediaFile::new(named_file))
 }
 
 #[get("/thumbnail/{path:.*}")]
@@ -701,7 +729,7 @@ async fn get_thumbnail(
 	_auth: Auth,
 	path: web::Path<String>,
 	options_input: web::Query<dto::ThumbnailOptions>,
-) -> Result<NamedFile, APIError> {
+) -> Result<MediaFile, APIError> {
 	let options = thumbnail::Options::from(options_input.0);
 
 	let thumbnail_path = block(move || {
@@ -719,7 +747,7 @@ async fn get_thumbnail(
 	let named_file =
 		NamedFile::open(&thumbnail_path).map_err(|_| APIError::ThumbnailFileIOError)?;
 
-	Ok(named_file)
+	Ok(MediaFile::new(named_file))
 }
 
 #[get("/playlists")]

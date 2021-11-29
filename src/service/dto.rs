@@ -4,7 +4,7 @@ use crate::app::{config, ddns, settings, thumbnail, user, vfs};
 use std::convert::From;
 
 pub const API_MAJOR_VERSION: i32 = 6;
-pub const API_MINOR_VERSION: i32 = 0;
+pub const API_MINOR_VERSION: i32 = 1;
 pub const COOKIE_SESSION: &str = "session";
 pub const COOKIE_USERNAME: &str = "username";
 pub const COOKIE_ADMIN: &str = "admin";

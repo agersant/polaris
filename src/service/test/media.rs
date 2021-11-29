@@ -34,6 +34,39 @@ fn audio_golden_path() {
 	let response = service.fetch_bytes(&request);
 	assert_eq!(response.status(), StatusCode::OK);
 	assert_eq!(response.body().len(), 24_142);
+	assert_eq!(
+		response.headers().get(header::CONTENT_LENGTH).unwrap(),
+		"24142"
+	);
+}
+
+#[test]
+fn audio_does_not_encode_content() {
+	let mut service = ServiceType::new(&test_name!());
+	service.complete_initial_setup();
+	service.login_admin();
+	service.index();
+	service.login();
+
+	let path: PathBuf = [TEST_MOUNT_NAME, "Khemmis", "Hunted", "02 - Candlelight.mp3"]
+		.iter()
+		.collect();
+
+	let mut request = protocol::audio(&path);
+	let headers = request.headers_mut();
+	headers.append(
+		header::ACCEPT_ENCODING,
+		HeaderValue::from_str("gzip, deflate, br").unwrap(),
+	);
+
+	let response = service.fetch_bytes(&request);
+	assert_eq!(response.status(), StatusCode::OK);
+	assert_eq!(response.body().len(), 24_142);
+	assert_eq!(response.headers().get(header::TRANSFER_ENCODING), None);
+	assert_eq!(
+		response.headers().get(header::CONTENT_LENGTH).unwrap(),
+		"24142"
+	);
 }
 
 #[test]
