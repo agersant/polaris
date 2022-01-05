@@ -1,14 +1,15 @@
+use std::time::Duration;
+
 use cookie::Cookie;
 use headers::{self, HeaderMapExt};
 use http::{Response, StatusCode};
-use time::Duration;
 
 use crate::service::dto;
 use crate::service::test::{constants::*, protocol, ServiceType, TestService};
 use crate::test_name;
 
 fn validate_added_cookies<T>(response: &Response<T>) {
-	let twenty_years = Duration::days(365 * 20);
+	let twenty_years = Duration::from_secs(20 * 365 * 24 * 60 * 60);
 
 	let cookies: Vec<Cookie> = response
 		.headers()

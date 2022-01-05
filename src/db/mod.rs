@@ -1,4 +1,4 @@
-use anyhow::*;
+use anyhow::{bail, Error, Result};
 use diesel::r2d2::{self, ConnectionManager, PooledConnection};
 use diesel::sqlite::SqliteConnection;
 use diesel::RunQueryDsl;

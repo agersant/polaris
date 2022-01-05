@@ -1,4 +1,4 @@
-use anyhow::*;
+use anyhow::Error;
 use crossbeam_channel::Receiver;
 use diesel::prelude::*;
 use log::error;

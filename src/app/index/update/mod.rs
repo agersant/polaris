@@ -1,4 +1,4 @@
-use anyhow::*;
+use anyhow::Result;
 use log::{error, info};
 use std::time;
 

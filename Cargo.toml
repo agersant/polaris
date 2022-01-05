@@ -11,10 +11,10 @@ bundle-sqlite = ["libsqlite3-sys"]
 ui = ["native-windows-gui", "native-windows-derive"]
 
 [dependencies]
-actix-files = { version = "0.4" }
+actix-files = { version = "0.5" }
 actix-web = { version = "3" }
-actix-web-httpauth = { version = "0.5.0" }
-anyhow = "1.0.35"
+actix-web-httpauth = { version = "0.5.1" }
+anyhow = "1.0.52"
 ape = "0.3.0"
 base64 = "0.13"
 branca = "0.10.0"
@@ -22,50 +22,49 @@ cookie = { version = "0.14", features = ["signed", "key-expansion"] }
 crossbeam-channel = "0.5"
 diesel_migrations = { version = "1.4", features = ["sqlite"] }
 futures-util = { version = "0.3" }
-getopts = "0.2.15"
-http = "0.2.2"
+getopts = "0.2.21"
+http = "0.2.6"
 id3 = "0.6.6"
-libsqlite3-sys = { version = "0.18", features = ["bundled", "bundled-windows"], optional = true }
-lewton = "0.10.1"
-log = "0.4.5"
-metaflac = "0.2.3"
-mp3-duration = "0.1.9"
-mp4ameta = "0.10.0"
-num_cpus = "1.13.0"
+libsqlite3-sys = { version = "0.22", features = ["bundled", "bundled-windows"], optional = true }
+lewton = "0.10.2"
+log = "0.4.14"
+metaflac = "0.2.5"
+mp3-duration = "0.1.10"
+mp4ameta = "0.11.0"
+num_cpus = "1.13.1"
 opus_headers = "0.1.2"
 percent-encoding = "2.1"
-pbkdf2 = "0.6"
-rand = "0.7"
-rayon = "1.3"
-regex = "1.3.9"
+pbkdf2 = "0.10"
+rand = "0.8"
+rayon = "1.5"
+regex = "1.5.4"
 rustfm-scrobble = "1.1.1"
-serde = { version = "1.0.111", features = ["derive"] }
-serde_derive = "1.0.111"
-serde_json = "1.0.53"
-simplelog = "0.8.0"
-thiserror = "1.0.19"
-time = "0.2"
+serde = { version = "1.0.133", features = ["derive"] }
+serde_derive = "1.0.133"
+serde_json = "1.0.74"
+simplelog = "0.11.1"
+thiserror = "1.0.30"
 toml = "0.5"
-ureq = "1.5"
-url = "2.1"
+ureq = "1.5.5"
+url = "2.2"
 
 [dependencies.diesel]
-version = "1.4.5"
+version = "1.4.8"
 default_features = false
 features = ["libsqlite3-sys", "r2d2", "sqlite", "64-column-tables"]
 
 [dependencies.image]
-version = "0.23.12"
+version = "0.23.14"
 default_features = false
 features = ["bmp", "gif", "jpeg", "png"]
 
 [target.'cfg(windows)'.dependencies]
-native-windows-gui = {version = "1.0.7", default-features = false, features = ["cursor", "image-decoder", "message-window", "menu", "tray-notification"], optional = true }
-native-windows-derive = {version = "1.0.2", optional = true }
+native-windows-gui = {version = "1.0.12", default-features = false, features = ["cursor", "image-decoder", "message-window", "menu", "tray-notification"], optional = true }
+native-windows-derive = {version = "1.0.4", optional = true }
 
 [target.'cfg(unix)'.dependencies]
 daemonize = "0.4.1"
-sd-notify = "0.1.0"
+sd-notify = "0.3.0"
 
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1"
