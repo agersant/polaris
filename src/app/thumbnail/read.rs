@@ -44,13 +44,13 @@ fn read_mp3(path: &Path) -> Result<DynamicImage> {
 }
 
 fn read_aiff(path: &Path) -> Result<DynamicImage> {
-	let tag = id3::Tag::read_from_aiff(path)?;
+	let tag = id3::Tag::read_from_aiff_path(path)?;
 
 	read_id3(&path, &tag)
 }
 
 fn read_wave(path: &Path) -> Result<DynamicImage> {
-	let tag = id3::Tag::read_from_wav(path)?;
+	let tag = id3::Tag::read_from_wav_path(path)?;
 
 	read_id3(&path, &tag)
 }

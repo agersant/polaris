@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Result};
+use id3::TagLike;
 use lewton::inside_ogg::OggStreamReader;
 use log::error;
 use regex::Regex;
@@ -122,7 +123,7 @@ fn read_mp3(path: &Path) -> Result<SongTags> {
 }
 
 fn read_aiff(path: &Path) -> Result<SongTags> {
-	let tag = id3::Tag::read_from_aiff(&path).or_else(|error| {
+	let tag = id3::Tag::read_from_aiff_path(&path).or_else(|error| {
 		if let Some(tag) = error.partial_tag {
 			Ok(tag)
 		} else {
@@ -133,7 +134,7 @@ fn read_aiff(path: &Path) -> Result<SongTags> {
 }
 
 fn read_wave(path: &Path) -> Result<SongTags> {
-	let tag = id3::Tag::read_from_wav(&path).or_else(|error| {
+	let tag = id3::Tag::read_from_wav_path(&path).or_else(|error| {
 		if let Some(tag) = error.partial_tag {
 			Ok(tag)
 		} else {
@@ -172,7 +173,7 @@ fn read_ape_x_of_y(item: &ape::Item) -> Option<u32> {
 }
 
 fn read_ape(path: &Path) -> Result<SongTags> {
-	let tag = ape::read(path)?;
+	let tag = ape::read_from_path(path)?;
 	let artist = tag.item("Artist").and_then(read_ape_string);
 	let album = tag.item("Album").and_then(read_ape_string);
 	let album_artist = tag.item("Album artist").and_then(read_ape_string);

@@ -323,9 +323,9 @@ checksum = "84450d0b4a8bd1ba4144ce8ce718fbc5d071358b1e5384bace6536b3d1f2d5b3"
 
 [[package]]
 name = "ape"
-version = "0.3.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ced866a80cef5e2218c00bea8f7cbcc6d3a9b1d358250f8a098b6a3e8db110ed"
+checksum = "38b10e5fe31529dbfc2d339c781d9951c94e97a791077273676ccc3041a01d4a"
 dependencies = [
  "byteorder",
 ]
@@ -1119,9 +1119,9 @@ checksum = "c4a1e36c821dbe04574f602848a19f742f4fb3c98d40449f11bcad18d6b17421"
 
 [[package]]
 name = "id3"
-version = "0.6.6"
+version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8794bc5f4cab6c6066c8eda098d7e6dd803539758a9870bce042f46cb2eba5d"
+checksum = "7a3598f9ed06d8a7ff358dc1a52f07f98d6625b996ad60588805b3d8cfd4d0cd"
 dependencies = [
  "bitflags",
  "byteorder",
