@@ -240,12 +240,10 @@ fn hash_password(password: &str) -> Result<String, Error> {
 		return Err(Error::EmptyPassword);
 	}
 	let salt = SaltString::generate(&mut OsRng);
-	let result = Pbkdf2
-		.hash_password(password.as_bytes(), &salt)
-		.expect("Invalid generated password salt")
-		.to_string();
-
-	Ok(result)
+	match Pbkdf2.hash_password(password.as_bytes(), &salt) {
+		Ok(h) => Ok(h.to_string()),
+		Err(_) => Err(Error::Unspecified),
+	}
 }
 
 fn verify_password(password_hash: &str, attempted_password: &str) -> bool {
