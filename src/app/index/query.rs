@@ -1,4 +1,4 @@
-use anyhow::*;
+use anyhow::bail;
 use diesel::dsl::sql;
 use diesel::prelude::*;
 use diesel::sql_types;
@@ -108,7 +108,7 @@ impl Index {
 		Ok(virtual_songs.collect::<Vec<_>>())
 	}
 
-	pub fn get_random_albums(&self, count: i64) -> Result<Vec<Directory>> {
+	pub fn get_random_albums(&self, count: i64) -> anyhow::Result<Vec<Directory>> {
 		use self::directories::dsl::*;
 		let vfs = self.vfs_manager.get_vfs()?;
 		let connection = self.db.connect()?;
@@ -123,7 +123,7 @@ impl Index {
 		Ok(virtual_directories.collect::<Vec<_>>())
 	}
 
-	pub fn get_recent_albums(&self, count: i64) -> Result<Vec<Directory>> {
+	pub fn get_recent_albums(&self, count: i64) -> anyhow::Result<Vec<Directory>> {
 		use self::directories::dsl::*;
 		let vfs = self.vfs_manager.get_vfs()?;
 		let connection = self.db.connect()?;
@@ -138,7 +138,7 @@ impl Index {
 		Ok(virtual_directories.collect::<Vec<_>>())
 	}
 
-	pub fn search(&self, query: &str) -> Result<Vec<CollectionFile>> {
+	pub fn search(&self, query: &str) -> anyhow::Result<Vec<CollectionFile>> {
 		let vfs = self.vfs_manager.get_vfs()?;
 		let connection = self.db.connect()?;
 		let like_test = format!("%{}%", query);
@@ -181,7 +181,7 @@ impl Index {
 		Ok(output)
 	}
 
-	pub fn get_song(&self, virtual_path: &Path) -> Result<Song> {
+	pub fn get_song(&self, virtual_path: &Path) -> anyhow::Result<Song> {
 		let vfs = self.vfs_manager.get_vfs()?;
 		let connection = self.db.connect()?;
 

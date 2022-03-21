@@ -1,4 +1,5 @@
-use anyhow::*;
+use anyhow::{anyhow, Result};
+use id3::TagLike;
 use lewton::inside_ogg::OggStreamReader;
 use log::error;
 use regex::Regex;
@@ -65,24 +66,23 @@ impl From<id3::Tag> for SongTags {
 
 pub fn read(path: &Path) -> Option<SongTags> {
 	let data = match utils::get_audio_format(path) {
-		Some(AudioFormat::AIFF) => Some(read_aiff(path)),
-		Some(AudioFormat::APE) => Some(read_ape(path)),
-		Some(AudioFormat::FLAC) => Some(read_flac(path)),
-		Some(AudioFormat::MP3) => Some(read_mp3(path)),
-		Some(AudioFormat::MP4) => Some(read_mp4(path)),
-		Some(AudioFormat::MPC) => Some(read_ape(path)),
-		Some(AudioFormat::OGG) => Some(read_vorbis(path)),
-		Some(AudioFormat::OPUS) => Some(read_opus(path)),
-		Some(AudioFormat::WAVE) => Some(read_wave(path)),
-		None => None,
+		Some(AudioFormat::AIFF) => read_aiff(path),
+		Some(AudioFormat::APE) => read_ape(path),
+		Some(AudioFormat::FLAC) => read_flac(path),
+		Some(AudioFormat::MP3) => read_mp3(path),
+		Some(AudioFormat::MP4) => read_mp4(path),
+		Some(AudioFormat::MPC) => read_ape(path),
+		Some(AudioFormat::OGG) => read_vorbis(path),
+		Some(AudioFormat::OPUS) => read_opus(path),
+		Some(AudioFormat::WAVE) => read_wave(path),
+		None => return None,
 	};
 	match data {
-		Some(Ok(d)) => Some(d),
-		Some(Err(e)) => {
+		Ok(d) => Some(d),
+		Err(e) => {
 			error!("Error while reading file metadata for '{:?}': {}", path, e);
 			None
 		}
-		None => None,
 	}
 }
 
@@ -123,7 +123,7 @@ fn read_mp3(path: &Path) -> Result<SongTags> {
 }
 
 fn read_aiff(path: &Path) -> Result<SongTags> {
-	let tag = id3::Tag::read_from_aiff(&path).or_else(|error| {
+	let tag = id3::Tag::read_from_aiff_path(&path).or_else(|error| {
 		if let Some(tag) = error.partial_tag {
 			Ok(tag)
 		} else {
@@ -134,7 +134,7 @@ fn read_aiff(path: &Path) -> Result<SongTags> {
 }
 
 fn read_wave(path: &Path) -> Result<SongTags> {
-	let tag = id3::Tag::read_from_wav(&path).or_else(|error| {
+	let tag = id3::Tag::read_from_wav_path(&path).or_else(|error| {
 		if let Some(tag) = error.partial_tag {
 			Ok(tag)
 		} else {
@@ -173,7 +173,7 @@ fn read_ape_x_of_y(item: &ape::Item) -> Option<u32> {
 }
 
 fn read_ape(path: &Path) -> Result<SongTags> {
-	let tag = ape::read(path)?;
+	let tag = ape::read_from_path(path)?;
 	let artist = tag.item("Artist").and_then(read_ape_string);
 	let album = tag.item("Album").and_then(read_ape_string);
 	let album_artist = tag.item("Album artist").and_then(read_ape_string);
@@ -338,7 +338,7 @@ fn read_mp4(path: &Path) -> Result<SongTags> {
 		lyricist: tag.take_lyricist(),
 		composer: tag.take_composer(),
 		genre: tag.take_genre(),
-		label: tag.take_string(&label_ident).next(),
+		label: tag.take_strings_of(&label_ident).next(),
 	})
 }
 

@@ -1,12 +1,13 @@
 use anyhow::anyhow;
 use diesel::prelude::*;
+use pbkdf2::password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString};
+use pbkdf2::Pbkdf2;
+use rand::rngs::OsRng;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::*;
 use crate::app::settings::AuthSecret;
 use crate::db::DB;
-
-const HASH_ITERATIONS: u32 = 10000;
 
 #[derive(Clone)]
 pub struct Manager {
@@ -238,9 +239,18 @@ fn hash_password(password: &str) -> Result<String, Error> {
 	if password.is_empty() {
 		return Err(Error::EmptyPassword);
 	}
-	pbkdf2::pbkdf2_simple(password, HASH_ITERATIONS).map_err(|_| Error::Unspecified)
+	let salt = SaltString::generate(&mut OsRng);
+	match Pbkdf2.hash_password(password.as_bytes(), &salt) {
+		Ok(h) => Ok(h.to_string()),
+		Err(_) => Err(Error::Unspecified),
+	}
 }
 
 fn verify_password(password_hash: &str, attempted_password: &str) -> bool {
-	pbkdf2::pbkdf2_check(attempted_password, password_hash).is_ok()
+	match PasswordHash::new(password_hash) {
+		Ok(h) => Pbkdf2
+			.verify_password(attempted_password.as_bytes(), &h)
+			.is_ok(),
+		Err(_) => false,
+	}
 }

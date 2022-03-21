@@ -1,4 +1,4 @@
-use anyhow::*;
+use anyhow::{bail, Result};
 use core::ops::Deref;
 use regex::Regex;
 use serde::{Deserialize, Serialize};

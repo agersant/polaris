@@ -1,4 +1,4 @@
-use anyhow::*;
+use anyhow::{bail, Result};
 use image::DynamicImage;
 use std::path::Path;
 
@@ -21,9 +21,7 @@ pub fn read(image_path: &Path) -> Result<DynamicImage> {
 }
 
 fn read_ape(_: &Path) -> Result<DynamicImage> {
-	Err(crate::Error::msg(
-		"Embedded images are not supported in APE files",
-	))
+	bail!("Embedded images are not supported in APE files");
 }
 
 fn read_flac(path: &Path) -> Result<DynamicImage> {
@@ -33,10 +31,10 @@ fn read_flac(path: &Path) -> Result<DynamicImage> {
 		return Ok(image::load_from_memory(&p.data)?);
 	}
 
-	Err(crate::Error::msg(format!(
+	bail!(
 		"Embedded flac artwork not found for file: {}",
 		path.display()
-	)))
+	);
 }
 
 fn read_mp3(path: &Path) -> Result<DynamicImage> {
@@ -46,13 +44,13 @@ fn read_mp3(path: &Path) -> Result<DynamicImage> {
 }
 
 fn read_aiff(path: &Path) -> Result<DynamicImage> {
-	let tag = id3::Tag::read_from_aiff(path)?;
+	let tag = id3::Tag::read_from_aiff_path(path)?;
 
 	read_id3(&path, &tag)
 }
 
 fn read_wave(path: &Path) -> Result<DynamicImage> {
-	let tag = id3::Tag::read_from_wav(path)?;
+	let tag = id3::Tag::read_from_wav_path(path)?;
 
 	read_id3(&path, &tag)
 }
@@ -62,34 +60,30 @@ fn read_id3(path: &Path, tag: &id3::Tag) -> Result<DynamicImage> {
 		return Ok(image::load_from_memory(&p.data)?);
 	}
 
-	Err(crate::Error::msg(format!(
+	bail!(
 		"Embedded id3 artwork not found for file: {}",
 		path.display()
-	)))
+	);
 }
 
 fn read_mp4(path: &Path) -> Result<DynamicImage> {
 	let tag = mp4ameta::Tag::read_from_path(path)?;
 
-	match tag.artwork().and_then(|d| d.image_data()) {
+	match tag.artwork().map(|d| d.data) {
 		Some(v) => Ok(image::load_from_memory(v)?),
-		_ => Err(crate::Error::msg(format!(
+		_ => bail!(
 			"Embedded mp4 artwork not found for file: {}",
 			path.display()
-		))),
+		),
 	}
 }
 
 fn read_vorbis(_: &Path) -> Result<DynamicImage> {
-	Err(crate::Error::msg(
-		"Embedded images are not supported in Vorbis files",
-	))
+	bail!("Embedded images are not supported in Vorbis files");
 }
 
 fn read_opus(_: &Path) -> Result<DynamicImage> {
-	Err(crate::Error::msg(
-		"Embedded images are not supported in Opus files",
-	))
+	bail!("Embedded images are not supported in Opus files");
 }
 
 #[test]

@@ -6,9 +6,11 @@ extern crate diesel;
 #[macro_use]
 extern crate diesel_migrations;
 
-use anyhow::*;
+use anyhow::Result;
 use log::info;
-use simplelog::{CombinedLogger, LevelFilter, SharedLogger, TermLogger, TerminalMode, WriteLogger};
+use simplelog::{
+	ColorChoice, CombinedLogger, LevelFilter, SharedLogger, TermLogger, TerminalMode, WriteLogger,
+};
 use std::fs;
 use std::path::Path;
 
@@ -54,6 +56,7 @@ fn init_logging<T: AsRef<Path>>(log_level: LevelFilter, log_file_path: &Option<T
 		log_level,
 		log_config.clone(),
 		TerminalMode::Mixed,
+		ColorChoice::Auto,
 	)];
 
 	if let Some(path) = log_file_path {
