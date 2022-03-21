@@ -11,38 +11,39 @@ bundle-sqlite = ["libsqlite3-sys"]
 ui = ["native-windows-gui", "native-windows-derive"]
 
 [dependencies]
-actix-files = { version = "0.5" }
-actix-web = { version = "3" }
-actix-web-httpauth = { version = "0.5.1" }
-anyhow = "1.0.52"
+actix-files = { version = "0.6" }
+actix-web = { version = "4" }
+actix-web-httpauth = { version = "0.6" }
+actix-test = "=0.1.0-beta.13"
+anyhow = "1.0.56"
 ape = "0.4.0"
 base64 = "0.13"
-branca = "0.10.0"
-cookie = { version = "0.14", features = ["signed", "key-expansion"] }
+branca = "0.10.1"
+cookie = { version = "0.16", features = ["signed", "key-expansion"] }
 crossbeam-channel = "0.5"
 diesel_migrations = { version = "1.4", features = ["sqlite"] }
 futures-util = { version = "0.3" }
 getopts = "0.2.21"
 http = "0.2.6"
 id3 = "1.0.2"
-libsqlite3-sys = { version = "0.22", features = ["bundled", "bundled-windows"], optional = true }
 lewton = "0.10.2"
+libsqlite3-sys = { version = "0.22", features = ["bundled", "bundled-windows"], optional = true }
 log = "0.4.14"
 metaflac = "0.2.5"
 mp3-duration = "0.1.10"
 mp4ameta = "0.11.0"
 num_cpus = "1.13.1"
 opus_headers = "0.1.2"
+pbkdf2 = "0.11"
 percent-encoding = "2.1"
-pbkdf2 = "0.10"
 rand = "0.8"
 rayon = "1.5"
-regex = "1.5.4"
+regex = "1.5.5"
 rustfm-scrobble = "1.1.1"
-serde = { version = "1.0.133", features = ["derive"] }
-serde_derive = "1.0.133"
-serde_json = "1.0.74"
-simplelog = "0.11.1"
+serde = { version = "1.0.136", features = ["derive"] }
+serde_derive = "1.0.136"
+serde_json = "1.0.79"
+simplelog = "0.11.2"
 thiserror = "1.0.30"
 toml = "0.5"
 ureq = "1.5.5"
@@ -54,7 +55,7 @@ default_features = false
 features = ["libsqlite3-sys", "r2d2", "sqlite", "64-column-tables"]
 
 [dependencies.image]
-version = "0.23.14"
+version = "0.24.1"
 default_features = false
 features = ["bmp", "gif", "jpeg", "png"]
 
@@ -64,7 +65,7 @@ native-windows-derive = {version = "1.0.4", optional = true }
 
 [target.'cfg(unix)'.dependencies]
 daemonize = "0.4.1"
-sd-notify = "0.3.0"
+sd-notify = "0.4.0"
 
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1"

@@ -1,10 +1,9 @@
 use actix_web::{
-	middleware::{normalize::TrailingSlash, Compress, Logger, NormalizePath},
+	middleware::{Compress, Logger, NormalizePath},
 	rt::System,
 	web::{self, ServiceConfig},
 	App as ActixApp, HttpServer,
 };
-use anyhow::*;
 use log::error;
 
 use crate::app::App;
@@ -31,7 +30,7 @@ pub fn make_config(app: App) -> impl FnOnce(&mut ServiceConfig) + Clone {
 				web::scope("/api")
 					.configure(api::make_config())
 					.wrap_fn(api::http_auth_middleware)
-					.wrap(NormalizePath::new(TrailingSlash::Trim)),
+					.wrap(NormalizePath::trim()),
 			)
 			.service(
 				actix_files::Files::new("/swagger", app.swagger_dir_path)
@@ -46,9 +45,9 @@ pub fn make_config(app: App) -> impl FnOnce(&mut ServiceConfig) + Clone {
 	}
 }
 
-pub fn run(app: App) -> Result<()> {
-	System::run(move || {
-		let address = format!("0.0.0.0:{}", app.port);
+pub fn run(app: App) -> anyhow::Result<()> {
+	let address = ("0.0.0.0", app.port);
+	System::new().block_on(
 		HttpServer::new(move || {
 			ActixApp::new()
 				.wrap(Logger::default())
@@ -57,9 +56,11 @@ pub fn run(app: App) -> Result<()> {
 		})
 		.disable_signals()
 		.bind(address)
-		.map(|server| server.run())
-		.map_err(|e| error!("Error starting HTTP server: {:?}", e))
-		.ok();
-	})?;
+		.map_err(|e| {
+			error!("Error starting HTTP server: {:?}", e);
+			e
+		})?
+		.run()
+	)?;
 	Ok(())
 }
