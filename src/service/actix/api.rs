@@ -477,8 +477,8 @@ async fn put_mount_dirs(
 	new_mount_dirs: Json<Vec<dto::MountDir>>,
 ) -> Result<HttpResponse, APIError> {
 	let new_mount_dirs: Vec<MountDir> = new_mount_dirs
-		.to_owned()
-		.into_iter()
+		.iter()
+        .cloned()
 		.map(|m| m.into())
 		.collect();
 	block(move || vfs_manager.set_mount_dirs(&new_mount_dirs)).await?;

@@ -32,7 +32,7 @@ impl Index {
 			settings_manager,
 
 			pending_reindex: Arc::new((
-				#[allow(clippy::clippy::mutex_atomic)]
+				#[allow(clippy::mutex_atomic)]
 				Mutex::new(false),
 				Condvar::new(),
 			)),
