@@ -29,7 +29,7 @@ impl Manager {
 	fn get_thumbnail_path(&self, image_path: &Path, thumbnailoptions: &Options) -> PathBuf {
 		let hash = Manager::hash(image_path, thumbnailoptions);
 		let mut thumbnail_path = self.thumbnails_dir_path.clone();
-		thumbnail_path.push(format!("{}.jpg", hash.to_string()));
+		thumbnail_path.push(format!("{}.jpg", hash));
 		thumbnail_path
 	}
 

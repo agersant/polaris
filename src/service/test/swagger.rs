@@ -8,8 +8,7 @@ fn can_get_swagger_index() {
 	let mut service = ServiceType::new(&test_name!());
 	let request = protocol::swagger_index();
 	let response = service.fetch(&request);
-	let status = response.status();
-	assert_eq!(status, StatusCode::FOUND);
+	assert_eq!(response.status(), StatusCode::OK);
 }
 
 #[test]

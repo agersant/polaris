@@ -40,19 +40,19 @@ fn read_flac(path: &Path) -> Result<DynamicImage> {
 fn read_mp3(path: &Path) -> Result<DynamicImage> {
 	let tag = id3::Tag::read_from_path(path)?;
 
-	read_id3(&path, &tag)
+	read_id3(path, &tag)
 }
 
 fn read_aiff(path: &Path) -> Result<DynamicImage> {
 	let tag = id3::Tag::read_from_aiff_path(path)?;
 
-	read_id3(&path, &tag)
+	read_id3(path, &tag)
 }
 
 fn read_wave(path: &Path) -> Result<DynamicImage> {
 	let tag = id3::Tag::read_from_wav_path(path)?;
 
-	read_id3(&path, &tag)
+	read_id3(path, &tag)
 }
 
 fn read_id3(path: &Path, tag: &id3::Tag) -> Result<DynamicImage> {

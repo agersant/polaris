@@ -61,7 +61,7 @@ pub enum ThumbnailSize {
 	Native,
 }
 
-#[allow(clippy::clippy::clippy::from_over_into)]
+#[allow(clippy::from_over_into)]
 impl Into<Option<u32>> for ThumbnailSize {
 	fn into(self) -> Option<u32> {
 		match self {

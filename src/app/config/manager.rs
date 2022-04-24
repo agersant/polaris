@@ -33,13 +33,13 @@ impl Manager {
 
 		if let Some(mount_dirs) = &config.mount_dirs {
 			self.vfs_manager
-				.set_mount_dirs(&mount_dirs)
+				.set_mount_dirs(mount_dirs)
 				.map_err(|_| Error::Unspecified)?;
 		}
 
 		if let Some(ddns_config) = &config.ydns {
 			self.ddns_manager
-				.set_config(&ddns_config)
+				.set_config(ddns_config)
 				.map_err(|_| Error::Unspecified)?;
 		}
 
