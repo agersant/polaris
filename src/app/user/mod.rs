@@ -36,13 +36,13 @@ pub struct NewUser {
 #[derive(Debug)]
 pub struct AuthToken(pub String);
 
-#[derive(Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub enum AuthorizationScope {
 	PolarisAuth,
 	LastFMLink,
 }
 
-#[derive(Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Authorization {
 	pub username: String,
 	pub scope: AuthorizationScope,
