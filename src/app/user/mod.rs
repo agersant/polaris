@@ -13,7 +13,7 @@ pub use manager::*;
 pub use preferences::*;
 
 #[derive(Debug, Insertable, Queryable)]
-#[table_name = "users"]
+#[diesel(table_name = users)]
 pub struct User {
 	pub name: String,
 	pub password_hash: String,

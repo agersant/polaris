@@ -23,20 +23,20 @@ impl Manager {
 
 	pub fn mount_dirs(&self) -> Result<Vec<MountDir>> {
 		use self::mount_points::dsl::*;
-		let connection = self.db.connect()?;
+		let mut connection = self.db.connect()?;
 		let mount_dirs: Vec<MountDir> = mount_points
 			.select((source, name))
-			.get_results(&connection)?;
+			.get_results(&mut connection)?;
 		Ok(mount_dirs)
 	}
 
 	pub fn set_mount_dirs(&self, mount_dirs: &[MountDir]) -> Result<()> {
 		use self::mount_points::dsl::*;
-		let connection = self.db.connect()?;
-		diesel::delete(mount_points).execute(&connection)?;
+		let mut connection = self.db.connect()?;
+		diesel::delete(mount_points).execute(&mut connection)?;
 		diesel::insert_into(mount_points)
 			.values(mount_dirs)
-			.execute(&*connection)?; // TODO https://github.com/diesel-rs/diesel/issues/1822
+			.execute(&mut *connection)?; // TODO https://github.com/diesel-rs/diesel/issues/1822
 		Ok(())
 	}
 }

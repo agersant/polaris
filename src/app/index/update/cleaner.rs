@@ -22,15 +22,15 @@ impl Cleaner {
 		let vfs = self.vfs_manager.get_vfs()?;
 
 		let all_directories: Vec<String> = {
-			let connection = self.db.connect()?;
+			let mut connection = self.db.connect()?;
 			directories::table
 				.select(directories::path)
-				.load(&connection)?
+				.load(&mut connection)?
 		};
 
 		let all_songs: Vec<String> = {
-			let connection = self.db.connect()?;
-			songs::table.select(songs::path).load(&connection)?
+			let mut connection = self.db.connect()?;
+			songs::table.select(songs::path).load(&mut connection)?
 		};
 
 		let list_missing_directories = || {
@@ -58,14 +58,14 @@ impl Cleaner {
 			thread_pool.join(list_missing_directories, list_missing_songs);
 
 		{
-			let connection = self.db.connect()?;
+			let mut connection = self.db.connect()?;
 			for chunk in missing_directories[..].chunks(INDEX_BUILDING_CLEAN_BUFFER_SIZE) {
 				diesel::delete(directories::table.filter(directories::path.eq_any(chunk)))
-					.execute(&connection)?;
+					.execute(&mut connection)?;
 			}
 			for chunk in missing_songs[..].chunks(INDEX_BUILDING_CLEAN_BUFFER_SIZE) {
 				diesel::delete(songs::table.filter(songs::path.eq_any(chunk)))
-					.execute(&connection)?;
+					.execute(&mut connection)?;
 			}
 		}
 

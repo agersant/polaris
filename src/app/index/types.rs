@@ -11,7 +11,7 @@ pub enum CollectionFile {
 }
 
 #[derive(Debug, PartialEq, Eq, Queryable, QueryableByName, Serialize, Deserialize)]
-#[table_name = "songs"]
+#[diesel(table_name = songs)]
 pub struct Song {
 	#[serde(skip_serializing, skip_deserializing)]
 	id: i32,
