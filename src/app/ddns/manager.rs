@@ -43,22 +43,22 @@ impl Manager {
 
 	pub fn config(&self) -> Result<Config> {
 		use crate::db::ddns_config::dsl::*;
-		let connection = self.db.connect()?;
+		let mut connection = self.db.connect()?;
 		Ok(ddns_config
 			.select((host, username, password))
-			.get_result(&connection)?)
+			.get_result(&mut connection)?)
 	}
 
 	pub fn set_config(&self, new_config: &Config) -> Result<()> {
 		use crate::db::ddns_config::dsl::*;
-		let connection = self.db.connect()?;
+		let mut connection = self.db.connect()?;
 		diesel::update(ddns_config)
 			.set((
 				host.eq(&new_config.host),
 				username.eq(&new_config.username),
 				password.eq(&new_config.password),
 			))
-			.execute(&connection)?;
+			.execute(&mut connection)?;
 		Ok(())
 	}
 

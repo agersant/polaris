@@ -8,7 +8,7 @@ use crate::db::{directories, songs, DB};
 const INDEX_BUILDING_INSERT_BUFFER_SIZE: usize = 1000; // Insertions in each transaction
 
 #[derive(Debug, Insertable)]
-#[table_name = "songs"]
+#[diesel(table_name = songs)]
 pub struct Song {
 	pub path: String,
 	pub parent: String,
@@ -28,7 +28,7 @@ pub struct Song {
 }
 
 #[derive(Debug, Insertable)]
-#[table_name = "directories"]
+#[diesel(table_name = directories)]
 pub struct Directory {
 	pub path: String,
 	pub parent: Option<String>,
@@ -87,10 +87,10 @@ impl Inserter {
 	}
 
 	fn flush_directories(&mut self) {
-		let res = self.db.connect().and_then(|connection| {
+		let res = self.db.connect().and_then(|mut connection| {
 			diesel::insert_into(directories::table)
 				.values(&self.new_directories)
-				.execute(&*connection) // TODO https://github.com/diesel-rs/diesel/issues/1822
+				.execute(&mut *connection) // TODO https://github.com/diesel-rs/diesel/issues/1822
 				.map_err(Error::new)
 		});
 		if res.is_err() {
@@ -100,10 +100,10 @@ impl Inserter {
 	}
 
 	fn flush_songs(&mut self) {
-		let res = self.db.connect().and_then(|connection| {
+		let res = self.db.connect().and_then(|mut connection| {
 			diesel::insert_into(songs::table)
 				.values(&self.new_songs)
-				.execute(&*connection) // TODO https://github.com/diesel-rs/diesel/issues/1822
+				.execute(&mut *connection) // TODO https://github.com/diesel-rs/diesel/issues/1822
 				.map_err(Error::new)
 		});
 		if res.is_err() {

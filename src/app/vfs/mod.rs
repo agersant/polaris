@@ -13,7 +13,7 @@ mod test;
 pub use manager::*;
 
 #[derive(Clone, Debug, Deserialize, Insertable, PartialEq, Eq, Queryable, Serialize)]
-#[table_name = "mount_points"]
+#[diesel(table_name = mount_points)]
 pub struct MountDir {
 	pub source: String,
 	pub name: String,

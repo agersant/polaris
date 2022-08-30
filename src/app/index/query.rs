@@ -21,10 +21,9 @@ impl From<anyhow::Error> for QueryError {
 	}
 }
 
-no_arg_sql_function!(
-	random,
-	sql_types::Integer,
-	"Represents the SQL RANDOM() function"
+sql_function!(
+	#[aggregate]
+	fn random() -> Integer;
 );
 
 impl Index {
@@ -34,13 +33,13 @@ impl Index {
 	{
 		let mut output = Vec::new();
 		let vfs = self.vfs_manager.get_vfs()?;
-		let connection = self.db.connect()?;
+		let mut connection = self.db.connect()?;
 
 		if virtual_path.as_ref().components().count() == 0 {
 			// Browse top-level
 			let real_directories: Vec<Directory> = directories::table
 				.filter(directories::parent.is_null())
-				.load(&connection)
+				.load(&mut connection)
 				.map_err(anyhow::Error::new)?;
 			let virtual_directories = real_directories
 				.into_iter()
@@ -56,7 +55,7 @@ impl Index {
 			let real_directories: Vec<Directory> = directories::table
 				.filter(directories::parent.eq(&real_path_string))
 				.order(sql::<sql_types::Bool>("path COLLATE NOCASE ASC"))
-				.load(&connection)
+				.load(&mut connection)
 				.map_err(anyhow::Error::new)?;
 			let virtual_directories = real_directories
 				.into_iter()
@@ -66,7 +65,7 @@ impl Index {
 			let real_songs: Vec<Song> = songs::table
 				.filter(songs::parent.eq(&real_path_string))
 				.order(sql::<sql_types::Bool>("path COLLATE NOCASE ASC"))
-				.load(&connection)
+				.load(&mut connection)
 				.map_err(anyhow::Error::new)?;
 			let virtual_songs = real_songs.into_iter().filter_map(|s| s.virtualize(&vfs));
 			output.extend(virtual_songs.map(CollectionFile::Song));
@@ -81,7 +80,7 @@ impl Index {
 	{
 		use self::songs::dsl::*;
 		let vfs = self.vfs_manager.get_vfs()?;
-		let connection = self.db.connect()?;
+		let mut connection = self.db.connect()?;
 
 		let real_songs: Vec<Song> = if virtual_path.as_ref().parent() != None {
 			let real_path = vfs
@@ -95,12 +94,12 @@ impl Index {
 			songs
 				.filter(path.like(&song_path_filter))
 				.order(path)
-				.load(&connection)
+				.load(&mut connection)
 				.map_err(anyhow::Error::new)?
 		} else {
 			songs
 				.order(path)
-				.load(&connection)
+				.load(&mut connection)
 				.map_err(anyhow::Error::new)?
 		};
 
@@ -111,12 +110,12 @@ impl Index {
 	pub fn get_random_albums(&self, count: i64) -> anyhow::Result<Vec<Directory>> {
 		use self::directories::dsl::*;
 		let vfs = self.vfs_manager.get_vfs()?;
-		let connection = self.db.connect()?;
+		let mut connection = self.db.connect()?;
 		let real_directories: Vec<Directory> = directories
 			.filter(album.is_not_null())
 			.limit(count)
-			.order(random)
-			.load(&connection)?;
+			.order(random())
+			.load(&mut connection)?;
 		let virtual_directories = real_directories
 			.into_iter()
 			.filter_map(|d| d.virtualize(&vfs));
@@ -126,12 +125,12 @@ impl Index {
 	pub fn get_recent_albums(&self, count: i64) -> anyhow::Result<Vec<Directory>> {
 		use self::directories::dsl::*;
 		let vfs = self.vfs_manager.get_vfs()?;
-		let connection = self.db.connect()?;
+		let mut connection = self.db.connect()?;
 		let real_directories: Vec<Directory> = directories
 			.filter(album.is_not_null())
 			.order(date_added.desc())
 			.limit(count)
-			.load(&connection)?;
+			.load(&mut connection)?;
 		let virtual_directories = real_directories
 			.into_iter()
 			.filter_map(|d| d.virtualize(&vfs));
@@ -140,7 +139,7 @@ impl Index {
 
 	pub fn search(&self, query: &str) -> anyhow::Result<Vec<CollectionFile>> {
 		let vfs = self.vfs_manager.get_vfs()?;
-		let connection = self.db.connect()?;
+		let mut connection = self.db.connect()?;
 		let like_test = format!("%{}%", query);
 		let mut output = Vec::new();
 
@@ -150,7 +149,7 @@ impl Index {
 			let real_directories: Vec<Directory> = directories
 				.filter(path.like(&like_test))
 				.filter(parent.not_like(&like_test))
-				.load(&connection)?;
+				.load(&mut connection)?;
 
 			let virtual_directories = real_directories
 				.into_iter()
@@ -171,7 +170,7 @@ impl Index {
 						.or(album_artist.like(&like_test)),
 				)
 				.filter(parent.not_like(&like_test))
-				.load(&connection)?;
+				.load(&mut connection)?;
 
 			let virtual_songs = real_songs.into_iter().filter_map(|d| d.virtualize(&vfs));
 
@@ -183,7 +182,7 @@ impl Index {
 
 	pub fn get_song(&self, virtual_path: &Path) -> anyhow::Result<Song> {
 		let vfs = self.vfs_manager.get_vfs()?;
-		let connection = self.db.connect()?;
+		let mut connection = self.db.connect()?;
 
 		let real_path = vfs.virtual_to_real(virtual_path)?;
 		let real_path_string = real_path.as_path().to_string_lossy();
@@ -191,7 +190,7 @@ impl Index {
 		use self::songs::dsl::*;
 		let real_song: Song = songs
 			.filter(path.eq(real_path_string))
-			.get_result(&connection)?;
+			.get_result(&mut connection)?;
 
 		match real_song.virtualize(&vfs) {
 			Some(s) => Ok(s),
