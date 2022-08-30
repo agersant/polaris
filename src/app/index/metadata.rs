@@ -9,7 +9,7 @@ use std::path::Path;
 use crate::utils;
 use crate::utils::AudioFormat;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SongTags {
 	pub disc_number: Option<u32>,
 	pub track_number: Option<u32>,

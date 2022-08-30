@@ -9,13 +9,13 @@ pub const COOKIE_SESSION: &str = "session";
 pub const COOKIE_USERNAME: &str = "username";
 pub const COOKIE_ADMIN: &str = "admin";
 
-#[derive(PartialEq, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct Version {
 	pub major: i32,
 	pub minor: i32,
 }
 
-#[derive(PartialEq, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct InitialSetup {
 	pub has_any_users: bool,
 }
@@ -72,7 +72,7 @@ impl Into<Option<u32>> for ThumbnailSize {
 	}
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ListPlaylistsEntry {
 	pub name: String,
 }
@@ -109,7 +109,7 @@ impl From<user::User> for User {
 	}
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NewUser {
 	pub name: String,
 	pub password: String,
@@ -126,13 +126,13 @@ impl From<NewUser> for user::NewUser {
 	}
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UserUpdate {
 	pub new_password: Option<String>,
 	pub new_is_admin: Option<bool>,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 pub struct DDNSConfig {
 	pub host: String,
 	pub username: String,
@@ -159,7 +159,7 @@ impl From<ddns::Config> for DDNSConfig {
 	}
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 pub struct MountDir {
 	pub source: String,
 	pub name: String,
@@ -183,7 +183,7 @@ impl From<vfs::MountDir> for MountDir {
 	}
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Config {
 	pub settings: Option<NewSettings>,
 	pub users: Option<Vec<NewUser>>,
@@ -204,7 +204,7 @@ impl From<Config> for config::Config {
 	}
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NewSettings {
 	pub album_art_pattern: Option<String>,
 	pub reindex_every_n_seconds: Option<i32>,
@@ -219,7 +219,7 @@ impl From<NewSettings> for settings::NewSettings {
 	}
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Settings {
 	pub album_art_pattern: String,
 	pub reindex_every_n_seconds: i32,
