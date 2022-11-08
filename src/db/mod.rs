@@ -40,7 +40,7 @@ impl diesel::r2d2::CustomizeConnection<SqliteConnection, diesel::r2d2::Error>
 
 impl DB {
 	pub fn new(path: &Path) -> Result<DB> {
-		std::fs::create_dir_all(&path.parent().unwrap())?;
+		std::fs::create_dir_all(path.parent().unwrap())?;
 		let manager = ConnectionManager::<SqliteConnection>::new(path.to_string_lossy());
 		let pool = diesel::r2d2::Pool::builder()
 			.connection_customizer(Box::new(ConnectionCustomizer {}))

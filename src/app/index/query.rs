@@ -82,7 +82,7 @@ impl Index {
 		let vfs = self.vfs_manager.get_vfs()?;
 		let mut connection = self.db.connect()?;
 
-		let real_songs: Vec<Song> = if virtual_path.as_ref().parent() != None {
+		let real_songs: Vec<Song> = if virtual_path.as_ref().parent().is_some() {
 			let real_path = vfs
 				.virtual_to_real(virtual_path)
 				.map_err(|_| QueryError::VFSPathNotFound)?;
