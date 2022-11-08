@@ -15,7 +15,7 @@ pub struct SongTags {
 	pub track_number: Option<u32>,
 	pub title: Option<String>,
 	pub duration: Option<u32>,
-	pub artist: Option<String>,
+	pub artists: Vec<String>,
 	pub album_artist: Option<String>,
 	pub album: Option<String>,
 	pub year: Option<i32>,
@@ -28,7 +28,9 @@ pub struct SongTags {
 
 impl From<id3::Tag> for SongTags {
 	fn from(tag: id3::Tag) -> Self {
-		let artist = tag.artist().map(|s| s.to_string());
+		let artists = tag
+			.artists()
+			.map_or(Vec::new(), |v| v.iter().map(|s| s.to_string()).collect());
 		let album_artist = tag.album_artist().map(|s| s.to_string());
 		let album = tag.album().map(|s| s.to_string());
 		let title = tag.title().map(|s| s.to_string());
@@ -51,7 +53,7 @@ impl From<id3::Tag> for SongTags {
 			track_number,
 			title,
 			duration,
-			artist,
+			artists,
 			album_artist,
 			album,
 			year,
@@ -174,7 +176,7 @@ fn read_ape_x_of_y(item: &ape::Item) -> Option<u32> {
 
 fn read_ape(path: &Path) -> Result<SongTags> {
 	let tag = ape::read_from_path(path)?;
-	let artist = tag.item("Artist").and_then(read_ape_string);
+	let artists = Vec::from_iter(tag.item("Artist").and_then(read_ape_string)); // TODO: multiple values
 	let album = tag.item("Album").and_then(read_ape_string);
 	let album_artist = tag.item("Album artist").and_then(read_ape_string);
 	let title = tag.item("Title").and_then(read_ape_string);
@@ -187,7 +189,7 @@ fn read_ape(path: &Path) -> Result<SongTags> {
 	let label = tag.item("PUBLISHER").and_then(read_ape_string);
 	Ok(SongTags {
 		//
-		artist,       //
+		artists,       //
 		album_artist, //
 		album,
 		title,
@@ -208,7 +210,7 @@ fn read_vorbis(path: &Path) -> Result<SongTags> {
 	let source = OggStreamReader::new(file)?;
 
 	let mut tags = SongTags {
-		artist: None,
+		artists: Vec::new(),
 		album_artist: None,
 		album: None,
 		title: None,
@@ -228,7 +230,7 @@ fn read_vorbis(path: &Path) -> Result<SongTags> {
 			match key {
 				"TITLE" => tags.title = Some(value),
 				"ALBUM" => tags.album = Some(value),
-				"ARTIST" => tags.artist = Some(value),
+				"ARTIST" => tags.artists.push(value),
 				"ALBUMARTIST" => tags.album_artist = Some(value),
 				"TRACKNUMBER" => tags.track_number = value.parse::<u32>().ok(),
 				"DISCNUMBER" => tags.disc_number = value.parse::<u32>().ok(),
@@ -249,7 +251,7 @@ fn read_opus(path: &Path) -> Result<SongTags> {
 	let headers = opus_headers::parse_from_path(path)?;
 
 	let mut tags = SongTags {
-		artist: None,
+		artist: Vec::new(),
 		album_artist: None,
 		album: None,
 		title: None,
@@ -269,7 +271,7 @@ fn read_opus(path: &Path) -> Result<SongTags> {
 			match key {
 				"TITLE" => tags.title = Some(value),
 				"ALBUM" => tags.album = Some(value),
-				"ARTIST" => tags.artist = Some(value),
+				"ARTIST" => tags.artists.push(value),
 				"ALBUMARTIST" => tags.album_artist = Some(value),
 				"TRACKNUMBER" => tags.track_number = value.parse::<u32>().ok(),
 				"DISCNUMBER" => tags.disc_number = value.parse::<u32>().ok(),
@@ -305,7 +307,7 @@ fn read_flac(path: &Path) -> Result<SongTags> {
 	let has_artwork = tag.pictures().count() > 0;
 
 	Ok(SongTags {
-		artist: vorbis.artist().map(|v| v[0].clone()),
+		artists: vorbis.artist().map_or(Vec:new(), |v| v.clone()),
 		album_artist: vorbis.album_artist().map(|v| v[0].clone()),
 		album: vorbis.album().map(|v| v[0].clone()),
 		title: vorbis.title().map(|v| v[0].clone()),

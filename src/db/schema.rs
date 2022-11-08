@@ -76,6 +76,20 @@ table! {
 }
 
 table! {
+    song_artists(song, artist) {
+        song -> Integer,
+        artist -> Integer,
+    }
+}
+
+table! {
+    artists(id) {
+        id -> Integer,
+        name -> Text,
+    }
+}
+
+table! {
 	users (id) {
 		id -> Integer,
 		name -> Text,

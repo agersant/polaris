@@ -3,9 +3,17 @@ use crossbeam_channel::Receiver;
 use diesel::prelude::*;
 use log::error;
 
-use crate::db::{directories, songs, DB};
+use crate::app::index::metadata::SongTags;
+use crate::db::{artists, directories, song_artists, songs, DB};
 
 const INDEX_BUILDING_INSERT_BUFFER_SIZE: usize = 1000; // Insertions in each transaction
+
+pub struct InsertSong {
+	pub path: String,
+	pub parent: String,
+	pub artwork: Option<String>,
+	pub tags: SongTags,
+}
 
 #[derive(Debug, Insertable)]
 #[diesel(table_name = songs)]
@@ -15,7 +23,6 @@ pub struct Song {
 	pub track_number: Option<i32>,
 	pub disc_number: Option<i32>,
 	pub title: Option<String>,
-	pub artist: Option<String>,
 	pub album_artist: Option<String>,
 	pub year: Option<i32>,
 	pub album: Option<String>,
@@ -25,6 +32,19 @@ pub struct Song {
 	pub composer: Option<String>,
 	pub genre: Option<String>,
 	pub label: Option<String>,
+}
+
+#[derive(Debug, Insertable)]
+#[diesel(table_name = song_artists)]
+pub struct SongArtist {
+	song: i32,
+	artist: i32,
+}
+
+#[derive(Debug, Insertable)]
+#[diesel(table_name = artists)]
+pub struct Artist {
+	pub name: String,
 }
 
 #[derive(Debug, Insertable)]
@@ -41,13 +61,13 @@ pub struct Directory {
 
 pub enum Item {
 	Directory(Directory),
-	Song(Song),
+	Song(InsertSong),
 }
 
 pub struct Inserter {
 	receiver: Receiver<Item>,
 	new_directories: Vec<Directory>,
-	new_songs: Vec<Song>,
+	new_songs: Vec<InsertSong>,
 	db: DB,
 }
 
@@ -101,15 +121,47 @@ impl Inserter {
 
 	fn flush_songs(&mut self) {
 		let res = self.db.connect().and_then(|mut connection| {
+			let songs: Vec<Song> = self
+				.new_songs
+				.drain(..)
+				.map(|s| {
+                    let artists: Vec<Artist> = s.tags.artists.into_iter().map(|name| Artist { name }).collect();
+                    let artist_ids = diesel::insert_into(artists::table)
+                        .values(artists)
+                        .returning(artists::id)
+                        .get_results(&mut connection);
+
+                    // let song_artists = artist_ids.iter().map
+                    // diesel::insert_into(song_artists::table)
+                    //     .values(records)
+
+                    Song {
+                        path: s.path,
+                        parent: s.parent,
+                        disc_number: s.tags.disc_number.map(|n| n as i32),
+                        track_number: s.tags.track_number.map(|n| n as i32),
+                        title: s.tags.title,
+                        duration: s.tags.duration.map(|n| n as i32),
+                        album_artist: s.tags.album_artist,
+                        album: s.tags.album,
+                        year: s.tags.year,
+                        artwork: s.artwork,
+                        lyricist: s.tags.lyricist,
+                        composer: s.tags.composer,
+                        genre: s.tags.genre,
+                        label: s.tags.label,
+                    }
+                })
+				.collect();
+
 			diesel::insert_into(songs::table)
-				.values(&self.new_songs)
+				.values(&songs)
 				.execute(&mut *connection) // TODO https://github.com/diesel-rs/diesel/issues/1822
 				.map_err(Error::new)
 		});
 		if res.is_err() {
 			error!("Could not insert new songs in database");
 		}
-		self.new_songs.clear();
 	}
 }
 

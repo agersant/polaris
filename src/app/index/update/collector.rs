@@ -73,22 +73,11 @@ impl Collector {
 				directory_artwork.as_ref().cloned()
 			};
 
-			if let Err(e) = self.sender.send(inserter::Item::Song(inserter::Song {
+			if let Err(e) = self.sender.send(inserter::Item::Song(inserter::InsertSong {
 				path: path_string,
 				parent: directory_path_string.clone(),
-				disc_number: tags.disc_number.map(|n| n as i32),
-				track_number: tags.track_number.map(|n| n as i32),
-				title: tags.title,
-				duration: tags.duration.map(|n| n as i32),
-				artist: tags.artist,
-				album_artist: tags.album_artist,
-				album: tags.album,
-				year: tags.year,
-				artwork: artwork_path,
-				lyricist: tags.lyricist,
-				composer: tags.composer,
-				genre: tags.genre,
-				label: tags.label,
+                artwork: artwork_path,
+				tags,
 			})) {
 				error!("Error while sending song from collector: {}", e);
 			}
