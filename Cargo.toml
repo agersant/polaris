@@ -14,7 +14,6 @@ ui = ["native-windows-gui", "native-windows-derive"]
 actix-files = { version = "0.6" }
 actix-web = { version = "4" }
 actix-web-httpauth = { version = "0.8" }
-actix-test = "0.1.0"
 anyhow = "1.0.66"
 ape = "0.4.0"
 base64 = "0.13"
@@ -71,5 +70,6 @@ sd-notify = "0.4.1"
 winres = "0.1"
 
 [dev-dependencies]
+actix-test = "0.1.0"
 headers = "0.3"
 fs_extra = "1.2.0"
