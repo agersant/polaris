@@ -2,7 +2,7 @@
 name = "polaris"
 version = "0.0.0"
 authors = ["Antoine Gersant <antoine.gersant@lesforges.org>"]
-edition = "2018"
+edition = "2021"
 build = "build.rs"
 
 [features]
