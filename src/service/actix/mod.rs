@@ -15,7 +15,6 @@ pub mod test;
 
 pub fn make_config(app: App) -> impl FnOnce(&mut ServiceConfig) + Clone {
 	move |cfg: &mut ServiceConfig| {
-		let encryption_key = cookie::Key::derive_from(&app.auth_secret.key[..]);
 		cfg.app_data(web::Data::new(app.index))
 			.app_data(web::Data::new(app.config_manager))
 			.app_data(web::Data::new(app.ddns_manager))
@@ -25,11 +24,9 @@ pub fn make_config(app: App) -> impl FnOnce(&mut ServiceConfig) + Clone {
 			.app_data(web::Data::new(app.thumbnail_manager))
 			.app_data(web::Data::new(app.user_manager))
 			.app_data(web::Data::new(app.vfs_manager))
-			.app_data(web::Data::new(encryption_key))
 			.service(
 				web::scope("/api")
 					.configure(api::make_config())
-					.wrap_fn(api::http_auth_middleware)
 					.wrap(NormalizePath::trim()),
 			)
 			.service(
@@ -60,7 +57,7 @@ pub fn run(app: App) -> anyhow::Result<()> {
 			error!("Error starting HTTP server: {:?}", e);
 			e
 		})?
-		.run()
+		.run(),
 	)?;
 	Ok(())
 }

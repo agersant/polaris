@@ -19,7 +19,6 @@ anyhow = "1.0.56"
 ape = "0.4.0"
 base64 = "0.13"
 branca = "0.10.1"
-cookie = { version = "0.16", features = ["signed", "key-expansion"] }
 crossbeam-channel = "0.5"
 diesel_migrations = { version = "2.0", features = ["sqlite"] }
 futures-util = { version = "0.3" }

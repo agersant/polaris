@@ -5,6 +5,8 @@ use crate::app::{config, playlist, settings, user};
 
 #[derive(Error, Debug)]
 pub enum APIError {
+	#[error("Authentication is required")]
+	AuthenticationRequired,
 	#[error("Incorrect Credentials")]
 	IncorrectCredentials,
 	#[error("EmptyUsername")]
