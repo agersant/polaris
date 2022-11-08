@@ -211,15 +211,12 @@ fn album_art_pattern_is_case_insensitive() {
 		.mount(TEST_MOUNT_NAME, "test-data/small-collection")
 		.build();
 
-	let patterns = vec!["folder", "FOLDER"]
-		.iter()
-		.map(|s| s.to_string())
-		.collect::<Vec<_>>();
+	let patterns = vec!["folder", "FOLDER"];
 
 	for pattern in patterns.into_iter() {
 		ctx.settings_manager
 			.amend(&settings::NewSettings {
-				album_art_pattern: Some(pattern),
+				album_art_pattern: Some(pattern.to_owned()),
 				..Default::default()
 			})
 			.unwrap();

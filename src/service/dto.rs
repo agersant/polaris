@@ -228,8 +228,8 @@ pub struct Settings {
 impl From<settings::Settings> for Settings {
 	fn from(s: settings::Settings) -> Self {
 		Self {
-			album_art_pattern: s.album_art_pattern,
-			reindex_every_n_seconds: s.reindex_every_n_seconds,
+			album_art_pattern: s.index_album_art_pattern,
+			reindex_every_n_seconds: s.index_sleep_duration_seconds,
 		}
 	}
 }

@@ -61,17 +61,15 @@ impl Manager {
 	}
 
 	pub fn read(&self) -> Result<Settings, Error> {
+		use self::misc_settings::dsl::*;
 		let mut connection = self.db.connect()?;
 
-		let misc: MiscSettings = misc_settings::table
+		let settings: Settings = misc_settings
+			.select((index_sleep_duration_seconds, index_album_art_pattern))
 			.get_result(&mut connection)
 			.map_err(|_| Error::Unspecified)?;
 
-		Ok(Settings {
-			auth_secret: misc.auth_secret,
-			album_art_pattern: misc.index_album_art_pattern,
-			reindex_every_n_seconds: misc.index_sleep_duration_seconds,
-		})
+		Ok(settings)
 	}
 
 	pub fn amend(&self, new_settings: &NewSettings) -> Result<(), Error> {

@@ -9,7 +9,6 @@ fn apply_saves_misc_settings() {
 		settings: Some(settings::NewSettings {
 			album_art_pattern: Some("🖼️\\.jpg".into()),
 			reindex_every_n_seconds: Some(100),
-			..Default::default()
 		}),
 		..Default::default()
 	};
@@ -18,11 +17,11 @@ fn apply_saves_misc_settings() {
 	let settings = ctx.settings_manager.read().unwrap();
 	let new_settings = new_config.settings.unwrap();
 	assert_eq!(
-		settings.album_art_pattern,
+		settings.index_album_art_pattern,
 		new_settings.album_art_pattern.unwrap()
 	);
 	assert_eq!(
-		settings.reindex_every_n_seconds,
+		settings.index_sleep_duration_seconds,
 		new_settings.reindex_every_n_seconds.unwrap()
 	);
 }

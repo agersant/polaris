@@ -1,6 +1,6 @@
 use http::StatusCode;
 
-use crate::service::dto;
+use crate::service::dto::{self, Settings};
 use crate::service::test::{protocol, ServiceType, TestService};
 use crate::test_name;
 
@@ -61,7 +61,21 @@ fn put_settings_golden_path() {
 	service.complete_initial_setup();
 	service.login_admin();
 
-	let request = protocol::put_settings(dto::NewSettings::default());
+	let request = protocol::put_settings(dto::NewSettings {
+		album_art_pattern: Some("test_pattern".to_owned()),
+		reindex_every_n_seconds: Some(31),
+	});
 	let response = service.fetch(&request);
 	assert_eq!(response.status(), StatusCode::OK);
+
+	let request = protocol::get_settings();
+	let response = service.fetch_json::<_, dto::Settings>(&request);
+	let settings = response.body();
+	assert_eq!(
+		settings,
+		&Settings {
+			album_art_pattern: "test_pattern".to_owned(),
+			reindex_every_n_seconds: 31,
+		},
+	);
 }

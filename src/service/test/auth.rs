@@ -83,7 +83,7 @@ fn login_golden_path() {
 
 	let authorization = response.body();
 	assert_eq!(authorization.username, TEST_USERNAME);
-	assert_eq!(authorization.is_admin, false);
+	assert!(!authorization.is_admin);
 	assert!(!authorization.token.is_empty());
 
 	validate_added_cookies(&response);

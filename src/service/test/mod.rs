@@ -93,7 +93,7 @@ pub trait TestService {
 			let browse_request = protocol::browse(Path::new(""));
 			let response = self.fetch_json::<(), Vec<index::CollectionFile>>(&browse_request);
 			let entries = response.body();
-			if entries.len() > 0 {
+			if !entries.is_empty() {
 				break;
 			}
 			std::thread::sleep(Duration::from_secs(1));
@@ -103,7 +103,7 @@ pub trait TestService {
 			let flatten_request = protocol::flatten(Path::new(""));
 			let response = self.fetch_json::<_, Vec<index::Song>>(&flatten_request);
 			let entries = response.body();
-			if entries.len() > 0 {
+			if !entries.is_empty() {
 				break;
 			}
 			std::thread::sleep(Duration::from_secs(1));
@@ -112,7 +112,7 @@ pub trait TestService {
 }
 
 fn add_trailing_slash<T>(request: &mut Request<T>) {
-	*request.uri_mut() = (request.uri().to_string().trim_end_matches("/").to_string() + "/")
+	*request.uri_mut() = (request.uri().to_string().trim_end_matches('/').to_string() + "/")
 		.parse()
 		.unwrap();
 }
