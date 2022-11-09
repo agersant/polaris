@@ -33,6 +33,8 @@ pub enum APIError {
 	UserNotFound,
 	#[error("Playlist not found")]
 	PlaylistNotFound,
+	#[error("Internal server error")]
+	Internal,
 	#[error("Unspecified")]
 	Unspecified,
 }
@@ -46,6 +48,8 @@ impl From<anyhow::Error> for APIError {
 impl From<config::Error> for APIError {
 	fn from(error: config::Error) -> APIError {
 		match error {
+			config::Error::Settings(e) => e.into(),
+			config::Error::User(e) => e.into(),
 			config::Error::Unspecified => APIError::Unspecified,
 		}
 	}
@@ -73,11 +77,11 @@ impl From<QueryError> for APIError {
 impl From<settings::Error> for APIError {
 	fn from(error: settings::Error) -> APIError {
 		match error {
-			settings::Error::AuthSecretNotFound => APIError::Unspecified,
-			settings::Error::InvalidAuthSecret => APIError::Unspecified,
-			settings::Error::IndexSleepDurationNotFound => APIError::Unspecified,
-			settings::Error::IndexAlbumArtPatternNotFound => APIError::Unspecified,
-			settings::Error::IndexAlbumArtPatternInvalid => APIError::Unspecified,
+			settings::Error::AuthSecretNotFound => APIError::Internal,
+			settings::Error::InvalidAuthSecret => APIError::Internal,
+			settings::Error::MiscSettingsNotFound => APIError::Internal,
+			settings::Error::IndexAlbumArtPatternInvalid => APIError::Internal,
+			settings::Error::Database(_) => APIError::Internal,
 			settings::Error::Unspecified => APIError::Unspecified,
 		}
 	}

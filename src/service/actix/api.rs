@@ -87,6 +87,7 @@ impl ResponseError for APIError {
 			APIError::UserNotFound => StatusCode::NOT_FOUND,
 			APIError::PlaylistNotFound => StatusCode::NOT_FOUND,
 			APIError::VFSPathNotFound => StatusCode::NOT_FOUND,
+			APIError::Internal => StatusCode::INTERNAL_SERVER_ERROR,
 			APIError::Unspecified => StatusCode::INTERNAL_SERVER_ERROR,
 		}
 	}

@@ -6,6 +6,10 @@ use crate::app::{ddns, settings, user, vfs};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
+	#[error(transparent)]
+	Settings(#[from] settings::Error),
+	#[error(transparent)]
+	User(#[from] user::Error),
 	#[error("Unspecified")]
 	Unspecified,
 }
@@ -59,26 +63,19 @@ impl Manager {
 
 	pub fn apply(&self, config: &Config) -> Result<(), Error> {
 		if let Some(new_settings) = &config.settings {
-			self.settings_manager
-				.amend(new_settings)
-				.map_err(|_| Error::Unspecified)?;
+			self.settings_manager.amend(new_settings)?;
 		}
 
 		if let Some(mount_dirs) = &config.mount_dirs {
-			self.vfs_manager
-				.set_mount_dirs(mount_dirs)
-				.map_err(|_| Error::Unspecified)?;
+			self.vfs_manager.set_mount_dirs(mount_dirs)?;
 		}
 
 		if let Some(ddns_config) = &config.ydns {
-			self.ddns_manager
-				.set_config(ddns_config)
-				.map_err(|_| Error::Unspecified)?;
+			self.ddns_manager.set_config(ddns_config)?;
 		}
 
 		if let Some(ref users) = config.users {
-			let old_users: Vec<user::User> =
-				self.user_manager.list().map_err(|_| Error::Unspecified)?;
+			let old_users: Vec<user::User> = self.user_manager.list()?;
 
 			// Delete users that are not in new list
 			for old_user in old_users
@@ -95,19 +92,13 @@ impl Manager {
 				.iter()
 				.filter(|u| !old_users.iter().any(|old_user| old_user.name == u.name))
 			{
-				self.user_manager
-					.create(new_user)
-					.map_err(|_| Error::Unspecified)?;
+				self.user_manager.create(new_user)?;
 			}
 
 			// Update users
 			for user in users {
-				self.user_manager
-					.set_password(&user.name, &user.password)
-					.map_err(|_| Error::Unspecified)?;
-				self.user_manager
-					.set_is_admin(&user.name, user.admin)
-					.map_err(|_| Error::Unspecified)?;
+				self.user_manager.set_password(&user.name, &user.password)?;
+				self.user_manager.set_is_admin(&user.name, user.admin)?;
 			}
 		}
 

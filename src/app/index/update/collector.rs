@@ -7,14 +7,14 @@ use super::*;
 pub struct Collector {
 	receiver: Receiver<traverser::Directory>,
 	sender: Sender<inserter::Item>,
-	album_art_pattern: Regex,
+	album_art_pattern: Option<Regex>,
 }
 
 impl Collector {
 	pub fn new(
 		receiver: Receiver<traverser::Directory>,
 		sender: Sender<inserter::Item>,
-		album_art_pattern: Regex,
+		album_art_pattern: Option<Regex>,
 	) -> Self {
 		Self {
 			receiver,
@@ -123,8 +123,11 @@ impl Collector {
 		let regex_artwork = directory.other_files.iter().find_map(|path| {
 			let matches = path
 				.file_name()
-				.and_then(|n| n.to_str())
-				.map(|n| self.album_art_pattern.is_match(n))
+				.and_then(|name| name.to_str())
+				.map(|name| match &self.album_art_pattern {
+					Some(pattern) => pattern.is_match(name),
+					None => false,
+				})
 				.unwrap_or(false);
 			if matches {
 				Some(path.to_string_lossy().to_string())
