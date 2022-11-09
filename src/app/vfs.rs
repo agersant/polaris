@@ -1,16 +1,14 @@
 use anyhow::{bail, Result};
 use core::ops::Deref;
+use diesel::prelude::*;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::path::{self, Path, PathBuf};
 
-use crate::db::mount_points;
+use crate::db::{mount_points, DB};
 
-mod manager;
 #[cfg(test)]
 mod test;
-
-pub use manager::*;
 
 #[derive(Clone, Debug, Deserialize, Insertable, PartialEq, Eq, Queryable, Serialize)]
 #[diesel(table_name = mount_points)]
@@ -79,5 +77,41 @@ impl VFS {
 
 	pub fn mounts(&self) -> &Vec<Mount> {
 		&self.mounts
+	}
+}
+
+#[derive(Clone)]
+pub struct Manager {
+	db: DB,
+}
+
+impl Manager {
+	pub fn new(db: DB) -> Self {
+		Self { db }
+	}
+
+	pub fn get_vfs(&self) -> Result<VFS> {
+		let mount_dirs = self.mount_dirs()?;
+		let mounts = mount_dirs.into_iter().map(|p| p.into()).collect();
+		Ok(VFS::new(mounts))
+	}
+
+	pub fn mount_dirs(&self) -> Result<Vec<MountDir>> {
+		use self::mount_points::dsl::*;
+		let mut connection = self.db.connect()?;
+		let mount_dirs: Vec<MountDir> = mount_points
+			.select((source, name))
+			.get_results(&mut connection)?;
+		Ok(mount_dirs)
+	}
+
+	pub fn set_mount_dirs(&self, mount_dirs: &[MountDir]) -> Result<()> {
+		use self::mount_points::dsl::*;
+		let mut connection = self.db.connect()?;
+		diesel::delete(mount_points).execute(&mut connection)?;
+		diesel::insert_into(mount_points)
+			.values(mount_dirs)
+			.execute(&mut *connection)?; // TODO https://github.com/diesel-rs/diesel/issues/1822
+		Ok(())
 	}
 }
