@@ -51,7 +51,7 @@ url = "2.3"
 [dependencies.diesel]
 version = "2.0.2"
 default_features = false
-features = ["libsqlite3-sys", "r2d2", "sqlite"]
+features = ["libsqlite3-sys", "r2d2", "sqlite", "returning_clauses_for_sqlite_3_35"]
 
 [dependencies.image]
 version = "0.24.4"

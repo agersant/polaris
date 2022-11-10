@@ -32,10 +32,10 @@ impl Collector {
 	fn collect_directory(&self, directory: traverser::Directory) {
 		let mut directory_album = None;
 		let mut directory_year = None;
-		let mut directory_artist = None;
+		let mut directory_artists = Vec::new();
 		let mut inconsistent_directory_album = false;
 		let mut inconsistent_directory_year = false;
-		let mut inconsistent_directory_artist = false;
+		let mut inconsistent_directory_artists = false;
 
 		let directory_artwork = self.get_artwork(&directory);
 		let directory_path_string = directory.path.to_string_lossy().to_string();
@@ -57,14 +57,14 @@ impl Collector {
 				directory_album = tags.album.as_ref().cloned();
 			}
 
-			if tags.album_artist.is_some() {
-				inconsistent_directory_artist |=
-					directory_artist.is_some() && directory_artist != tags.album_artist;
-				directory_artist = tags.album_artist.as_ref().cloned();
-			} else if tags.artist.is_some() {
-				inconsistent_directory_artist |=
-					directory_artist.is_some() && directory_artist != tags.artist;
-				directory_artist = tags.artist.as_ref().cloned();
+			if tags.album_artists.is_empty() {
+				inconsistent_directory_artists |=
+					directory_artists.is_empty() && directory_artists != tags.album_artists;
+				directory_artists = tags.album_artists.clone();
+			} else if tags.artists.is_empty() {
+				inconsistent_directory_artists |=
+					directory_artists.is_empty() && directory_artists != tags.artists;
+				directory_artists = tags.artists.clone();
 			}
 
 			let artwork_path = if tags.has_artwork {
@@ -89,8 +89,8 @@ impl Collector {
 		if inconsistent_directory_album {
 			directory_album = None;
 		}
-		if inconsistent_directory_artist {
-			directory_artist = None;
+		if inconsistent_directory_artists {
+			directory_artists = Vec::new();
 		}
 
 		if let Err(e) = self
@@ -100,7 +100,7 @@ impl Collector {
 				parent: directory_parent_string,
 				artwork: directory_artwork,
 				album: directory_album,
-				artist: directory_artist,
+				artists: directory_artists,
 				year: directory_year,
 				date_added: directory.created,
 			})) {

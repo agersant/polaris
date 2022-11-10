@@ -21,6 +21,13 @@ table! {
 }
 
 table! {
+    directory_artists(directory, artist) {
+        directory -> Integer,
+        artist -> Integer,
+    }
+}
+
+table! {
 	misc_settings (id) {
 		id -> Integer,
 		auth_secret -> Binary,
@@ -77,6 +84,13 @@ table! {
 
 table! {
     song_artists(song, artist) {
+        song -> Integer,
+        artist -> Integer,
+    }
+}
+
+table! {
+    song_album_artists(song, artist) {
         song -> Integer,
         artist -> Integer,
     }

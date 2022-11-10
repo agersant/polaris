@@ -16,7 +16,7 @@ pub struct SongTags {
 	pub title: Option<String>,
 	pub duration: Option<u32>,
 	pub artists: Vec<String>,
-	pub album_artist: Option<String>,
+	pub album_artists: Vec<String>,
 	pub album: Option<String>,
 	pub year: Option<i32>,
 	pub has_artwork: bool,
@@ -31,7 +31,9 @@ impl From<id3::Tag> for SongTags {
 		let artists = tag
 			.artists()
 			.map_or(Vec::new(), |v| v.iter().map(|s| s.to_string()).collect());
-		let album_artist = tag.album_artist().map(|s| s.to_string());
+		let album_artists = tag
+            .text_values_for_frame_id("TPE2")
+			.map_or(Vec::new(), |v| v.iter().map(|s| s.to_string()).collect());
 		let album = tag.album().map(|s| s.to_string());
 		let title = tag.title().map(|s| s.to_string());
 		let duration = tag.duration();
@@ -54,7 +56,7 @@ impl From<id3::Tag> for SongTags {
 			title,
 			duration,
 			artists,
-			album_artist,
+			album_artists,
 			album,
 			year,
 			has_artwork,
@@ -178,7 +180,7 @@ fn read_ape(path: &Path) -> Result<SongTags> {
 	let tag = ape::read_from_path(path)?;
 	let artists = Vec::from_iter(tag.item("Artist").and_then(read_ape_string)); // TODO: multiple values
 	let album = tag.item("Album").and_then(read_ape_string);
-	let album_artist = tag.item("Album artist").and_then(read_ape_string);
+	let album_artists = Vec::from_iter(tag.item("Album artist").and_then(read_ape_string));
 	let title = tag.item("Title").and_then(read_ape_string);
 	let year = tag.item("Year").and_then(read_ape_i32);
 	let disc_number = tag.item("Disc").and_then(read_ape_x_of_y);
@@ -188,9 +190,8 @@ fn read_ape(path: &Path) -> Result<SongTags> {
 	let genre = tag.item("GENRE").and_then(read_ape_string);
 	let label = tag.item("PUBLISHER").and_then(read_ape_string);
 	Ok(SongTags {
-		//
-		artists,       //
-		album_artist, //
+		artists,
+		album_artists,
 		album,
 		title,
 		duration: None,
@@ -211,7 +212,7 @@ fn read_vorbis(path: &Path) -> Result<SongTags> {
 
 	let mut tags = SongTags {
 		artists: Vec::new(),
-		album_artist: None,
+		album_artists: Vec::new(),
 		album: None,
 		title: None,
 		duration: None,
@@ -231,7 +232,7 @@ fn read_vorbis(path: &Path) -> Result<SongTags> {
 				"TITLE" => tags.title = Some(value),
 				"ALBUM" => tags.album = Some(value),
 				"ARTIST" => tags.artists.push(value),
-				"ALBUMARTIST" => tags.album_artist = Some(value),
+				"ALBUMARTIST" => tags.album_artists.push(value),
 				"TRACKNUMBER" => tags.track_number = value.parse::<u32>().ok(),
 				"DISCNUMBER" => tags.disc_number = value.parse::<u32>().ok(),
 				"DATE" => tags.year = value.parse::<i32>().ok(),
@@ -251,8 +252,8 @@ fn read_opus(path: &Path) -> Result<SongTags> {
 	let headers = opus_headers::parse_from_path(path)?;
 
 	let mut tags = SongTags {
-		artist: Vec::new(),
-		album_artist: None,
+		artists: Vec::new(),
+		album_artists: Vec::new(),
 		album: None,
 		title: None,
 		duration: None,
@@ -272,7 +273,7 @@ fn read_opus(path: &Path) -> Result<SongTags> {
 				"TITLE" => tags.title = Some(value),
 				"ALBUM" => tags.album = Some(value),
 				"ARTIST" => tags.artists.push(value),
-				"ALBUMARTIST" => tags.album_artist = Some(value),
+				"ALBUMARTIST" => tags.album_artists.push(value),
 				"TRACKNUMBER" => tags.track_number = value.parse::<u32>().ok(),
 				"DISCNUMBER" => tags.disc_number = value.parse::<u32>().ok(),
 				"DATE" => tags.year = value.parse::<i32>().ok(),
@@ -307,8 +308,8 @@ fn read_flac(path: &Path) -> Result<SongTags> {
 	let has_artwork = tag.pictures().count() > 0;
 
 	Ok(SongTags {
-		artists: vorbis.artist().map_or(Vec:new(), |v| v.clone()),
-		album_artist: vorbis.album_artist().map(|v| v[0].clone()),
+		artists: vorbis.artist().map_or(Vec::new(), |v| v.clone()),
+		album_artists: vorbis.artist().map_or(Vec::new(), |v| v.clone()),
 		album: vorbis.album().map(|v| v[0].clone()),
 		title: vorbis.title().map(|v| v[0].clone()),
 		duration,
@@ -328,8 +329,8 @@ fn read_mp4(path: &Path) -> Result<SongTags> {
 	let label_ident = mp4ameta::FreeformIdent::new("com.apple.iTunes", "Label");
 
 	Ok(SongTags {
-		artist: tag.take_artist(),
-		album_artist: tag.take_album_artist(),
+		artists: tag.take_artists().collect(),
+		album_artists: tag.take_album_artists().collect(),
 		album: tag.take_album(),
 		title: tag.take_title(),
 		duration: tag.duration().map(|v| v.as_secs() as u32),
@@ -350,8 +351,8 @@ fn reads_file_metadata() {
 		disc_number: Some(3),
 		track_number: Some(1),
 		title: Some("TEST TITLE".into()),
-		artist: Some("TEST ARTIST".into()),
-		album_artist: Some("TEST ALBUM ARTIST".into()),
+		artists: vec!["TEST ARTIST".into()],
+		album_artists: vec!["TEST ALBUM ARTIST".into()],
 		album: Some("TEST ALBUM".into()),
 		duration: None,
 		year: Some(2016),
