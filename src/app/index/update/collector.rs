@@ -76,7 +76,7 @@ impl Collector {
 			if let Err(e) = self.sender.send(inserter::Item::Song(inserter::InsertSong {
 				path: path_string,
 				parent: directory_path_string.clone(),
-                artwork: artwork_path,
+				artwork: artwork_path,
 				tags,
 			})) {
 				error!("Error while sending song from collector: {}", e);
@@ -95,7 +95,7 @@ impl Collector {
 
 		if let Err(e) = self
 			.sender
-			.send(inserter::Item::Directory(inserter::Directory {
+			.send(inserter::Item::Directory(inserter::InsertDirectory {
 				path: directory_path_string,
 				parent: directory_parent_string,
 				artwork: directory_artwork,

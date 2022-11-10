@@ -1,4 +1,3 @@
-use anyhow::Error;
 use crossbeam_channel::Receiver;
 use diesel::prelude::*;
 use log::error;
@@ -9,6 +8,12 @@ use crate::db::{
 };
 
 const INDEX_BUILDING_INSERT_BUFFER_SIZE: usize = 1000; // Insertions in each transaction
+
+#[derive(Debug, Insertable)]
+#[diesel(table_name = artists)]
+pub struct Artist {
+	pub name: String,
+}
 
 pub struct InsertSong {
 	pub path: String,
@@ -47,12 +52,6 @@ pub struct SongArtist {
 pub struct SongAlbumArtist {
 	song: i32,
 	artist: i32,
-}
-
-#[derive(Debug, Insertable)]
-#[diesel(table_name = artists)]
-pub struct Artist {
-	pub name: String,
 }
 
 pub struct InsertDirectory {
@@ -132,73 +131,101 @@ impl Inserter {
 
 	fn flush_directories(&mut self) {
 		let res = self.db.connect().and_then(|mut connection| {
-			//diesel::insert_into(directories::table)
-			//	.values(&self.new_directories)
-			//	.execute(&mut *connection) // TODO https://github.com/diesel-rs/diesel/issues/1822
-			//	.map_err(Error::new)
-			todo!();
+			for d in self.new_directories.drain(..) {
+				let dir = Directory {
+					path: d.path,
+					parent: d.parent,
+					artwork: d.artwork,
+					album: d.album,
+					year: d.year,
+					date_added: d.date_added,
+				};
+				let dir_id: i32 = diesel::insert_into(directories::table)
+					.values(dir)
+					.returning(directories::id)
+					.get_result(&mut connection)?;
+
+				for a in d.artists {
+					let artist_id: i32 = diesel::insert_into(artists::table)
+						.values(Artist { name: a })
+						.returning(artists::id)
+						.get_result(&mut connection)?;
+
+					let dir_artist = DirectoryArtist {
+						directory: dir_id,
+						artist: artist_id,
+					};
+					diesel::insert_into(directory_artists::table)
+						.values(dir_artist)
+						.execute(&mut *connection)?;
+				}
+			}
+
+			Ok(())
 		});
+
 		if res.is_err() {
 			error!("Could not insert new directories in database");
 		}
-		self.new_directories.clear();
 	}
 
 	fn flush_songs(&mut self) {
 		let res = self.db.connect().and_then(|mut connection| {
-			let songs: Vec<Song> = self
-				.new_songs
-				.drain(..)
-				.map(|s| {
-					let artists: Vec<Artist> = s
-						.tags
-						.artists
-						.into_iter()
-						.map(|name| Artist { name })
-						.collect();
-					let artist_ids = diesel::insert_into(artists::table)
-						.values(artists)
+			for s in self.new_songs.drain(..) {
+				let song = Song {
+					path: s.path,
+					parent: s.parent,
+					disc_number: s.tags.disc_number.map(|n| n as i32),
+					track_number: s.tags.track_number.map(|n| n as i32),
+					title: s.tags.title,
+					duration: s.tags.duration.map(|n| n as i32),
+					album: s.tags.album,
+					year: s.tags.year,
+					artwork: s.artwork,
+					lyricist: s.tags.lyricist,
+					composer: s.tags.composer,
+					genre: s.tags.genre,
+					label: s.tags.label,
+				};
+				let song_id: i32 = diesel::insert_into(songs::table)
+					.values(song)
+					.returning(songs::id)
+					.get_result(&mut connection)?;
+
+				for a in s.tags.artists {
+					let artist_id: i32 = diesel::insert_into(artists::table)
+						.values(Artist { name: a })
 						.returning(artists::id)
-						.execute(&mut *connection);
+						.get_result(&mut connection)?;
 
-					let album_artists: Vec<Artist> = s
-						.tags
-						.album_artists
-						.into_iter()
-						.map(|name| Artist { name })
-						.collect();
-					let album_artist_ids = diesel::insert_into(artists::table)
-						.values(album_artists)
+					let song_artist = SongArtist {
+						song: song_id,
+						artist: artist_id,
+					};
+					diesel::insert_into(song_artists::table)
+						.values(song_artist)
+						.execute(&mut connection)?;
+				}
+
+				for a in s.tags.album_artists {
+					let artist_id: i32 = diesel::insert_into(artists::table)
+						.values(Artist { name: a })
 						.returning(artists::id)
-						.get_results(&mut *connection);
+						.get_result(&mut connection)?;
 
-					// let song_artists = artist_ids.iter().map
-					// diesel::insert_into(song_artists::table)
-					//     .values(records)
+					let song_album_artist = SongAlbumArtist {
+						song: song_id,
+						artist: artist_id,
+					};
+					diesel::insert_into(song_album_artists::table)
+						.values(song_album_artist)
+						.execute(&mut connection)?;
+				}
+			}
 
-					Song {
-						path: s.path,
-						parent: s.parent,
-						disc_number: s.tags.disc_number.map(|n| n as i32),
-						track_number: s.tags.track_number.map(|n| n as i32),
-						title: s.tags.title,
-						duration: s.tags.duration.map(|n| n as i32),
-						album: s.tags.album,
-						year: s.tags.year,
-						artwork: s.artwork,
-						lyricist: s.tags.lyricist,
-						composer: s.tags.composer,
-						genre: s.tags.genre,
-						label: s.tags.label,
-					}
-				})
-				.collect();
-
-			diesel::insert_into(songs::table)
-				.values(&songs)
-				.execute(&mut *connection) // TODO https://github.com/diesel-rs/diesel/issues/1822
-				.map_err(Error::new)
+			Ok(())
 		});
+
 		if res.is_err() {
 			error!("Could not insert new songs in database");
 		}
