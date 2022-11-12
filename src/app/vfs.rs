@@ -103,12 +103,17 @@ impl Manager {
 	}
 
 	pub fn set_mount_dirs(&self, mount_dirs: &[MountDir]) -> Result<()> {
-		use self::mount_points::dsl::*;
 		let mut connection = self.db.connect()?;
-		diesel::delete(mount_points).execute(&mut connection)?;
-		diesel::insert_into(mount_points)
-			.values(mount_dirs)
-			.execute(&mut *connection)?; // TODO https://github.com/diesel-rs/diesel/issues/1822
+		connection
+			.transaction::<_, diesel::result::Error, _>(|connection| {
+				use self::mount_points::dsl::*;
+				diesel::delete(mount_points).execute(&mut *connection)?;
+				diesel::insert_into(mount_points)
+					.values(mount_dirs)
+					.execute(&mut *connection)?; // TODO https://github.com/diesel-rs/diesel/issues/1822
+				Ok(())
+			})
+			.map_err(anyhow::Error::new)?;
 		Ok(())
 	}
 }
