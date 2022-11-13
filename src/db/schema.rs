@@ -122,12 +122,16 @@ joinable!(playlist_songs -> playlists (playlist));
 joinable!(playlists -> users (owner));
 
 allow_tables_to_appear_in_same_query!(
+    artists,
 	ddns_config,
 	directories,
+    directory_artists,
 	misc_settings,
 	mount_points,
 	playlist_songs,
 	playlists,
 	songs,
+    song_artists,
+    song_album_artists,
 	users,
 );

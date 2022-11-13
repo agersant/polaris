@@ -256,6 +256,28 @@ pub struct Song {
 	pub label: Option<String>,
 }
 
+impl Song {
+	pub fn new(song: index::Song, artists: Vec<String>, album_artists: Vec<String>) -> Self {
+		Self {
+			path: song.path,
+			parent: song.parent,
+			track_number: song.track_number,
+			disc_number: song.disc_number,
+			title: song.title,
+			artists,
+			album_artists,
+			year: song.year,
+			album: song.album,
+			artwork: song.artwork,
+			duration: song.duration,
+			lyricist: song.lyricist,
+			composer: song.composer,
+			genre: song.genre,
+			label: song.label,
+		}
+	}
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Directory {
 	pub path: String,

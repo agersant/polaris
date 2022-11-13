@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use super::*;
 use crate::app::test;
 use crate::db::{directories, songs};
+use crate::service::dto;
 use crate::test_name;
 
 const TEST_MOUNT_NAME: &str = "root";
@@ -77,7 +78,7 @@ fn can_browse_top_level() {
 	let files = ctx.index.browse(Path::new("")).unwrap();
 	assert_eq!(files.len(), 1);
 	match files[0] {
-		CollectionFile::Directory(ref d) => assert_eq!(d.path, root_path.to_str().unwrap()),
+		dto::CollectionFile::Directory(ref d) => assert_eq!(d.path, root_path.to_str().unwrap()),
 		_ => panic!("Expected directory"),
 	}
 }
@@ -96,12 +97,12 @@ fn can_browse_directory() {
 
 	assert_eq!(files.len(), 2);
 	match files[0] {
-		CollectionFile::Directory(ref d) => assert_eq!(d.path, khemmis_path.to_str().unwrap()),
+		dto::CollectionFile::Directory(ref d) => assert_eq!(d.path, khemmis_path.to_str().unwrap()),
 		_ => panic!("Expected directory"),
 	}
 
 	match files[1] {
-		CollectionFile::Directory(ref d) => assert_eq!(d.path, tobokegao_path.to_str().unwrap()),
+		dto::CollectionFile::Directory(ref d) => assert_eq!(d.path, tobokegao_path.to_str().unwrap()),
 		_ => panic!("Expected directory"),
 	}
 }
@@ -177,8 +178,8 @@ fn can_get_a_song() {
 	assert_eq!(song.track_number, Some(5));
 	assert_eq!(song.disc_number, None);
 	assert_eq!(song.title, Some("シャーベット (Sherbet)".to_owned()));
-	assert_eq!(song.artist, Some("Tobokegao".to_owned()));
-	assert_eq!(song.album_artist, None);
+	assert_eq!(song.artists, vec!("Tobokegao".to_owned()));
+	assert_eq!(song.album_artists, Vec::<String>::new());
 	assert_eq!(song.album, Some("Picnic".to_owned()));
 	assert_eq!(song.year, Some(2016));
 	assert_eq!(

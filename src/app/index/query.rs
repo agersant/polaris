@@ -1,11 +1,12 @@
 use anyhow::bail;
 use diesel::dsl::sql;
 use diesel::prelude::*;
+use diesel::r2d2::{ConnectionManager, PooledConnection};
 use diesel::sql_types;
 use std::path::Path;
 
 use super::*;
-use crate::db::{artists, directories, directory_artists, songs};
+use crate::db::{artists, directories, directory_artists, song_album_artists, songs};
 use crate::service::dto;
 
 #[derive(thiserror::Error, Debug)]
@@ -42,21 +43,16 @@ impl Index {
 				.filter(directories::parent.is_null())
 				.load(&mut connection)
 				.map_err(anyhow::Error::new)?;
+
+			output.reserve(real_directories.len());
+
 			let virtual_directories = real_directories
 				.into_iter()
 				.filter_map(|d| d.virtualize(&vfs));
-			let dto_directories = virtual_directories.into_iter().map(|d| {
-				// TODO: make this work somehow
-				let artists = directory_artists::table
-					.filter(directory_artists::directory.eq(d.id))
-					.inner_join(artists::table)
-					.select(artists::name)
-					.load(&mut connection);
-
-				dto::Directory::new(d, artists)
-			});
-
-			output.extend(dto_directories.map(dto::CollectionFile::Directory));
+			for d in virtual_directories {
+				let dto_dir = fetch_directory_artists(&mut connection, d)?;
+				output.push(dto::CollectionFile::Directory(dto_dir));
+			}
 		} else {
 			// Browse sub-directory
 			let real_path = vfs
@@ -69,18 +65,28 @@ impl Index {
 				.order(sql::<sql_types::Bool>("path COLLATE NOCASE ASC"))
 				.load(&mut connection)
 				.map_err(anyhow::Error::new)?;
-			let virtual_directories = real_directories
-				.into_iter()
-				.filter_map(|d| d.virtualize(&vfs));
-			output.extend(virtual_directories.map(CollectionFile::Directory));
 
 			let real_songs: Vec<Song> = songs::table
 				.filter(songs::parent.eq(&real_path_string))
 				.order(sql::<sql_types::Bool>("path COLLATE NOCASE ASC"))
 				.load(&mut connection)
 				.map_err(anyhow::Error::new)?;
+
+			output.reserve(real_directories.len() + real_songs.len());
+
+			let virtual_directories = real_directories
+				.into_iter()
+				.filter_map(|d| d.virtualize(&vfs));
+			for d in virtual_directories {
+				let dto_dir = fetch_directory_artists(&mut connection, d)?;
+				output.push(dto::CollectionFile::Directory(dto_dir));
+			}
+
 			let virtual_songs = real_songs.into_iter().filter_map(|s| s.virtualize(&vfs));
-			output.extend(virtual_songs.map(CollectionFile::Song));
+			for s in virtual_songs {
+				let dto_song = fetch_song_artists(&mut connection, s)?;
+				output.push(dto::CollectionFile::Song(dto_song));
+			}
 		}
 
 		Ok(output)
@@ -192,7 +198,7 @@ impl Index {
 		Ok(output)
 	}
 
-	pub fn get_song(&self, virtual_path: &Path) -> anyhow::Result<Song> {
+	pub fn get_song(&self, virtual_path: &Path) -> anyhow::Result<dto::Song> {
 		let vfs = self.vfs_manager.get_vfs()?;
 		let mut connection = self.db.connect()?;
 
@@ -204,9 +210,43 @@ impl Index {
 			.filter(path.eq(real_path_string))
 			.get_result(&mut connection)?;
 
-		match real_song.virtualize(&vfs) {
-			Some(s) => Ok(s),
+		let virtual_song = match real_song.virtualize(&vfs) {
+			Some(s) => s,
 			_ => bail!("Missing VFS mapping"),
-		}
+		};
+
+		fetch_song_artists(&mut connection, virtual_song)
 	}
+}
+
+fn fetch_directory_artists(
+	connection: &mut PooledConnection<ConnectionManager<SqliteConnection>>,
+	virtual_dir: Directory,
+) -> anyhow::Result<dto::Directory> {
+	let artists: Vec<String> = directory_artists::table
+		.filter(directory_artists::directory.eq(virtual_dir.id))
+		.inner_join(artists::table)
+		.select(artists::name)
+		.load(connection)
+		.map_err(anyhow::Error::new)?;
+	Ok(dto::Directory::new(virtual_dir, artists))
+}
+
+fn fetch_song_artists(
+	connection: &mut PooledConnection<ConnectionManager<SqliteConnection>>,
+	virtual_song: Song,
+) -> anyhow::Result<dto::Song> {
+	let artists: Vec<String> = directory_artists::table
+		.filter(directory_artists::directory.eq(virtual_song.id))
+		.inner_join(artists::table)
+		.select(artists::name)
+		.load(connection)
+		.map_err(anyhow::Error::new)?;
+	let album_artists: Vec<String> = song_album_artists::table
+		.filter(song_album_artists::song.eq(virtual_song.id))
+		.inner_join(artists::table)
+		.select(artists::name)
+		.load(connection)
+		.map_err(anyhow::Error::new)?;
+	Ok(dto::Song::new(virtual_song, artists, album_artists))
 }

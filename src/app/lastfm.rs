@@ -62,7 +62,7 @@ impl Manager {
 	fn scrobble_from_path(&self, track: &Path) -> Result<Scrobble> {
 		let song = self.index.get_song(track)?;
 		Ok(Scrobble::new(
-			song.artist.as_deref().unwrap_or(""),
+			song.artists.first().map_or("", |s| s.as_str()),
 			song.title.as_deref().unwrap_or(""),
 			song.album.as_deref().unwrap_or(""),
 		))
