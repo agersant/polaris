@@ -25,7 +25,7 @@ CREATE TABLE songs (
 	label TEXT,
 	UNIQUE(path)
 );
-INSERT INTO songs SELECT id, path, parent, track_number, disc_number, title, artist, album_artist, year, album, artwork, duration, lyricist, composer, genre, label FROM songs_backup;
+INSERT INTO songs SELECT id, path, parent, track_number, disc_number, title, year, album, artwork, duration, lyricist, composer, genre, label FROM songs_backup;
 
 CREATE TABLE song_artists (
 	song INTEGER NOT NULL,
