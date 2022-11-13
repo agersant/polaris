@@ -69,6 +69,8 @@ impl Cleaner {
 			}
 		}
 
+        // TODO: clean artists
+
 		Ok(())
 	}
 }

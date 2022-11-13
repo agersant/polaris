@@ -424,7 +424,7 @@ async fn login(
 async fn browse_root(
 	index: Data<Index>,
 	_auth: Auth,
-) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
+) -> Result<Json<Vec<dto::CollectionFile>>, APIError> {
 	let result = block(move || index.browse(Path::new(""))).await?;
 	Ok(Json(result))
 }
@@ -434,7 +434,7 @@ async fn browse(
 	index: Data<Index>,
 	_auth: Auth,
 	path: web::Path<String>,
-) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
+) -> Result<Json<Vec<dto::CollectionFile>>, APIError> {
 	let result = block(move || {
 		let path = percent_decode_str(&path).decode_utf8_lossy();
 		index.browse(Path::new(path.as_ref()))

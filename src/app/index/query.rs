@@ -5,7 +5,8 @@ use diesel::sql_types;
 use std::path::Path;
 
 use super::*;
-use crate::db::{directories, songs};
+use crate::db::{artists, directories, directory_artists, songs};
+use crate::service::dto;
 
 #[derive(thiserror::Error, Debug)]
 pub enum QueryError {
@@ -27,7 +28,7 @@ sql_function!(
 );
 
 impl Index {
-	pub fn browse<P>(&self, virtual_path: P) -> Result<Vec<CollectionFile>, QueryError>
+	pub fn browse<P>(&self, virtual_path: P) -> Result<Vec<dto::CollectionFile>, QueryError>
 	where
 		P: AsRef<Path>,
 	{
@@ -44,7 +45,18 @@ impl Index {
 			let virtual_directories = real_directories
 				.into_iter()
 				.filter_map(|d| d.virtualize(&vfs));
-			output.extend(virtual_directories.map(CollectionFile::Directory));
+			let dto_directories = virtual_directories.into_iter().map(|d| {
+				// TODO: make this work somehow
+				let artists = directory_artists::table
+					.filter(directory_artists::directory.eq(d.id))
+					.inner_join(artists::table)
+					.select(artists::name)
+					.load(&mut connection);
+
+				dto::Directory::new(d, artists)
+			});
+
+			output.extend(dto_directories.map(dto::CollectionFile::Directory));
 		} else {
 			// Browse sub-directory
 			let real_path = vfs
@@ -165,9 +177,9 @@ impl Index {
 				.filter(
 					path.like(&like_test)
 						.or(title.like(&like_test))
-						.or(album.like(&like_test))
-						.or(artist.like(&like_test))
-						.or(album_artist.like(&like_test)),
+						.or(album.like(&like_test)), // TODO:
+					                              // .or(artist.like(&like_test))
+					                              // .or(album_artist.like(&like_test)),
 				)
 				.filter(parent.not_like(&like_test))
 				.load(&mut connection)?;

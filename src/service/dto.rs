@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::app::{config, ddns, settings, thumbnail, user, vfs};
+use crate::app::{config, ddns, index, settings, thumbnail, user, vfs};
 use std::convert::From;
 
 pub const API_MAJOR_VERSION: i32 = 6;
@@ -231,5 +231,53 @@ impl From<settings::Settings> for Settings {
 	}
 }
 
-// TODO: Preferences, CollectionFile, Song and Directory should have dto types
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum CollectionFile {
+	Song(Song),
+	Directory(Directory),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Song {
+	pub path: String,
+	pub parent: String,
+	pub track_number: Option<i32>,
+	pub disc_number: Option<i32>,
+	pub title: Option<String>,
+	pub artists: Vec<String>,
+	pub album_artists: Vec<String>,
+	pub year: Option<i32>,
+	pub album: Option<String>,
+	pub artwork: Option<String>,
+	pub duration: Option<i32>,
+	pub lyricist: Option<String>,
+	pub composer: Option<String>,
+	pub genre: Option<String>,
+	pub label: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Directory {
+	pub path: String,
+	pub artists: Vec<String>,
+	pub year: Option<i32>,
+	pub album: Option<String>,
+	pub artwork: Option<String>,
+	pub date_added: i32,
+}
+
+impl Directory {
+	pub fn new(dir: index::Directory, artists: Vec<String>) -> Self {
+		Self {
+			path: dir.path,
+			artists,
+			year: dir.year,
+			album: dir.album,
+			artwork: dir.artwork,
+			date_added: dir.date_added,
+		}
+	}
+}
+
+// TODO: Preferences should have a dto type
 // TODO Song dto type should skip `None` values when serializing, to lower payload sizes by a lot

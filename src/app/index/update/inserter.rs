@@ -22,7 +22,7 @@ pub struct InsertSong {
 	pub tags: SongTags,
 }
 
-#[derive(Debug, Insertable)]
+#[derive(Debug, Insertable, AsChangeset)]
 #[diesel(table_name = songs)]
 pub struct Song {
 	pub path: String,
@@ -64,7 +64,7 @@ pub struct InsertDirectory {
 	pub date_added: i32,
 }
 
-#[derive(Debug, Insertable)]
+#[derive(Debug, Insertable, AsChangeset)]
 #[diesel(table_name = directories)]
 pub struct Directory {
 	pub path: String,
@@ -141,7 +141,10 @@ impl Inserter {
 					date_added: d.date_added,
 				};
 				let dir_id: i32 = diesel::insert_into(directories::table)
-					.values(dir)
+					.values(&dir)
+					.on_conflict(directories::path)
+					.do_update()
+					.set(&dir)
 					.returning(directories::id)
 					.get_result(&mut connection)?;
 
@@ -188,7 +191,10 @@ impl Inserter {
 					label: s.tags.label,
 				};
 				let song_id: i32 = diesel::insert_into(songs::table)
-					.values(song)
+					.values(&song)
+					.on_conflict(songs::path)
+					.do_update()
+					.set(&song)
 					.returning(songs::id)
 					.get_result(&mut connection)?;
 

@@ -12,7 +12,6 @@ table! {
 		id -> Integer,
 		path -> Text,
 		parent -> Nullable<Text>,
-		artist -> Nullable<Text>,
 		year -> Nullable<Integer>,
 		album -> Nullable<Text>,
 		artwork -> Nullable<Text>,
@@ -69,8 +68,6 @@ table! {
 		track_number -> Nullable<Integer>,
 		disc_number -> Nullable<Integer>,
 		title -> Nullable<Text>,
-		artist -> Nullable<Text>,
-		album_artist -> Nullable<Text>,
 		year -> Nullable<Integer>,
 		album -> Nullable<Text>,
 		artwork -> Nullable<Text>,
@@ -116,6 +113,11 @@ table! {
 	}
 }
 
+joinable!(song_artists -> songs (song));
+joinable!(song_artists -> artists (artist));
+joinable!(song_album_artists -> songs (song));
+joinable!(song_album_artists -> artists (artist));
+joinable!(directory_artists -> artists (artist));
 joinable!(playlist_songs -> playlists (playlist));
 joinable!(playlists -> users (owner));
 
