@@ -8,7 +8,7 @@
 
 ### Server
 
-- API version is now 6.1
+- API version is now 7.0
 - ⚠️ Removed support for authentication via cookies (deprecated in Polaris 0.13.0)
 - ⚠️ Removed support for authentication via the `Basic` scheme when using the HTTP `Authorization` header (deprecated in Polaris 0.13.0)
 - Fixed a bug where all music sources would be deleted when trying to add sources with duplicate names
