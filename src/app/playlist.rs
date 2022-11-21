@@ -7,14 +7,18 @@ use std::path::Path;
 
 use crate::app::index::Song;
 use crate::app::vfs;
-use crate::db::{playlist_songs, playlists, users, DB};
+use crate::db::{self, playlist_songs, playlists, users, DB};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
+	#[error(transparent)]
+	DatabaseConnection(#[from] db::Error),
 	#[error("User not found")]
 	UserNotFound,
 	#[error("Playlist not found")]
 	PlaylistNotFound,
+	#[error(transparent)]
+	Vfs(#[from] vfs::Error),
 	#[error("Unspecified")]
 	Unspecified,
 }

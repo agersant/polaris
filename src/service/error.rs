@@ -1,7 +1,8 @@
 use thiserror::Error;
 
 use crate::app::index::QueryError;
-use crate::app::{config, playlist, settings, user};
+use crate::app::{config, ddns, playlist, settings, user, vfs};
+use crate::db;
 
 #[derive(Error, Debug)]
 pub enum APIError {
@@ -48,9 +49,10 @@ impl From<anyhow::Error> for APIError {
 impl From<config::Error> for APIError {
 	fn from(error: config::Error) -> APIError {
 		match error {
+			config::Error::Ddns(e) => e.into(),
 			config::Error::Settings(e) => e.into(),
 			config::Error::User(e) => e.into(),
-			config::Error::Unspecified => APIError::Unspecified,
+			config::Error::Vfs(e) => e.into(),
 		}
 	}
 }
@@ -58,8 +60,10 @@ impl From<config::Error> for APIError {
 impl From<playlist::Error> for APIError {
 	fn from(error: playlist::Error) -> APIError {
 		match error {
+			playlist::Error::DatabaseConnection(e) => e.into(),
 			playlist::Error::PlaylistNotFound => APIError::PlaylistNotFound,
 			playlist::Error::UserNotFound => APIError::UserNotFound,
+			playlist::Error::Vfs(e) => e.into(),
 			playlist::Error::Unspecified => APIError::Unspecified,
 		}
 	}
@@ -68,7 +72,8 @@ impl From<playlist::Error> for APIError {
 impl From<QueryError> for APIError {
 	fn from(error: QueryError) -> APIError {
 		match error {
-			QueryError::VFSPathNotFound => APIError::VFSPathNotFound,
+			QueryError::DatabaseConnection(e) => e.into(),
+			QueryError::Vfs(e) => e.into(),
 			QueryError::Unspecified => APIError::Unspecified,
 		}
 	}
@@ -78,6 +83,7 @@ impl From<settings::Error> for APIError {
 	fn from(error: settings::Error) -> APIError {
 		match error {
 			settings::Error::AuthSecretNotFound => APIError::Internal,
+			settings::Error::DatabaseConnection(e) => e.into(),
 			settings::Error::InvalidAuthSecret => APIError::Internal,
 			settings::Error::MiscSettingsNotFound => APIError::Internal,
 			settings::Error::IndexAlbumArtPatternInvalid => APIError::Internal,
@@ -90,6 +96,7 @@ impl From<settings::Error> for APIError {
 impl From<user::Error> for APIError {
 	fn from(error: user::Error) -> APIError {
 		match error {
+			user::Error::DatabaseConnection(e) => e.into(),
 			user::Error::EmptyUsername => APIError::EmptyUsername,
 			user::Error::EmptyPassword => APIError::EmptyPassword,
 			user::Error::IncorrectUsername => APIError::IncorrectCredentials,
@@ -97,6 +104,40 @@ impl From<user::Error> for APIError {
 			user::Error::InvalidAuthToken => APIError::IncorrectCredentials,
 			user::Error::IncorrectAuthorizationScope => APIError::IncorrectCredentials,
 			user::Error::Unspecified => APIError::Unspecified,
+		}
+	}
+}
+
+impl From<vfs::Error> for APIError {
+	fn from(error: vfs::Error) -> APIError {
+		match error {
+			vfs::Error::CouldNotMapToVirtualPath(_) => APIError::VFSPathNotFound,
+			vfs::Error::CouldNotMapToRealPath(_) => APIError::VFSPathNotFound,
+			vfs::Error::Database(_) => APIError::Internal,
+			vfs::Error::DatabaseConnection(e) => e.into(),
+			vfs::Error::Unspecified => APIError::Unspecified,
+		}
+	}
+}
+
+impl From<ddns::Error> for APIError {
+	fn from(error: ddns::Error) -> APIError {
+		match error {
+			ddns::Error::DatabaseConnection(e) => e.into(),
+			ddns::Error::UpdateQueryFailed(_) => APIError::Internal,
+			ddns::Error::Database(_) => APIError::Internal,
+			ddns::Error::Unspecified => APIError::Unspecified,
+		}
+	}
+}
+
+impl From<db::Error> for APIError {
+	fn from(error: db::Error) -> APIError {
+		match error {
+			db::Error::ConnectionPoolBuild => APIError::Internal,
+			db::Error::ConnectionPool => APIError::Internal,
+			db::Error::Io(_, _) => APIError::Internal,
+			db::Error::Migration => APIError::Internal,
 		}
 	}
 }

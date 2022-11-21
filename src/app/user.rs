@@ -7,10 +7,12 @@ use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::app::settings::AuthSecret;
-use crate::db::{users, DB};
+use crate::db::{self, users, DB};
 
-#[derive(thiserror::Error, Debug, PartialEq, Eq)]
+#[derive(thiserror::Error, Debug)]
 pub enum Error {
+	#[error(transparent)]
+	DatabaseConnection(#[from] db::Error),
 	#[error("Cannot use empty username")]
 	EmptyUsername,
 	#[error("Cannot use empty password")]
@@ -387,10 +389,10 @@ mod test {
 			password: TEST_PASSWORD.to_owned(),
 			admin: false,
 		};
-		assert_eq!(
+		assert!(matches!(
 			ctx.user_manager.create(&new_user).unwrap_err(),
 			Error::EmptyUsername
-		);
+		));
 	}
 
 	#[test]
@@ -401,10 +403,10 @@ mod test {
 			password: "".to_owned(),
 			admin: false,
 		};
-		assert_eq!(
+		assert!(matches!(
 			ctx.user_manager.create(&new_user).unwrap_err(),
 			Error::EmptyPassword
-		);
+		));
 	}
 
 	#[test]
@@ -455,12 +457,12 @@ mod test {
 		};
 
 		ctx.user_manager.create(&new_user).unwrap();
-		assert_eq!(
+		assert!(matches!(
 			ctx.user_manager
 				.login(TEST_USERNAME, "not the password")
 				.unwrap_err(),
 			Error::IncorrectPassword
-		)
+		));
 	}
 
 	#[test]
@@ -539,9 +541,9 @@ mod test {
 		let authorization = ctx
 			.user_manager
 			.authenticate(&token, AuthorizationScope::PolarisAuth);
-		assert_eq!(
+		assert!(matches!(
 			authorization.unwrap_err(),
 			Error::IncorrectAuthorizationScope
-		)
+		));
 	}
 }

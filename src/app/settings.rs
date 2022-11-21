@@ -4,12 +4,14 @@ use serde::Deserialize;
 use std::convert::TryInto;
 use std::time::Duration;
 
-use crate::db::{misc_settings, DB};
+use crate::db::{self, misc_settings, DB};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
 	#[error("Missing auth secret")]
 	AuthSecretNotFound,
+	#[error(transparent)]
+	DatabaseConnection(#[from] db::Error),
 	#[error("Auth secret does not have the expected format")]
 	InvalidAuthSecret,
 	#[error("Missing settings")]

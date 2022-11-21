@@ -5,12 +5,14 @@ use diesel::sql_types;
 use std::path::Path;
 
 use super::*;
-use crate::db::{directories, songs};
+use crate::db::{self, directories, songs};
 
 #[derive(thiserror::Error, Debug)]
 pub enum QueryError {
-	#[error("VFS path not found")]
-	VFSPathNotFound,
+	#[error(transparent)]
+	DatabaseConnection(#[from] db::Error),
+	#[error(transparent)]
+	Vfs(#[from] vfs::Error),
 	#[error("Unspecified")]
 	Unspecified,
 }
@@ -47,9 +49,7 @@ impl Index {
 			output.extend(virtual_directories.map(CollectionFile::Directory));
 		} else {
 			// Browse sub-directory
-			let real_path = vfs
-				.virtual_to_real(virtual_path)
-				.map_err(|_| QueryError::VFSPathNotFound)?;
+			let real_path = vfs.virtual_to_real(virtual_path)?;
 			let real_path_string = real_path.as_path().to_string_lossy().into_owned();
 
 			let real_directories: Vec<Directory> = directories::table
@@ -83,9 +83,7 @@ impl Index {
 		let mut connection = self.db.connect()?;
 
 		let real_songs: Vec<Song> = if virtual_path.as_ref().parent().is_some() {
-			let real_path = vfs
-				.virtual_to_real(virtual_path)
-				.map_err(|_| QueryError::VFSPathNotFound)?;
+			let real_path = vfs.virtual_to_real(virtual_path)?;
 			let song_path_filter = {
 				let mut path_buf = real_path;
 				path_buf.push("%");

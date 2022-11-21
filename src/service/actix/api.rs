@@ -504,7 +504,6 @@ async fn get_audio(
 		let vfs = vfs_manager.get_vfs()?;
 		let path = percent_decode_str(&path).decode_utf8_lossy();
 		vfs.virtual_to_real(Path::new(path.as_ref()))
-			.map_err(|_| APIError::VFSPathNotFound)
 	})
 	.await?;
 
@@ -525,9 +524,7 @@ async fn get_thumbnail(
 	let thumbnail_path = block(move || {
 		let vfs = vfs_manager.get_vfs()?;
 		let path = percent_decode_str(&path).decode_utf8_lossy();
-		let image_path = vfs
-			.virtual_to_real(Path::new(path.as_ref()))
-			.map_err(|_| APIError::VFSPathNotFound)?;
+		let image_path = vfs.virtual_to_real(Path::new(path.as_ref()))?;
 		thumbnails_manager
 			.get_thumbnail(&image_path, &options)
 			.map_err(|_| APIError::Unspecified)

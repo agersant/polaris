@@ -7,17 +7,13 @@ use crate::app::{ddns, settings, user, vfs};
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
 	#[error(transparent)]
+	Ddns(#[from] ddns::Error),
+	#[error(transparent)]
 	Settings(#[from] settings::Error),
 	#[error(transparent)]
 	User(#[from] user::Error),
-	#[error("Unspecified")]
-	Unspecified,
-}
-
-impl From<anyhow::Error> for Error {
-	fn from(_: anyhow::Error) -> Self {
-		Error::Unspecified
-	}
+	#[error(transparent)]
+	Vfs(#[from] vfs::Error),
 }
 
 #[derive(Default, Deserialize)]
@@ -82,9 +78,7 @@ impl Manager {
 				.iter()
 				.filter(|old_user| !users.iter().any(|u| u.name == old_user.name))
 			{
-				self.user_manager
-					.delete(&old_user.name)
-					.map_err(|_| Error::Unspecified)?;
+				self.user_manager.delete(&old_user.name)?;
 			}
 
 			// Insert new users

@@ -1,4 +1,3 @@
-use anyhow::Error;
 use crossbeam_channel::Receiver;
 use diesel::prelude::*;
 use log::error;
@@ -87,26 +86,26 @@ impl Inserter {
 	}
 
 	fn flush_directories(&mut self) {
-		let res = self.db.connect().and_then(|mut connection| {
+		let res = self.db.connect().ok().and_then(|mut connection| {
 			diesel::insert_into(directories::table)
 				.values(&self.new_directories)
 				.execute(&mut *connection) // TODO https://github.com/diesel-rs/diesel/issues/1822
-				.map_err(Error::new)
+				.ok()
 		});
-		if res.is_err() {
+		if res.is_none() {
 			error!("Could not insert new directories in database");
 		}
 		self.new_directories.clear();
 	}
 
 	fn flush_songs(&mut self) {
-		let res = self.db.connect().and_then(|mut connection| {
+		let res = self.db.connect().ok().and_then(|mut connection| {
 			diesel::insert_into(songs::table)
 				.values(&self.new_songs)
 				.execute(&mut *connection) // TODO https://github.com/diesel-rs/diesel/issues/1822
-				.map_err(Error::new)
+				.ok()
 		});
-		if res.is_err() {
+		if res.is_none() {
 			error!("Could not insert new songs in database");
 		}
 		self.new_songs.clear();

@@ -1,16 +1,27 @@
-use anyhow::{bail, Error, Result};
 use diesel::r2d2::{self, ConnectionManager, PooledConnection};
 use diesel::sqlite::SqliteConnection;
 use diesel::RunQueryDsl;
 use diesel_migrations::EmbeddedMigrations;
 use diesel_migrations::MigrationHarness;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 mod schema;
 
 pub use self::schema::*;
 
 const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
+
+#[derive(thiserror::Error, Debug)]
+pub enum Error {
+	#[error("Could not initialize database connection pool")]
+	ConnectionPoolBuild,
+	#[error("Could not acquire database connection from pool")]
+	ConnectionPool,
+	#[error("Filesystem error for `{0}`: `{1}`")]
+	Io(PathBuf, std::io::Error),
+	#[error("Could not apply database migrations")]
+	Migration,
+}
 
 #[derive(Clone)]
 pub struct DB {
@@ -39,34 +50,38 @@ impl diesel::r2d2::CustomizeConnection<SqliteConnection, diesel::r2d2::Error>
 }
 
 impl DB {
-	pub fn new(path: &Path) -> Result<DB> {
-		std::fs::create_dir_all(path.parent().unwrap())?;
+	pub fn new(path: &Path) -> Result<DB, Error> {
+		let directory = path.parent().unwrap();
+		std::fs::create_dir_all(directory).map_err(|e| Error::Io(directory.to_owned(), e))?;
 		let manager = ConnectionManager::<SqliteConnection>::new(path.to_string_lossy());
 		let pool = diesel::r2d2::Pool::builder()
 			.connection_customizer(Box::new(ConnectionCustomizer {}))
-			.build(manager)?;
+			.build(manager)
+			.or(Err(Error::ConnectionPoolBuild))?;
 		let db = DB { pool };
 		db.migrate_up()?;
 		Ok(db)
 	}
 
-	pub fn connect(&self) -> Result<PooledConnection<ConnectionManager<SqliteConnection>>> {
-		self.pool.get().map_err(Error::new)
+	pub fn connect(&self) -> Result<PooledConnection<ConnectionManager<SqliteConnection>>, Error> {
+		self.pool.get().or(Err(Error::ConnectionPool))
 	}
 
-	#[allow(dead_code)]
-	fn migrate_down(&self) -> Result<()> {
-		let mut connection = self.connect().unwrap();
-		if let Err(e) = connection.revert_all_migrations(MIGRATIONS) {
-			bail!(e);
-		}
-		Ok(())
+	#[cfg(test)]
+	fn migrate_down(&self) -> Result<(), Error> {
+		let mut connection = self.connect()?;
+		connection
+			.revert_all_migrations(MIGRATIONS)
+			.and(Ok(()))
+			.or(Err(Error::Migration))
 	}
 
-	fn migrate_up(&self) -> Result<()> {
-		let mut connection = self.connect().unwrap();
-		connection.run_pending_migrations(MIGRATIONS).unwrap();
-		Ok(())
+	fn migrate_up(&self) -> Result<(), Error> {
+		let mut connection = self.connect()?;
+		connection
+			.run_pending_migrations(MIGRATIONS)
+			.and(Ok(()))
+			.or(Err(Error::Migration))
 	}
 }
 
