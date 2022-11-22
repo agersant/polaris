@@ -65,7 +65,7 @@ fn daemonize<T: AsRef<Path>>(foreground: bool, pid_file_path: T) -> Result<(), E
 #[cfg(unix)]
 fn notify_ready() -> Result<(), Error> {
 	if let Ok(true) = sd_notify::booted() {
-		sd_notify::notify(true, &[sd_notify::NotifyState::Ready]).map_err(Error::SystemDNotify);
+		sd_notify::notify(true, &[sd_notify::NotifyState::Ready]).map_err(Error::SystemDNotify)?;
 	}
 	Ok(())
 }
