@@ -1,13 +1,32 @@
-use anyhow::{anyhow, Result};
 use id3::TagLike;
 use lewton::inside_ogg::OggStreamReader;
 use log::error;
 use regex::Regex;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::utils;
 use crate::utils::AudioFormat;
+
+#[derive(thiserror::Error, Debug)]
+pub enum Error {
+	#[error(transparent)]
+	Ape(#[from] ape::Error),
+	#[error(transparent)]
+	Id3(#[from] id3::Error),
+	#[error("Filesystem error for `{0}`: `{1}`")]
+	Io(PathBuf, std::io::Error),
+	#[error(transparent)]
+	Metaflac(#[from] metaflac::Error),
+	#[error(transparent)]
+	Mp4aMeta(#[from] mp4ameta::Error),
+	#[error(transparent)]
+	Opus(#[from] opus_headers::ParseError),
+	#[error(transparent)]
+	Vorbis(#[from] lewton::VorbisError),
+	#[error("Could not find a Vorbis comment within flac file")]
+	VorbisCommentNotFoundInFlacFile,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SongTags {
@@ -102,7 +121,7 @@ impl FrameContent for id3::Tag {
 	}
 }
 
-fn read_mp3(path: &Path) -> Result<SongTags> {
+fn read_mp3(path: &Path) -> Result<SongTags, Error> {
 	let tag = id3::Tag::read_from_path(path).or_else(|error| {
 		if let Some(tag) = error.partial_tag {
 			Ok(tag)
@@ -122,7 +141,7 @@ fn read_mp3(path: &Path) -> Result<SongTags> {
 	Ok(song_tags)
 }
 
-fn read_aiff(path: &Path) -> Result<SongTags> {
+fn read_aiff(path: &Path) -> Result<SongTags, Error> {
 	let tag = id3::Tag::read_from_aiff_path(path).or_else(|error| {
 		if let Some(tag) = error.partial_tag {
 			Ok(tag)
@@ -133,7 +152,7 @@ fn read_aiff(path: &Path) -> Result<SongTags> {
 	Ok(tag.into())
 }
 
-fn read_wave(path: &Path) -> Result<SongTags> {
+fn read_wave(path: &Path) -> Result<SongTags, Error> {
 	let tag = id3::Tag::read_from_wav_path(path).or_else(|error| {
 		if let Some(tag) = error.partial_tag {
 			Ok(tag)
@@ -172,7 +191,7 @@ fn read_ape_x_of_y(item: &ape::Item) -> Option<u32> {
 	}
 }
 
-fn read_ape(path: &Path) -> Result<SongTags> {
+fn read_ape(path: &Path) -> Result<SongTags, Error> {
 	let tag = ape::read_from_path(path)?;
 	let artist = tag.item("Artist").and_then(read_ape_string);
 	let album = tag.item("Album").and_then(read_ape_string);
@@ -186,9 +205,8 @@ fn read_ape(path: &Path) -> Result<SongTags> {
 	let genre = tag.item("GENRE").and_then(read_ape_string);
 	let label = tag.item("PUBLISHER").and_then(read_ape_string);
 	Ok(SongTags {
-		//
-		artist,       //
-		album_artist, //
+		artist,
+		album_artist,
 		album,
 		title,
 		duration: None,
@@ -203,8 +221,8 @@ fn read_ape(path: &Path) -> Result<SongTags> {
 	})
 }
 
-fn read_vorbis(path: &Path) -> Result<SongTags> {
-	let file = fs::File::open(path)?;
+fn read_vorbis(path: &Path) -> Result<SongTags, Error> {
+	let file = fs::File::open(path).map_err(|e| Error::Io(path.to_owned(), e))?;
 	let source = OggStreamReader::new(file)?;
 
 	let mut tags = SongTags {
@@ -245,7 +263,7 @@ fn read_vorbis(path: &Path) -> Result<SongTags> {
 	Ok(tags)
 }
 
-fn read_opus(path: &Path) -> Result<SongTags> {
+fn read_opus(path: &Path) -> Result<SongTags, Error> {
 	let headers = opus_headers::parse_from_path(path)?;
 
 	let mut tags = SongTags {
@@ -286,11 +304,11 @@ fn read_opus(path: &Path) -> Result<SongTags> {
 	Ok(tags)
 }
 
-fn read_flac(path: &Path) -> Result<SongTags> {
+fn read_flac(path: &Path) -> Result<SongTags, Error> {
 	let tag = metaflac::Tag::read_from_path(path)?;
 	let vorbis = tag
 		.vorbis_comments()
-		.ok_or_else(|| anyhow!("Missing Vorbis comments"))?;
+		.ok_or(Error::VorbisCommentNotFoundInFlacFile)?;
 	let disc_number = vorbis
 		.get("DISCNUMBER")
 		.and_then(|d| d[0].parse::<u32>().ok());
@@ -321,7 +339,7 @@ fn read_flac(path: &Path) -> Result<SongTags> {
 	})
 }
 
-fn read_mp4(path: &Path) -> Result<SongTags> {
+fn read_mp4(path: &Path) -> Result<SongTags, Error> {
 	let mut tag = mp4ameta::Tag::read_from_path(path)?;
 	let label_ident = mp4ameta::FreeformIdent::new("com.apple.iTunes", "Label");
 
