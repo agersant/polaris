@@ -208,7 +208,7 @@ impl Manager {
 		.map(AuthToken)
 	}
 
-	pub fn count(&self) -> anyhow::Result<i64> {
+	pub fn count(&self) -> Result<i64, Error> {
 		use crate::db::users::dsl::*;
 		let mut connection = self.db.connect()?;
 		let count = users.count().get_result(&mut connection)?;

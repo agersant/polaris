@@ -1,15 +1,19 @@
 use thiserror::Error;
 
 use crate::app::index::QueryError;
-use crate::app::{config, ddns, lastfm, playlist, settings, user, vfs};
+use crate::app::{config, ddns, lastfm, playlist, settings, thumbnail, user, vfs};
 use crate::db;
 
 #[derive(Error, Debug)]
 pub enum APIError {
+	#[error("Administrator permission is required")]
+	AdminPermissionRequired,
 	#[error("Authentication is required")]
 	AuthenticationRequired,
 	#[error("Incorrect Credentials")]
 	IncorrectCredentials,
+	#[error("EmbeddedArtworkNotFound")]
+	EmbeddedArtworkNotFound,
 	#[error("EmptyUsername")]
 	EmptyUsername,
 	#[error("EmptyPassword")]
@@ -38,14 +42,6 @@ pub enum APIError {
 	SongMetadataNotFound,
 	#[error("Internal server error")]
 	Internal,
-	#[error("Unspecified")]
-	Unspecified,
-}
-
-impl From<anyhow::Error> for APIError {
-	fn from(_: anyhow::Error) -> Self {
-		APIError::Unspecified
-	}
 }
 
 impl From<config::Error> for APIError {
@@ -78,7 +74,6 @@ impl From<QueryError> for APIError {
 			QueryError::DatabaseConnection(e) => e.into(),
 			QueryError::SongNotFound(_) => APIError::SongMetadataNotFound,
 			QueryError::Vfs(e) => e.into(),
-			QueryError::Unspecified => APIError::Unspecified,
 		}
 	}
 }
@@ -155,6 +150,20 @@ impl From<lastfm::Error> for APIError {
 			lastfm::Error::NowPlaying(_) => APIError::Internal,
 			lastfm::Error::Query(e) => e.into(),
 			lastfm::Error::User(e) => e.into(),
+		}
+	}
+}
+
+impl From<thumbnail::Error> for APIError {
+	fn from(error: thumbnail::Error) -> APIError {
+		match error {
+			thumbnail::Error::EmbeddedArtworkNotFound(_) => APIError::EmbeddedArtworkNotFound,
+			thumbnail::Error::Id3(_) => APIError::Internal,
+			thumbnail::Error::Image(_) => APIError::Internal,
+			thumbnail::Error::Io(_, _) => APIError::Internal,
+			thumbnail::Error::Metaflac(_) => APIError::Internal,
+			thumbnail::Error::Mp4aMeta(_) => APIError::Internal,
+			thumbnail::Error::UnsupportedFormat(_) => APIError::Internal,
 		}
 	}
 }

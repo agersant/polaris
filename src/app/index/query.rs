@@ -16,14 +16,6 @@ pub enum QueryError {
 	SongNotFound(PathBuf),
 	#[error(transparent)]
 	Vfs(#[from] vfs::Error),
-	#[error("Unspecified")]
-	Unspecified,
-}
-
-impl From<anyhow::Error> for QueryError {
-	fn from(_: anyhow::Error) -> Self {
-		QueryError::Unspecified
-	}
 }
 
 sql_function!(
@@ -44,8 +36,7 @@ impl Index {
 			// Browse top-level
 			let real_directories: Vec<Directory> = directories::table
 				.filter(directories::parent.is_null())
-				.load(&mut connection)
-				.map_err(anyhow::Error::new)?;
+				.load(&mut connection)?;
 			let virtual_directories = real_directories
 				.into_iter()
 				.filter_map(|d| d.virtualize(&vfs));
@@ -58,8 +49,7 @@ impl Index {
 			let real_directories: Vec<Directory> = directories::table
 				.filter(directories::parent.eq(&real_path_string))
 				.order(sql::<sql_types::Bool>("path COLLATE NOCASE ASC"))
-				.load(&mut connection)
-				.map_err(anyhow::Error::new)?;
+				.load(&mut connection)?;
 			let virtual_directories = real_directories
 				.into_iter()
 				.filter_map(|d| d.virtualize(&vfs));
@@ -68,8 +58,7 @@ impl Index {
 			let real_songs: Vec<Song> = songs::table
 				.filter(songs::parent.eq(&real_path_string))
 				.order(sql::<sql_types::Bool>("path COLLATE NOCASE ASC"))
-				.load(&mut connection)
-				.map_err(anyhow::Error::new)?;
+				.load(&mut connection)?;
 			let virtual_songs = real_songs.into_iter().filter_map(|s| s.virtualize(&vfs));
 			output.extend(virtual_songs.map(CollectionFile::Song));
 		}
@@ -95,20 +84,16 @@ impl Index {
 			songs
 				.filter(path.like(&song_path_filter))
 				.order(path)
-				.load(&mut connection)
-				.map_err(anyhow::Error::new)?
+				.load(&mut connection)?
 		} else {
-			songs
-				.order(path)
-				.load(&mut connection)
-				.map_err(anyhow::Error::new)?
+			songs.order(path).load(&mut connection)?
 		};
 
 		let virtual_songs = real_songs.into_iter().filter_map(|s| s.virtualize(&vfs));
 		Ok(virtual_songs.collect::<Vec<_>>())
 	}
 
-	pub fn get_random_albums(&self, count: i64) -> anyhow::Result<Vec<Directory>> {
+	pub fn get_random_albums(&self, count: i64) -> Result<Vec<Directory>, QueryError> {
 		use self::directories::dsl::*;
 		let vfs = self.vfs_manager.get_vfs()?;
 		let mut connection = self.db.connect()?;
@@ -123,7 +108,7 @@ impl Index {
 		Ok(virtual_directories.collect::<Vec<_>>())
 	}
 
-	pub fn get_recent_albums(&self, count: i64) -> anyhow::Result<Vec<Directory>> {
+	pub fn get_recent_albums(&self, count: i64) -> Result<Vec<Directory>, QueryError> {
 		use self::directories::dsl::*;
 		let vfs = self.vfs_manager.get_vfs()?;
 		let mut connection = self.db.connect()?;
@@ -138,7 +123,7 @@ impl Index {
 		Ok(virtual_directories.collect::<Vec<_>>())
 	}
 
-	pub fn search(&self, query: &str) -> anyhow::Result<Vec<CollectionFile>> {
+	pub fn search(&self, query: &str) -> Result<Vec<CollectionFile>, QueryError> {
 		let vfs = self.vfs_manager.get_vfs()?;
 		let mut connection = self.db.connect()?;
 		let like_test = format!("%{}%", query);

@@ -15,7 +15,7 @@ use actix_web_httpauth::extractors::bearer::BearerAuth;
 use futures_util::future::err;
 use percent_encoding::percent_decode_str;
 use std::future::Future;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::str;
 
@@ -73,9 +73,11 @@ pub fn make_config() -> impl FnOnce(&mut ServiceConfig) + Clone {
 impl ResponseError for APIError {
 	fn status_code(&self) -> StatusCode {
 		match self {
+			APIError::AdminPermissionRequired => StatusCode::UNAUTHORIZED,
 			APIError::AudioFileIOError => StatusCode::NOT_FOUND,
 			APIError::AuthenticationRequired => StatusCode::UNAUTHORIZED,
 			APIError::DeletingOwnAccount => StatusCode::CONFLICT,
+			APIError::EmbeddedArtworkNotFound => StatusCode::NOT_FOUND,
 			APIError::EmptyPassword => StatusCode::BAD_REQUEST,
 			APIError::EmptyUsername => StatusCode::BAD_REQUEST,
 			APIError::IncorrectCredentials => StatusCode::UNAUTHORIZED,
@@ -87,7 +89,6 @@ impl ResponseError for APIError {
 			APIError::PlaylistNotFound => StatusCode::NOT_FOUND,
 			APIError::SongMetadataNotFound => StatusCode::NOT_FOUND,
 			APIError::ThumbnailFileIOError => StatusCode::NOT_FOUND,
-			APIError::Unspecified => StatusCode::INTERNAL_SERVER_ERROR,
 			APIError::UserNotFound => StatusCode::NOT_FOUND,
 			APIError::VFSPathNotFound => StatusCode::NOT_FOUND,
 		}
@@ -106,7 +107,7 @@ impl FromRequest for Auth {
 	fn from_request(request: &HttpRequest, payload: &mut Payload) -> Self::Future {
 		let user_manager = match request.app_data::<Data<user::Manager>>() {
 			Some(m) => m.clone(),
-			None => return Box::pin(err(ErrorInternalServerError(APIError::Unspecified))),
+			None => return Box::pin(err(ErrorInternalServerError(APIError::Internal))),
 		};
 
 		let bearer_auth_future = BearerAuth::from_request(request, payload);
@@ -155,7 +156,7 @@ impl FromRequest for AdminRights {
 	fn from_request(request: &HttpRequest, payload: &mut Payload) -> Self::Future {
 		let user_manager = match request.app_data::<Data<user::Manager>>() {
 			Some(m) => m.clone(),
-			None => return Box::pin(err(ErrorInternalServerError(APIError::Unspecified))),
+			None => return Box::pin(err(ErrorInternalServerError(APIError::Internal))),
 		};
 
 		let auth_future = Auth::from_request(request, payload);
@@ -164,7 +165,7 @@ impl FromRequest for AdminRights {
 			let user_manager_count = user_manager.clone();
 			let user_count = block(move || user_manager_count.count()).await;
 			match user_count {
-				Err(_) => return Err(ErrorInternalServerError(APIError::Unspecified)),
+				Err(e) => return Err(e.into()),
 				Ok(0) => return Ok(AdminRights { auth: None }),
 				_ => (),
 			};
@@ -175,7 +176,7 @@ impl FromRequest for AdminRights {
 			if is_admin {
 				Ok(AdminRights { auth: Some(auth) })
 			} else {
-				Err(ErrorForbidden(APIError::Unspecified))
+				Err(ErrorForbidden(APIError::AdminPermissionRequired))
 			}
 		})
 	}
@@ -212,7 +213,7 @@ where
 {
 	actix_web::web::block(f)
 		.await
-		.map_err(|_| APIError::Unspecified)
+		.map_err(|_| APIError::Internal)
 		.and_then(|r| r.map_err(|e| e.into()))
 }
 
@@ -522,13 +523,13 @@ async fn get_thumbnail(
 ) -> Result<MediaFile, APIError> {
 	let options = thumbnail::Options::from(options_input.0);
 
-	let thumbnail_path = block(move || {
+	let thumbnail_path = block(move || -> Result<PathBuf, APIError> {
 		let vfs = vfs_manager.get_vfs()?;
 		let path = percent_decode_str(&path).decode_utf8_lossy();
 		let image_path = vfs.virtual_to_real(Path::new(path.as_ref()))?;
 		thumbnails_manager
 			.get_thumbnail(&image_path, &options)
-			.map_err(|_| APIError::Unspecified)
+			.map_err(|e| e.into())
 	})
 	.await?;
 
