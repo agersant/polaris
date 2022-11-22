@@ -1,4 +1,5 @@
 use actix_web::{
+	dev::Service,
 	middleware::{Compress, Logger, NormalizePath},
 	rt::System,
 	web::{self, ServiceConfig},
@@ -48,6 +49,19 @@ pub fn run(app: App) -> Result<(), std::io::Error> {
 		HttpServer::new(move || {
 			ActixApp::new()
 				.wrap(Logger::default())
+				.wrap_fn(|req, srv| {
+					// For some reason, actix logs error as DEBUG level.
+					// This logs them as ERROR level
+					// See https://github.com/actix/actix-web/issues/2637
+					let response_future = srv.call(req);
+					async {
+						let response = response_future.await?;
+						if let Some(error) = response.response().error() {
+							error!("{}", error);
+						}
+						Ok(response)
+					}
+				})
 				.wrap(Compress::default())
 				.configure(make_config(app.clone()))
 		})

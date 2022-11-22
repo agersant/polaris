@@ -93,6 +93,10 @@ impl ResponseError for APIError {
 			APIError::VFSPathNotFound => StatusCode::NOT_FOUND,
 		}
 	}
+
+	fn error_response(&self) -> HttpResponse<BoxBody> {
+		HttpResponse::new(self.status_code())
+	}
 }
 
 #[derive(Debug)]
