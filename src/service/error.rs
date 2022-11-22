@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 use crate::app::index::QueryError;
-use crate::app::{config, ddns, playlist, settings, user, vfs};
+use crate::app::{config, ddns, lastfm, playlist, settings, user, vfs};
 use crate::db;
 
 #[derive(Error, Debug)]
@@ -34,6 +34,8 @@ pub enum APIError {
 	UserNotFound,
 	#[error("Playlist not found")]
 	PlaylistNotFound,
+	#[error("Song not found")]
+	SongMetadataNotFound,
 	#[error("Internal server error")]
 	Internal,
 	#[error("Unspecified")]
@@ -72,7 +74,9 @@ impl From<playlist::Error> for APIError {
 impl From<QueryError> for APIError {
 	fn from(error: QueryError) -> APIError {
 		match error {
+			QueryError::Database(_) => APIError::Internal,
 			QueryError::DatabaseConnection(e) => e.into(),
+			QueryError::SongNotFound(_) => APIError::SongMetadataNotFound,
 			QueryError::Vfs(e) => e.into(),
 			QueryError::Unspecified => APIError::Unspecified,
 		}
@@ -96,6 +100,9 @@ impl From<settings::Error> for APIError {
 impl From<user::Error> for APIError {
 	fn from(error: user::Error) -> APIError {
 		match error {
+			user::Error::AuthorizationTokenEncoding => APIError::Internal,
+			user::Error::BrancaTokenEncoding => APIError::Internal,
+			user::Error::Database(_) => APIError::Internal,
 			user::Error::DatabaseConnection(e) => e.into(),
 			user::Error::EmptyUsername => APIError::EmptyUsername,
 			user::Error::EmptyPassword => APIError::EmptyPassword,
@@ -103,7 +110,8 @@ impl From<user::Error> for APIError {
 			user::Error::IncorrectPassword => APIError::IncorrectCredentials,
 			user::Error::InvalidAuthToken => APIError::IncorrectCredentials,
 			user::Error::IncorrectAuthorizationScope => APIError::IncorrectCredentials,
-			user::Error::Unspecified => APIError::Unspecified,
+			user::Error::PasswordHashing => APIError::Internal,
+			user::Error::MissingLastFMSessionKey => APIError::IncorrectCredentials,
 		}
 	}
 }
@@ -138,6 +146,18 @@ impl From<db::Error> for APIError {
 			db::Error::ConnectionPool => APIError::Internal,
 			db::Error::Io(_, _) => APIError::Internal,
 			db::Error::Migration => APIError::Internal,
+		}
+	}
+}
+
+impl From<lastfm::Error> for APIError {
+	fn from(error: lastfm::Error) -> APIError {
+		match error {
+			lastfm::Error::ScrobblerAuthentication(_) => APIError::Internal,
+			lastfm::Error::Scrobble(_) => APIError::Internal,
+			lastfm::Error::NowPlaying(_) => APIError::Internal,
+			lastfm::Error::Query(e) => e.into(),
+			lastfm::Error::User(e) => e.into(),
 		}
 	}
 }

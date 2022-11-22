@@ -1,8 +1,7 @@
-use anyhow::bail;
 use diesel::dsl::sql;
 use diesel::prelude::*;
 use diesel::sql_types;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use super::*;
 use crate::db::{self, directories, songs};
@@ -10,7 +9,11 @@ use crate::db::{self, directories, songs};
 #[derive(thiserror::Error, Debug)]
 pub enum QueryError {
 	#[error(transparent)]
+	Database(#[from] diesel::result::Error),
+	#[error(transparent)]
 	DatabaseConnection(#[from] db::Error),
+	#[error("Song was not found: `{0}`")]
+	SongNotFound(PathBuf),
 	#[error(transparent)]
 	Vfs(#[from] vfs::Error),
 	#[error("Unspecified")]
@@ -178,7 +181,7 @@ impl Index {
 		Ok(output)
 	}
 
-	pub fn get_song(&self, virtual_path: &Path) -> anyhow::Result<Song> {
+	pub fn get_song(&self, virtual_path: &Path) -> Result<Song, QueryError> {
 		let vfs = self.vfs_manager.get_vfs()?;
 		let mut connection = self.db.connect()?;
 
@@ -192,7 +195,7 @@ impl Index {
 
 		match real_song.virtualize(&vfs) {
 			Some(s) => Ok(s),
-			_ => bail!("Missing VFS mapping"),
+			None => Err(QueryError::SongNotFound(real_path)),
 		}
 	}
 }

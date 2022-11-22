@@ -73,22 +73,23 @@ pub fn make_config() -> impl FnOnce(&mut ServiceConfig) + Clone {
 impl ResponseError for APIError {
 	fn status_code(&self) -> StatusCode {
 		match self {
-			APIError::AuthenticationRequired => StatusCode::UNAUTHORIZED,
-			APIError::IncorrectCredentials => StatusCode::UNAUTHORIZED,
-			APIError::EmptyUsername => StatusCode::BAD_REQUEST,
-			APIError::EmptyPassword => StatusCode::BAD_REQUEST,
-			APIError::DeletingOwnAccount => StatusCode::CONFLICT,
-			APIError::OwnAdminPrivilegeRemoval => StatusCode::CONFLICT,
 			APIError::AudioFileIOError => StatusCode::NOT_FOUND,
-			APIError::ThumbnailFileIOError => StatusCode::NOT_FOUND,
+			APIError::AuthenticationRequired => StatusCode::UNAUTHORIZED,
+			APIError::DeletingOwnAccount => StatusCode::CONFLICT,
+			APIError::EmptyPassword => StatusCode::BAD_REQUEST,
+			APIError::EmptyUsername => StatusCode::BAD_REQUEST,
+			APIError::IncorrectCredentials => StatusCode::UNAUTHORIZED,
+			APIError::Internal => StatusCode::INTERNAL_SERVER_ERROR,
 			APIError::LastFMAccountNotLinked => StatusCode::NO_CONTENT,
 			APIError::LastFMLinkContentBase64DecodeError => StatusCode::BAD_REQUEST,
 			APIError::LastFMLinkContentEncodingError => StatusCode::BAD_REQUEST,
-			APIError::UserNotFound => StatusCode::NOT_FOUND,
+			APIError::OwnAdminPrivilegeRemoval => StatusCode::CONFLICT,
 			APIError::PlaylistNotFound => StatusCode::NOT_FOUND,
-			APIError::VFSPathNotFound => StatusCode::NOT_FOUND,
-			APIError::Internal => StatusCode::INTERNAL_SERVER_ERROR,
+			APIError::SongMetadataNotFound => StatusCode::NOT_FOUND,
+			APIError::ThumbnailFileIOError => StatusCode::NOT_FOUND,
 			APIError::Unspecified => StatusCode::INTERNAL_SERVER_ERROR,
+			APIError::UserNotFound => StatusCode::NOT_FOUND,
+			APIError::VFSPathNotFound => StatusCode::NOT_FOUND,
 		}
 	}
 }
