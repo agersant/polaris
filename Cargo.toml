@@ -14,7 +14,6 @@ ui = ["native-windows-gui", "native-windows-derive"]
 actix-files = { version = "0.6" }
 actix-web = { version = "4" }
 actix-web-httpauth = { version = "0.8" }
-anyhow = "1.0.66"
 ape = "0.4.0"
 base64 = "0.13"
 branca = "0.10.1"
