@@ -1,6 +1,6 @@
 use serde::Deserialize;
 use std::io::Read;
-use std::path;
+use std::path::{Path, PathBuf};
 
 use crate::app::{ddns, settings, user, vfs};
 
@@ -8,8 +8,12 @@ use crate::app::{ddns, settings, user, vfs};
 pub enum Error {
 	#[error(transparent)]
 	Ddns(#[from] ddns::Error),
+	#[error("Filesystem error for `{0}`: `{1}`")]
+	Io(PathBuf, std::io::Error),
 	#[error(transparent)]
 	Settings(#[from] settings::Error),
+	#[error(transparent)]
+	Toml(#[from] toml::de::Error),
 	#[error(transparent)]
 	User(#[from] user::Error),
 	#[error(transparent)]
@@ -25,10 +29,13 @@ pub struct Config {
 }
 
 impl Config {
-	pub fn from_path(path: &path::Path) -> anyhow::Result<Config> {
-		let mut config_file = std::fs::File::open(path)?;
+	pub fn from_path(path: &Path) -> Result<Config, Error> {
+		let mut config_file =
+			std::fs::File::open(path).map_err(|e| Error::Io(path.to_owned(), e))?;
 		let mut config_file_content = String::new();
-		config_file.read_to_string(&mut config_file_content)?;
+		config_file
+			.read_to_string(&mut config_file_content)
+			.map_err(|e| Error::Io(path.to_owned(), e))?;
 		let config = toml::de::from_str::<Self>(&config_file_content)?;
 		Ok(config)
 	}

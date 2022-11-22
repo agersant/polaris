@@ -48,7 +48,9 @@ impl From<config::Error> for APIError {
 	fn from(error: config::Error) -> APIError {
 		match error {
 			config::Error::Ddns(e) => e.into(),
+			config::Error::Io(_, _) => APIError::Internal,
 			config::Error::Settings(e) => e.into(),
+			config::Error::Toml(_) => APIError::Internal,
 			config::Error::User(e) => e.into(),
 			config::Error::Vfs(e) => e.into(),
 		}
