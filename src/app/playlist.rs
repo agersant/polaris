@@ -1,4 +1,3 @@
-use anyhow::Result;
 use core::clone::Clone;
 use diesel::prelude::*;
 use diesel::sql_types;
