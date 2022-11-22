@@ -15,6 +15,8 @@
 - Additional metadata fields are now indexed: lyricist, composer, genre and label (thanks @pmphfm)
 - Endpoints returning thumbnail images or audio files no longer use HTTP `content-encoding`
 - The `/thumbnail` endpoint now supports an optional parameter for small/large/native image sizing. (thanks @Saecki)
+- Log file now contain more details about the cause of failed HTTP requests (3xx, 4xx, 5xx)
+- Startup errors emit clearer messages
 
 ### Web client
 

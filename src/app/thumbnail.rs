@@ -11,16 +11,16 @@ use crate::utils::{get_audio_format, AudioFormat};
 pub enum Error {
 	#[error("No embedded artwork was found in `{0}`")]
 	EmbeddedArtworkNotFound(PathBuf),
-	#[error(transparent)]
-	Id3(#[from] id3::Error),
-	#[error(transparent)]
-	Image(#[from] image::error::ImageError),
+	#[error("Could not read thumbnail from ID3 tag in `{0}`:\n\n{1}")]
+	Id3(PathBuf, id3::Error),
+	#[error("Could not read thumbnail image in `{0}`:\n\n{1}")]
+	Image(PathBuf, image::error::ImageError),
 	#[error("Filesystem error for `{0}`: `{1}`")]
 	Io(PathBuf, std::io::Error),
-	#[error(transparent)]
-	Metaflac(#[from] metaflac::Error),
-	#[error(transparent)]
-	Mp4aMeta(#[from] mp4ameta::Error),
+	#[error("Could not read thumbnail from flac file in `{0}`:\n\n{1}")]
+	Metaflac(PathBuf, metaflac::Error),
+	#[error("Could not read thumbnail from mp4 file in `{0}`:\n\n{1}")]
+	Mp4aMeta(PathBuf, mp4ameta::Error),
 	#[error("This file format is not supported: {0}")]
 	UnsupportedFormat(&'static str),
 }
@@ -94,7 +94,9 @@ impl Manager {
 		let path = self.get_thumbnail_path(image_path, thumbnailoptions);
 		let mut out_file =
 			File::create(&path).map_err(|e| Error::Io(self.thumbnails_dir_path.clone(), e))?;
-		thumbnail.write_to(&mut out_file, ImageOutputFormat::Jpeg(quality))?;
+		thumbnail
+			.write_to(&mut out_file, ImageOutputFormat::Jpeg(quality))
+			.map_err(|e| Error::Image(image_path.to_owned(), e))?;
 		Ok(path)
 	}
 
@@ -130,11 +132,13 @@ fn generate_thumbnail(image_path: &Path, options: &Options) -> Result<DynamicIma
 			out_dimension,
 			background,
 		));
-		final_image.copy_from(
-			&scaled_image,
-			(out_dimension - scaled_width) / 2,
-			(out_dimension - scaled_height) / 2,
-		)?;
+		final_image
+			.copy_from(
+				&scaled_image,
+				(out_dimension - scaled_width) / 2,
+				(out_dimension - scaled_height) / 2,
+			)
+			.map_err(|e| Error::Image(image_path.to_owned(), e))?;
 	} else {
 		final_image = source_image.thumbnail(out_dimension, out_dimension);
 	}
@@ -153,7 +157,7 @@ fn read(image_path: &Path) -> Result<DynamicImage, Error> {
 		Some(AudioFormat::OGG) => read_vorbis(image_path),
 		Some(AudioFormat::OPUS) => read_opus(image_path),
 		Some(AudioFormat::WAVE) => read_wave(image_path),
-		None => Ok(image::open(image_path)?),
+		None => image::open(image_path).map_err(|e| Error::Image(image_path.to_owned(), e)),
 	}
 }
 
@@ -162,40 +166,44 @@ fn read_ape(_: &Path) -> Result<DynamicImage, Error> {
 }
 
 fn read_flac(path: &Path) -> Result<DynamicImage, Error> {
-	let tag = metaflac::Tag::read_from_path(path)?;
+	let tag =
+		metaflac::Tag::read_from_path(path).map_err(|e| Error::Metaflac(path.to_owned(), e))?;
 	if let Some(p) = tag.pictures().next() {
-		return Ok(image::load_from_memory(&p.data)?);
+		return image::load_from_memory(&p.data).map_err(|e| Error::Image(path.to_owned(), e));
 	}
 	Err(Error::EmbeddedArtworkNotFound(path.to_owned()))
 }
 
 fn read_mp3(path: &Path) -> Result<DynamicImage, Error> {
-	let tag = id3::Tag::read_from_path(path)?;
+	let tag = id3::Tag::read_from_path(path).map_err(|e| Error::Id3(path.to_owned(), e))?;
 	read_id3(path, &tag)
 }
 
 fn read_aiff(path: &Path) -> Result<DynamicImage, Error> {
-	let tag = id3::Tag::read_from_aiff_path(path)?;
+	let tag = id3::Tag::read_from_aiff_path(path).map_err(|e| Error::Id3(path.to_owned(), e))?;
 	read_id3(path, &tag)
 }
 
 fn read_wave(path: &Path) -> Result<DynamicImage, Error> {
-	let tag = id3::Tag::read_from_wav_path(path)?;
+	let tag = id3::Tag::read_from_wav_path(path).map_err(|e| Error::Id3(path.to_owned(), e))?;
 	read_id3(path, &tag)
 }
 
 fn read_id3(path: &Path, tag: &id3::Tag) -> Result<DynamicImage, Error> {
-	if let Some(p) = tag.pictures().next() {
-		return Ok(image::load_from_memory(&p.data)?);
-	}
-	Err(Error::EmbeddedArtworkNotFound(path.to_owned()))
+	tag.pictures()
+		.next()
+		.ok_or_else(|| Error::EmbeddedArtworkNotFound(path.to_owned()))
+		.and_then(|d| {
+			image::load_from_memory(&d.data).map_err(|e| Error::Image(path.to_owned(), e))
+		})
 }
 
 fn read_mp4(path: &Path) -> Result<DynamicImage, Error> {
-	let tag = mp4ameta::Tag::read_from_path(path)?;
+	let tag =
+		mp4ameta::Tag::read_from_path(path).map_err(|e| Error::Mp4aMeta(path.to_owned(), e))?;
 	tag.artwork()
-		.and_then(|d| image::load_from_memory(d.data).ok())
 		.ok_or_else(|| Error::EmbeddedArtworkNotFound(path.to_owned()))
+		.and_then(|d| image::load_from_memory(d.data).map_err(|e| Error::Image(path.to_owned(), e)))
 }
 
 fn read_vorbis(_: &Path) -> Result<DynamicImage, Error> {

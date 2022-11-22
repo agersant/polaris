@@ -8,12 +8,12 @@ use crate::db::{self, misc_settings, DB};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
+	#[error("Auth secret does not have the expected format")]
+	AuthenticationSecretInvalid,
 	#[error("Missing auth secret")]
-	AuthSecretNotFound,
+	AuthenticationSecretNotFound,
 	#[error(transparent)]
 	DatabaseConnection(#[from] db::Error),
-	#[error("Auth secret does not have the expected format")]
-	InvalidAuthSecret,
 	#[error("Missing settings")]
 	MiscSettingsNotFound,
 	#[error("Index album art pattern is not a valid regex")]
@@ -56,12 +56,12 @@ impl Manager {
 			.select(auth_secret)
 			.get_result(&mut connection)
 			.map_err(|e| match e {
-				diesel::result::Error::NotFound => Error::AuthSecretNotFound,
+				diesel::result::Error::NotFound => Error::AuthenticationSecretNotFound,
 				e => e.into(),
 			})?;
 		secret
 			.try_into()
-			.map_err(|_| Error::InvalidAuthSecret)
+			.map_err(|_| Error::AuthenticationSecretInvalid)
 			.map(|key| AuthSecret { key })
 	}
 
