@@ -1,12 +1,23 @@
-use anyhow::*;
 use diesel::prelude::*;
 use rayon::prelude::*;
 use std::path::Path;
 
 use crate::app::vfs;
-use crate::db::{directories, songs, DB};
+use crate::db::{self, directories, songs, DB};
 
 const INDEX_BUILDING_CLEAN_BUFFER_SIZE: usize = 500; // Deletions in each transaction
+
+#[derive(thiserror::Error, Debug)]
+pub enum Error {
+	#[error(transparent)]
+	Database(#[from] diesel::result::Error),
+	#[error(transparent)]
+	DatabaseConnection(#[from] db::Error),
+	#[error(transparent)]
+	ThreadPoolBuilder(#[from] rayon::ThreadPoolBuildError),
+	#[error(transparent)]
+	Vfs(#[from] vfs::Error),
+}
 
 pub struct Cleaner {
 	db: DB,
@@ -18,7 +29,7 @@ impl Cleaner {
 		Self { db, vfs_manager }
 	}
 
-	pub fn clean(&self) -> Result<()> {
+	pub fn clean(&self) -> Result<(), Error> {
 		let vfs = self.vfs_manager.get_vfs()?;
 
 		let all_directories: Vec<String> = {
