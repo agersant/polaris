@@ -20,14 +20,6 @@ pub enum Error {
 	IndexAlbumArtPatternInvalid,
 	#[error(transparent)]
 	Database(#[from] diesel::result::Error),
-	#[error("Unspecified")]
-	Unspecified,
-}
-
-impl From<anyhow::Error> for Error {
-	fn from(_: anyhow::Error) -> Self {
-		Error::Unspecified
-	}
 }
 
 #[derive(Clone, Default)]

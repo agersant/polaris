@@ -16,14 +16,6 @@ pub enum Error {
 	DatabaseConnection(#[from] db::Error),
 	#[error(transparent)]
 	Database(#[from] diesel::result::Error),
-	#[error("Unspecified")]
-	Unspecified,
-}
-
-impl From<anyhow::Error> for Error {
-	fn from(_: anyhow::Error) -> Self {
-		Error::Unspecified
-	}
 }
 
 #[derive(Clone, Debug, Deserialize, Insertable, PartialEq, Eq, Queryable, Serialize)]
@@ -123,16 +115,14 @@ impl Manager {
 
 	pub fn set_mount_dirs(&self, mount_dirs: &[MountDir]) -> Result<(), Error> {
 		let mut connection = self.db.connect()?;
-		connection
-			.transaction::<_, diesel::result::Error, _>(|connection| {
-				use self::mount_points::dsl::*;
-				diesel::delete(mount_points).execute(&mut *connection)?;
-				diesel::insert_into(mount_points)
-					.values(mount_dirs)
-					.execute(&mut *connection)?; // TODO https://github.com/diesel-rs/diesel/issues/1822
-				Ok(())
-			})
-			.map_err(anyhow::Error::new)?;
+		connection.transaction::<_, diesel::result::Error, _>(|connection| {
+			use self::mount_points::dsl::*;
+			diesel::delete(mount_points).execute(&mut *connection)?;
+			diesel::insert_into(mount_points)
+				.values(mount_dirs)
+				.execute(&mut *connection)?; // TODO https://github.com/diesel-rs/diesel/issues/1822
+			Ok(())
+		})?;
 		Ok(())
 	}
 }

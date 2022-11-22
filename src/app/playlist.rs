@@ -12,6 +12,8 @@ use crate::db::{self, playlist_songs, playlists, users, DB};
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
 	#[error(transparent)]
+	Database(#[from] diesel::result::Error),
+	#[error(transparent)]
 	DatabaseConnection(#[from] db::Error),
 	#[error("User not found")]
 	UserNotFound,
@@ -19,14 +21,6 @@ pub enum Error {
 	PlaylistNotFound,
 	#[error(transparent)]
 	Vfs(#[from] vfs::Error),
-	#[error("Unspecified")]
-	Unspecified,
-}
-
-impl From<anyhow::Error> for Error {
-	fn from(_: anyhow::Error) -> Self {
-		Error::Unspecified
-	}
 }
 
 #[derive(Clone)]
@@ -49,8 +43,7 @@ impl Manager {
 				.filter(name.eq(owner))
 				.select((id,))
 				.first(&mut connection)
-				.optional()
-				.map_err(anyhow::Error::new)?
+				.optional()?
 				.ok_or(Error::UserNotFound)?
 		};
 
@@ -58,8 +51,7 @@ impl Manager {
 			use self::playlists::dsl::*;
 			let found_playlists: Vec<String> = Playlist::belonging_to(&user)
 				.select(name)
-				.load(&mut connection)
-				.map_err(anyhow::Error::new)?;
+				.load(&mut connection)?;
 			Ok(found_playlists)
 		}
 	}
@@ -84,8 +76,7 @@ impl Manager {
 					.filter(name.eq(owner))
 					.select((id,))
 					.first(&mut connection)
-					.optional()
-					.map_err(anyhow::Error::new)?
+					.optional()?
 					.ok_or(Error::UserNotFound)?
 			};
 
@@ -97,16 +88,14 @@ impl Manager {
 
 			diesel::insert_into(playlists::table)
 				.values(&new_playlist)
-				.execute(&mut connection)
-				.map_err(anyhow::Error::new)?;
+				.execute(&mut connection)?;
 
 			playlist = {
 				use self::playlists::dsl::*;
 				playlists
 					.select((id, owner))
 					.filter(name.eq(playlist_name).and(owner.eq(user.id)))
-					.get_result(&mut connection)
-					.map_err(anyhow::Error::new)?
+					.get_result(&mut connection)?
 			}
 		}
 
@@ -130,19 +119,17 @@ impl Manager {
 
 		{
 			let mut connection = self.db.connect()?;
-			connection
-				.transaction::<_, diesel::result::Error, _>(|connection| {
-					// Delete old content (if any)
-					let old_songs = PlaylistSong::belonging_to(&playlist);
-					diesel::delete(old_songs).execute(connection)?;
+			connection.transaction::<_, diesel::result::Error, _>(|connection| {
+				// Delete old content (if any)
+				let old_songs = PlaylistSong::belonging_to(&playlist);
+				diesel::delete(old_songs).execute(connection)?;
 
-					// Insert content
-					diesel::insert_into(playlist_songs::table)
-						.values(&new_songs)
-						.execute(&mut *connection)?; // TODO https://github.com/diesel-rs/diesel/issues/1822
-					Ok(())
-				})
-				.map_err(anyhow::Error::new)?;
+				// Insert content
+				diesel::insert_into(playlist_songs::table)
+					.values(&new_songs)
+					.execute(&mut *connection)?; // TODO https://github.com/diesel-rs/diesel/issues/1822
+				Ok(())
+			})?;
 		}
 
 		Ok(())
@@ -162,8 +149,7 @@ impl Manager {
 					.filter(name.eq(owner))
 					.select((id,))
 					.first(&mut connection)
-					.optional()
-					.map_err(anyhow::Error::new)?
+					.optional()?
 					.ok_or(Error::UserNotFound)?
 			};
 
@@ -174,8 +160,7 @@ impl Manager {
 					.select((id, owner))
 					.filter(name.eq(playlist_name).and(owner.eq(user.id)))
 					.get_result(&mut connection)
-					.optional()
-					.map_err(anyhow::Error::new)?
+					.optional()?
 					.ok_or(Error::PlaylistNotFound)?
 			};
 
@@ -190,9 +175,7 @@ impl Manager {
 		"#,
 			);
 			let query = query.bind::<sql_types::Integer, _>(playlist.id);
-			songs = query
-				.get_results(&mut connection)
-				.map_err(anyhow::Error::new)?;
+			songs = query.get_results(&mut connection)?;
 		}
 
 		// Map real path to virtual paths
@@ -213,18 +196,14 @@ impl Manager {
 				.filter(name.eq(owner))
 				.select((id,))
 				.first(&mut connection)
-				.optional()
-				.map_err(anyhow::Error::new)?
+				.optional()?
 				.ok_or(Error::UserNotFound)?
 		};
 
 		{
 			use self::playlists::dsl::*;
 			let q = Playlist::belonging_to(&user).filter(name.eq(playlist_name));
-			match diesel::delete(q)
-				.execute(&mut connection)
-				.map_err(anyhow::Error::new)?
-			{
+			match diesel::delete(q).execute(&mut connection)? {
 				0 => Err(Error::PlaylistNotFound),
 				_ => Ok(()),
 			}

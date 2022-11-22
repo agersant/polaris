@@ -62,11 +62,11 @@ impl From<config::Error> for APIError {
 impl From<playlist::Error> for APIError {
 	fn from(error: playlist::Error) -> APIError {
 		match error {
+			playlist::Error::Database(_) => APIError::Internal,
 			playlist::Error::DatabaseConnection(e) => e.into(),
 			playlist::Error::PlaylistNotFound => APIError::PlaylistNotFound,
 			playlist::Error::UserNotFound => APIError::UserNotFound,
 			playlist::Error::Vfs(e) => e.into(),
-			playlist::Error::Unspecified => APIError::Unspecified,
 		}
 	}
 }
@@ -92,7 +92,6 @@ impl From<settings::Error> for APIError {
 			settings::Error::MiscSettingsNotFound => APIError::Internal,
 			settings::Error::IndexAlbumArtPatternInvalid => APIError::Internal,
 			settings::Error::Database(_) => APIError::Internal,
-			settings::Error::Unspecified => APIError::Unspecified,
 		}
 	}
 }
@@ -123,7 +122,6 @@ impl From<vfs::Error> for APIError {
 			vfs::Error::CouldNotMapToRealPath(_) => APIError::VFSPathNotFound,
 			vfs::Error::Database(_) => APIError::Internal,
 			vfs::Error::DatabaseConnection(e) => e.into(),
-			vfs::Error::Unspecified => APIError::Unspecified,
 		}
 	}
 }
@@ -131,10 +129,9 @@ impl From<vfs::Error> for APIError {
 impl From<ddns::Error> for APIError {
 	fn from(error: ddns::Error) -> APIError {
 		match error {
+			ddns::Error::Database(_) => APIError::Internal,
 			ddns::Error::DatabaseConnection(e) => e.into(),
 			ddns::Error::UpdateQueryFailed(_) => APIError::Internal,
-			ddns::Error::Database(_) => APIError::Internal,
-			ddns::Error::Unspecified => APIError::Unspecified,
 		}
 	}
 }

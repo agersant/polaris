@@ -16,14 +16,6 @@ pub enum Error {
 	DatabaseConnection(#[from] db::Error),
 	#[error(transparent)]
 	Database(#[from] diesel::result::Error),
-	#[error("Unspecified")]
-	Unspecified,
-}
-
-impl From<anyhow::Error> for Error {
-	fn from(_: anyhow::Error) -> Self {
-		Error::Unspecified
-	}
 }
 
 #[derive(Clone, Debug, Deserialize, Insertable, PartialEq, Eq, Queryable, Serialize)]
