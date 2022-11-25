@@ -14,9 +14,10 @@
 - Fixed a bug where all music sources would be deleted when trying to add sources with duplicate names
 - Additional metadata fields are now indexed: lyricist, composer, genre and label (thanks @pmphfm)
 - Endpoints returning thumbnail images or audio files no longer use HTTP `content-encoding`
+- When indexing files with ID3v2 tags, the "Original Date Released" frame can now be used to populate the year associated with a song
 - The `/thumbnail` endpoint now supports an optional parameter for small/large/native image sizing. (thanks @Saecki)
 - Log file now contain more details about the cause of failed HTTP requests (3xx, 4xx, 5xx)
-- Startup errors emit clearer messages
+- Startup failures now generate clearer error messages
 
 ### Web client
 

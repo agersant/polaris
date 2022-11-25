@@ -58,6 +58,7 @@ impl From<id3::Tag> for SongTags {
 			.year()
 			.map(|y| y as i32)
 			.or_else(|| tag.date_released().map(|d| d.year))
+			.or_else(|| tag.original_date_released().map(|d| d.year))
 			.or_else(|| tag.date_recorded().map(|d| d.year));
 		let has_artwork = tag.pictures().count() > 0;
 		let lyricist = tag.get_text("TEXT");
