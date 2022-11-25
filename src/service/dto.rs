@@ -1,20 +1,18 @@
 use serde::{Deserialize, Serialize};
 
-use crate::app::{config, ddns, settings, user, vfs};
+use crate::app::{config, ddns, settings, thumbnail, user, vfs};
+use std::convert::From;
 
-pub const API_MAJOR_VERSION: i32 = 6;
+pub const API_MAJOR_VERSION: i32 = 7;
 pub const API_MINOR_VERSION: i32 = 0;
-pub const COOKIE_SESSION: &str = "session";
-pub const COOKIE_USERNAME: &str = "username";
-pub const COOKIE_ADMIN: &str = "admin";
 
-#[derive(PartialEq, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct Version {
 	pub major: i32,
 	pub minor: i32,
 }
 
-#[derive(PartialEq, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct InitialSetup {
 	pub has_any_users: bool,
 }
@@ -39,10 +37,39 @@ pub struct AuthQueryParameters {
 
 #[derive(Serialize, Deserialize)]
 pub struct ThumbnailOptions {
+	pub size: Option<ThumbnailSize>,
 	pub pad: Option<bool>,
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+impl From<ThumbnailOptions> for thumbnail::Options {
+	fn from(dto: ThumbnailOptions) -> Self {
+		let mut options = thumbnail::Options::default();
+		options.max_dimension = dto.size.map_or(options.max_dimension, Into::into);
+		options.pad_to_square = dto.pad.unwrap_or(options.pad_to_square);
+		options
+	}
+}
+
+#[derive(Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ThumbnailSize {
+	Small,
+	Large,
+	Native,
+}
+
+#[allow(clippy::from_over_into)]
+impl Into<Option<u32>> for ThumbnailSize {
+	fn into(self) -> Option<u32> {
+		match self {
+			Self::Small => Some(400),
+			Self::Large => Some(1200),
+			Self::Native => None,
+		}
+	}
+}
+
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ListPlaylistsEntry {
 	pub name: String,
 }
@@ -79,7 +106,7 @@ impl From<user::User> for User {
 	}
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NewUser {
 	pub name: String,
 	pub password: String,
@@ -96,13 +123,13 @@ impl From<NewUser> for user::NewUser {
 	}
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UserUpdate {
 	pub new_password: Option<String>,
 	pub new_is_admin: Option<bool>,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 pub struct DDNSConfig {
 	pub host: String,
 	pub username: String,
@@ -129,7 +156,7 @@ impl From<ddns::Config> for DDNSConfig {
 	}
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 pub struct MountDir {
 	pub source: String,
 	pub name: String,
@@ -153,7 +180,7 @@ impl From<vfs::MountDir> for MountDir {
 	}
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Config {
 	pub settings: Option<NewSettings>,
 	pub users: Option<Vec<NewUser>>,
@@ -174,7 +201,7 @@ impl From<Config> for config::Config {
 	}
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NewSettings {
 	pub album_art_pattern: Option<String>,
 	pub reindex_every_n_seconds: Option<i32>,
@@ -189,7 +216,7 @@ impl From<NewSettings> for settings::NewSettings {
 	}
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Settings {
 	pub album_art_pattern: String,
 	pub reindex_every_n_seconds: i32,
@@ -198,10 +225,11 @@ pub struct Settings {
 impl From<settings::Settings> for Settings {
 	fn from(s: settings::Settings) -> Self {
 		Self {
-			album_art_pattern: s.album_art_pattern,
-			reindex_every_n_seconds: s.reindex_every_n_seconds,
+			album_art_pattern: s.index_album_art_pattern,
+			reindex_every_n_seconds: s.index_sleep_duration_seconds,
 		}
 	}
 }
 
 // TODO: Preferences, CollectionFile, Song and Directory should have dto types
+// TODO Song dto type should skip `None` values when serializing, to lower payload sizes by a lot

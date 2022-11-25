@@ -18,9 +18,9 @@ fn update_adds_new_content() {
 	ctx.index.update().unwrap();
 	ctx.index.update().unwrap(); // Validates that subsequent updates don't run into conflicts
 
-	let connection = ctx.db.connect().unwrap();
-	let all_directories: Vec<Directory> = directories::table.load(&connection).unwrap();
-	let all_songs: Vec<Song> = songs::table.load(&connection).unwrap();
+	let mut connection = ctx.db.connect().unwrap();
+	let all_directories: Vec<Directory> = directories::table.load(&mut connection).unwrap();
+	let all_songs: Vec<Song> = songs::table.load(&mut connection).unwrap();
 	assert_eq!(all_directories.len(), 6);
 	assert_eq!(all_songs.len(), 13);
 }
@@ -47,9 +47,9 @@ fn update_removes_missing_content() {
 	ctx.index.update().unwrap();
 
 	{
-		let connection = ctx.db.connect().unwrap();
-		let all_directories: Vec<Directory> = directories::table.load(&connection).unwrap();
-		let all_songs: Vec<Song> = songs::table.load(&connection).unwrap();
+		let mut connection = ctx.db.connect().unwrap();
+		let all_directories: Vec<Directory> = directories::table.load(&mut connection).unwrap();
+		let all_songs: Vec<Song> = songs::table.load(&mut connection).unwrap();
 		assert_eq!(all_directories.len(), 6);
 		assert_eq!(all_songs.len(), 13);
 	}
@@ -58,9 +58,9 @@ fn update_removes_missing_content() {
 	std::fs::remove_dir_all(&khemmis_directory).unwrap();
 	ctx.index.update().unwrap();
 	{
-		let connection = ctx.db.connect().unwrap();
-		let all_directories: Vec<Directory> = directories::table.load(&connection).unwrap();
-		let all_songs: Vec<Song> = songs::table.load(&connection).unwrap();
+		let mut connection = ctx.db.connect().unwrap();
+		let all_directories: Vec<Directory> = directories::table.load(&mut connection).unwrap();
+		let all_songs: Vec<Song> = songs::table.load(&mut connection).unwrap();
 		assert_eq!(all_directories.len(), 4);
 		assert_eq!(all_songs.len(), 8);
 	}
@@ -211,15 +211,12 @@ fn album_art_pattern_is_case_insensitive() {
 		.mount(TEST_MOUNT_NAME, "test-data/small-collection")
 		.build();
 
-	let patterns = vec!["folder", "FOLDER"]
-		.iter()
-		.map(|s| s.to_string())
-		.collect::<Vec<_>>();
+	let patterns = vec!["folder", "FOLDER"];
 
 	for pattern in patterns.into_iter() {
 		ctx.settings_manager
 			.amend(&settings::NewSettings {
-				album_art_pattern: Some(pattern),
+				album_art_pattern: Some(pattern.to_owned()),
 				..Default::default()
 			})
 			.unwrap();

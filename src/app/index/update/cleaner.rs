@@ -1,13 +1,23 @@
-use anyhow::*;
-use diesel;
 use diesel::prelude::*;
 use rayon::prelude::*;
 use std::path::Path;
 
 use crate::app::vfs;
-use crate::db::{directories, songs, DB};
+use crate::db::{self, directories, songs, DB};
 
 const INDEX_BUILDING_CLEAN_BUFFER_SIZE: usize = 500; // Deletions in each transaction
+
+#[derive(thiserror::Error, Debug)]
+pub enum Error {
+	#[error(transparent)]
+	Database(#[from] diesel::result::Error),
+	#[error(transparent)]
+	DatabaseConnection(#[from] db::Error),
+	#[error(transparent)]
+	ThreadPoolBuilder(#[from] rayon::ThreadPoolBuildError),
+	#[error(transparent)]
+	Vfs(#[from] vfs::Error),
+}
 
 pub struct Cleaner {
 	db: DB,
@@ -19,19 +29,19 @@ impl Cleaner {
 		Self { db, vfs_manager }
 	}
 
-	pub fn clean(&self) -> Result<()> {
+	pub fn clean(&self) -> Result<(), Error> {
 		let vfs = self.vfs_manager.get_vfs()?;
 
 		let all_directories: Vec<String> = {
-			let connection = self.db.connect()?;
+			let mut connection = self.db.connect()?;
 			directories::table
 				.select(directories::path)
-				.load(&connection)?
+				.load(&mut connection)?
 		};
 
 		let all_songs: Vec<String> = {
-			let connection = self.db.connect()?;
-			songs::table.select(songs::path).load(&connection)?
+			let mut connection = self.db.connect()?;
+			songs::table.select(songs::path).load(&mut connection)?
 		};
 
 		let list_missing_directories = || {
@@ -59,14 +69,14 @@ impl Cleaner {
 			thread_pool.join(list_missing_directories, list_missing_songs);
 
 		{
-			let connection = self.db.connect()?;
+			let mut connection = self.db.connect()?;
 			for chunk in missing_directories[..].chunks(INDEX_BUILDING_CLEAN_BUFFER_SIZE) {
 				diesel::delete(directories::table.filter(directories::path.eq_any(chunk)))
-					.execute(&connection)?;
+					.execute(&mut connection)?;
 			}
 			for chunk in missing_songs[..].chunks(INDEX_BUILDING_CLEAN_BUFFER_SIZE) {
 				diesel::delete(songs::table.filter(songs::path.eq_any(chunk)))
-					.execute(&connection)?;
+					.execute(&mut connection)?;
 			}
 		}
 

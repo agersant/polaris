@@ -1,20 +1,34 @@
-use anyhow::*;
-use ape;
-use id3;
+use id3::TagLike;
 use lewton::inside_ogg::OggStreamReader;
 use log::error;
-use metaflac;
-use mp3_duration;
-use mp4ameta;
-use opus_headers;
 use regex::Regex;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::utils;
 use crate::utils::AudioFormat;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(thiserror::Error, Debug)]
+pub enum Error {
+	#[error(transparent)]
+	Ape(#[from] ape::Error),
+	#[error(transparent)]
+	Id3(#[from] id3::Error),
+	#[error("Filesystem error for `{0}`: `{1}`")]
+	Io(PathBuf, std::io::Error),
+	#[error(transparent)]
+	Metaflac(#[from] metaflac::Error),
+	#[error(transparent)]
+	Mp4aMeta(#[from] mp4ameta::Error),
+	#[error(transparent)]
+	Opus(#[from] opus_headers::ParseError),
+	#[error(transparent)]
+	Vorbis(#[from] lewton::VorbisError),
+	#[error("Could not find a Vorbis comment within flac file")]
+	VorbisCommentNotFoundInFlacFile,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SongTags {
 	pub disc_number: Option<u32>,
 	pub track_number: Option<u32>,
@@ -25,6 +39,10 @@ pub struct SongTags {
 	pub album: Option<String>,
 	pub year: Option<i32>,
 	pub has_artwork: bool,
+	pub lyricist: Option<String>,
+	pub composer: Option<String>,
+	pub genre: Option<String>,
+	pub label: Option<String>,
 }
 
 impl From<id3::Tag> for SongTags {
@@ -40,48 +58,72 @@ impl From<id3::Tag> for SongTags {
 			.year()
 			.map(|y| y as i32)
 			.or_else(|| tag.date_released().map(|d| d.year))
+			.or_else(|| tag.original_date_released().map(|d| d.year))
 			.or_else(|| tag.date_recorded().map(|d| d.year));
 		let has_artwork = tag.pictures().count() > 0;
+		let lyricist = tag.get_text("TEXT");
+		let composer = tag.get_text("TCOM");
+		let genre = tag.genre().map(|s| s.to_string());
+		let label = tag.get_text("TPUB");
 
 		SongTags {
+			disc_number,
+			track_number,
+			title,
+			duration,
 			artist,
 			album_artist,
 			album,
-			title,
-			duration,
-			disc_number,
-			track_number,
 			year,
 			has_artwork,
+			lyricist,
+			composer,
+			genre,
+			label,
 		}
 	}
 }
 
 pub fn read(path: &Path) -> Option<SongTags> {
 	let data = match utils::get_audio_format(path) {
-		Some(AudioFormat::AIFF) => Some(read_aiff(path)),
-		Some(AudioFormat::APE) => Some(read_ape(path)),
-		Some(AudioFormat::FLAC) => Some(read_flac(path)),
-		Some(AudioFormat::MP3) => Some(read_mp3(path)),
-		Some(AudioFormat::MP4) => Some(read_mp4(path)),
-		Some(AudioFormat::MPC) => Some(read_ape(path)),
-		Some(AudioFormat::OGG) => Some(read_vorbis(path)),
-		Some(AudioFormat::OPUS) => Some(read_opus(path)),
-		Some(AudioFormat::WAVE) => Some(read_wave(path)),
-		None => None,
+		Some(AudioFormat::AIFF) => read_aiff(path),
+		Some(AudioFormat::APE) => read_ape(path),
+		Some(AudioFormat::FLAC) => read_flac(path),
+		Some(AudioFormat::MP3) => read_mp3(path),
+		Some(AudioFormat::MP4) => read_mp4(path),
+		Some(AudioFormat::MPC) => read_ape(path),
+		Some(AudioFormat::OGG) => read_vorbis(path),
+		Some(AudioFormat::OPUS) => read_opus(path),
+		Some(AudioFormat::WAVE) => read_wave(path),
+		None => return None,
 	};
 	match data {
-		Some(Ok(d)) => Some(d),
-		Some(Err(e)) => {
+		Ok(d) => Some(d),
+		Err(e) => {
 			error!("Error while reading file metadata for '{:?}': {}", path, e);
 			None
 		}
-		None => None,
 	}
 }
 
-fn read_mp3(path: &Path) -> Result<SongTags> {
-	let tag = id3::Tag::read_from_path(&path).or_else(|error| {
+trait FrameContent {
+	/// Returns the value stored, if any, in the Frame.
+	/// Say "TCOM" returns composer field.
+	fn get_text(&self, key: &str) -> Option<String>;
+}
+
+impl FrameContent for id3::Tag {
+	fn get_text(&self, key: &str) -> Option<String> {
+		let frame = self.get(key)?;
+		match frame.content() {
+			id3::Content::Text(value) => Some(value.to_string()),
+			_ => None,
+		}
+	}
+}
+
+fn read_mp3(path: &Path) -> Result<SongTags, Error> {
+	let tag = id3::Tag::read_from_path(path).or_else(|error| {
 		if let Some(tag) = error.partial_tag {
 			Ok(tag)
 		} else {
@@ -90,7 +132,7 @@ fn read_mp3(path: &Path) -> Result<SongTags> {
 	})?;
 
 	let duration = {
-		mp3_duration::from_path(&path)
+		mp3_duration::from_path(path)
 			.map(|d| d.as_secs() as u32)
 			.ok()
 	};
@@ -100,8 +142,8 @@ fn read_mp3(path: &Path) -> Result<SongTags> {
 	Ok(song_tags)
 }
 
-fn read_aiff(path: &Path) -> Result<SongTags> {
-	let tag = id3::Tag::read_from_aiff(&path).or_else(|error| {
+fn read_aiff(path: &Path) -> Result<SongTags, Error> {
+	let tag = id3::Tag::read_from_aiff_path(path).or_else(|error| {
 		if let Some(tag) = error.partial_tag {
 			Ok(tag)
 		} else {
@@ -111,8 +153,8 @@ fn read_aiff(path: &Path) -> Result<SongTags> {
 	Ok(tag.into())
 }
 
-fn read_wave(path: &Path) -> Result<SongTags> {
-	let tag = id3::Tag::read_from_wav(&path).or_else(|error| {
+fn read_wave(path: &Path) -> Result<SongTags, Error> {
+	let tag = id3::Tag::read_from_wav_path(path).or_else(|error| {
 		if let Some(tag) = error.partial_tag {
 			Ok(tag)
 		} else {
@@ -150,8 +192,8 @@ fn read_ape_x_of_y(item: &ape::Item) -> Option<u32> {
 	}
 }
 
-fn read_ape(path: &Path) -> Result<SongTags> {
-	let tag = ape::read(path)?;
+fn read_ape(path: &Path) -> Result<SongTags, Error> {
+	let tag = ape::read_from_path(path)?;
 	let artist = tag.item("Artist").and_then(read_ape_string);
 	let album = tag.item("Album").and_then(read_ape_string);
 	let album_artist = tag.item("Album artist").and_then(read_ape_string);
@@ -159,6 +201,10 @@ fn read_ape(path: &Path) -> Result<SongTags> {
 	let year = tag.item("Year").and_then(read_ape_i32);
 	let disc_number = tag.item("Disc").and_then(read_ape_x_of_y);
 	let track_number = tag.item("Track").and_then(read_ape_x_of_y);
+	let lyricist = tag.item("LYRICIST").and_then(read_ape_string);
+	let composer = tag.item("COMPOSER").and_then(read_ape_string);
+	let genre = tag.item("GENRE").and_then(read_ape_string);
+	let label = tag.item("PUBLISHER").and_then(read_ape_string);
 	Ok(SongTags {
 		artist,
 		album_artist,
@@ -169,11 +215,15 @@ fn read_ape(path: &Path) -> Result<SongTags> {
 		track_number,
 		year,
 		has_artwork: false,
+		lyricist,
+		composer,
+		genre,
+		label,
 	})
 }
 
-fn read_vorbis(path: &Path) -> Result<SongTags> {
-	let file = fs::File::open(path)?;
+fn read_vorbis(path: &Path) -> Result<SongTags, Error> {
+	let file = fs::File::open(path).map_err(|e| Error::Io(path.to_owned(), e))?;
 	let source = OggStreamReader::new(file)?;
 
 	let mut tags = SongTags {
@@ -186,6 +236,10 @@ fn read_vorbis(path: &Path) -> Result<SongTags> {
 		track_number: None,
 		year: None,
 		has_artwork: false,
+		lyricist: None,
+		composer: None,
+		genre: None,
+		label: None,
 	};
 
 	for (key, value) in source.comment_hdr.comment_list {
@@ -198,6 +252,10 @@ fn read_vorbis(path: &Path) -> Result<SongTags> {
 				"TRACKNUMBER" => tags.track_number = value.parse::<u32>().ok(),
 				"DISCNUMBER" => tags.disc_number = value.parse::<u32>().ok(),
 				"DATE" => tags.year = value.parse::<i32>().ok(),
+				"LYRICIST" => tags.lyricist = Some(value),
+				"COMPOSER" => tags.composer = Some(value),
+				"GENRE" => tags.genre = Some(value),
+				"PUBLISHER" => tags.label = Some(value),
 				_ => (),
 			}
 		}
@@ -206,7 +264,7 @@ fn read_vorbis(path: &Path) -> Result<SongTags> {
 	Ok(tags)
 }
 
-fn read_opus(path: &Path) -> Result<SongTags> {
+fn read_opus(path: &Path) -> Result<SongTags, Error> {
 	let headers = opus_headers::parse_from_path(path)?;
 
 	let mut tags = SongTags {
@@ -219,6 +277,10 @@ fn read_opus(path: &Path) -> Result<SongTags> {
 		track_number: None,
 		year: None,
 		has_artwork: false,
+		lyricist: None,
+		composer: None,
+		genre: None,
+		label: None,
 	};
 
 	for (key, value) in headers.comments.user_comments {
@@ -231,6 +293,10 @@ fn read_opus(path: &Path) -> Result<SongTags> {
 				"TRACKNUMBER" => tags.track_number = value.parse::<u32>().ok(),
 				"DISCNUMBER" => tags.disc_number = value.parse::<u32>().ok(),
 				"DATE" => tags.year = value.parse::<i32>().ok(),
+				"LYRICIST" => tags.lyricist = Some(value),
+				"COMPOSER" => tags.composer = Some(value),
+				"GENRE" => tags.genre = Some(value),
+				"PUBLISHER" => tags.label = Some(value),
 				_ => (),
 			}
 		}
@@ -239,11 +305,11 @@ fn read_opus(path: &Path) -> Result<SongTags> {
 	Ok(tags)
 }
 
-fn read_flac(path: &Path) -> Result<SongTags> {
+fn read_flac(path: &Path) -> Result<SongTags, Error> {
 	let tag = metaflac::Tag::read_from_path(path)?;
 	let vorbis = tag
 		.vorbis_comments()
-		.ok_or(anyhow!("Missing Vorbis comments"))?;
+		.ok_or(Error::VorbisCommentNotFoundInFlacFile)?;
 	let disc_number = vorbis
 		.get("DISCNUMBER")
 		.and_then(|d| d[0].parse::<u32>().ok());
@@ -267,22 +333,31 @@ fn read_flac(path: &Path) -> Result<SongTags> {
 		track_number: vorbis.track(),
 		year,
 		has_artwork,
+		lyricist: vorbis.get("LYRICIST").map(|v| v[0].clone()),
+		composer: vorbis.get("COMPOSER").map(|v| v[0].clone()),
+		genre: vorbis.get("GENRE").map(|v| v[0].clone()),
+		label: vorbis.get("PUBLISHER").map(|v| v[0].clone()),
 	})
 }
 
-fn read_mp4(path: &Path) -> Result<SongTags> {
+fn read_mp4(path: &Path) -> Result<SongTags, Error> {
 	let mut tag = mp4ameta::Tag::read_from_path(path)?;
+	let label_ident = mp4ameta::FreeformIdent::new("com.apple.iTunes", "Label");
 
 	Ok(SongTags {
 		artist: tag.take_artist(),
 		album_artist: tag.take_album_artist(),
 		album: tag.take_album(),
 		title: tag.take_title(),
-		duration: tag.duration().map(|v| v as u32),
+		duration: tag.duration().map(|v| v.as_secs() as u32),
 		disc_number: tag.disc_number().map(|d| d as u32),
 		track_number: tag.track_number().map(|d| d as u32),
 		year: tag.year().and_then(|v| v.parse::<i32>().ok()),
 		has_artwork: tag.artwork().is_some(),
+		lyricist: tag.take_lyricist(),
+		composer: tag.take_composer(),
+		genre: tag.take_genre(),
+		label: tag.take_strings_of(&label_ident).next(),
 	})
 }
 
@@ -298,6 +373,10 @@ fn reads_file_metadata() {
 		duration: None,
 		year: Some(2016),
 		has_artwork: false,
+		lyricist: Some("TEST LYRICIST".into()),
+		composer: Some("TEST COMPOSER".into()),
+		genre: Some("TEST GENRE".into()),
+		label: Some("TEST LABEL".into()),
 	};
 	let flac_sample_tag = SongTags {
 		duration: Some(0),

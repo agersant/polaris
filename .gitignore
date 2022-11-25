@@ -10,6 +10,7 @@ TestConfig.toml
 # Runtime artifacts
 *.sqlite
 polaris.log
+polaris.pid
 /thumbnails
 
 # Release process artifacts (usually runs on CI)

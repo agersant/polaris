@@ -4,14 +4,14 @@ use std::path::Path;
 use crate::app::vfs::VFS;
 use crate::db::songs;
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CollectionFile {
 	Directory(Directory),
 	Song(Song),
 }
 
-#[derive(Debug, PartialEq, Queryable, QueryableByName, Serialize, Deserialize)]
-#[table_name = "songs"]
+#[derive(Debug, PartialEq, Eq, Queryable, QueryableByName, Serialize, Deserialize)]
+#[diesel(table_name = songs)]
 pub struct Song {
 	#[serde(skip_serializing, skip_deserializing)]
 	id: i32,
@@ -27,6 +27,10 @@ pub struct Song {
 	pub album: Option<String>,
 	pub artwork: Option<String>,
 	pub duration: Option<i32>,
+	pub lyricist: Option<String>,
+	pub composer: Option<String>,
+	pub genre: Option<String>,
+	pub label: Option<String>,
 }
 
 impl Song {
@@ -45,7 +49,7 @@ impl Song {
 	}
 }
 
-#[derive(Debug, PartialEq, Queryable, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Queryable, Serialize, Deserialize)]
 pub struct Directory {
 	#[serde(skip_serializing, skip_deserializing)]
 	id: i32,

@@ -68,6 +68,10 @@ table! {
 		album -> Nullable<Text>,
 		artwork -> Nullable<Text>,
 		duration -> Nullable<Integer>,
+		lyricist -> Nullable<Text>,
+		composer -> Nullable<Text>,
+		genre -> Nullable<Text>,
+		label -> Nullable<Text>,
 	}
 }
 

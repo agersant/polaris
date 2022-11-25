@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use crate::db::DB;
+use crate::db::{self, DB};
 use crate::paths::Paths;
 
 pub mod config;
@@ -16,6 +16,18 @@ pub mod vfs;
 
 #[cfg(test)]
 pub mod test;
+
+#[derive(thiserror::Error, Debug)]
+pub enum Error {
+	#[error(transparent)]
+	Config(#[from] config::Error),
+	#[error(transparent)]
+	Database(#[from] db::Error),
+	#[error("Filesystem error for `{0}`: `{1}`")]
+	Io(PathBuf, std::io::Error),
+	#[error(transparent)]
+	Settings(#[from] settings::Error),
+}
 
 #[derive(Clone)]
 pub struct App {
@@ -36,12 +48,16 @@ pub struct App {
 }
 
 impl App {
-	pub fn new(port: u16, paths: Paths) -> anyhow::Result<Self> {
+	pub fn new(port: u16, paths: Paths) -> Result<Self, Error> {
 		let db = DB::new(&paths.db_file_path)?;
-		fs::create_dir_all(&paths.web_dir_path)?;
-		fs::create_dir_all(&paths.swagger_dir_path)?;
+		fs::create_dir_all(&paths.web_dir_path)
+			.map_err(|e| Error::Io(paths.web_dir_path.clone(), e))?;
+		fs::create_dir_all(&paths.swagger_dir_path)
+			.map_err(|e| Error::Io(paths.swagger_dir_path.clone(), e))?;
 
 		let thumbnails_dir_path = paths.cache_dir_path.join("thumbnails");
+		fs::create_dir_all(&thumbnails_dir_path)
+			.map_err(|e| Error::Io(thumbnails_dir_path.clone(), e))?;
 
 		let vfs_manager = vfs::Manager::new(db.clone());
 		let settings_manager = settings::Manager::new(db.clone());

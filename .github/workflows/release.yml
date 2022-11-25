@@ -20,7 +20,7 @@ jobs:
           target_branch: release
           github_token: ${{ secrets.GITHUB_TOKEN }}
       - name: Checkout Release Branch
-        uses: actions/checkout@master
+        uses: actions/checkout@v2
         with:
           ref: release
       - name: Update Polaris Version in Cargo.toml
@@ -70,7 +70,7 @@ jobs:
 
     steps:
       - name: Checkout Polaris
-        uses: actions/checkout@v1
+        uses: actions/checkout@v2
         with:
           ref: release
       - name: Install Rust Toolchain
@@ -106,7 +106,7 @@ jobs:
 
     steps:
       - name: Checkout Polaris
-        uses: actions/checkout@v1
+        uses: actions/checkout@v2
         with:
           ref: release
       - name: Make release

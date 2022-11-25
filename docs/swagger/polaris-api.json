@@ -93,10 +93,8 @@
                 },
                 "security": [
                     {
-                        "admin_http_basic": [],
                         "admin_http_bearer": [],
-                        "admin_query_parameter": [],
-                        "admin_cookie": []
+                        "admin_query_parameter": []
                     }
                 ]
             }
@@ -125,10 +123,8 @@
                 },
                 "security": [
                     {
-                        "admin_http_basic": [],
                         "admin_http_bearer": [],
-                        "admin_query_parameter": [],
-                        "admin_cookie": []
+                        "admin_query_parameter": []
                     }
                 ]
             }
@@ -155,10 +151,8 @@
                 },
                 "security": [
                     {
-                        "admin_http_basic": [],
                         "admin_http_bearer": [],
-                        "admin_query_parameter": [],
-                        "admin_cookie": []
+                        "admin_query_parameter": []
                     }
                 ]
             },
@@ -186,10 +180,8 @@
                 },
                 "security": [
                     {
-                        "admin_http_basic": [],
                         "admin_http_bearer": [],
-                        "admin_query_parameter": [],
-                        "admin_cookie": []
+                        "admin_query_parameter": []
                     }
                 ]
             }
@@ -215,10 +207,8 @@
                 },
                 "security": [
                     {
-                        "admin_http_basic": [],
                         "admin_http_bearer": [],
-                        "admin_query_parameter": [],
-                        "admin_cookie": []
+                        "admin_query_parameter": []
                     }
                 ]
             },
@@ -245,10 +235,8 @@
                 },
                 "security": [
                     {
-                        "admin_http_basic": [],
                         "admin_http_bearer": [],
-                        "admin_query_parameter": [],
-                        "admin_cookie": []
+                        "admin_query_parameter": []
                     }
                 ]
             }
@@ -277,10 +265,8 @@
                 },
                 "security": [
                     {
-                        "admin_http_basic": [],
                         "admin_http_bearer": [],
-                        "admin_query_parameter": [],
-                        "admin_cookie": []
+                        "admin_query_parameter": []
                     }
                 ]
             }
@@ -309,10 +295,8 @@
                 },
                 "security": [
                     {
-                        "admin_http_basic": [],
                         "admin_http_bearer": [],
-                        "admin_query_parameter": [],
-                        "admin_cookie": []
+                        "admin_query_parameter": []
                     }
                 ]
             }
@@ -351,10 +335,8 @@
                 },
                 "security": [
                     {
-                        "admin_http_basic": [],
                         "admin_http_bearer": [],
-                        "admin_query_parameter": [],
-                        "admin_cookie": []
+                        "admin_query_parameter": []
                     }
                 ]
             },
@@ -381,10 +363,8 @@
                 },
                 "security": [
                     {
-                        "admin_http_basic": [],
                         "admin_http_bearer": [],
-                        "admin_query_parameter": [],
-                        "admin_cookie": []
+                        "admin_query_parameter": []
                     }
                 ]
             }
@@ -410,10 +390,8 @@
                 },
                 "security": [
                     {
-                        "auth_http_basic": [],
                         "auth_http_bearer": [],
-                        "auth_query_parameter": [],
-                        "auth_cookie": []
+                        "auth_query_parameter": []
                     }
                 ]
             },
@@ -440,10 +418,8 @@
                 },
                 "security": [
                     {
-                        "auth_http_basic": [],
                         "auth_http_bearer": [],
-                        "auth_query_parameter": [],
-                        "auth_cookie": []
+                        "auth_query_parameter": []
                     }
                 ]
             }
@@ -453,7 +429,7 @@
                 "tags": [
                     "Users"
                 ],
-                "summary": "Signs in a user. Response has Set-Cookie headers for the session, username and admin permission of the user.",
+                "summary": "Signs in a user.",
                 "operationId": "postAuth",
                 "requestBody": {
                     "required": true,
@@ -506,10 +482,8 @@
                 },
                 "security": [
                     {
-                        "auth_http_basic": [],
                         "auth_http_bearer": [],
-                        "auth_query_parameter": [],
-                        "auth_cookie": []
+                        "auth_query_parameter": []
                     }
                 ]
             }
@@ -548,10 +522,8 @@
                 },
                 "security": [
                     {
-                        "auth_http_basic": [],
                         "auth_http_bearer": [],
-                        "auth_query_parameter": [],
-                        "auth_cookie": []
+                        "auth_query_parameter": []
                     }
                 ]
             }
@@ -580,10 +552,8 @@
                 },
                 "security": [
                     {
-                        "auth_http_basic": [],
                         "auth_http_bearer": [],
-                        "auth_query_parameter": [],
-                        "auth_cookie": []
+                        "auth_query_parameter": []
                     }
                 ]
             }
@@ -622,10 +592,8 @@
                 },
                 "security": [
                     {
-                        "auth_http_basic": [],
                         "auth_http_bearer": [],
-                        "auth_query_parameter": [],
-                        "auth_cookie": []
+                        "auth_query_parameter": []
                     }
                 ]
             }
@@ -654,10 +622,8 @@
                 },
                 "security": [
                     {
-                        "auth_http_basic": [],
                         "auth_http_bearer": [],
-                        "auth_query_parameter": [],
-                        "auth_cookie": []
+                        "auth_query_parameter": []
                     }
                 ]
             }
@@ -686,10 +652,8 @@
                 },
                 "security": [
                     {
-                        "auth_http_basic": [],
                         "auth_http_bearer": [],
-                        "auth_query_parameter": [],
-                        "auth_cookie": []
+                        "auth_query_parameter": []
                     }
                 ]
             }
@@ -728,10 +692,8 @@
                 },
                 "security": [
                     {
-                        "auth_http_basic": [],
                         "auth_http_bearer": [],
-                        "auth_query_parameter": [],
-                        "auth_cookie": []
+                        "auth_query_parameter": []
                     }
                 ]
             }
@@ -767,10 +729,8 @@
                 },
                 "security": [
                     {
-                        "auth_http_basic": [],
                         "auth_http_bearer": [],
-                        "auth_query_parameter": [],
-                        "auth_cookie": []
+                        "auth_query_parameter": []
                     }
                 ]
             }
@@ -789,6 +749,16 @@
                         "description": "Path to the desired file",
                         "schema": {
                             "type": "string"
+                        }
+                    },
+                    {
+                        "name": "size",
+                        "in": "query",
+                        "description": "The maximum size of the thumbnail, either small (400x400), large (1200x1200) or native",
+                        "schema": {
+                            "type": "string",
+                            "enum": ["small", "large", "native"],
+                            "default": "small"
                         }
                     },
                     {
@@ -815,10 +785,8 @@
                 },
                 "security": [
                     {
-                        "auth_http_basic": [],
                         "auth_http_bearer": [],
-                        "auth_query_parameter": [],
-                        "auth_cookie": []
+                        "auth_query_parameter": []
                     }
                 ]
             }
@@ -847,10 +815,8 @@
                 },
                 "security": [
                     {
-                        "auth_http_basic": [],
                         "auth_http_bearer": [],
-                        "auth_query_parameter": [],
-                        "auth_cookie": []
+                        "auth_query_parameter": []
                     }
                 ]
             }
@@ -889,10 +855,8 @@
                 },
                 "security": [
                     {
-                        "auth_http_basic": [],
                         "auth_http_bearer": [],
-                        "auth_query_parameter": [],
-                        "auth_cookie": []
+                        "auth_query_parameter": []
                     }
                 ]
             },
@@ -929,10 +893,8 @@
                 },
                 "security": [
                     {
-                        "auth_http_basic": [],
                         "auth_http_bearer": [],
-                        "auth_query_parameter": [],
-                        "auth_cookie": []
+                        "auth_query_parameter": []
                     }
                 ]
             },
@@ -959,10 +921,8 @@
                 },
                 "security": [
                     {
-                        "auth_http_basic": [],
                         "auth_http_bearer": [],
-                        "auth_query_parameter": [],
-                        "auth_cookie": []
+                        "auth_query_parameter": []
                     }
                 ]
             }
@@ -991,10 +951,8 @@
                 },
                 "security": [
                     {
-                        "auth_http_basic": [],
                         "auth_http_bearer": [],
-                        "auth_query_parameter": [],
-                        "auth_cookie": []
+                        "auth_query_parameter": []
                     }
                 ]
             }
@@ -1023,10 +981,8 @@
                 },
                 "security": [
                     {
-                        "auth_http_basic": [],
                         "auth_http_bearer": [],
-                        "auth_query_parameter": [],
-                        "auth_cookie": []
+                        "auth_query_parameter": []
                     }
                 ]
             }
@@ -1052,10 +1008,8 @@
                 },
                 "security": [
                     {
-                        "auth_http_basic": [],
                         "auth_http_bearer": [],
-                        "auth_query_parameter": [],
-                        "auth_cookie": []
+                        "auth_query_parameter": []
                     }
                 ]
             }
@@ -1124,10 +1078,8 @@
                 },
                 "security": [
                     {
-                        "auth_http_basic": [],
                         "auth_http_bearer": [],
-                        "auth_query_parameter": [],
-                        "auth_cookie": []
+                        "auth_query_parameter": []
                     }
                 ]
             }
@@ -1417,6 +1369,22 @@
                     "duration": {
                         "type": "integer",
                         "example": 571
+                    },
+                    "lyricist": {
+                        "type": "string",
+                        "example": "Timo Tolkki"
+                    },
+                    "composer": {
+                        "type": "string",
+                        "example": "Timo Tolkki"
+                    },
+                    "genre": {
+                        "type": "string",
+                        "example": "Genre"
+                    },
+                    "label": {
+                        "type": "string",
+                        "example": "Noise Records"
                     }
                 }
             },
@@ -1464,28 +1432,6 @@
                 "in": "query",
                 "name": "auth_token",
                 "description": "Identical to the auth_query_parameter scheme but only for users recognized as admin by the Polaris server"
-            },
-            "auth_http_basic": {
-                "type": "http",
-                "scheme": "basic",
-                "description": "[deprecated]"
-            },
-            "admin_http_basic": {
-                "type": "http",
-                "scheme": "basic",
-                "description": "[deprecated] Identical to the auth_http_basic scheme but only for users recognized as admin by the Polaris server"
-            },
-            "auth_cookie": {
-                "type": "apikey",
-                "in": "cookie",
-                "name": "session",
-                "description": "[deprecated] A token obtained via the SET-COOKIE header in a response to a request via the auth_http_basic scheme, or a request to the `auth` endpoint."
-            },
-            "admin_cookie": {
-                "type": "apikey",
-                "in": "cookie",
-                "name": "session",
-                "description": "[deprecated] Identical to the auth_cookie scheme but only for users recognized as admin by the Polaris server"
             }
         },
         "links": {},

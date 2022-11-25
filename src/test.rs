@@ -7,7 +7,7 @@ macro_rules! test_name {
 		let file_name = file_name.replace("/", "-");
 		let file_name = file_name.replace("\\", "-");
 		format!("{}-line-{}", file_name, line!())
-		}};
+	}};
 }
 
 pub fn prepare_test_directory<T: AsRef<str>>(test_name: T) -> PathBuf {
@@ -16,5 +16,5 @@ pub fn prepare_test_directory<T: AsRef<str>>(test_name: T) -> PathBuf {
 		std::fs::remove_dir_all(&output_dir).unwrap();
 	}
 	std::fs::create_dir_all(&output_dir).unwrap();
-	return output_dir;
+	output_dir
 }

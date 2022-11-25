@@ -1,8 +1,7 @@
+use actix_test::TestServer;
 use actix_web::{
 	middleware::{Compress, Logger},
 	rt::{System, SystemRunner},
-	test,
-	test::*,
 	web::Bytes,
 	App as ActixApp,
 };
@@ -44,7 +43,7 @@ impl ActixTestService {
 		.timeout(std::time::Duration::from_secs(30));
 
 		for (name, value) in request.headers() {
-			actix_request = actix_request.set_header(name, value.clone());
+			actix_request = actix_request.insert_header((name, value.clone()));
 		}
 
 		if let Some(ref authorization) = self.authorization {
@@ -92,8 +91,8 @@ impl TestService for ActixTestService {
 
 		let app = App::new(5050, paths).unwrap();
 
-		let system_runner = System::new("test");
-		let server = test::start(move || {
+		let system_runner = System::new();
+		let server = actix_test::start(move || {
 			let config = make_config(app.clone());
 			ActixApp::new()
 				.wrap(Logger::default())

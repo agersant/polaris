@@ -1,14 +1,30 @@
-use anyhow::*;
 use diesel::prelude::*;
 use log::{error, info};
+use serde::{Deserialize, Serialize};
 use std::thread;
 use std::time;
-use ureq;
 
-use super::*;
-use crate::db::DB;
+use crate::db::{self, ddns_config, DB};
 
 const DDNS_UPDATE_URL: &str = "https://ydns.io/api/v1/update/";
+
+#[derive(thiserror::Error, Debug)]
+pub enum Error {
+	#[error("DDNS update query failed with HTTP status code `{0}`")]
+	UpdateQueryFailed(u16),
+	#[error(transparent)]
+	DatabaseConnection(#[from] db::Error),
+	#[error(transparent)]
+	Database(#[from] diesel::result::Error),
+}
+
+#[derive(Clone, Debug, Deserialize, Insertable, PartialEq, Eq, Queryable, Serialize)]
+#[diesel(table_name = ddns_config)]
+pub struct Config {
+	pub host: String,
+	pub username: String,
+	pub password: String,
+}
 
 #[derive(Clone)]
 pub struct Manager {
@@ -20,7 +36,7 @@ impl Manager {
 		Self { db }
 	}
 
-	fn update_my_ip(&self) -> Result<()> {
+	fn update_my_ip(&self) -> Result<(), Error> {
 		let config = self.config()?;
 		if config.host.is_empty() || config.username.is_empty() {
 			info!("Skipping DDNS update because credentials are missing");
@@ -32,34 +48,31 @@ impl Manager {
 			.auth(&config.username, &config.password)
 			.call();
 
-		if !response.ok() {
-			bail!(
-				"DDNS update query failed with status code: {}",
-				response.status()
-			);
+		if response.ok() {
+			Ok(())
+		} else {
+			Err(Error::UpdateQueryFailed(response.status()))
 		}
-
-		Ok(())
 	}
 
-	pub fn config(&self) -> Result<Config> {
+	pub fn config(&self) -> Result<Config, Error> {
 		use crate::db::ddns_config::dsl::*;
-		let connection = self.db.connect()?;
+		let mut connection = self.db.connect()?;
 		Ok(ddns_config
 			.select((host, username, password))
-			.get_result(&connection)?)
+			.get_result(&mut connection)?)
 	}
 
-	pub fn set_config(&self, new_config: &Config) -> Result<()> {
+	pub fn set_config(&self, new_config: &Config) -> Result<(), Error> {
 		use crate::db::ddns_config::dsl::*;
-		let connection = self.db.connect()?;
+		let mut connection = self.db.connect()?;
 		diesel::update(ddns_config)
 			.set((
 				host.eq(&new_config.host),
 				username.eq(&new_config.username),
 				password.eq(&new_config.password),
 			))
-			.execute(&connection)?;
+			.execute(&mut connection)?;
 		Ok(())
 	}
 

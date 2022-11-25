@@ -1,29 +1,29 @@
 use actix_files::NamedFile;
+use actix_web::body::BoxBody;
+use actix_web::http::header::ContentEncoding;
 use actix_web::{
-	client::HttpError,
 	delete,
-	dev::{MessageBody, Payload, Service, ServiceRequest, ServiceResponse},
-	error::{BlockingError, ErrorForbidden, ErrorInternalServerError, ErrorUnauthorized},
+	dev::Payload,
+	error::{ErrorForbidden, ErrorInternalServerError, ErrorUnauthorized},
 	get,
 	http::StatusCode,
 	post, put,
 	web::{self, Data, Json, JsonConfig, ServiceConfig},
-	FromRequest, HttpMessage, HttpRequest, HttpResponse, ResponseError,
+	FromRequest, HttpRequest, HttpResponse, Responder, ResponseError,
 };
-use actix_web_httpauth::extractors::{basic::BasicAuth, bearer::BearerAuth};
-use cookie::{self, *};
-use futures_util::future::{err, ok};
+use actix_web_httpauth::extractors::bearer::BearerAuth;
+use futures_util::future::err;
 use percent_encoding::percent_decode_str;
 use std::future::Future;
-use std::ops::Deref;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::str;
 
 use crate::app::{
 	config, ddns,
 	index::{self, Index},
-	lastfm, playlist, settings, thumbnail, user, vfs,
+	lastfm, playlist, settings, thumbnail, user,
+	vfs::{self, MountDir},
 };
 use crate::service::{dto, error::*};
 
@@ -73,131 +73,70 @@ pub fn make_config() -> impl FnOnce(&mut ServiceConfig) + Clone {
 impl ResponseError for APIError {
 	fn status_code(&self) -> StatusCode {
 		match self {
-			APIError::IncorrectCredentials => StatusCode::UNAUTHORIZED,
-			APIError::EmptyUsername => StatusCode::BAD_REQUEST,
-			APIError::EmptyPassword => StatusCode::BAD_REQUEST,
-			APIError::DeletingOwnAccount => StatusCode::CONFLICT,
-			APIError::OwnAdminPrivilegeRemoval => StatusCode::CONFLICT,
+			APIError::AuthorizationTokenEncoding => StatusCode::INTERNAL_SERVER_ERROR,
+			APIError::AdminPermissionRequired => StatusCode::UNAUTHORIZED,
 			APIError::AudioFileIOError => StatusCode::NOT_FOUND,
-			APIError::ThumbnailFileIOError => StatusCode::NOT_FOUND,
+			APIError::AuthenticationRequired => StatusCode::UNAUTHORIZED,
+			APIError::BrancaTokenEncoding => StatusCode::INTERNAL_SERVER_ERROR,
+			APIError::DdnsUpdateQueryFailed(s) => {
+				StatusCode::from_u16(*s).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR)
+			}
+			APIError::Database(_) => StatusCode::INTERNAL_SERVER_ERROR,
+			APIError::DeletingOwnAccount => StatusCode::CONFLICT,
+			APIError::EmbeddedArtworkNotFound => StatusCode::NOT_FOUND,
+			APIError::EmptyPassword => StatusCode::BAD_REQUEST,
+			APIError::EmptyUsername => StatusCode::BAD_REQUEST,
+			APIError::IncorrectCredentials => StatusCode::UNAUTHORIZED,
+			APIError::Internal => StatusCode::INTERNAL_SERVER_ERROR,
+			APIError::Io(_, _) => StatusCode::INTERNAL_SERVER_ERROR,
 			APIError::LastFMAccountNotLinked => StatusCode::NO_CONTENT,
 			APIError::LastFMLinkContentBase64DecodeError => StatusCode::BAD_REQUEST,
 			APIError::LastFMLinkContentEncodingError => StatusCode::BAD_REQUEST,
-			APIError::UserNotFound => StatusCode::NOT_FOUND,
+			APIError::LastFMNowPlaying(_) => StatusCode::FAILED_DEPENDENCY,
+			APIError::LastFMScrobble(_) => StatusCode::FAILED_DEPENDENCY,
+			APIError::LastFMScrobblerAuthentication(_) => StatusCode::FAILED_DEPENDENCY,
+			APIError::OwnAdminPrivilegeRemoval => StatusCode::CONFLICT,
+			APIError::PasswordHashing => StatusCode::INTERNAL_SERVER_ERROR,
 			APIError::PlaylistNotFound => StatusCode::NOT_FOUND,
+			APIError::Settings(_) => StatusCode::INTERNAL_SERVER_ERROR,
+			APIError::SongMetadataNotFound => StatusCode::NOT_FOUND,
+			APIError::ThumbnailFlacDecoding(_, _) => StatusCode::INTERNAL_SERVER_ERROR,
+			APIError::ThumbnailFileIOError => StatusCode::NOT_FOUND,
+			APIError::ThumbnailId3Decoding(_, _) => StatusCode::INTERNAL_SERVER_ERROR,
+			APIError::ThumbnailImageDecoding(_, _) => StatusCode::INTERNAL_SERVER_ERROR,
+			APIError::ThumbnailMp4Decoding(_, _) => StatusCode::INTERNAL_SERVER_ERROR,
+			APIError::TomlDeserialization(_) => StatusCode::INTERNAL_SERVER_ERROR,
+			APIError::UnsupportedThumbnailFormat(_) => StatusCode::INTERNAL_SERVER_ERROR,
+			APIError::UserNotFound => StatusCode::NOT_FOUND,
 			APIError::VFSPathNotFound => StatusCode::NOT_FOUND,
-			APIError::Unspecified => StatusCode::INTERNAL_SERVER_ERROR,
 		}
 	}
-}
 
-#[derive(Clone)]
-struct Cookies {
-	jar: CookieJar,
-	key: Key,
-}
-
-impl Cookies {
-	fn new(key: Key) -> Self {
-		let jar = CookieJar::new();
-		Self { jar, key }
+	fn error_response(&self) -> HttpResponse<BoxBody> {
+		HttpResponse::new(self.status_code())
 	}
-
-	fn add_original(&mut self, cookie: Cookie<'static>) {
-		self.jar.add_original(cookie);
-	}
-
-	fn add(&mut self, cookie: Cookie<'static>) {
-		self.jar.add(cookie);
-	}
-
-	fn add_signed(&mut self, cookie: Cookie<'static>) {
-		self.jar.signed(&self.key).add(cookie);
-	}
-
-	#[allow(dead_code)]
-	fn get(&self, name: &str) -> Option<&Cookie> {
-		self.jar.get(name)
-	}
-
-	fn get_signed(&mut self, name: &str) -> Option<Cookie> {
-		self.jar.signed(&self.key).get(name)
-	}
-}
-
-impl FromRequest for Cookies {
-	type Error = actix_web::Error;
-	type Future = Pin<Box<dyn Future<Output = Result<Self, Self::Error>>>>;
-	type Config = ();
-
-	fn from_request(request: &HttpRequest, _payload: &mut Payload) -> Self::Future {
-		let request_cookies = match request.cookies() {
-			Ok(c) => c,
-			Err(_) => return Box::pin(err(ErrorInternalServerError(APIError::Unspecified))),
-		};
-
-		let key = match request.app_data::<Data<Key>>() {
-			Some(k) => k.as_ref(),
-			None => return Box::pin(err(ErrorInternalServerError(APIError::Unspecified))),
-		};
-
-		let mut cookies = Cookies::new(key.clone());
-		for cookie in request_cookies.deref() {
-			cookies.add_original(cookie.clone());
-		}
-
-		Box::pin(ok(cookies))
-	}
-}
-
-#[derive(Debug)]
-enum AuthSource {
-	AuthorizationBasic,
-	AuthorizationBearer,
-	Cookie,
-	QueryParameter,
 }
 
 #[derive(Debug)]
 struct Auth {
 	username: String,
-	source: AuthSource,
 }
 
 impl FromRequest for Auth {
 	type Error = actix_web::Error;
 	type Future = Pin<Box<dyn Future<Output = Result<Self, Self::Error>>>>;
-	type Config = ();
 
 	fn from_request(request: &HttpRequest, payload: &mut Payload) -> Self::Future {
 		let user_manager = match request.app_data::<Data<user::Manager>>() {
 			Some(m) => m.clone(),
-			None => return Box::pin(err(ErrorInternalServerError(APIError::Unspecified))),
+			None => return Box::pin(err(ErrorInternalServerError(APIError::Internal))),
 		};
 
-		let cookies_future = Cookies::from_request(request, payload);
-		let basic_auth_future = BasicAuth::from_request(request, payload);
 		let bearer_auth_future = BearerAuth::from_request(request, payload);
 		let query_params_future =
 			web::Query::<dto::AuthQueryParameters>::from_request(request, payload);
 
 		Box::pin(async move {
-			// Auth via session cookie
-			{
-				let mut cookies = cookies_future.await?;
-				if let Some(session_cookie) = cookies.get_signed(dto::COOKIE_SESSION) {
-					let username = session_cookie.value().to_string();
-					let exists = block(move || user_manager.exists(&username)).await?;
-					if !exists {
-						return Err(ErrorUnauthorized(APIError::Unspecified));
-					}
-					return Ok(Auth {
-						username: session_cookie.value().to_string(),
-						source: AuthSource::Cookie,
-					});
-				}
-			}
-
 			// Auth via bearer token in query parameter
 			if let Ok(query) = query_params_future.await {
 				let auth_token = user::AuthToken(query.auth_token.clone());
@@ -206,8 +145,7 @@ impl FromRequest for Auth {
 				})
 				.await?;
 				return Ok(Auth {
-					username: authorization.username.to_owned(),
-					source: AuthSource::QueryParameter,
+					username: authorization.username,
 				});
 			}
 
@@ -219,30 +157,11 @@ impl FromRequest for Auth {
 				})
 				.await?;
 				return Ok(Auth {
-					username: authorization.username.to_owned(),
-					source: AuthSource::AuthorizationBearer,
+					username: authorization.username,
 				});
 			}
 
-			// Auth via basic authorization header
-			{
-				let basic_auth = basic_auth_future.await?;
-				let username = basic_auth.user_id().to_string();
-				let password = basic_auth
-					.password()
-					.map(|s| s.as_ref())
-					.unwrap_or("")
-					.to_string();
-				let auth_result = block(move || user_manager.login(&username, &password)).await;
-				if auth_result.is_ok() {
-					Ok(Auth {
-						username: basic_auth.user_id().to_string(),
-						source: AuthSource::AuthorizationBasic,
-					})
-				} else {
-					Err(ErrorUnauthorized(APIError::Unspecified))
-				}
-			}
+			Err(ErrorUnauthorized(APIError::AuthenticationRequired))
 		})
 	}
 }
@@ -255,12 +174,11 @@ struct AdminRights {
 impl FromRequest for AdminRights {
 	type Error = actix_web::Error;
 	type Future = Pin<Box<dyn Future<Output = Result<Self, Self::Error>>>>;
-	type Config = ();
 
 	fn from_request(request: &HttpRequest, payload: &mut Payload) -> Self::Future {
 		let user_manager = match request.app_data::<Data<user::Manager>>() {
 			Some(m) => m.clone(),
-			None => return Box::pin(err(ErrorInternalServerError(APIError::Unspecified))),
+			None => return Box::pin(err(ErrorInternalServerError(APIError::Internal))),
 		};
 
 		let auth_future = Auth::from_request(request, payload);
@@ -269,7 +187,7 @@ impl FromRequest for AdminRights {
 			let user_manager_count = user_manager.clone();
 			let user_count = block(move || user_manager_count.count()).await;
 			match user_count {
-				Err(_) => return Err(ErrorInternalServerError(APIError::Unspecified)),
+				Err(e) => return Err(e.into()),
 				Ok(0) => return Ok(AdminRights { auth: None }),
 				_ => (),
 			};
@@ -280,101 +198,33 @@ impl FromRequest for AdminRights {
 			if is_admin {
 				Ok(AdminRights { auth: Some(auth) })
 			} else {
-				Err(ErrorForbidden(APIError::Unspecified))
+				Err(ErrorForbidden(APIError::AdminPermissionRequired))
 			}
 		})
 	}
 }
 
-pub fn http_auth_middleware<
-	B: MessageBody + 'static,
-	S: Service<Response = ServiceResponse<B>, Request = ServiceRequest, Error = actix_web::Error>
-		+ 'static,
->(
-	request: ServiceRequest,
-	service: &mut S,
-) -> Pin<Box<dyn Future<Output = Result<ServiceResponse<B>, actix_web::Error>>>> {
-	let user_manager = match request.app_data::<Data<user::Manager>>() {
-		Some(m) => m.clone(),
-		None => return Box::pin(err(ErrorInternalServerError(APIError::Unspecified))),
-	};
-
-	let (request, mut payload) = request.into_parts();
-	let auth_future = Auth::from_request(&request, &mut payload);
-	let cookies_future = Cookies::from_request(&request, &mut payload);
-	let request = match ServiceRequest::from_parts(request, payload) {
-		Ok(s) => s,
-		Err(_) => return Box::pin(err(ErrorInternalServerError(APIError::Unspecified))),
-	};
-
-	let response_future = service.call(request);
-	Box::pin(async move {
-		let mut response = response_future.await?;
-		if let Ok(auth) = auth_future.await {
-			let set_cookies = match auth.source {
-				AuthSource::AuthorizationBasic => true,
-				AuthSource::AuthorizationBearer => false,
-				AuthSource::Cookie => false,
-				AuthSource::QueryParameter => false,
-			};
-			if set_cookies {
-				let cookies = cookies_future.await?;
-				let username = auth.username.clone();
-				let is_admin = block(move || {
-					user_manager
-						.is_admin(&auth.username)
-						.map_err(|_| APIError::Unspecified)
-				})
-				.await?;
-				add_auth_cookies(response.response_mut(), &cookies, &username, is_admin)?;
-			}
-		}
-		Ok(response)
-	})
+struct MediaFile {
+	named_file: NamedFile,
 }
 
-fn add_auth_cookies<T>(
-	response: &mut HttpResponse<T>,
-	cookies: &Cookies,
-	username: &str,
-	is_admin: bool,
-) -> Result<(), HttpError> {
-	let mut cookies = cookies.clone();
-
-	cookies.add_signed(
-		Cookie::build(dto::COOKIE_SESSION, username.to_owned())
-			.same_site(cookie::SameSite::Lax)
-			.http_only(true)
-			.permanent()
-			.finish(),
-	);
-
-	cookies.add(
-		Cookie::build(dto::COOKIE_USERNAME, username.to_owned())
-			.same_site(cookie::SameSite::Lax)
-			.http_only(false)
-			.permanent()
-			.path("/")
-			.finish(),
-	);
-
-	cookies.add(
-		Cookie::build(dto::COOKIE_ADMIN, format!("{}", is_admin))
-			.same_site(cookie::SameSite::Lax)
-			.http_only(false)
-			.permanent()
-			.path("/")
-			.finish(),
-	);
-
-	let headers = response.headers_mut();
-	for cookie in cookies.jar.delta() {
-		http::HeaderValue::from_str(&cookie.to_string()).map(|c| {
-			headers.append(http::header::SET_COOKIE, c);
-		})?;
+impl MediaFile {
+	fn new(named_file: NamedFile) -> Self {
+		Self { named_file }
 	}
+}
 
-	Ok(())
+impl Responder for MediaFile {
+	type Body = BoxBody;
+
+	fn respond_to(self, req: &HttpRequest) -> HttpResponse<Self::Body> {
+		// Intentionally turn off content encoding for media files because:
+		// 1. There is little value in compressing files that are already compressed (mp3, jpg, etc.)
+		// 2. The Content-Length header is incompatible with content encoding (other than identity), and can be valuable for clients
+		self.named_file
+			.set_content_encoding(ContentEncoding::Identity)
+			.into_response(req)
+	}
 }
 
 async fn block<F, I, E>(f: F) -> Result<I, APIError>
@@ -383,10 +233,10 @@ where
 	I: Send + 'static,
 	E: Send + std::fmt::Debug + 'static + Into<APIError>,
 {
-	actix_web::web::block(f).await.map_err(|e| match e {
-		BlockingError::Error(e) => e.into(),
-		BlockingError::Canceled => APIError::Unspecified,
-	})
+	actix_web::web::block(f)
+		.await
+		.map_err(|_| APIError::Internal)
+		.and_then(|r| r.map_err(|e| e.into()))
 }
 
 #[get("/version")]
@@ -458,11 +308,7 @@ async fn put_mount_dirs(
 	vfs_manager: Data<vfs::Manager>,
 	new_mount_dirs: Json<Vec<dto::MountDir>>,
 ) -> Result<HttpResponse, APIError> {
-	let new_mount_dirs = new_mount_dirs
-		.to_owned()
-		.into_iter()
-		.map(|m| m.into())
-		.collect();
+	let new_mount_dirs: Vec<MountDir> = new_mount_dirs.iter().cloned().map(|m| m.into()).collect();
 	block(move || vfs_manager.set_mount_dirs(&new_mount_dirs)).await?;
 	Ok(HttpResponse::new(StatusCode::OK))
 }
@@ -515,10 +361,8 @@ async fn update_user(
 	user_update: Json<dto::UserUpdate>,
 ) -> Result<HttpResponse, APIError> {
 	if let Some(auth) = &admin_rights.auth {
-		if auth.username == name.as_str() {
-			if user_update.new_is_admin == Some(false) {
-				return Err(APIError::OwnAdminPrivilegeRemoval);
-			}
+		if auth.username == name.as_str() && user_update.new_is_admin == Some(false) {
+			return Err(APIError::OwnAdminPrivilegeRemoval);
 		}
 	}
 
@@ -582,7 +426,6 @@ async fn trigger_index(
 async fn login(
 	user_manager: Data<user::Manager>,
 	credentials: Json<dto::Credentials>,
-	cookies: Cookies,
 ) -> Result<HttpResponse, APIError> {
 	let username = credentials.username.clone();
 	let (user::AuthToken(token), is_admin) =
@@ -597,9 +440,7 @@ async fn login(
 		token,
 		is_admin,
 	};
-	let mut response = HttpResponse::Ok().json(authorization);
-	add_auth_cookies(&mut response, &cookies, &username, is_admin)
-		.map_err(|_| APIError::Unspecified)?;
+	let response = HttpResponse::Ok().json(authorization);
 	Ok(response)
 }
 
@@ -619,7 +460,7 @@ async fn browse(
 	path: web::Path<String>,
 ) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
 	let result = block(move || {
-		let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
+		let path = percent_decode_str(&path).decode_utf8_lossy();
 		index.browse(Path::new(path.as_ref()))
 	})
 	.await?;
@@ -639,7 +480,7 @@ async fn flatten(
 	path: web::Path<String>,
 ) -> Result<Json<Vec<index::Song>>, APIError> {
 	let songs = block(move || {
-		let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
+		let path = percent_decode_str(&path).decode_utf8_lossy();
 		index.flatten(Path::new(path.as_ref()))
 	})
 	.await?;
@@ -682,17 +523,16 @@ async fn get_audio(
 	vfs_manager: Data<vfs::Manager>,
 	_auth: Auth,
 	path: web::Path<String>,
-) -> Result<NamedFile, APIError> {
+) -> Result<MediaFile, APIError> {
 	let audio_path = block(move || {
 		let vfs = vfs_manager.get_vfs()?;
-		let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
+		let path = percent_decode_str(&path).decode_utf8_lossy();
 		vfs.virtual_to_real(Path::new(path.as_ref()))
-			.map_err(|_| APIError::VFSPathNotFound)
 	})
 	.await?;
 
 	let named_file = NamedFile::open(&audio_path).map_err(|_| APIError::AudioFileIOError)?;
-	Ok(named_file)
+	Ok(MediaFile::new(named_file))
 }
 
 #[get("/thumbnail/{path:.*}")]
@@ -702,26 +542,23 @@ async fn get_thumbnail(
 	_auth: Auth,
 	path: web::Path<String>,
 	options_input: web::Query<dto::ThumbnailOptions>,
-) -> Result<NamedFile, APIError> {
-	let mut options = thumbnail::Options::default();
-	options.pad_to_square = options_input.pad.unwrap_or(options.pad_to_square);
+) -> Result<MediaFile, APIError> {
+	let options = thumbnail::Options::from(options_input.0);
 
-	let thumbnail_path = block(move || {
+	let thumbnail_path = block(move || -> Result<PathBuf, APIError> {
 		let vfs = vfs_manager.get_vfs()?;
-		let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
-		let image_path = vfs
-			.virtual_to_real(Path::new(path.as_ref()))
-			.map_err(|_| APIError::VFSPathNotFound)?;
+		let path = percent_decode_str(&path).decode_utf8_lossy();
+		let image_path = vfs.virtual_to_real(Path::new(path.as_ref()))?;
 		thumbnails_manager
 			.get_thumbnail(&image_path, &options)
-			.map_err(|_| APIError::Unspecified)
+			.map_err(|e| e.into())
 	})
 	.await?;
 
 	let named_file =
 		NamedFile::open(&thumbnail_path).map_err(|_| APIError::ThumbnailFileIOError)?;
 
-	Ok(named_file)
+	Ok(MediaFile::new(named_file))
 }
 
 #[get("/playlists")]
@@ -780,7 +617,7 @@ async fn lastfm_now_playing(
 		if !user_manager.is_lastfm_linked(&auth.username) {
 			return Err(APIError::LastFMAccountNotLinked);
 		}
-		let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
+		let path = percent_decode_str(&path).decode_utf8_lossy();
 		lastfm_manager.now_playing(&auth.username, Path::new(path.as_ref()))?;
 		Ok(())
 	})
@@ -799,7 +636,7 @@ async fn lastfm_scrobble(
 		if !user_manager.is_lastfm_linked(&auth.username) {
 			return Err(APIError::LastFMAccountNotLinked);
 		}
-		let path = percent_decode_str(&(path.0)).decode_utf8_lossy();
+		let path = percent_decode_str(&path).decode_utf8_lossy();
 		lastfm_manager.scrobble(&auth.username, Path::new(path.as_ref()))?;
 		Ok(())
 	})

@@ -1,6 +1,4 @@
-use anyhow::*;
 use crossbeam_channel::Receiver;
-use diesel;
 use diesel::prelude::*;
 use log::error;
 
@@ -9,7 +7,7 @@ use crate::db::{directories, songs, DB};
 const INDEX_BUILDING_INSERT_BUFFER_SIZE: usize = 1000; // Insertions in each transaction
 
 #[derive(Debug, Insertable)]
-#[table_name = "songs"]
+#[diesel(table_name = songs)]
 pub struct Song {
 	pub path: String,
 	pub parent: String,
@@ -22,10 +20,14 @@ pub struct Song {
 	pub album: Option<String>,
 	pub artwork: Option<String>,
 	pub duration: Option<i32>,
+	pub lyricist: Option<String>,
+	pub composer: Option<String>,
+	pub genre: Option<String>,
+	pub label: Option<String>,
 }
 
 #[derive(Debug, Insertable)]
-#[table_name = "directories"]
+#[diesel(table_name = directories)]
 pub struct Directory {
 	pub path: String,
 	pub parent: Option<String>,
@@ -53,19 +55,16 @@ impl Inserter {
 		let new_directories = Vec::with_capacity(INDEX_BUILDING_INSERT_BUFFER_SIZE);
 		let new_songs = Vec::with_capacity(INDEX_BUILDING_INSERT_BUFFER_SIZE);
 		Self {
-			db,
 			receiver,
 			new_directories,
 			new_songs,
+			db,
 		}
 	}
 
 	pub fn insert(&mut self) {
-		loop {
-			match self.receiver.recv() {
-				Ok(item) => self.insert_item(item),
-				Err(_) => break,
-			}
+		while let Ok(item) = self.receiver.recv() {
+			self.insert_item(item);
 		}
 	}
 
@@ -87,34 +86,26 @@ impl Inserter {
 	}
 
 	fn flush_directories(&mut self) {
-		if self
-			.db
-			.connect()
-			.and_then(|connection| {
-				diesel::insert_into(directories::table)
-					.values(&self.new_directories)
-					.execute(&*connection) // TODO https://github.com/diesel-rs/diesel/issues/1822
-					.map_err(Error::new)
-			})
-			.is_err()
-		{
+		let res = self.db.connect().ok().and_then(|mut connection| {
+			diesel::insert_into(directories::table)
+				.values(&self.new_directories)
+				.execute(&mut *connection) // TODO https://github.com/diesel-rs/diesel/issues/1822
+				.ok()
+		});
+		if res.is_none() {
 			error!("Could not insert new directories in database");
 		}
 		self.new_directories.clear();
 	}
 
 	fn flush_songs(&mut self) {
-		if self
-			.db
-			.connect()
-			.and_then(|connection| {
-				diesel::insert_into(songs::table)
-					.values(&self.new_songs)
-					.execute(&*connection) // TODO https://github.com/diesel-rs/diesel/issues/1822
-					.map_err(Error::new)
-			})
-			.is_err()
-		{
+		let res = self.db.connect().ok().and_then(|mut connection| {
+			diesel::insert_into(songs::table)
+				.values(&self.new_songs)
+				.execute(&mut *connection) // TODO https://github.com/diesel-rs/diesel/issues/1822
+				.ok()
+		});
+		if res.is_none() {
 			error!("Could not insert new songs in database");
 		}
 		self.new_songs.clear();
@@ -123,10 +114,10 @@ impl Inserter {
 
 impl Drop for Inserter {
 	fn drop(&mut self) {
-		if self.new_directories.len() > 0 {
+		if !self.new_directories.is_empty() {
 			self.flush_directories();
 		}
-		if self.new_songs.len() > 0 {
+		if !self.new_songs.is_empty() {
 			self.flush_songs();
 		}
 	}

@@ -1,10 +1,10 @@
 use actix_web::{
-	middleware::{normalize::TrailingSlash, Compress, Logger, NormalizePath},
+	dev::Service,
+	middleware::{Compress, Logger, NormalizePath},
 	rt::System,
 	web::{self, ServiceConfig},
 	App as ActixApp, HttpServer,
 };
-use anyhow::*;
 use log::error;
 
 use crate::app::App;
@@ -16,7 +16,6 @@ pub mod test;
 
 pub fn make_config(app: App) -> impl FnOnce(&mut ServiceConfig) + Clone {
 	move |cfg: &mut ServiceConfig| {
-		let encryption_key = cookie::Key::derive_from(&app.auth_secret.key[..]);
 		cfg.app_data(web::Data::new(app.index))
 			.app_data(web::Data::new(app.config_manager))
 			.app_data(web::Data::new(app.ddns_manager))
@@ -26,12 +25,10 @@ pub fn make_config(app: App) -> impl FnOnce(&mut ServiceConfig) + Clone {
 			.app_data(web::Data::new(app.thumbnail_manager))
 			.app_data(web::Data::new(app.user_manager))
 			.app_data(web::Data::new(app.vfs_manager))
-			.app_data(web::Data::new(encryption_key))
 			.service(
 				web::scope("/api")
 					.configure(api::make_config())
-					.wrap_fn(api::http_auth_middleware)
-					.wrap(NormalizePath::new(TrailingSlash::Trim)),
+					.wrap(NormalizePath::trim()),
 			)
 			.service(
 				actix_files::Files::new("/swagger", app.swagger_dir_path)
@@ -46,20 +43,34 @@ pub fn make_config(app: App) -> impl FnOnce(&mut ServiceConfig) + Clone {
 	}
 }
 
-pub fn run(app: App) -> Result<()> {
-	System::run(move || {
-		let address = format!("0.0.0.0:{}", app.port);
+pub fn run(app: App) -> Result<(), std::io::Error> {
+	let address = ("0.0.0.0", app.port);
+	System::new().block_on(
 		HttpServer::new(move || {
 			ActixApp::new()
 				.wrap(Logger::default())
+				.wrap_fn(|req, srv| {
+					// For some reason, actix logs error as DEBUG level.
+					// This logs them as ERROR level
+					// See https://github.com/actix/actix-web/issues/2637
+					let response_future = srv.call(req);
+					async {
+						let response = response_future.await?;
+						if let Some(error) = response.response().error() {
+							error!("{}", error);
+						}
+						Ok(response)
+					}
+				})
 				.wrap(Compress::default())
 				.configure(make_config(app.clone()))
 		})
 		.disable_signals()
 		.bind(address)
-		.map(|server| server.run())
-		.map_err(|e| error!("Error starting HTTP server: {:?}", e))
-		.ok();
-	})?;
-	Ok(())
+		.map_err(|e| {
+			error!("Error starting HTTP server: {:?}", e);
+			e
+		})?
+		.run(),
+	)
 }
