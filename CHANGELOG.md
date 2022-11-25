@@ -1,6 +1,6 @@
 # Changelog
 
-## Future release
+## Polaris 0.14.0
 
 ### General
 
