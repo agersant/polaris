@@ -329,7 +329,7 @@ fn read_flac(path: &Path) -> Result<SongTags, Error> {
 
 	Ok(SongTags {
 		artists: vorbis.artist().map_or(Vec::new(), |v| v.clone()),
-		album_artists: vorbis.artist().map_or(Vec::new(), |v| v.clone()),
+		album_artists: vorbis.album_artist().map_or(Vec::new(), |v| v.clone()),
 		album: vorbis.album().map(|v| v[0].clone()),
 		title: vorbis.title().map(|v| v[0].clone()),
 		duration,
