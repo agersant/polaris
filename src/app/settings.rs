@@ -4,28 +4,22 @@ use serde::Deserialize;
 use std::convert::TryInto;
 use std::time::Duration;
 
-use crate::db::{misc_settings, DB};
+use crate::db::{self, misc_settings, DB};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-	#[error("Missing auth secret")]
-	AuthSecretNotFound,
 	#[error("Auth secret does not have the expected format")]
-	InvalidAuthSecret,
+	AuthenticationSecretInvalid,
+	#[error("Missing auth secret")]
+	AuthenticationSecretNotFound,
+	#[error(transparent)]
+	DatabaseConnection(#[from] db::Error),
 	#[error("Missing settings")]
 	MiscSettingsNotFound,
 	#[error("Index album art pattern is not a valid regex")]
 	IndexAlbumArtPatternInvalid,
 	#[error(transparent)]
 	Database(#[from] diesel::result::Error),
-	#[error("Unspecified")]
-	Unspecified,
-}
-
-impl From<anyhow::Error> for Error {
-	fn from(_: anyhow::Error) -> Self {
-		Error::Unspecified
-	}
 }
 
 #[derive(Clone, Default)]
@@ -62,12 +56,12 @@ impl Manager {
 			.select(auth_secret)
 			.get_result(&mut connection)
 			.map_err(|e| match e {
-				diesel::result::Error::NotFound => Error::AuthSecretNotFound,
+				diesel::result::Error::NotFound => Error::AuthenticationSecretNotFound,
 				e => e.into(),
 			})?;
 		secret
 			.try_into()
-			.map_err(|_| Error::InvalidAuthSecret)
+			.map_err(|_| Error::AuthenticationSecretInvalid)
 			.map(|key| AuthSecret { key })
 	}
 

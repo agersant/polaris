@@ -130,7 +130,7 @@ impl Inserter {
 	}
 
 	fn flush_directories(&mut self) {
-		let res = self.db.connect().and_then(|mut connection| {
+		let res = self.db.connect().ok().and_then(|mut connection| {
 			for d in self.new_directories.drain(..) {
 				let dir = Directory {
 					path: d.path,
@@ -146,13 +146,15 @@ impl Inserter {
 					.do_update()
 					.set(&dir)
 					.returning(directories::id)
-					.get_result(&mut connection)?;
+					.get_result(&mut connection)
+					.ok()?;
 
 				for a in d.artists {
 					let artist_id: i32 = diesel::insert_into(artists::table)
 						.values(Artist { name: a })
 						.returning(artists::id)
-						.get_result(&mut connection)?;
+						.get_result(&mut connection)
+						.ok()?;
 
 					let dir_artist = DirectoryArtist {
 						directory: dir_id,
@@ -160,20 +162,21 @@ impl Inserter {
 					};
 					diesel::insert_into(directory_artists::table)
 						.values(dir_artist)
-						.execute(&mut *connection)?;
+						.execute(&mut *connection)
+						.ok()?;
 				}
 			}
 
-			Ok(())
+			Some(())
 		});
 
-		if res.is_err() {
+		if res.is_none() {
 			error!("Could not insert new directories in database");
 		}
 	}
 
 	fn flush_songs(&mut self) {
-		let res = self.db.connect().and_then(|mut connection| {
+		let res = self.db.connect().ok().and_then(|mut connection| {
 			for s in self.new_songs.drain(..) {
 				let song = Song {
 					path: s.path,
@@ -196,13 +199,15 @@ impl Inserter {
 					.do_update()
 					.set(&song)
 					.returning(songs::id)
-					.get_result(&mut connection)?;
+					.get_result(&mut connection)
+					.ok()?;
 
 				for a in s.tags.artists {
 					let artist_id: i32 = diesel::insert_into(artists::table)
 						.values(Artist { name: a })
 						.returning(artists::id)
-						.get_result(&mut connection)?;
+						.get_result(&mut connection)
+						.ok()?;
 
 					let song_artist = SongArtist {
 						song: song_id,
@@ -210,14 +215,16 @@ impl Inserter {
 					};
 					diesel::insert_into(song_artists::table)
 						.values(song_artist)
-						.execute(&mut connection)?;
+						.execute(&mut connection)
+						.ok()?;
 				}
 
 				for a in s.tags.album_artists {
 					let artist_id: i32 = diesel::insert_into(artists::table)
 						.values(Artist { name: a })
 						.returning(artists::id)
-						.get_result(&mut connection)?;
+						.get_result(&mut connection)
+						.ok()?;
 
 					let song_album_artist = SongAlbumArtist {
 						song: song_id,
@@ -225,14 +232,15 @@ impl Inserter {
 					};
 					diesel::insert_into(song_album_artists::table)
 						.values(song_album_artist)
-						.execute(&mut connection)?;
+						.execute(&mut connection)
+						.ok()?;
 				}
 			}
 
-			Ok(())
+			Some(())
 		});
 
-		if res.is_err() {
+		if res.is_none() {
 			error!("Could not insert new songs in database");
 		}
 	}

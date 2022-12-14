@@ -6,13 +6,12 @@ extern crate diesel;
 #[macro_use]
 extern crate diesel_migrations;
 
-use anyhow::Result;
 use log::info;
 use simplelog::{
 	ColorChoice, CombinedLogger, LevelFilter, SharedLogger, TermLogger, TerminalMode, WriteLogger,
 };
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 mod app;
 mod db;
@@ -24,30 +23,57 @@ mod test;
 mod ui;
 mod utils;
 
+#[derive(thiserror::Error, Debug)]
+pub enum Error {
+	#[error(transparent)]
+	App(#[from] app::Error),
+	#[error("Could not parse command line arguments:\n\n{0}")]
+	CliArgsParsing(getopts::Fail),
+	#[cfg(unix)]
+	#[error("Failed to turn polaris process into a daemon:\n\n{0}")]
+	Daemonize(daemonize::DaemonizeError),
+	#[error("Could not create log directory `{0}`:\n\n{1}")]
+	LogDirectoryCreationError(PathBuf, std::io::Error),
+	#[error("Could not create log file `{0}`:\n\n{1}")]
+	LogFileCreationError(PathBuf, std::io::Error),
+	#[error("Could not initialize log system:\n\n{0}")]
+	LogInitialization(log::SetLoggerError),
+	#[cfg(unix)]
+	#[error("Could not create pid directory `{0}`:\n\n{1}")]
+	PidDirectoryCreationError(PathBuf, std::io::Error),
+	#[cfg(unix)]
+	#[error("Could not notify systemd of initialization success:\n\n{0}")]
+	SystemDNotify(std::io::Error),
+}
+
 #[cfg(unix)]
-fn daemonize<T: AsRef<Path>>(foreground: bool, pid_file_path: T) -> Result<()> {
+fn daemonize<T: AsRef<Path>>(foreground: bool, pid_file_path: T) -> Result<(), Error> {
 	if foreground {
 		return Ok(());
 	}
 	if let Some(parent) = pid_file_path.as_ref().parent() {
-		fs::create_dir_all(parent)?;
+		fs::create_dir_all(parent)
+			.map_err(|e| Error::PidDirectoryCreationError(parent.to_owned(), e))?;
 	}
 	let daemonize = daemonize::Daemonize::new()
 		.pid_file(pid_file_path.as_ref())
 		.working_directory(".");
-	daemonize.start()?;
+	daemonize.start().map_err(Error::Daemonize)?;
 	Ok(())
 }
 
 #[cfg(unix)]
-fn notify_ready() -> Result<()> {
+fn notify_ready() -> Result<(), Error> {
 	if let Ok(true) = sd_notify::booted() {
-		sd_notify::notify(true, &[sd_notify::NotifyState::Ready])?;
+		sd_notify::notify(true, &[sd_notify::NotifyState::Ready]).map_err(Error::SystemDNotify)?;
 	}
 	Ok(())
 }
 
-fn init_logging<T: AsRef<Path>>(log_level: LevelFilter, log_file_path: &Option<T>) -> Result<()> {
+fn init_logging<T: AsRef<Path>>(
+	log_level: LevelFilter,
+	log_file_path: &Option<T>,
+) -> Result<(), Error> {
 	let log_config = simplelog::ConfigBuilder::new()
 		.set_location_level(LevelFilter::Error)
 		.build();
@@ -61,25 +87,29 @@ fn init_logging<T: AsRef<Path>>(log_level: LevelFilter, log_file_path: &Option<T
 
 	if let Some(path) = log_file_path {
 		if let Some(parent) = path.as_ref().parent() {
-			fs::create_dir_all(parent)?;
+			fs::create_dir_all(parent)
+				.map_err(|e| Error::LogDirectoryCreationError(parent.to_owned(), e))?;
 		}
 		loggers.push(WriteLogger::new(
 			log_level,
 			log_config,
-			fs::File::create(path)?,
+			fs::File::create(path)
+				.map_err(|e| Error::LogFileCreationError(path.as_ref().to_owned(), e))?,
 		));
 	}
 
-	CombinedLogger::init(loggers)?;
+	CombinedLogger::init(loggers).map_err(Error::LogInitialization)?;
 
 	Ok(())
 }
 
-fn main() -> Result<()> {
+fn main() -> Result<(), Error> {
 	// Parse CLI options
 	let args: Vec<String> = std::env::args().collect();
 	let options_manager = options::Manager::new();
-	let cli_options = options_manager.parse(&args[1..])?;
+	let cli_options = options_manager
+		.parse(&args[1..])
+		.map_err(Error::CliArgsParsing)?;
 
 	if cli_options.show_help {
 		let program = args[0].clone();

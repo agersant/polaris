@@ -1,11 +1,22 @@
-use anyhow::{bail, Result};
 use core::ops::Deref;
 use diesel::prelude::*;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::path::{self, Path, PathBuf};
 
-use crate::db::{mount_points, DB};
+use crate::db::{self, mount_points, DB};
+
+#[derive(thiserror::Error, Debug)]
+pub enum Error {
+	#[error("The following real path could not be mapped to a virtual path: `{0}`")]
+	CouldNotMapToVirtualPath(PathBuf),
+	#[error("The following virtual path could not be mapped to a real path: `{0}`")]
+	CouldNotMapToRealPath(PathBuf),
+	#[error(transparent)]
+	DatabaseConnection(#[from] db::Error),
+	#[error(transparent)]
+	Database(#[from] diesel::result::Error),
+}
 
 #[derive(Clone, Debug, Deserialize, Insertable, PartialEq, Eq, Queryable, Serialize)]
 #[diesel(table_name = mount_points)]
@@ -44,7 +55,7 @@ impl VFS {
 		VFS { mounts }
 	}
 
-	pub fn real_to_virtual<P: AsRef<Path>>(&self, real_path: P) -> Result<PathBuf> {
+	pub fn real_to_virtual<P: AsRef<Path>>(&self, real_path: P) -> Result<PathBuf, Error> {
 		for mount in &self.mounts {
 			if let Ok(p) = real_path.as_ref().strip_prefix(&mount.source) {
 				let mount_path = Path::new(&mount.name);
@@ -55,10 +66,10 @@ impl VFS {
 				};
 			}
 		}
-		bail!("Real path has no match in VFS")
+		Err(Error::CouldNotMapToVirtualPath(real_path.as_ref().into()))
 	}
 
-	pub fn virtual_to_real<P: AsRef<Path>>(&self, virtual_path: P) -> Result<PathBuf> {
+	pub fn virtual_to_real<P: AsRef<Path>>(&self, virtual_path: P) -> Result<PathBuf, Error> {
 		for mount in &self.mounts {
 			let mount_path = Path::new(&mount.name);
 			if let Ok(p) = virtual_path.as_ref().strip_prefix(mount_path) {
@@ -69,7 +80,7 @@ impl VFS {
 				};
 			}
 		}
-		bail!("Virtual path has no match in VFS")
+		Err(Error::CouldNotMapToRealPath(virtual_path.as_ref().into()))
 	}
 
 	pub fn mounts(&self) -> &Vec<Mount> {
@@ -87,13 +98,13 @@ impl Manager {
 		Self { db }
 	}
 
-	pub fn get_vfs(&self) -> Result<VFS> {
+	pub fn get_vfs(&self) -> Result<VFS, Error> {
 		let mount_dirs = self.mount_dirs()?;
 		let mounts = mount_dirs.into_iter().map(|p| p.into()).collect();
 		Ok(VFS::new(mounts))
 	}
 
-	pub fn mount_dirs(&self) -> Result<Vec<MountDir>> {
+	pub fn mount_dirs(&self) -> Result<Vec<MountDir>, Error> {
 		use self::mount_points::dsl::*;
 		let mut connection = self.db.connect()?;
 		let mount_dirs: Vec<MountDir> = mount_points
@@ -102,18 +113,16 @@ impl Manager {
 		Ok(mount_dirs)
 	}
 
-	pub fn set_mount_dirs(&self, mount_dirs: &[MountDir]) -> Result<()> {
+	pub fn set_mount_dirs(&self, mount_dirs: &[MountDir]) -> Result<(), Error> {
 		let mut connection = self.db.connect()?;
-		connection
-			.transaction::<_, diesel::result::Error, _>(|connection| {
-				use self::mount_points::dsl::*;
-				diesel::delete(mount_points).execute(&mut *connection)?;
-				diesel::insert_into(mount_points)
-					.values(mount_dirs)
-					.execute(&mut *connection)?; // TODO https://github.com/diesel-rs/diesel/issues/1822
-				Ok(())
-			})
-			.map_err(anyhow::Error::new)?;
+		connection.transaction::<_, diesel::result::Error, _>(|connection| {
+			use self::mount_points::dsl::*;
+			diesel::delete(mount_points).execute(&mut *connection)?;
+			diesel::insert_into(mount_points)
+				.values(mount_dirs)
+				.execute(&mut *connection)?; // TODO https://github.com/diesel-rs/diesel/issues/1822
+			Ok(())
+		})?;
 		Ok(())
 	}
 }

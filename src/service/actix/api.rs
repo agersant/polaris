@@ -15,7 +15,7 @@ use actix_web_httpauth::extractors::bearer::BearerAuth;
 use futures_util::future::err;
 use percent_encoding::percent_decode_str;
 use std::future::Future;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::str;
 
@@ -73,23 +73,47 @@ pub fn make_config() -> impl FnOnce(&mut ServiceConfig) + Clone {
 impl ResponseError for APIError {
 	fn status_code(&self) -> StatusCode {
 		match self {
-			APIError::AuthenticationRequired => StatusCode::UNAUTHORIZED,
-			APIError::IncorrectCredentials => StatusCode::UNAUTHORIZED,
-			APIError::EmptyUsername => StatusCode::BAD_REQUEST,
-			APIError::EmptyPassword => StatusCode::BAD_REQUEST,
-			APIError::DeletingOwnAccount => StatusCode::CONFLICT,
-			APIError::OwnAdminPrivilegeRemoval => StatusCode::CONFLICT,
+			APIError::AuthorizationTokenEncoding => StatusCode::INTERNAL_SERVER_ERROR,
+			APIError::AdminPermissionRequired => StatusCode::UNAUTHORIZED,
 			APIError::AudioFileIOError => StatusCode::NOT_FOUND,
-			APIError::ThumbnailFileIOError => StatusCode::NOT_FOUND,
+			APIError::AuthenticationRequired => StatusCode::UNAUTHORIZED,
+			APIError::BrancaTokenEncoding => StatusCode::INTERNAL_SERVER_ERROR,
+			APIError::DdnsUpdateQueryFailed(s) => {
+				StatusCode::from_u16(*s).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR)
+			}
+			APIError::Database(_) => StatusCode::INTERNAL_SERVER_ERROR,
+			APIError::DeletingOwnAccount => StatusCode::CONFLICT,
+			APIError::EmbeddedArtworkNotFound => StatusCode::NOT_FOUND,
+			APIError::EmptyPassword => StatusCode::BAD_REQUEST,
+			APIError::EmptyUsername => StatusCode::BAD_REQUEST,
+			APIError::IncorrectCredentials => StatusCode::UNAUTHORIZED,
+			APIError::Internal => StatusCode::INTERNAL_SERVER_ERROR,
+			APIError::Io(_, _) => StatusCode::INTERNAL_SERVER_ERROR,
 			APIError::LastFMAccountNotLinked => StatusCode::NO_CONTENT,
 			APIError::LastFMLinkContentBase64DecodeError => StatusCode::BAD_REQUEST,
 			APIError::LastFMLinkContentEncodingError => StatusCode::BAD_REQUEST,
-			APIError::UserNotFound => StatusCode::NOT_FOUND,
+			APIError::LastFMNowPlaying(_) => StatusCode::FAILED_DEPENDENCY,
+			APIError::LastFMScrobble(_) => StatusCode::FAILED_DEPENDENCY,
+			APIError::LastFMScrobblerAuthentication(_) => StatusCode::FAILED_DEPENDENCY,
+			APIError::OwnAdminPrivilegeRemoval => StatusCode::CONFLICT,
+			APIError::PasswordHashing => StatusCode::INTERNAL_SERVER_ERROR,
 			APIError::PlaylistNotFound => StatusCode::NOT_FOUND,
+			APIError::Settings(_) => StatusCode::INTERNAL_SERVER_ERROR,
+			APIError::SongMetadataNotFound => StatusCode::NOT_FOUND,
+			APIError::ThumbnailFlacDecoding(_, _) => StatusCode::INTERNAL_SERVER_ERROR,
+			APIError::ThumbnailFileIOError => StatusCode::NOT_FOUND,
+			APIError::ThumbnailId3Decoding(_, _) => StatusCode::INTERNAL_SERVER_ERROR,
+			APIError::ThumbnailImageDecoding(_, _) => StatusCode::INTERNAL_SERVER_ERROR,
+			APIError::ThumbnailMp4Decoding(_, _) => StatusCode::INTERNAL_SERVER_ERROR,
+			APIError::TomlDeserialization(_) => StatusCode::INTERNAL_SERVER_ERROR,
+			APIError::UnsupportedThumbnailFormat(_) => StatusCode::INTERNAL_SERVER_ERROR,
+			APIError::UserNotFound => StatusCode::NOT_FOUND,
 			APIError::VFSPathNotFound => StatusCode::NOT_FOUND,
-			APIError::Internal => StatusCode::INTERNAL_SERVER_ERROR,
-			APIError::Unspecified => StatusCode::INTERNAL_SERVER_ERROR,
 		}
+	}
+
+	fn error_response(&self) -> HttpResponse<BoxBody> {
+		HttpResponse::new(self.status_code())
 	}
 }
 
@@ -105,7 +129,7 @@ impl FromRequest for Auth {
 	fn from_request(request: &HttpRequest, payload: &mut Payload) -> Self::Future {
 		let user_manager = match request.app_data::<Data<user::Manager>>() {
 			Some(m) => m.clone(),
-			None => return Box::pin(err(ErrorInternalServerError(APIError::Unspecified))),
+			None => return Box::pin(err(ErrorInternalServerError(APIError::Internal))),
 		};
 
 		let bearer_auth_future = BearerAuth::from_request(request, payload);
@@ -154,7 +178,7 @@ impl FromRequest for AdminRights {
 	fn from_request(request: &HttpRequest, payload: &mut Payload) -> Self::Future {
 		let user_manager = match request.app_data::<Data<user::Manager>>() {
 			Some(m) => m.clone(),
-			None => return Box::pin(err(ErrorInternalServerError(APIError::Unspecified))),
+			None => return Box::pin(err(ErrorInternalServerError(APIError::Internal))),
 		};
 
 		let auth_future = Auth::from_request(request, payload);
@@ -163,7 +187,7 @@ impl FromRequest for AdminRights {
 			let user_manager_count = user_manager.clone();
 			let user_count = block(move || user_manager_count.count()).await;
 			match user_count {
-				Err(_) => return Err(ErrorInternalServerError(APIError::Unspecified)),
+				Err(e) => return Err(e.into()),
 				Ok(0) => return Ok(AdminRights { auth: None }),
 				_ => (),
 			};
@@ -174,7 +198,7 @@ impl FromRequest for AdminRights {
 			if is_admin {
 				Ok(AdminRights { auth: Some(auth) })
 			} else {
-				Err(ErrorForbidden(APIError::Unspecified))
+				Err(ErrorForbidden(APIError::AdminPermissionRequired))
 			}
 		})
 	}
@@ -211,7 +235,7 @@ where
 {
 	actix_web::web::block(f)
 		.await
-		.map_err(|_| APIError::Unspecified)
+		.map_err(|_| APIError::Internal)
 		.and_then(|r| r.map_err(|e| e.into()))
 }
 
@@ -504,7 +528,6 @@ async fn get_audio(
 		let vfs = vfs_manager.get_vfs()?;
 		let path = percent_decode_str(&path).decode_utf8_lossy();
 		vfs.virtual_to_real(Path::new(path.as_ref()))
-			.map_err(|_| APIError::VFSPathNotFound)
 	})
 	.await?;
 
@@ -522,15 +545,13 @@ async fn get_thumbnail(
 ) -> Result<MediaFile, APIError> {
 	let options = thumbnail::Options::from(options_input.0);
 
-	let thumbnail_path = block(move || {
+	let thumbnail_path = block(move || -> Result<PathBuf, APIError> {
 		let vfs = vfs_manager.get_vfs()?;
 		let path = percent_decode_str(&path).decode_utf8_lossy();
-		let image_path = vfs
-			.virtual_to_real(Path::new(path.as_ref()))
-			.map_err(|_| APIError::VFSPathNotFound)?;
+		let image_path = vfs.virtual_to_real(Path::new(path.as_ref()))?;
 		thumbnails_manager
 			.get_thumbnail(&image_path, &options)
-			.map_err(|_| APIError::Unspecified)
+			.map_err(|e| e.into())
 	})
 	.await?;
 

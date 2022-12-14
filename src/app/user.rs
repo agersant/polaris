@@ -1,4 +1,3 @@
-use anyhow::anyhow;
 use diesel::prelude::*;
 use pbkdf2::password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString};
 use pbkdf2::Pbkdf2;
@@ -7,10 +6,14 @@ use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::app::settings::AuthSecret;
-use crate::db::{users, DB};
+use crate::db::{self, users, DB};
 
-#[derive(thiserror::Error, Debug, PartialEq, Eq)]
+#[derive(thiserror::Error, Debug)]
 pub enum Error {
+	#[error(transparent)]
+	Database(#[from] diesel::result::Error),
+	#[error(transparent)]
+	DatabaseConnection(#[from] db::Error),
 	#[error("Cannot use empty username")]
 	EmptyUsername,
 	#[error("Cannot use empty password")]
@@ -23,14 +26,14 @@ pub enum Error {
 	InvalidAuthToken,
 	#[error("Incorrect authorization scope")]
 	IncorrectAuthorizationScope,
-	#[error("Unspecified")]
-	Unspecified,
-}
-
-impl From<anyhow::Error> for Error {
-	fn from(_: anyhow::Error) -> Self {
-		Error::Unspecified
-	}
+	#[error("Last.fm session key is missing")]
+	MissingLastFMSessionKey,
+	#[error("Failed to hash password")]
+	PasswordHashing,
+	#[error("Failed to encode authorization token")]
+	AuthorizationTokenEncoding,
+	#[error("Failed to encode Branca token")]
+	BrancaTokenEncoding,
 }
 
 #[derive(Debug, Insertable, Queryable)]
@@ -102,17 +105,14 @@ impl Manager {
 
 		diesel::insert_into(users::table)
 			.values(&new_user)
-			.execute(&mut connection)
-			.map_err(|_| Error::Unspecified)?;
+			.execute(&mut connection)?;
 		Ok(())
 	}
 
 	pub fn delete(&self, username: &str) -> Result<(), Error> {
 		use crate::db::users::dsl::*;
 		let mut connection = self.db.connect()?;
-		diesel::delete(users.filter(name.eq(username)))
-			.execute(&mut connection)
-			.map_err(|_| Error::Unspecified)?;
+		diesel::delete(users.filter(name.eq(username))).execute(&mut connection)?;
 		Ok(())
 	}
 
@@ -122,8 +122,7 @@ impl Manager {
 		use crate::db::users::dsl::*;
 		diesel::update(users.filter(name.eq(username)))
 			.set(password_hash.eq(hash))
-			.execute(&mut connection)
-			.map_err(|_| Error::Unspecified)?;
+			.execute(&mut connection)?;
 		Ok(())
 	}
 
@@ -132,8 +131,7 @@ impl Manager {
 		let mut connection = self.db.connect()?;
 		diesel::update(users.filter(name.eq(username)))
 			.set(admin.eq(is_admin as i32))
-			.execute(&mut connection)
-			.map_err(|_| Error::Unspecified)?;
+			.execute(&mut connection)?;
 		Ok(())
 	}
 
@@ -158,7 +156,7 @@ impl Manager {
 					Err(Error::IncorrectPassword)
 				}
 			}
-			Err(_) => Err(Error::Unspecified),
+			Err(e) => Err(e.into()),
 		}
 	}
 
@@ -197,20 +195,20 @@ impl Manager {
 
 	fn generate_auth_token(&self, authorization: &Authorization) -> Result<AuthToken, Error> {
 		let serialized_authorization =
-			serde_json::to_string(&authorization).map_err(|_| Error::Unspecified)?;
+			serde_json::to_string(&authorization).or(Err(Error::AuthorizationTokenEncoding))?;
 		branca::encode(
 			serialized_authorization.as_bytes(),
 			&self.auth_secret.key,
 			SystemTime::now()
 				.duration_since(UNIX_EPOCH)
-				.map_err(|_| Error::Unspecified)?
+				.unwrap_or_default()
 				.as_secs() as u32,
 		)
-		.map_err(|_| Error::Unspecified)
+		.or(Err(Error::BrancaTokenEncoding))
 		.map(AuthToken)
 	}
 
-	pub fn count(&self) -> anyhow::Result<i64> {
+	pub fn count(&self) -> Result<i64, Error> {
 		use crate::db::users::dsl::*;
 		let mut connection = self.db.connect()?;
 		let count = users.count().get_result(&mut connection)?;
@@ -220,10 +218,10 @@ impl Manager {
 	pub fn list(&self) -> Result<Vec<User>, Error> {
 		use crate::db::users::dsl::*;
 		let mut connection = self.db.connect()?;
-		users
+		let listed_users = users
 			.select((name, password_hash, admin))
-			.get_results(&mut connection)
-			.map_err(|_| Error::Unspecified)
+			.get_results(&mut connection)?;
+		Ok(listed_users)
 	}
 
 	pub fn exists(&self, username: &str) -> Result<bool, Error> {
@@ -232,8 +230,7 @@ impl Manager {
 		let results: Vec<String> = users
 			.select(name)
 			.filter(name.eq(username))
-			.get_results(&mut connection)
-			.map_err(|_| Error::Unspecified)?;
+			.get_results(&mut connection)?;
 		Ok(!results.is_empty())
 	}
 
@@ -243,8 +240,7 @@ impl Manager {
 		let is_admin: i32 = users
 			.filter(name.eq(username))
 			.select(admin)
-			.get_result(&mut connection)
-			.map_err(|_| Error::Unspecified)?;
+			.get_result(&mut connection)?;
 		Ok(is_admin != 0)
 	}
 
@@ -254,8 +250,7 @@ impl Manager {
 		let (theme_base, theme_accent, read_lastfm_username) = users
 			.select((web_theme_base, web_theme_accent, lastfm_username))
 			.filter(name.eq(username))
-			.get_result(&mut connection)
-			.map_err(|_| Error::Unspecified)?;
+			.get_result(&mut connection)?;
 		Ok(Preferences {
 			web_theme_base: theme_base,
 			web_theme_accent: theme_accent,
@@ -275,8 +270,7 @@ impl Manager {
 				web_theme_base.eq(&preferences.web_theme_base),
 				web_theme_accent.eq(&preferences.web_theme_accent),
 			))
-			.execute(&mut connection)
-			.map_err(|_| Error::Unspecified)?;
+			.execute(&mut connection)?;
 		Ok(())
 	}
 
@@ -293,8 +287,7 @@ impl Manager {
 				lastfm_username.eq(lastfm_login),
 				lastfm_session_key.eq(session_key),
 			))
-			.execute(&mut connection)
-			.map_err(|_| Error::Unspecified)?;
+			.execute(&mut connection)?;
 		Ok(())
 	}
 
@@ -305,24 +298,21 @@ impl Manager {
 		})
 	}
 
-	pub fn get_lastfm_session_key(&self, username: &str) -> anyhow::Result<String> {
+	pub fn get_lastfm_session_key(&self, username: &str) -> Result<String, Error> {
 		use crate::db::users::dsl::*;
 		let mut connection = self.db.connect()?;
-		let token = users
+		let token: Option<String> = users
 			.filter(name.eq(username))
 			.select(lastfm_session_key)
 			.get_result(&mut connection)?;
-		match token {
-			Some(t) => Ok(t),
-			_ => Err(anyhow!("Missing LastFM credentials")),
-		}
+		token.ok_or(Error::MissingLastFMSessionKey)
 	}
 
 	pub fn is_lastfm_linked(&self, username: &str) -> bool {
 		self.get_lastfm_session_key(username).is_ok()
 	}
 
-	pub fn lastfm_unlink(&self, username: &str) -> anyhow::Result<()> {
+	pub fn lastfm_unlink(&self, username: &str) -> Result<(), Error> {
 		use crate::db::users::dsl::*;
 		let mut connection = self.db.connect()?;
 		let null: Option<String> = None;
@@ -340,7 +330,7 @@ fn hash_password(password: &str) -> Result<String, Error> {
 	let salt = SaltString::generate(&mut OsRng);
 	match Pbkdf2.hash_password(password.as_bytes(), &salt) {
 		Ok(h) => Ok(h.to_string()),
-		Err(_) => Err(Error::Unspecified),
+		Err(_) => Err(Error::PasswordHashing),
 	}
 }
 
@@ -387,10 +377,10 @@ mod test {
 			password: TEST_PASSWORD.to_owned(),
 			admin: false,
 		};
-		assert_eq!(
+		assert!(matches!(
 			ctx.user_manager.create(&new_user).unwrap_err(),
 			Error::EmptyUsername
-		);
+		));
 	}
 
 	#[test]
@@ -401,10 +391,10 @@ mod test {
 			password: "".to_owned(),
 			admin: false,
 		};
-		assert_eq!(
+		assert!(matches!(
 			ctx.user_manager.create(&new_user).unwrap_err(),
 			Error::EmptyPassword
-		);
+		));
 	}
 
 	#[test]
@@ -455,12 +445,12 @@ mod test {
 		};
 
 		ctx.user_manager.create(&new_user).unwrap();
-		assert_eq!(
+		assert!(matches!(
 			ctx.user_manager
 				.login(TEST_USERNAME, "not the password")
 				.unwrap_err(),
 			Error::IncorrectPassword
-		)
+		));
 	}
 
 	#[test]
@@ -539,9 +529,9 @@ mod test {
 		let authorization = ctx
 			.user_manager
 			.authenticate(&token, AuthorizationScope::PolarisAuth);
-		assert_eq!(
+		assert!(matches!(
 			authorization.unwrap_err(),
 			Error::IncorrectAuthorizationScope
-		)
+		));
 	}
 }

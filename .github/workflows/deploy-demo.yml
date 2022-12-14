@@ -1,0 +1,19 @@
+name: Deploy Demo Server
+
+on:
+  workflow_dispatch:
+  release:
+    types: [released]
+
+jobs:
+  trigger:
+    name: Trigger Demo Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Repository Dispatch
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.POLARIS_DEMO_ACCESS_TOKEN }}
+          repository: agersant/polaris-demo
+          event-type: polaris-release

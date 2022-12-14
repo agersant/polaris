@@ -1,4 +1,3 @@
-use anyhow::Result;
 use log::{error, info};
 use std::time;
 
@@ -7,14 +6,29 @@ mod collector;
 mod inserter;
 mod traverser;
 
-use super::*;
+use crate::app::index::Index;
+use crate::app::vfs;
+use crate::db;
+
 use cleaner::Cleaner;
 use collector::Collector;
 use inserter::Inserter;
 use traverser::Traverser;
 
+#[derive(thiserror::Error, Debug)]
+pub enum Error {
+	#[error(transparent)]
+	IndexClean(#[from] cleaner::Error),
+	#[error(transparent)]
+	Database(#[from] diesel::result::Error),
+	#[error(transparent)]
+	DatabaseConnection(#[from] db::Error),
+	#[error(transparent)]
+	Vfs(#[from] vfs::Error),
+}
+
 impl Index {
-	pub fn update(&self) -> Result<()> {
+	pub fn update(&self) -> Result<(), Error> {
 		let start = time::Instant::now();
 		info!("Beginning library index update");
 

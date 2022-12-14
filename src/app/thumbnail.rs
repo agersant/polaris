@@ -1,4 +1,3 @@
-use anyhow::*;
 use image::{DynamicImage, GenericImage, GenericImageView, ImageBuffer, ImageOutputFormat};
 use std::cmp;
 use std::collections::hash_map::DefaultHasher;
@@ -7,6 +6,24 @@ use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 
 use crate::utils::{get_audio_format, AudioFormat};
+
+#[derive(thiserror::Error, Debug)]
+pub enum Error {
+	#[error("No embedded artwork was found in `{0}`")]
+	EmbeddedArtworkNotFound(PathBuf),
+	#[error("Could not read thumbnail from ID3 tag in `{0}`:\n\n{1}")]
+	Id3(PathBuf, id3::Error),
+	#[error("Could not read thumbnail image in `{0}`:\n\n{1}")]
+	Image(PathBuf, image::error::ImageError),
+	#[error("Filesystem error for `{0}`: `{1}`")]
+	Io(PathBuf, std::io::Error),
+	#[error("Could not read thumbnail from flac file in `{0}`:\n\n{1}")]
+	Metaflac(PathBuf, metaflac::Error),
+	#[error("Could not read thumbnail from mp4 file in `{0}`:\n\n{1}")]
+	Mp4aMeta(PathBuf, mp4ameta::Error),
+	#[error("This file format is not supported: {0}")]
+	UnsupportedFormat(&'static str),
+}
 
 #[derive(Debug, Hash)]
 pub struct Options {
@@ -37,7 +54,11 @@ impl Manager {
 		}
 	}
 
-	pub fn get_thumbnail(&self, image_path: &Path, thumbnailoptions: &Options) -> Result<PathBuf> {
+	pub fn get_thumbnail(
+		&self,
+		image_path: &Path,
+		thumbnailoptions: &Options,
+	) -> Result<PathBuf, Error> {
 		match self.retrieve_thumbnail(image_path, thumbnailoptions) {
 			Some(path) => Ok(path),
 			None => self.create_thumbnail(image_path, thumbnailoptions),
@@ -60,14 +81,22 @@ impl Manager {
 		}
 	}
 
-	fn create_thumbnail(&self, image_path: &Path, thumbnailoptions: &Options) -> Result<PathBuf> {
+	fn create_thumbnail(
+		&self,
+		image_path: &Path,
+		thumbnailoptions: &Options,
+	) -> Result<PathBuf, Error> {
 		let thumbnail = generate_thumbnail(image_path, thumbnailoptions)?;
 		let quality = 80;
 
-		fs::create_dir_all(&self.thumbnails_dir_path)?;
+		fs::create_dir_all(&self.thumbnails_dir_path)
+			.map_err(|e| Error::Io(self.thumbnails_dir_path.clone(), e))?;
 		let path = self.get_thumbnail_path(image_path, thumbnailoptions);
-		let mut out_file = File::create(&path)?;
-		thumbnail.write_to(&mut out_file, ImageOutputFormat::Jpeg(quality))?;
+		let mut out_file =
+			File::create(&path).map_err(|e| Error::Io(self.thumbnails_dir_path.clone(), e))?;
+		thumbnail
+			.write_to(&mut out_file, ImageOutputFormat::Jpeg(quality))
+			.map_err(|e| Error::Image(image_path.to_owned(), e))?;
 		Ok(path)
 	}
 
@@ -79,7 +108,7 @@ impl Manager {
 	}
 }
 
-fn generate_thumbnail(image_path: &Path, options: &Options) -> Result<DynamicImage> {
+fn generate_thumbnail(image_path: &Path, options: &Options) -> Result<DynamicImage, Error> {
 	let source_image = DynamicImage::ImageRgb8(read(image_path)?.into_rgb8());
 	let (source_width, source_height) = source_image.dimensions();
 	let largest_dimension = cmp::max(source_width, source_height);
@@ -103,11 +132,13 @@ fn generate_thumbnail(image_path: &Path, options: &Options) -> Result<DynamicIma
 			out_dimension,
 			background,
 		));
-		final_image.copy_from(
-			&scaled_image,
-			(out_dimension - scaled_width) / 2,
-			(out_dimension - scaled_height) / 2,
-		)?;
+		final_image
+			.copy_from(
+				&scaled_image,
+				(out_dimension - scaled_width) / 2,
+				(out_dimension - scaled_height) / 2,
+			)
+			.map_err(|e| Error::Image(image_path.to_owned(), e))?;
 	} else {
 		final_image = source_image.thumbnail(out_dimension, out_dimension);
 	}
@@ -115,7 +146,7 @@ fn generate_thumbnail(image_path: &Path, options: &Options) -> Result<DynamicIma
 	Ok(final_image)
 }
 
-fn read(image_path: &Path) -> Result<DynamicImage> {
+fn read(image_path: &Path) -> Result<DynamicImage, Error> {
 	match get_audio_format(image_path) {
 		Some(AudioFormat::AIFF) => read_aiff(image_path),
 		Some(AudioFormat::APE) => read_ape(image_path),
@@ -126,71 +157,61 @@ fn read(image_path: &Path) -> Result<DynamicImage> {
 		Some(AudioFormat::OGG) => read_vorbis(image_path),
 		Some(AudioFormat::OPUS) => read_opus(image_path),
 		Some(AudioFormat::WAVE) => read_wave(image_path),
-		None => Ok(image::open(image_path)?),
+		None => image::open(image_path).map_err(|e| Error::Image(image_path.to_owned(), e)),
 	}
 }
 
-fn read_ape(_: &Path) -> Result<DynamicImage> {
-	bail!("Embedded images are not supported in APE files");
+fn read_ape(_: &Path) -> Result<DynamicImage, Error> {
+	Err(Error::UnsupportedFormat("ape"))
 }
 
-fn read_flac(path: &Path) -> Result<DynamicImage> {
-	let tag = metaflac::Tag::read_from_path(path)?;
-
+fn read_flac(path: &Path) -> Result<DynamicImage, Error> {
+	let tag =
+		metaflac::Tag::read_from_path(path).map_err(|e| Error::Metaflac(path.to_owned(), e))?;
 	if let Some(p) = tag.pictures().next() {
-		return Ok(image::load_from_memory(&p.data)?);
+		return image::load_from_memory(&p.data).map_err(|e| Error::Image(path.to_owned(), e));
 	}
-
-	bail!(
-		"Embedded flac artwork not found for file: {}",
-		path.display()
-	);
+	Err(Error::EmbeddedArtworkNotFound(path.to_owned()))
 }
 
-fn read_mp3(path: &Path) -> Result<DynamicImage> {
-	let tag = id3::Tag::read_from_path(path)?;
+fn read_mp3(path: &Path) -> Result<DynamicImage, Error> {
+	let tag = id3::Tag::read_from_path(path).map_err(|e| Error::Id3(path.to_owned(), e))?;
 	read_id3(path, &tag)
 }
 
-fn read_aiff(path: &Path) -> Result<DynamicImage> {
-	let tag = id3::Tag::read_from_aiff_path(path)?;
+fn read_aiff(path: &Path) -> Result<DynamicImage, Error> {
+	let tag = id3::Tag::read_from_aiff_path(path).map_err(|e| Error::Id3(path.to_owned(), e))?;
 	read_id3(path, &tag)
 }
 
-fn read_wave(path: &Path) -> Result<DynamicImage> {
-	let tag = id3::Tag::read_from_wav_path(path)?;
+fn read_wave(path: &Path) -> Result<DynamicImage, Error> {
+	let tag = id3::Tag::read_from_wav_path(path).map_err(|e| Error::Id3(path.to_owned(), e))?;
 	read_id3(path, &tag)
 }
 
-fn read_id3(path: &Path, tag: &id3::Tag) -> Result<DynamicImage> {
-	if let Some(p) = tag.pictures().next() {
-		return Ok(image::load_from_memory(&p.data)?);
-	}
-
-	bail!(
-		"Embedded id3 artwork not found for file: {}",
-		path.display()
-	);
+fn read_id3(path: &Path, tag: &id3::Tag) -> Result<DynamicImage, Error> {
+	tag.pictures()
+		.next()
+		.ok_or_else(|| Error::EmbeddedArtworkNotFound(path.to_owned()))
+		.and_then(|d| {
+			image::load_from_memory(&d.data).map_err(|e| Error::Image(path.to_owned(), e))
+		})
 }
 
-fn read_mp4(path: &Path) -> Result<DynamicImage> {
-	let tag = mp4ameta::Tag::read_from_path(path)?;
-
-	match tag.artwork().map(|d| d.data) {
-		Some(v) => Ok(image::load_from_memory(v)?),
-		_ => bail!(
-			"Embedded mp4 artwork not found for file: {}",
-			path.display()
-		),
-	}
+fn read_mp4(path: &Path) -> Result<DynamicImage, Error> {
+	let tag =
+		mp4ameta::Tag::read_from_path(path).map_err(|e| Error::Mp4aMeta(path.to_owned(), e))?;
+	tag.artwork()
+		.ok_or_else(|| Error::EmbeddedArtworkNotFound(path.to_owned()))
+		.and_then(|d| image::load_from_memory(d.data).map_err(|e| Error::Image(path.to_owned(), e)))
 }
 
-fn read_vorbis(_: &Path) -> Result<DynamicImage> {
-	bail!("Embedded images are not supported in Vorbis files");
+fn read_vorbis(_: &Path) -> Result<DynamicImage, Error> {
+	Err(Error::UnsupportedFormat("vorbis"))
 }
 
-fn read_opus(_: &Path) -> Result<DynamicImage> {
-	bail!("Embedded images are not supported in Opus files");
+fn read_opus(_: &Path) -> Result<DynamicImage, Error> {
+	Err(Error::UnsupportedFormat("opus"))
 }
 
 #[cfg(test)]

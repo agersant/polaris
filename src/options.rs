@@ -1,4 +1,3 @@
-use anyhow::Result;
 use simplelog::LevelFilter;
 use std::path::PathBuf;
 
@@ -28,7 +27,7 @@ impl Manager {
 		}
 	}
 
-	pub fn parse(&self, input: &[String]) -> Result<CLIOptions> {
+	pub fn parse(&self, input: &[String]) -> Result<CLIOptions, getopts::Fail> {
 		let matches = self.protocol.parse(input)?;
 
 		Ok(CLIOptions {
