@@ -45,23 +45,17 @@ CREATE TABLE song_album_artists (
 	UNIQUE(song, artist)
 );
 
+INSERT OR IGNORE INTO artists SELECT NULL, s.artist FROM songs_backup s;
 INSERT INTO song_artists
-    SELECT 
-    sb.id AS song,
-    (INSERT INTO artists sb.artist AS name
-        ON CONFLICT DO UPDATE SET artists.name = excluded.name
-        RETURNING ID
-    ) AS artist
-    FROM songs_backup sb;
+    SELECT s.id as song, a.id as artist
+    FROM songs_backup s, artists a
+    WHERE s.artist == a.name;
 
+INSERT OR IGNORE INTO artists SELECT NULL, s.album_artist AS name FROM songs_backup s;
 INSERT INTO song_album_artists
-    SELECT 
-    sb.id AS song,
-    (INSERT INTO artists sb.album_artist AS name
-        ON CONFLICT DO UPDATE SET artists.name = excluded.name
-        RETURNING ID
-    ) AS artist
-    FROM songs_backup sb;
+    SELECT s.id as song, a.id as album_artist
+    FROM songs_backup s, artists a
+    WHERE s.artist == a.name;
 
 DROP TABLE songs_backup;
 
@@ -79,7 +73,7 @@ CREATE TABLE directories (
 	date_added INTEGER NOT NULL,
 	UNIQUE(path)
 );
-INSERT INTO directories SELECT id, path, parent, year, album, artwork, date_added;
+INSERT INTO directories SELECT id, path, parent, year, album, artwork, date_added FROM directories_backup;
 
 CREATE TABLE directory_artists (
 	directory INTEGER NOT NULL,
@@ -90,12 +84,10 @@ CREATE TABLE directory_artists (
 	UNIQUE(directory, artist)
 );
 
+INSERT OR IGNORE INTO artists SELECT NULL, d.artist AS name FROM directories_backup d;
 INSERT INTO directory_artists
-    SELECT 
-    sb.id AS directory,
-    (INSERT INTO artists db.artist AS name
-        ON CONFLICT DO UPDATE SET artists.name = excluded.name
-        RETURNING ID
-    ) AS artist
-    FROM directory_backup db;
+    SELECT d.id as directory, a.id as artist
+    FROM directories_backup d, artists a
+    WHERE d.artist == a.name;
+
 DROP TABLE directories_backup;
