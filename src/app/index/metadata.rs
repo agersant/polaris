@@ -28,7 +28,7 @@ pub enum Error {
 	VorbisCommentNotFoundInFlacFile,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct SongTags {
 	pub disc_number: Option<u32>,
 	pub track_number: Option<u32>,
@@ -47,43 +47,29 @@ pub struct SongTags {
 
 impl From<id3::Tag> for SongTags {
 	fn from(tag: id3::Tag) -> Self {
-		let artists = tag
-			.artists()
-			.map_or(Vec::new(), |v| v.iter().map(|s| s.to_string()).collect());
-		let album_artists = tag
-            .text_values_for_frame_id("TPE2")
-			.map_or(Vec::new(), |v| v.iter().map(|s| s.to_string()).collect());
-		let album = tag.album().map(|s| s.to_string());
-		let title = tag.title().map(|s| s.to_string());
-		let duration = tag.duration();
-		let disc_number = tag.disc();
-		let track_number = tag.track();
-		let year = tag
-			.year()
-			.map(|y| y as i32)
-			.or_else(|| tag.date_released().map(|d| d.year))
-			.or_else(|| tag.original_date_released().map(|d| d.year))
-			.or_else(|| tag.date_recorded().map(|d| d.year));
-		let has_artwork = tag.pictures().count() > 0;
-		let lyricist = tag.get_text("TEXT");
-		let composer = tag.get_text("TCOM");
-		let genre = tag.genre().map(|s| s.to_string());
-		let label = tag.get_text("TPUB");
-
 		SongTags {
-			disc_number,
-			track_number,
-			title,
-			duration,
-			artists,
-			album_artists,
-			album,
-			year,
-			has_artwork,
-			lyricist,
-			composer,
-			genre,
-			label,
+			disc_number: tag.disc(),
+			track_number: tag.track(),
+			title: tag.title().map(|s| s.to_string()),
+			duration: tag.duration(),
+			artists: tag
+				.artists()
+				.map_or(Vec::new(), |v| v.iter().map(|s| s.to_string()).collect()),
+			album_artists: tag
+				.text_values_for_frame_id("TPE2")
+				.map_or(Vec::new(), |v| v.iter().map(|s| s.to_string()).collect()),
+			album: tag.album().map(|s| s.to_string()),
+			year: tag
+				.year()
+				.map(|y| y as i32)
+				.or_else(|| tag.date_released().map(|d| d.year))
+				.or_else(|| tag.original_date_released().map(|d| d.year))
+				.or_else(|| tag.date_recorded().map(|d| d.year)),
+			has_artwork: tag.pictures().count() > 0,
+			lyricist: tag.get_text("TEXT"),
+			composer: tag.get_text("TCOM"),
+			genre: tag.genre().map(|s| s.to_string()),
+			label: tag.get_text("TPUB"),
 		}
 	}
 }
@@ -198,54 +184,35 @@ fn read_ape_x_of_y(item: &ape::Item) -> Option<u32> {
 
 fn read_ape(path: &Path) -> Result<SongTags, Error> {
 	let tag = ape::read_from_path(path)?;
-	let artists = Vec::from_iter(tag.item("Artist").and_then(read_ape_string)); // TODO: multiple values
-	let album = tag.item("Album").and_then(read_ape_string);
-	let album_artists = Vec::from_iter(tag.item("Album artist").and_then(read_ape_string));
-	let title = tag.item("Title").and_then(read_ape_string);
-	let year = tag.item("Year").and_then(read_ape_i32);
-	let disc_number = tag.item("Disc").and_then(read_ape_x_of_y);
-	let track_number = tag.item("Track").and_then(read_ape_x_of_y);
-	let lyricist = tag.item("LYRICIST").and_then(read_ape_string);
-	let composer = tag.item("COMPOSER").and_then(read_ape_string);
-	let genre = tag.item("GENRE").and_then(read_ape_string);
-	let label = tag.item("PUBLISHER").and_then(read_ape_string);
-	Ok(SongTags {
-		artists,
-		album_artists,
-		album,
-		title,
-		duration: None,
-		disc_number,
-		track_number,
-		year,
-		has_artwork: false,
-		lyricist,
-		composer,
-		genre,
-		label,
-	})
+
+	let mut tags = SongTags::default();
+	for item in tag.iter() {
+		let key = item.key.as_str();
+		utils::match_ignore_case! {
+			match key {
+				"TITLE" => tags.title = read_ape_string(item),
+				"ALBUM" => tags.album = read_ape_string(item),
+				"ARTIST" => tags.artists.extend(read_ape_string(item)),
+				"ALBUM ARTIST" => tags.album_artists.extend(read_ape_string(item)),
+				"TRACK" => tags.track_number = read_ape_x_of_y(item),
+				"DISC" => tags.disc_number = read_ape_x_of_y(item),
+				"YEAR" => tags.year = read_ape_i32(item),
+				"LYRICIST" => tags.lyricist = read_ape_string(item),
+				"COMPOSER" => tags.composer = read_ape_string(item),
+				"GENRE" => tags.genre = read_ape_string(item),
+				"PUBLISHER" => tags.label = read_ape_string(item),
+				_ => (),
+			}
+		}
+	}
+	Ok(tags)
 }
 
 fn read_vorbis(path: &Path) -> Result<SongTags, Error> {
 	let file = fs::File::open(path).map_err(|e| Error::Io(path.to_owned(), e))?;
 	let source = OggStreamReader::new(file)?;
 
-	let mut tags = SongTags {
-		artists: Vec::new(),
-		album_artists: Vec::new(),
-		album: None,
-		title: None,
-		duration: None,
-		disc_number: None,
-		track_number: None,
-		year: None,
-		has_artwork: false,
-		lyricist: None,
-		composer: None,
-		genre: None,
-		label: None,
-	};
-
+	let mut tags = SongTags::default();
 	for (key, value) in source.comment_hdr.comment_list {
 		utils::match_ignore_case! {
 			match key {
@@ -271,22 +238,7 @@ fn read_vorbis(path: &Path) -> Result<SongTags, Error> {
 fn read_opus(path: &Path) -> Result<SongTags, Error> {
 	let headers = opus_headers::parse_from_path(path)?;
 
-	let mut tags = SongTags {
-		artists: Vec::new(),
-		album_artists: Vec::new(),
-		album: None,
-		title: None,
-		duration: None,
-		disc_number: None,
-		track_number: None,
-		year: None,
-		has_artwork: false,
-		lyricist: None,
-		composer: None,
-		genre: None,
-		label: None,
-	};
-
+	let mut tags = SongTags::default();
 	for (key, value) in headers.comments.user_comments {
 		utils::match_ignore_case! {
 			match key {
@@ -317,7 +269,6 @@ fn read_flac(path: &Path) -> Result<SongTags, Error> {
 	let disc_number = vorbis
 		.get("DISCNUMBER")
 		.and_then(|d| d[0].parse::<u32>().ok());
-	let year = vorbis.get("DATE").and_then(|d| d[0].parse::<i32>().ok());
 	let mut streaminfo = tag.get_blocks(metaflac::BlockType::StreamInfo);
 	let duration = match streaminfo.next() {
 		Some(&metaflac::Block::StreamInfo(ref s)) => {
@@ -325,18 +276,16 @@ fn read_flac(path: &Path) -> Result<SongTags, Error> {
 		}
 		_ => None,
 	};
-	let has_artwork = tag.pictures().count() > 0;
-
 	Ok(SongTags {
-		artists: vorbis.artist().map_or(Vec::new(), |v| v.clone()),
-		album_artists: vorbis.album_artist().map_or(Vec::new(), |v| v.clone()),
+		artists: vorbis.artist().map_or(Vec::new(), Vec::clone),
+		album_artists: vorbis.album_artist().map_or(Vec::new(), Vec::clone),
 		album: vorbis.album().map(|v| v[0].clone()),
 		title: vorbis.title().map(|v| v[0].clone()),
 		duration,
 		disc_number,
 		track_number: vorbis.track(),
-		year,
-		has_artwork,
+		year: vorbis.get("DATE").and_then(|d| d[0].parse::<i32>().ok()),
+		has_artwork: tag.pictures().count() > 0,
 		lyricist: vorbis.get("LYRICIST").map(|v| v[0].clone()),
 		composer: vorbis.get("COMPOSER").map(|v| v[0].clone()),
 		genre: vorbis.get("GENRE").map(|v| v[0].clone()),
