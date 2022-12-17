@@ -1,10 +1,10 @@
 use diesel::dsl::sql;
-use diesel::prelude::*;
 use diesel::sql_types;
+use diesel::{alias, prelude::*};
 use std::path::{Path, PathBuf};
 
 use super::*;
-use crate::db::{self, directories, songs};
+use crate::db::{self, artists, directories, song_album_artists, song_artists, songs};
 use crate::service::dto;
 
 #[derive(thiserror::Error, Debug)]
@@ -173,13 +173,23 @@ impl Index {
 		// Find songs with matching title/album/artist and non-matching parent
 		let real_songs: Vec<Song> = {
 			use self::songs::dsl::*;
+
+			let album_artists = alias!(artists as album_artists);
 			songs
+				.select(songs::all_columns())
+				.left_join(song_artists::table)
+				.left_join(artists::table.on(song_artists::artist.eq(artists::id)))
+				.left_join(song_album_artists::table)
+				.left_join(
+					album_artists
+						.on(song_album_artists::artist.eq(album_artists.field(artists::id))),
+				)
 				.filter(
 					path.like(&like_test)
 						.or(title.like(&like_test))
-						.or(album.like(&like_test)), // TODO:
-					                              // .or(artist.like(&like_test))
-					                              // .or(album_artist.like(&like_test)),
+						.or(album.like(&like_test))
+						.or(artists::name.like(&like_test))
+						.or(album_artists.field(artists::name).like(&like_test)),
 				)
 				.filter(parent.not_like(&like_test))
 				.load(&mut connection)?
