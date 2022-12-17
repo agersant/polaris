@@ -3,7 +3,9 @@ use rayon::prelude::*;
 use std::path::Path;
 
 use crate::app::vfs;
-use crate::db::{self, directories, songs, DB};
+use crate::db::{
+	self, artists, directories, directory_artists, song_album_artists, song_artists, songs, DB,
+};
 
 const INDEX_BUILDING_CLEAN_BUFFER_SIZE: usize = 500; // Deletions in each transaction
 
@@ -22,6 +24,12 @@ pub enum Error {
 pub struct Cleaner {
 	db: DB,
 	vfs_manager: vfs::Manager,
+}
+
+#[derive(Identifiable, Queryable, Selectable)]
+#[diesel(table_name = artists)]
+struct Artist {
+	id: i32,
 }
 
 impl Cleaner {
@@ -80,7 +88,18 @@ impl Cleaner {
 			}
 		}
 
-        // TODO: clean artists
+		{
+			use crate::db::artists::dsl::*;
+
+			let mut connection = self.db.connect()?;
+			diesel::delete(
+				artists
+					.filter(id.ne_all(song_artists::table.select(song_artists::artist)))
+					.filter(id.ne_all(song_album_artists::table.select(song_album_artists::artist)))
+					.filter(id.ne_all(directory_artists::table.select(directory_artists::artist))),
+			)
+			.execute(&mut connection)?;
+		}
 
 		Ok(())
 	}

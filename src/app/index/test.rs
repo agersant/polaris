@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use super::*;
 use crate::app::test;
-use crate::db::{directories, songs};
+use crate::db::{artists, directories, songs};
 use crate::service::dto;
 use crate::test_name;
 
@@ -51,8 +51,13 @@ fn update_removes_missing_content() {
 		let mut connection = ctx.db.connect().unwrap();
 		let all_directories: Vec<Directory> = directories::table.load(&mut connection).unwrap();
 		let all_songs: Vec<Song> = songs::table.load(&mut connection).unwrap();
+		let all_artists: Vec<String> = artists::table
+			.select(artists::name)
+			.get_results(&mut connection)
+			.unwrap();
 		assert_eq!(all_directories.len(), 6);
 		assert_eq!(all_songs.len(), 13);
+        assert_eq!(all_artists.len(), 2);
 	}
 
 	let khemmis_directory = test_collection_dir.join("Khemmis");
@@ -62,8 +67,13 @@ fn update_removes_missing_content() {
 		let mut connection = ctx.db.connect().unwrap();
 		let all_directories: Vec<Directory> = directories::table.load(&mut connection).unwrap();
 		let all_songs: Vec<Song> = songs::table.load(&mut connection).unwrap();
+		let all_artists: Vec<String> = artists::table
+			.select(artists::name)
+			.get_results(&mut connection)
+			.unwrap();
 		assert_eq!(all_directories.len(), 4);
 		assert_eq!(all_songs.len(), 8);
+        assert_eq!(all_artists.len(), 1);
 	}
 }
 
@@ -102,7 +112,9 @@ fn can_browse_directory() {
 	}
 
 	match files[1] {
-		dto::CollectionFile::Directory(ref d) => assert_eq!(d.path, tobokegao_path.to_str().unwrap()),
+		dto::CollectionFile::Directory(ref d) => {
+			assert_eq!(d.path, tobokegao_path.to_str().unwrap())
+		}
 		_ => panic!("Expected directory"),
 	}
 }
