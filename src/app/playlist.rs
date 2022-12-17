@@ -1,12 +1,11 @@
 use core::clone::Clone;
 use diesel::prelude::*;
-use diesel::sql_types;
 use diesel::BelongingToDsl;
 use std::path::Path;
 
 use crate::app::index::Song;
 use crate::app::vfs;
-use crate::db::{self, playlist_songs, playlists, users, DB};
+use crate::db::{self, playlist_songs, playlists, songs, users, DB};
 use crate::service::dto;
 
 #[derive(thiserror::Error, Debug)]
@@ -162,18 +161,13 @@ impl Manager {
 				.ok_or(Error::PlaylistNotFound)?
 		};
 
-		// Select songs. Not using Diesel because we need to LEFT JOIN using a custom column
-		let query = diesel::sql_query(
-			r#"
-			SELECT s.id, s.path, s.parent, s.track_number, s.disc_number, s.title, s.year, s.album, s.artwork, s.duration, s.lyricist, s.composer, s.genre, s.label
-			FROM playlist_songs ps
-			LEFT JOIN songs s ON ps.path = s.path
-			WHERE ps.playlist = ?
-			ORDER BY ps.ordering
-		"#,
-		);
-		let query = query.bind::<sql_types::Integer, _>(playlist.id);
-		let songs: Vec<Song> = query.get_results(&mut connection)?;
+		let songs: Vec<Song> = {
+			playlist_songs::table
+				.filter(playlist_songs::playlist.eq(playlist.id))
+				.inner_join(songs::table.on(playlist_songs::path.eq(songs::path)))
+				.select(songs::all_columns)
+				.get_results(&mut connection)?
+		};
 
 		// Map real path to virtual paths
 		Ok(songs
