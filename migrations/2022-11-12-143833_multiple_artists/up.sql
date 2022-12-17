@@ -33,7 +33,7 @@ CREATE TABLE song_artists (
     PRIMARY KEY (song, artist),
 	FOREIGN KEY(song) REFERENCES songs(id) ON DELETE CASCADE ON UPDATE CASCADE,
 	FOREIGN KEY(artist) REFERENCES artists(id) ON DELETE CASCADE ON UPDATE CASCADE,
-	UNIQUE(song, artist)
+	UNIQUE(song, artist) ON CONFLICT IGNORE
 );
 
 CREATE TABLE song_album_artists (
@@ -42,7 +42,7 @@ CREATE TABLE song_album_artists (
     PRIMARY KEY (song, artist),
 	FOREIGN KEY(song) REFERENCES songs(id) ON DELETE CASCADE ON UPDATE CASCADE,
 	FOREIGN KEY(artist) REFERENCES artists(id) ON DELETE CASCADE ON UPDATE CASCADE,
-	UNIQUE(song, artist)
+	UNIQUE(song, artist) ON CONFLICT IGNORE
 );
 
 INSERT OR IGNORE INTO artists SELECT NULL, s.artist FROM songs_backup s;
@@ -81,7 +81,7 @@ CREATE TABLE directory_artists (
     PRIMARY KEY (directory, artist),
 	FOREIGN KEY(directory) REFERENCES directories(id) ON DELETE CASCADE ON UPDATE CASCADE,
 	FOREIGN KEY(artist) REFERENCES artists(id) ON DELETE CASCADE ON UPDATE CASCADE,
-	UNIQUE(directory, artist)
+	UNIQUE(directory, artist) ON CONFLICT IGNORE
 );
 
 INSERT OR IGNORE INTO artists SELECT NULL, d.artist AS name FROM directories_backup d;
