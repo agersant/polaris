@@ -136,44 +136,46 @@ impl Inserter {
 			.connect()
 			.map_err(QueryError::from)
 			.and_then(|mut connection| {
-				for d in self.new_directories.drain(..) {
-					let dir = Directory {
-						path: d.path,
-						parent: d.parent,
-						artwork: d.artwork,
-						album: d.album,
-						year: d.year,
-						date_added: d.date_added,
-					};
-					let dir_id: i32 = diesel::insert_into(directories::table)
-						.values(&dir)
-						.on_conflict(directories::path)
-						.do_update()
-						.set(&dir)
-						.returning(directories::id)
-						.get_result(&mut connection)?;
-
-					for a in d.artists {
-						let artist = Artist { name: a };
-						let artist_id: i32 = diesel::insert_into(artists::table)
-							.values(&artist)
-							.on_conflict(artists::name)
-							.do_update()
-							.set(&artist)
-							.returning(artists::id)
-							.get_result(&mut connection)?;
-
-						let dir_artist = DirectoryArtist {
-							directory: dir_id,
-							artist: artist_id,
+				connection.transaction(|connection| {
+					for d in self.new_directories.drain(..) {
+						let dir = Directory {
+							path: d.path,
+							parent: d.parent,
+							artwork: d.artwork,
+							album: d.album,
+							year: d.year,
+							date_added: d.date_added,
 						};
-						diesel::insert_into(directory_artists::table)
-							.values(dir_artist)
-							.execute(&mut *connection)?;
-					}
-				}
+						let dir_id: i32 = diesel::insert_into(directories::table)
+							.values(&dir)
+							.on_conflict(directories::path)
+							.do_update()
+							.set(&dir)
+							.returning(directories::id)
+							.get_result(connection)?;
 
-				Ok(())
+						for a in d.artists {
+							let artist = Artist { name: a };
+							let artist_id: i32 = diesel::insert_into(artists::table)
+								.values(&artist)
+								.on_conflict(artists::name)
+								.do_update()
+								.set(&artist)
+								.returning(artists::id)
+								.get_result(connection)?;
+
+							let dir_artist = DirectoryArtist {
+								directory: dir_id,
+								artist: artist_id,
+							};
+							diesel::insert_into(directory_artists::table)
+								.values(dir_artist)
+								.execute(connection)?;
+						}
+					}
+
+					Ok(())
+				})
 			});
 
 		if let Err(e) = res {
@@ -187,70 +189,72 @@ impl Inserter {
 			.connect()
 			.map_err(QueryError::from)
 			.and_then(|mut connection| {
-				for s in self.new_songs.drain(..) {
-					let song = Song {
-						path: s.path,
-						parent: s.parent,
-						disc_number: s.tags.disc_number.map(|n| n as i32),
-						track_number: s.tags.track_number.map(|n| n as i32),
-						title: s.tags.title,
-						duration: s.tags.duration.map(|n| n as i32),
-						album: s.tags.album,
-						year: s.tags.year,
-						artwork: s.artwork,
-						lyricist: s.tags.lyricist,
-						composer: s.tags.composer,
-						genre: s.tags.genre,
-						label: s.tags.label,
-					};
-					let song_id: i32 = diesel::insert_into(songs::table)
-						.values(&song)
-						.on_conflict(songs::path)
-						.do_update()
-						.set(&song)
-						.returning(songs::id)
-						.get_result(&mut connection)?;
-
-					for a in s.tags.artists {
-						let artist = Artist { name: a };
-						let artist_id: i32 = diesel::insert_into(artists::table)
-							.values(&artist)
-							.on_conflict(artists::name)
-							.do_update()
-							.set(&artist)
-							.returning(artists::id)
-							.get_result(&mut connection)?;
-
-						let song_artist = SongArtist {
-							song: song_id,
-							artist: artist_id,
+				connection.transaction(|connection| {
+					for s in self.new_songs.drain(..) {
+						let song = Song {
+							path: s.path,
+							parent: s.parent,
+							disc_number: s.tags.disc_number.map(|n| n as i32),
+							track_number: s.tags.track_number.map(|n| n as i32),
+							title: s.tags.title,
+							duration: s.tags.duration.map(|n| n as i32),
+							album: s.tags.album,
+							year: s.tags.year,
+							artwork: s.artwork,
+							lyricist: s.tags.lyricist,
+							composer: s.tags.composer,
+							genre: s.tags.genre,
+							label: s.tags.label,
 						};
-						diesel::insert_into(song_artists::table)
-							.values(song_artist)
-							.execute(&mut connection)?;
+						let song_id: i32 = diesel::insert_into(songs::table)
+							.values(&song)
+							.on_conflict(songs::path)
+							.do_update()
+							.set(&song)
+							.returning(songs::id)
+							.get_result(connection)?;
+
+						for a in s.tags.artists {
+							let artist = Artist { name: a };
+							let artist_id: i32 = diesel::insert_into(artists::table)
+								.values(&artist)
+								.on_conflict(artists::name)
+								.do_update()
+								.set(&artist)
+								.returning(artists::id)
+								.get_result(connection)?;
+
+							let song_artist = SongArtist {
+								song: song_id,
+								artist: artist_id,
+							};
+							diesel::insert_into(song_artists::table)
+								.values(song_artist)
+								.execute(connection)?;
+						}
+
+						for a in s.tags.album_artists {
+							let artist = Artist { name: a };
+							let artist_id: i32 = diesel::insert_into(artists::table)
+								.values(&artist)
+								.on_conflict(artists::name)
+								.do_update()
+								.set(&artist)
+								.returning(artists::id)
+								.get_result(connection)?;
+
+							let song_album_artist = SongAlbumArtist {
+								song: song_id,
+								artist: artist_id,
+							};
+							diesel::insert_into(song_album_artists::table)
+								.values(song_album_artist)
+								.execute(connection)?;
+						}
 					}
 
-					for a in s.tags.album_artists {
-						let artist = Artist { name: a };
-						let artist_id: i32 = diesel::insert_into(artists::table)
-							.values(&artist)
-							.on_conflict(artists::name)
-							.do_update()
-							.set(&artist)
-							.returning(artists::id)
-							.get_result(&mut connection)?;
-
-						let song_album_artist = SongAlbumArtist {
-							song: song_id,
-							artist: artist_id,
-						};
-						diesel::insert_into(song_album_artists::table)
-							.values(song_album_artist)
-							.execute(&mut connection)?;
-					}
-				}
-
-				Ok(())
+					Ok(())
+				})
 			});
 
 		if let Err(e) = res {
