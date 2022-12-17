@@ -4,7 +4,7 @@ use diesel::prelude::*;
 use diesel::r2d2::{ConnectionManager, PooledConnection};
 
 use crate::app::vfs::VFS;
-use crate::db::{artists, directory_artists, song_album_artists, songs};
+use crate::db::{artists, directory_artists, song_artists, song_album_artists, songs};
 use crate::service::dto;
 
 #[derive(Debug, PartialEq, Eq, Queryable, QueryableByName)]
@@ -45,8 +45,8 @@ impl Song {
 		self,
 		connection: &mut PooledConnection<ConnectionManager<SqliteConnection>>,
 	) -> Result<dto::Song, diesel::result::Error> {
-		let artists: Vec<String> = directory_artists::table
-			.filter(directory_artists::directory.eq(self.id))
+		let artists: Vec<String> = song_artists::table
+			.filter(song_artists::song.eq(self.id))
 			.inner_join(artists::table)
 			.select(artists::name)
 			.load(connection)?;
