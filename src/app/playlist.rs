@@ -7,6 +7,7 @@ use std::path::Path;
 use crate::app::index::Song;
 use crate::app::vfs;
 use crate::db::{self, playlist_songs, playlists, users, DB};
+use crate::service::dto;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -134,56 +135,52 @@ impl Manager {
 		Ok(())
 	}
 
-	pub fn read_playlist(&self, playlist_name: &str, owner: &str) -> Result<Vec<Song>, Error> {
+	pub fn read_playlist(&self, playlist_name: &str, owner: &str) -> Result<Vec<dto::Song>, Error> {
 		let vfs = self.vfs_manager.get_vfs()?;
-		let songs: Vec<Song>;
 
-		{
-			let mut connection = self.db.connect()?;
+		let mut connection = self.db.connect()?;
 
-			// Find owner
-			let user: User = {
-				use self::users::dsl::*;
-				users
-					.filter(name.eq(owner))
-					.select((id,))
-					.first(&mut connection)
-					.optional()?
-					.ok_or(Error::UserNotFound)?
-			};
+		// Find owner
+		let user: User = {
+			use self::users::dsl::*;
+			users
+				.filter(name.eq(owner))
+				.select((id,))
+				.first(&mut connection)
+				.optional()?
+				.ok_or(Error::UserNotFound)?
+		};
 
-			// Find playlist
-			let playlist: Playlist = {
-				use self::playlists::dsl::*;
-				playlists
-					.select((id, owner))
-					.filter(name.eq(playlist_name).and(owner.eq(user.id)))
-					.get_result(&mut connection)
-					.optional()?
-					.ok_or(Error::PlaylistNotFound)?
-			};
+		// Find playlist
+		let playlist: Playlist = {
+			use self::playlists::dsl::*;
+			playlists
+				.select((id, owner))
+				.filter(name.eq(playlist_name).and(owner.eq(user.id)))
+				.get_result(&mut connection)
+				.optional()?
+				.ok_or(Error::PlaylistNotFound)?
+		};
 
-			// Select songs. Not using Diesel because we need to LEFT JOIN using a custom column
-			let query = diesel::sql_query(
-				r#"
-			SELECT s.id, s.path, s.parent, s.track_number, s.disc_number, s.title, s.artist, s.album_artist, s.year, s.album, s.artwork, s.duration, s.lyricist, s.composer, s.genre, s.label
+		// Select songs. Not using Diesel because we need to LEFT JOIN using a custom column
+		let query = diesel::sql_query(
+			r#"
+			SELECT s.id, s.path, s.parent, s.track_number, s.disc_number, s.title, s.year, s.album, s.artwork, s.duration, s.lyricist, s.composer, s.genre, s.label
 			FROM playlist_songs ps
 			LEFT JOIN songs s ON ps.path = s.path
 			WHERE ps.playlist = ?
 			ORDER BY ps.ordering
 		"#,
-			);
-			let query = query.bind::<sql_types::Integer, _>(playlist.id);
-			songs = query.get_results(&mut connection)?;
-		}
+		);
+		let query = query.bind::<sql_types::Integer, _>(playlist.id);
+		let songs: Vec<Song> = query.get_results(&mut connection)?;
 
 		// Map real path to virtual paths
-		let virtual_songs = songs
+		Ok(songs
 			.into_iter()
 			.filter_map(|s| s.virtualize(&vfs))
-			.collect();
-
-		Ok(virtual_songs)
+			.map(|s| s.fetch_artists(&mut connection))
+			.collect::<Result<_, _>>()?)
 	}
 
 	pub fn delete_playlist(&self, playlist_name: &str, owner: &str) -> Result<(), Error> {

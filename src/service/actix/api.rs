@@ -21,7 +21,7 @@ use std::str;
 
 use crate::app::{
 	config, ddns,
-	index::{self, Index},
+	index::Index,
 	lastfm, playlist, settings, thumbnail, user,
 	vfs::{self, MountDir},
 };
@@ -468,7 +468,7 @@ async fn browse(
 }
 
 #[get("/flatten")]
-async fn flatten_root(index: Data<Index>, _auth: Auth) -> Result<Json<Vec<index::Song>>, APIError> {
+async fn flatten_root(index: Data<Index>, _auth: Auth) -> Result<Json<Vec<dto::Song>>, APIError> {
 	let songs = block(move || index.flatten(Path::new(""))).await?;
 	Ok(Json(songs))
 }
@@ -478,7 +478,7 @@ async fn flatten(
 	index: Data<Index>,
 	_auth: Auth,
 	path: web::Path<String>,
-) -> Result<Json<Vec<index::Song>>, APIError> {
+) -> Result<Json<Vec<dto::Song>>, APIError> {
 	let songs = block(move || {
 		let path = percent_decode_str(&path).decode_utf8_lossy();
 		index.flatten(Path::new(path.as_ref()))
@@ -488,13 +488,13 @@ async fn flatten(
 }
 
 #[get("/random")]
-async fn random(index: Data<Index>, _auth: Auth) -> Result<Json<Vec<index::Directory>>, APIError> {
+async fn random(index: Data<Index>, _auth: Auth) -> Result<Json<Vec<dto::Directory>>, APIError> {
 	let result = block(move || index.get_random_albums(20)).await?;
 	Ok(Json(result))
 }
 
 #[get("/recent")]
-async fn recent(index: Data<Index>, _auth: Auth) -> Result<Json<Vec<index::Directory>>, APIError> {
+async fn recent(index: Data<Index>, _auth: Auth) -> Result<Json<Vec<dto::Directory>>, APIError> {
 	let result = block(move || index.get_recent_albums(20)).await?;
 	Ok(Json(result))
 }
@@ -503,7 +503,7 @@ async fn recent(index: Data<Index>, _auth: Auth) -> Result<Json<Vec<index::Direc
 async fn search_root(
 	index: Data<Index>,
 	_auth: Auth,
-) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
+) -> Result<Json<Vec<dto::CollectionFile>>, APIError> {
 	let result = block(move || index.search("")).await?;
 	Ok(Json(result))
 }
@@ -513,7 +513,7 @@ async fn search(
 	index: Data<Index>,
 	_auth: Auth,
 	query: web::Path<String>,
-) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
+) -> Result<Json<Vec<dto::CollectionFile>>, APIError> {
 	let result = block(move || index.search(&query)).await?;
 	Ok(Json(result))
 }
@@ -591,7 +591,7 @@ async fn read_playlist(
 	playlist_manager: Data<playlist::Manager>,
 	auth: Auth,
 	name: web::Path<String>,
-) -> Result<Json<Vec<index::Song>>, APIError> {
+) -> Result<Json<Vec<dto::Song>>, APIError> {
 	let songs = block(move || playlist_manager.read_playlist(&name, &auth.username)).await?;
 	Ok(Json(songs))
 }

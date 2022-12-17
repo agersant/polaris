@@ -240,7 +240,6 @@ pub enum CollectionFile {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Song {
 	pub path: String,
-	pub parent: String,
 	pub track_number: Option<i32>,
 	pub disc_number: Option<i32>,
 	pub title: Option<String>,
@@ -260,7 +259,6 @@ impl Song {
 	pub fn new(song: index::Song, artists: Vec<String>, album_artists: Vec<String>) -> Self {
 		Self {
 			path: song.path,
-			parent: song.parent,
 			track_number: song.track_number,
 			disc_number: song.disc_number,
 			title: song.title,

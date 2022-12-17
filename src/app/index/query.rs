@@ -1,11 +1,10 @@
 use diesel::dsl::sql;
 use diesel::prelude::*;
-use diesel::r2d2::{ConnectionManager, PooledConnection};
 use diesel::sql_types;
 use std::path::{Path, PathBuf};
 
 use super::*;
-use crate::db::{self, artists, directories, directory_artists, song_album_artists, songs};
+use crate::db::{self, directories, songs};
 use crate::service::dto;
 
 #[derive(thiserror::Error, Debug)]
@@ -40,14 +39,14 @@ impl Index {
 				.filter(directories::parent.is_null())
 				.load(&mut connection)?;
 
-			output.reserve(real_directories.len());
-
 			let virtual_directories = real_directories
 				.into_iter()
-				.filter_map(|d| d.virtualize(&vfs));
+				.filter_map(|d| d.virtualize(&vfs))
+				.map(|d| d.fetch_artists(&mut connection))
+				.map(|d| d.map(dto::CollectionFile::Directory));
+
 			for d in virtual_directories {
-				let dto_dir = fetch_directory_artists(&mut connection, d)?;
-				output.push(dto::CollectionFile::Directory(dto_dir));
+				output.push(d?);
 			}
 		} else {
 			// Browse sub-directory
@@ -64,27 +63,32 @@ impl Index {
 				.order(sql::<sql_types::Bool>("path COLLATE NOCASE ASC"))
 				.load(&mut connection)?;
 
+			// Preallocate capacity
 			output.reserve(real_directories.len() + real_songs.len());
 
 			let virtual_directories = real_directories
 				.into_iter()
-				.filter_map(|d| d.virtualize(&vfs));
+				.filter_map(|d| d.virtualize(&vfs))
+				.map(|s| s.fetch_artists(&mut connection))
+				.map(|s| s.map(dto::CollectionFile::Directory));
 			for d in virtual_directories {
-				let dto_dir = fetch_directory_artists(&mut connection, d)?;
-				output.push(dto::CollectionFile::Directory(dto_dir));
+				output.push(d?);
 			}
 
-			let virtual_songs = real_songs.into_iter().filter_map(|s| s.virtualize(&vfs));
-			for s in virtual_songs {
-				let dto_song = fetch_song_artists(&mut connection, s)?;
-				output.push(dto::CollectionFile::Song(dto_song));
+			let virtual_songs = real_songs
+				.into_iter()
+				.filter_map(|s| s.virtualize(&vfs))
+				.map(|s| s.fetch_artists(&mut connection))
+				.map(|s| s.map(dto::CollectionFile::Song));
+			for d in virtual_songs {
+				output.push(d?);
 			}
 		}
 
 		Ok(output)
 	}
 
-	pub fn flatten<P>(&self, virtual_path: P) -> Result<Vec<Song>, QueryError>
+	pub fn flatten<P>(&self, virtual_path: P) -> Result<Vec<dto::Song>, QueryError>
 	where
 		P: AsRef<Path>,
 	{
@@ -107,11 +111,15 @@ impl Index {
 			songs.order(path).load(&mut connection)?
 		};
 
-		let virtual_songs = real_songs.into_iter().filter_map(|s| s.virtualize(&vfs));
-		Ok(virtual_songs.collect::<Vec<_>>())
+		let virtual_songs = real_songs
+			.into_iter()
+			.filter_map(|s| s.virtualize(&vfs))
+			.map(|s| s.fetch_artists(&mut connection));
+
+		Ok(virtual_songs.collect::<Result<_, _>>()?)
 	}
 
-	pub fn get_random_albums(&self, count: i64) -> Result<Vec<Directory>, QueryError> {
+	pub fn get_random_albums(&self, count: i64) -> Result<Vec<dto::Directory>, QueryError> {
 		use self::directories::dsl::*;
 		let vfs = self.vfs_manager.get_vfs()?;
 		let mut connection = self.db.connect()?;
@@ -120,13 +128,16 @@ impl Index {
 			.limit(count)
 			.order(random())
 			.load(&mut connection)?;
+
 		let virtual_directories = real_directories
 			.into_iter()
-			.filter_map(|d| d.virtualize(&vfs));
-		Ok(virtual_directories.collect::<Vec<_>>())
+			.filter_map(|d| d.virtualize(&vfs))
+			.map(|d| d.fetch_artists(&mut connection));
+
+		Ok(virtual_directories.collect::<Result<_, _>>()?)
 	}
 
-	pub fn get_recent_albums(&self, count: i64) -> Result<Vec<Directory>, QueryError> {
+	pub fn get_recent_albums(&self, count: i64) -> Result<Vec<dto::Directory>, QueryError> {
 		use self::directories::dsl::*;
 		let vfs = self.vfs_manager.get_vfs()?;
 		let mut connection = self.db.connect()?;
@@ -135,37 +146,34 @@ impl Index {
 			.order(date_added.desc())
 			.limit(count)
 			.load(&mut connection)?;
+
 		let virtual_directories = real_directories
 			.into_iter()
-			.filter_map(|d| d.virtualize(&vfs));
-		Ok(virtual_directories.collect::<Vec<_>>())
+			.filter_map(|d| d.virtualize(&vfs))
+			.map(|d| d.fetch_artists(&mut connection));
+
+		Ok(virtual_directories.collect::<Result<_, _>>()?)
 	}
 
-	pub fn search(&self, query: &str) -> Result<Vec<CollectionFile>, QueryError> {
+	pub fn search(&self, query: &str) -> Result<Vec<dto::CollectionFile>, QueryError> {
 		let vfs = self.vfs_manager.get_vfs()?;
 		let mut connection = self.db.connect()?;
 		let like_test = format!("%{}%", query);
 		let mut output = Vec::new();
 
 		// Find dirs with matching path and parent not matching
-		{
+		let real_directories: Vec<Directory> = {
 			use self::directories::dsl::*;
-			let real_directories: Vec<Directory> = directories
+			directories
 				.filter(path.like(&like_test))
 				.filter(parent.not_like(&like_test))
-				.load(&mut connection)?;
-
-			let virtual_directories = real_directories
-				.into_iter()
-				.filter_map(|d| d.virtualize(&vfs));
-
-			output.extend(virtual_directories.map(CollectionFile::Directory));
-		}
+				.load(&mut connection)?
+		};
 
 		// Find songs with matching title/album/artist and non-matching parent
-		{
+		let real_songs: Vec<Song> = {
 			use self::songs::dsl::*;
-			let real_songs: Vec<Song> = songs
+			songs
 				.filter(
 					path.like(&like_test)
 						.or(title.like(&like_test))
@@ -174,11 +182,28 @@ impl Index {
 					                              // .or(album_artist.like(&like_test)),
 				)
 				.filter(parent.not_like(&like_test))
-				.load(&mut connection)?;
+				.load(&mut connection)?
+		};
 
-			let virtual_songs = real_songs.into_iter().filter_map(|d| d.virtualize(&vfs));
+		// Preallocate capacity
+		output.reserve(real_directories.len() + real_songs.len());
 
-			output.extend(virtual_songs.map(CollectionFile::Song));
+		let virtual_directories = real_directories
+			.into_iter()
+			.filter_map(|d| d.virtualize(&vfs))
+			.map(|d| d.fetch_artists(&mut connection))
+			.map(|d| d.map(dto::CollectionFile::Directory));
+		for d in virtual_directories {
+			output.push(d?);
+		}
+
+		let virtual_songs = real_songs
+			.into_iter()
+			.filter_map(|d| d.virtualize(&vfs))
+			.map(|s| s.fetch_artists(&mut connection))
+			.map(|s| s.map(dto::CollectionFile::Song));
+		for s in virtual_songs {
+			output.push(s?);
 		}
 
 		Ok(output)
@@ -201,35 +226,6 @@ impl Index {
 			None => return Err(QueryError::SongNotFound(real_path)),
 		};
 
-		fetch_song_artists(&mut connection, virtual_song)
+		Ok(virtual_song.fetch_artists(&mut connection)?)
 	}
-}
-
-fn fetch_directory_artists(
-	connection: &mut PooledConnection<ConnectionManager<SqliteConnection>>,
-	virtual_dir: Directory,
-) -> Result<dto::Directory, QueryError> {
-	let artists: Vec<String> = directory_artists::table
-		.filter(directory_artists::directory.eq(virtual_dir.id))
-		.inner_join(artists::table)
-		.select(artists::name)
-		.load(connection)?;
-	Ok(dto::Directory::new(virtual_dir, artists))
-}
-
-fn fetch_song_artists(
-	connection: &mut PooledConnection<ConnectionManager<SqliteConnection>>,
-	virtual_song: Song,
-) -> Result<dto::Song, QueryError> {
-	let artists: Vec<String> = directory_artists::table
-		.filter(directory_artists::directory.eq(virtual_song.id))
-		.inner_join(artists::table)
-		.select(artists::name)
-		.load(connection)?;
-	let album_artists: Vec<String> = song_album_artists::table
-		.filter(song_album_artists::song.eq(virtual_song.id))
-		.inner_join(artists::table)
-		.select(artists::name)
-		.load(connection)?;
-	Ok(dto::Song::new(virtual_song, artists, album_artists))
 }

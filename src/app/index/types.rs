@@ -1,22 +1,17 @@
-use serde::{Deserialize, Serialize};
 use std::path::Path;
 
+use diesel::prelude::*;
+use diesel::r2d2::{ConnectionManager, PooledConnection};
+
 use crate::app::vfs::VFS;
-use crate::db::songs;
+use crate::db::{artists, directory_artists, song_album_artists, songs};
+use crate::service::dto;
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub enum CollectionFile {
-	Directory(Directory),
-	Song(Song),
-}
-
-#[derive(Debug, PartialEq, Eq, Queryable, QueryableByName, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Queryable, QueryableByName)]
 #[diesel(table_name = songs)]
 pub struct Song {
-	#[serde(skip_serializing, skip_deserializing)]
 	pub id: i32,
 	pub path: String,
-	#[serde(skip_serializing, skip_deserializing)]
 	pub parent: String,
 	pub track_number: Option<i32>,
 	pub disc_number: Option<i32>,
@@ -45,14 +40,29 @@ impl Song {
 		}
 		Some(self)
 	}
+
+	pub fn fetch_artists(
+		self,
+		connection: &mut PooledConnection<ConnectionManager<SqliteConnection>>,
+	) -> Result<dto::Song, diesel::result::Error> {
+		let artists: Vec<String> = directory_artists::table
+			.filter(directory_artists::directory.eq(self.id))
+			.inner_join(artists::table)
+			.select(artists::name)
+			.load(connection)?;
+		let album_artists: Vec<String> = song_album_artists::table
+			.filter(song_album_artists::song.eq(self.id))
+			.inner_join(artists::table)
+			.select(artists::name)
+			.load(connection)?;
+		Ok(dto::Song::new(self, artists, album_artists))
+	}
 }
 
-#[derive(Debug, PartialEq, Eq, Queryable, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Queryable)]
 pub struct Directory {
-	#[serde(skip_serializing, skip_deserializing)]
 	pub id: i32,
 	pub path: String,
-	#[serde(skip_serializing, skip_deserializing)]
 	pub parent: Option<String>,
 	pub year: Option<i32>,
 	pub album: Option<String>,
@@ -73,5 +83,17 @@ impl Directory {
 			};
 		}
 		Some(self)
+	}
+
+	pub fn fetch_artists(
+		self,
+		connection: &mut PooledConnection<ConnectionManager<SqliteConnection>>,
+	) -> Result<dto::Directory, diesel::result::Error> {
+		let artists: Vec<String> = directory_artists::table
+			.filter(directory_artists::directory.eq(self.id))
+			.inner_join(artists::table)
+			.select(artists::name)
+			.load(connection)?;
+		Ok(dto::Directory::new(self, artists))
 	}
 }

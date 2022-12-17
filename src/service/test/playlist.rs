@@ -1,6 +1,5 @@
 use http::StatusCode;
 
-use crate::app::index;
 use crate::service::dto;
 use crate::service::test::{constants::*, protocol, ServiceType, TestService};
 use crate::test_name;
@@ -81,7 +80,7 @@ fn get_playlist_golden_path() {
 	}
 
 	let request = protocol::read_playlist(TEST_PLAYLIST_NAME);
-	let response = service.fetch_json::<_, Vec<index::Song>>(&request);
+	let response = service.fetch_json::<_, Vec<dto::Song>>(&request);
 	assert_eq!(response.status(), StatusCode::OK);
 }
 

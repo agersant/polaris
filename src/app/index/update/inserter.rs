@@ -3,13 +3,14 @@ use diesel::prelude::*;
 use log::error;
 
 use crate::app::index::metadata::SongTags;
+use crate::app::index::QueryError;
 use crate::db::{
 	artists, directories, directory_artists, song_album_artists, song_artists, songs, DB,
 };
 
 const INDEX_BUILDING_INSERT_BUFFER_SIZE: usize = 1000; // Insertions in each transaction
 
-#[derive(Debug, Insertable)]
+#[derive(Debug, Insertable, AsChangeset)]
 #[diesel(table_name = artists)]
 pub struct Artist {
 	pub name: String,
@@ -130,118 +131,130 @@ impl Inserter {
 	}
 
 	fn flush_directories(&mut self) {
-		let res = self.db.connect().ok().and_then(|mut connection| {
-			for d in self.new_directories.drain(..) {
-				let dir = Directory {
-					path: d.path,
-					parent: d.parent,
-					artwork: d.artwork,
-					album: d.album,
-					year: d.year,
-					date_added: d.date_added,
-				};
-				let dir_id: i32 = diesel::insert_into(directories::table)
-					.values(&dir)
-					.on_conflict(directories::path)
-					.do_update()
-					.set(&dir)
-					.returning(directories::id)
-					.get_result(&mut connection)
-					.ok()?;
-
-				for a in d.artists {
-					let artist_id: i32 = diesel::insert_into(artists::table)
-						.values(Artist { name: a })
-						.returning(artists::id)
-						.get_result(&mut connection)
-						.ok()?;
-
-					let dir_artist = DirectoryArtist {
-						directory: dir_id,
-						artist: artist_id,
+		let res = self
+			.db
+			.connect()
+			.map_err(QueryError::from)
+			.and_then(|mut connection| {
+				for d in self.new_directories.drain(..) {
+					let dir = Directory {
+						path: d.path,
+						parent: d.parent,
+						artwork: d.artwork,
+						album: d.album,
+						year: d.year,
+						date_added: d.date_added,
 					};
-					diesel::insert_into(directory_artists::table)
-						.values(dir_artist)
-						.execute(&mut *connection)
-						.ok()?;
+					let dir_id: i32 = diesel::insert_into(directories::table)
+						.values(&dir)
+						.on_conflict(directories::path)
+						.do_update()
+						.set(&dir)
+						.returning(directories::id)
+						.get_result(&mut connection)?;
+
+					for a in d.artists {
+						let artist = Artist { name: a };
+						let artist_id: i32 = diesel::insert_into(artists::table)
+							.values(&artist)
+							.on_conflict(artists::name)
+							.do_update()
+							.set(&artist)
+							.returning(artists::id)
+							.get_result(&mut connection)?;
+
+						let dir_artist = DirectoryArtist {
+							directory: dir_id,
+							artist: artist_id,
+						};
+						diesel::insert_into(directory_artists::table)
+							.values(dir_artist)
+							.execute(&mut *connection)?;
+					}
 				}
-			}
 
-			Some(())
-		});
+				Ok(())
+			});
 
-		if res.is_none() {
-			error!("Could not insert new directories in database");
+		if let Err(e) = res {
+			error!("Could not insert new directories in database: {e}");
 		}
 	}
 
 	fn flush_songs(&mut self) {
-		let res = self.db.connect().ok().and_then(|mut connection| {
-			for s in self.new_songs.drain(..) {
-				let song = Song {
-					path: s.path,
-					parent: s.parent,
-					disc_number: s.tags.disc_number.map(|n| n as i32),
-					track_number: s.tags.track_number.map(|n| n as i32),
-					title: s.tags.title,
-					duration: s.tags.duration.map(|n| n as i32),
-					album: s.tags.album,
-					year: s.tags.year,
-					artwork: s.artwork,
-					lyricist: s.tags.lyricist,
-					composer: s.tags.composer,
-					genre: s.tags.genre,
-					label: s.tags.label,
-				};
-				let song_id: i32 = diesel::insert_into(songs::table)
-					.values(&song)
-					.on_conflict(songs::path)
-					.do_update()
-					.set(&song)
-					.returning(songs::id)
-					.get_result(&mut connection)
-					.ok()?;
-
-				for a in s.tags.artists {
-					let artist_id: i32 = diesel::insert_into(artists::table)
-						.values(Artist { name: a })
-						.returning(artists::id)
-						.get_result(&mut connection)
-						.ok()?;
-
-					let song_artist = SongArtist {
-						song: song_id,
-						artist: artist_id,
+		let res = self
+			.db
+			.connect()
+			.map_err(QueryError::from)
+			.and_then(|mut connection| {
+				for s in self.new_songs.drain(..) {
+					let song = Song {
+						path: s.path,
+						parent: s.parent,
+						disc_number: s.tags.disc_number.map(|n| n as i32),
+						track_number: s.tags.track_number.map(|n| n as i32),
+						title: s.tags.title,
+						duration: s.tags.duration.map(|n| n as i32),
+						album: s.tags.album,
+						year: s.tags.year,
+						artwork: s.artwork,
+						lyricist: s.tags.lyricist,
+						composer: s.tags.composer,
+						genre: s.tags.genre,
+						label: s.tags.label,
 					};
-					diesel::insert_into(song_artists::table)
-						.values(song_artist)
-						.execute(&mut connection)
-						.ok()?;
+					let song_id: i32 = diesel::insert_into(songs::table)
+						.values(&song)
+						.on_conflict(songs::path)
+						.do_update()
+						.set(&song)
+						.returning(songs::id)
+						.get_result(&mut connection)?;
+
+					for a in s.tags.artists {
+						let artist = Artist { name: a };
+						let artist_id: i32 = diesel::insert_into(artists::table)
+							.values(&artist)
+							.on_conflict(artists::name)
+							.do_update()
+							.set(&artist)
+							.returning(artists::id)
+							.get_result(&mut connection)?;
+
+						let song_artist = SongArtist {
+							song: song_id,
+							artist: artist_id,
+						};
+						diesel::insert_into(song_artists::table)
+							.values(song_artist)
+							.execute(&mut connection)?;
+					}
+
+					for a in s.tags.album_artists {
+						let artist = Artist { name: a };
+						let artist_id: i32 = diesel::insert_into(artists::table)
+							.values(&artist)
+							.on_conflict(artists::name)
+							.do_update()
+							.set(&artist)
+							.returning(artists::id)
+							.get_result(&mut connection)?;
+
+						let song_album_artist = SongAlbumArtist {
+							song: song_id,
+							artist: artist_id,
+						};
+						diesel::insert_into(song_album_artists::table)
+							.values(song_album_artist)
+							.execute(&mut connection)?;
+					}
 				}
 
-				for a in s.tags.album_artists {
-					let artist_id: i32 = diesel::insert_into(artists::table)
-						.values(Artist { name: a })
-						.returning(artists::id)
-						.get_result(&mut connection)
-						.ok()?;
+				Ok(())
+			});
 
-					let song_album_artist = SongAlbumArtist {
-						song: song_id,
-						artist: artist_id,
-					};
-					diesel::insert_into(song_album_artists::table)
-						.values(song_album_artist)
-						.execute(&mut connection)
-						.ok()?;
-				}
-			}
-
-			Some(())
-		});
-
-		if res.is_none() {
-			error!("Could not insert new songs in database");
+		if let Err(e) = res {
+			error!("Could not insert new songs in database: {e}");
 		}
 	}
 }
