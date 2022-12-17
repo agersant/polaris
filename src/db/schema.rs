@@ -20,10 +20,10 @@ table! {
 }
 
 table! {
-    directory_artists(directory, artist) {
-        directory -> Integer,
-        artist -> Integer,
-    }
+	directory_artists(directory, artist) {
+		directory -> Integer,
+		artist -> Integer,
+	}
 }
 
 table! {
@@ -80,24 +80,24 @@ table! {
 }
 
 table! {
-    song_artists(song, artist) {
-        song -> Integer,
-        artist -> Integer,
-    }
+	song_artists(song, artist) {
+		song -> Integer,
+		artist -> Integer,
+	}
 }
 
 table! {
-    song_album_artists(song, artist) {
-        song -> Integer,
-        artist -> Integer,
-    }
+	song_album_artists(song, artist) {
+		song -> Integer,
+		artist -> Integer,
+	}
 }
 
 table! {
-    artists(id) {
-        id -> Integer,
-        name -> Text,
-    }
+	artists(id) {
+		id -> Integer,
+		name -> Text,
+	}
 }
 
 table! {
@@ -122,16 +122,16 @@ joinable!(playlist_songs -> playlists (playlist));
 joinable!(playlists -> users (owner));
 
 allow_tables_to_appear_in_same_query!(
-    artists,
+	artists,
 	ddns_config,
 	directories,
-    directory_artists,
+	directory_artists,
 	misc_settings,
 	mount_points,
 	playlist_songs,
 	playlists,
 	songs,
-    song_artists,
-    song_album_artists,
+	song_artists,
+	song_album_artists,
 	users,
 );

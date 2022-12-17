@@ -4,7 +4,7 @@ use diesel::prelude::*;
 use diesel::r2d2::{ConnectionManager, PooledConnection};
 
 use crate::app::vfs::VFS;
-use crate::db::{artists, directory_artists, song_artists, song_album_artists, songs};
+use crate::db::{artists, directory_artists, song_album_artists, song_artists, songs};
 use crate::service::dto;
 
 #[derive(Debug, PartialEq, Eq, Queryable, QueryableByName)]

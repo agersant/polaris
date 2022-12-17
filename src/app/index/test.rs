@@ -57,7 +57,7 @@ fn update_removes_missing_content() {
 			.unwrap();
 		assert_eq!(all_directories.len(), 6);
 		assert_eq!(all_songs.len(), 13);
-        assert_eq!(all_artists.len(), 2);
+		assert_eq!(all_artists.len(), 2);
 	}
 
 	let khemmis_directory = test_collection_dir.join("Khemmis");
@@ -73,7 +73,7 @@ fn update_removes_missing_content() {
 			.unwrap();
 		assert_eq!(all_directories.len(), 4);
 		assert_eq!(all_songs.len(), 8);
-        assert_eq!(all_artists.len(), 1);
+		assert_eq!(all_artists.len(), 1);
 	}
 }
 
