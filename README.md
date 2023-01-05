@@ -12,7 +12,7 @@ Check out the demo over at https://demo.polaris.stream, featuring a selection of
 Username: `demo_user`  
 Password: `demo_password`
 
-## Features!
+## Features
 
 ![Polaris Web UI](res/readme/web_ui.png?raw=true "Polaris Web UI")
 
