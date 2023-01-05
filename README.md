@@ -21,7 +21,7 @@ Password: `demo_password`
 - Support for `flac`, `mp3`, `mp4`, `mpc`, `ogg`, `opus`, `ape`, `wav` and `aiff` files
 - Easy to setup and administer, no configuration files needed
 - Dark mode and customizable color themes
-- Listen to your music on the go with [Polaris Android](https://github.com/agersant/polaris-android)
+- Listen to your music on the go with [Polaris Android](https://github.com/agersant/polaris-android) or [Polarios](https://gitlab.com/elise/Polarios) (unofficial client for iOS, [App Store](https://apps.apple.com/de/app/polarios/id1662366309))
 - [Last.fm](https://www.last.fm) scrobbling
 
 ## Tutorials
