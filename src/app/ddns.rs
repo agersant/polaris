@@ -1,5 +1,5 @@
 use diesel::prelude::*;
-use log::{error, info};
+use log::{debug, error};
 use serde::{Deserialize, Serialize};
 use std::thread;
 use std::time;
@@ -39,7 +39,7 @@ impl Manager {
 	fn update_my_ip(&self) -> Result<(), Error> {
 		let config = self.config()?;
 		if config.host.is_empty() || config.username.is_empty() {
-			info!("Skipping DDNS update because credentials are missing");
+			debug!("Skipping DDNS update because credentials are missing");
 			return Ok(());
 		}
 
