@@ -1493,7 +1493,6 @@ dependencies = [
  "serde_json",
  "simplelog",
  "thiserror",
- "tokio",
  "toml",
  "ureq",
  "url",
