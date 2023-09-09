@@ -14,8 +14,8 @@ ui = ["native-windows-gui", "native-windows-derive"]
 actix-files = { version = "0.6" }
 actix-web = { version = "4" }
 actix-web-httpauth = { version = "0.8" }
-ape = "0.4.0"
-base64 = "0.13"
+ape = "0.5"
+base64 = "0.21"
 branca = "0.10.1"
 crossbeam-channel = "0.5"
 diesel_migrations = { version = "2.0", features = ["sqlite"] }
@@ -24,7 +24,7 @@ getopts = "0.2.21"
 http = "0.2.8"
 id3 = "1.7.0"
 lewton = "0.10.2"
-libsqlite3-sys = { version = "0.25", features = [
+libsqlite3-sys = { version = "0.26", features = [
 	"bundled",
 	"bundled-windows",
 ], optional = true }
@@ -45,8 +45,8 @@ serde_derive = "1.0.147"
 serde_json = "1.0.87"
 simplelog = "0.12.0"
 thiserror = "1.0.37"
-toml = "0.5"
-ureq = "1.5.5"
+toml = "0.7"
+ureq = "2.7"
 url = "2.3"
 
 [dependencies.diesel]
@@ -70,7 +70,7 @@ native-windows-gui = { version = "1.0.13", default-features = false, features = 
 native-windows-derive = { version = "1.0.5", optional = true }
 
 [target.'cfg(unix)'.dependencies]
-daemonize = "0.4.1"
+daemonize = "0.5"
 sd-notify = "0.4.1"
 
 [target.'cfg(windows)'.build-dependencies]

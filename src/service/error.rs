@@ -162,6 +162,7 @@ impl From<ddns::Error> for APIError {
 			ddns::Error::Database(e) => APIError::Database(e),
 			ddns::Error::DatabaseConnection(e) => e.into(),
 			ddns::Error::UpdateQueryFailed(s) => APIError::DdnsUpdateQueryFailed(s),
+			ddns::Error::UpdateQueryTransport => APIError::DdnsUpdateQueryFailed(0),
 		}
 	}
 }
