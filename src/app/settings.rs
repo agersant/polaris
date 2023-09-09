@@ -99,7 +99,7 @@ impl Manager {
 
 		if let Some(sleep_duration) = new_settings.reindex_every_n_seconds {
 			diesel::update(misc_settings::table)
-				.set(misc_settings::index_sleep_duration_seconds.eq(sleep_duration as i32))
+				.set(misc_settings::index_sleep_duration_seconds.eq(sleep_duration))
 				.execute(&mut connection)?;
 		}
 

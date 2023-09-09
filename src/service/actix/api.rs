@@ -531,7 +531,7 @@ async fn get_audio(
 	})
 	.await?;
 
-	let named_file = NamedFile::open(&audio_path).map_err(|_| APIError::AudioFileIOError)?;
+	let named_file = NamedFile::open(audio_path).map_err(|_| APIError::AudioFileIOError)?;
 	Ok(MediaFile::new(named_file))
 }
 
@@ -555,8 +555,7 @@ async fn get_thumbnail(
 	})
 	.await?;
 
-	let named_file =
-		NamedFile::open(&thumbnail_path).map_err(|_| APIError::ThumbnailFileIOError)?;
+	let named_file = NamedFile::open(thumbnail_path).map_err(|_| APIError::ThumbnailFileIOError)?;
 
 	Ok(MediaFile::new(named_file))
 }

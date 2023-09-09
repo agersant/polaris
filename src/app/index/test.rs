@@ -34,7 +34,7 @@ fn update_removes_missing_content() {
 
 	let copy_options = fs_extra::dir::CopyOptions::new();
 	fs_extra::dir::copy(
-		&original_collection_dir,
+		original_collection_dir,
 		&builder.test_directory,
 		&copy_options,
 	)
@@ -55,7 +55,7 @@ fn update_removes_missing_content() {
 	}
 
 	let khemmis_directory = test_collection_dir.join("Khemmis");
-	std::fs::remove_dir_all(&khemmis_directory).unwrap();
+	std::fs::remove_dir_all(khemmis_directory).unwrap();
 	ctx.index.update().unwrap();
 	{
 		let mut connection = ctx.db.connect().unwrap();
@@ -124,7 +124,7 @@ fn can_flatten_directory() {
 		.build();
 	ctx.index.update().unwrap();
 	let path: PathBuf = [TEST_MOUNT_NAME, "Tobokegao"].iter().collect();
-	let songs = ctx.index.flatten(&path).unwrap();
+	let songs = ctx.index.flatten(path).unwrap();
 	assert_eq!(songs.len(), 8);
 }
 
@@ -135,7 +135,7 @@ fn can_flatten_directory_with_shared_prefix() {
 		.build();
 	ctx.index.update().unwrap();
 	let path: PathBuf = [TEST_MOUNT_NAME, "Tobokegao", "Picnic"].iter().collect(); // Prefix of '(Picnic Remixes)'
-	let songs = ctx.index.flatten(&path).unwrap();
+	let songs = ctx.index.flatten(path).unwrap();
 	assert_eq!(songs.len(), 7);
 }
 
