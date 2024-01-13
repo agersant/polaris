@@ -271,9 +271,7 @@ fn read_flac(path: &Path) -> Result<SongTags, Error> {
 		.and_then(|d| d[0].parse::<u32>().ok());
 	let mut streaminfo = tag.get_blocks(metaflac::BlockType::StreamInfo);
 	let duration = match streaminfo.next() {
-		Some(&metaflac::Block::StreamInfo(ref s)) => {
-			Some((s.total_samples as u32 / s.sample_rate) as u32)
-		}
+		Some(metaflac::Block::StreamInfo(s)) => Some(s.total_samples as u32 / s.sample_rate),
 		_ => None,
 	};
 	Ok(SongTags {
