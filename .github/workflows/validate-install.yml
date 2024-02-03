@@ -54,7 +54,7 @@ jobs:
       - name: Make a request
         run: curl -f http://localhost:5050
       - name: Stop Polaris
-        run: sudo kill -KILL $(cat /usr/local/var/run/polaris/polaris.pid)
+        run: sudo kill -KILL $(sudo cat /usr/local/var/run/polaris/polaris.pid)
       - name: Uninstall
         run: sudo make uninstall
 
