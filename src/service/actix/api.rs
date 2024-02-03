@@ -12,6 +12,7 @@ use actix_web::{
 	FromRequest, HttpRequest, HttpResponse, Responder, ResponseError,
 };
 use actix_web_httpauth::extractors::bearer::BearerAuth;
+use base64::prelude::*;
 use futures_util::future::err;
 use percent_encoding::percent_decode_str;
 use std::future::Future;
@@ -531,7 +532,7 @@ async fn get_audio(
 	})
 	.await?;
 
-	let named_file = NamedFile::open(&audio_path).map_err(|_| APIError::AudioFileIOError)?;
+	let named_file = NamedFile::open(audio_path).map_err(|_| APIError::AudioFileIOError)?;
 	Ok(MediaFile::new(named_file))
 }
 
@@ -555,8 +556,7 @@ async fn get_thumbnail(
 	})
 	.await?;
 
-	let named_file =
-		NamedFile::open(&thumbnail_path).map_err(|_| APIError::ThumbnailFileIOError)?;
+	let named_file = NamedFile::open(thumbnail_path).map_err(|_| APIError::ThumbnailFileIOError)?;
 
 	Ok(MediaFile::new(named_file))
 }
@@ -671,7 +671,8 @@ async fn lastfm_link(
 		let base64_content = percent_decode_str(&payload.content).decode_utf8_lossy();
 
 		// Base64 decode
-		let popup_content = base64::decode(base64_content.as_bytes())
+		let popup_content = BASE64_STANDARD_NO_PAD
+			.decode(base64_content.as_bytes())
 			.map_err(|_| APIError::LastFMLinkContentBase64DecodeError)?;
 
 		// UTF-8 decode

@@ -1,5 +1,17 @@
 # Changelog
 
+## Polaris 0.14.1
+
+### Server
+
+- Fixed compilation issue when using musl toolchains
+- Log messages that DDNS is not setup have been downgraded to debug level
+
+### Web client
+
+- Fixed a bug where non-ASCII files or directories were not always alphabetically sorted (thanks @dechamps)
+- Fixed a bug where after linking a last.fm account, clicking the account name would not link to the expected page
+
 ## Polaris 0.14.0
 
 ### General

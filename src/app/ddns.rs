@@ -1,5 +1,6 @@
+use base64::prelude::*;
 use diesel::prelude::*;
-use log::{error, info};
+use log::{debug, error};
 use serde::{Deserialize, Serialize};
 use std::thread;
 use std::time;
@@ -12,6 +13,8 @@ const DDNS_UPDATE_URL: &str = "https://ydns.io/api/v1/update/";
 pub enum Error {
 	#[error("DDNS update query failed with HTTP status code `{0}`")]
 	UpdateQueryFailed(u16),
+	#[error("DDNS update query failed due to a transport error")]
+	UpdateQueryTransport,
 	#[error(transparent)]
 	DatabaseConnection(#[from] db::Error),
 	#[error(transparent)]
@@ -39,19 +42,23 @@ impl Manager {
 	fn update_my_ip(&self) -> Result<(), Error> {
 		let config = self.config()?;
 		if config.host.is_empty() || config.username.is_empty() {
-			info!("Skipping DDNS update because credentials are missing");
+			debug!("Skipping DDNS update because credentials are missing");
 			return Ok(());
 		}
 
 		let full_url = format!("{}?host={}", DDNS_UPDATE_URL, &config.host);
+		let credentials = format!("{}:{}", &config.username, &config.password);
 		let response = ureq::get(full_url.as_str())
-			.auth(&config.username, &config.password)
+			.set(
+				"Authorization",
+				&format!("Basic {}", BASE64_STANDARD_NO_PAD.encode(credentials)),
+			)
 			.call();
 
-		if response.ok() {
-			Ok(())
-		} else {
-			Err(Error::UpdateQueryFailed(response.status()))
+		match response {
+			Ok(_) => Ok(()),
+			Err(ureq::Error::Status(code, _)) => Err(Error::UpdateQueryFailed(code)),
+			Err(ureq::Error::Transport(_)) => Err(Error::UpdateQueryTransport),
 		}
 	}
 

@@ -31,7 +31,7 @@ pub enum Error {
 	CliArgsParsing(getopts::Fail),
 	#[cfg(unix)]
 	#[error("Failed to turn polaris process into a daemon:\n\n{0}")]
-	Daemonize(daemonize::DaemonizeError),
+	Daemonize(daemonize::Error),
 	#[error("Could not create log directory `{0}`:\n\n{1}")]
 	LogDirectoryCreationError(PathBuf, std::io::Error),
 	#[error("Could not create log file `{0}`:\n\n{1}")]

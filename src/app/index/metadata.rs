@@ -56,7 +56,6 @@ impl From<id3::Tag> for SongTags {
 		let track_number = tag.track();
 		let year = tag
 			.year()
-			.map(|y| y as i32)
 			.or_else(|| tag.date_released().map(|d| d.year))
 			.or_else(|| tag.original_date_released().map(|d| d.year))
 			.or_else(|| tag.date_recorded().map(|d| d.year));
@@ -316,9 +315,7 @@ fn read_flac(path: &Path) -> Result<SongTags, Error> {
 	let year = vorbis.get("DATE").and_then(|d| d[0].parse::<i32>().ok());
 	let mut streaminfo = tag.get_blocks(metaflac::BlockType::StreamInfo);
 	let duration = match streaminfo.next() {
-		Some(&metaflac::Block::StreamInfo(ref s)) => {
-			Some((s.total_samples as u32 / s.sample_rate) as u32)
-		}
+		Some(metaflac::Block::StreamInfo(s)) => Some(s.total_samples as u32 / s.sample_rate),
 		_ => None,
 	};
 	let has_artwork = tag.pictures().count() > 0;
