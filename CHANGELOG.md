@@ -1,5 +1,11 @@
 # Changelog
 
+## Polaris 0.14.2
+
+### Server
+
+- Fixed a startup error in Windows packaged builds
+
 ## Polaris 0.14.1
 
 ### Server
