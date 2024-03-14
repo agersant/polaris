@@ -74,6 +74,7 @@ daemonize = "0.5"
 sd-notify = "0.4.1"
 
 [target.'cfg(windows)'.build-dependencies]
+embed-resource = "1.8"
 winres = "0.1"
 
 [dev-dependencies]
