@@ -4,7 +4,8 @@ use std::path::{Path, PathBuf};
 
 use super::*;
 use crate::app::test;
-use crate::db::{directories, songs};
+use crate::db::{artists, directories, songs};
+use crate::service::dto;
 use crate::test_name;
 
 const TEST_MOUNT_NAME: &str = "root";
@@ -50,8 +51,13 @@ fn update_removes_missing_content() {
 		let mut connection = ctx.db.connect().unwrap();
 		let all_directories: Vec<Directory> = directories::table.load(&mut connection).unwrap();
 		let all_songs: Vec<Song> = songs::table.load(&mut connection).unwrap();
+		let all_artists: Vec<String> = artists::table
+			.select(artists::name)
+			.get_results(&mut connection)
+			.unwrap();
 		assert_eq!(all_directories.len(), 6);
 		assert_eq!(all_songs.len(), 13);
+		assert_eq!(all_artists.len(), 2);
 	}
 
 	let khemmis_directory = test_collection_dir.join("Khemmis");
@@ -61,8 +67,13 @@ fn update_removes_missing_content() {
 		let mut connection = ctx.db.connect().unwrap();
 		let all_directories: Vec<Directory> = directories::table.load(&mut connection).unwrap();
 		let all_songs: Vec<Song> = songs::table.load(&mut connection).unwrap();
+		let all_artists: Vec<String> = artists::table
+			.select(artists::name)
+			.get_results(&mut connection)
+			.unwrap();
 		assert_eq!(all_directories.len(), 4);
 		assert_eq!(all_songs.len(), 8);
+		assert_eq!(all_artists.len(), 1);
 	}
 }
 
@@ -77,7 +88,7 @@ fn can_browse_top_level() {
 	let files = ctx.index.browse(Path::new("")).unwrap();
 	assert_eq!(files.len(), 1);
 	match files[0] {
-		CollectionFile::Directory(ref d) => assert_eq!(d.path, root_path.to_str().unwrap()),
+		dto::CollectionFile::Directory(ref d) => assert_eq!(d.path, root_path.to_str().unwrap()),
 		_ => panic!("Expected directory"),
 	}
 }
@@ -96,12 +107,14 @@ fn can_browse_directory() {
 
 	assert_eq!(files.len(), 2);
 	match files[0] {
-		CollectionFile::Directory(ref d) => assert_eq!(d.path, khemmis_path.to_str().unwrap()),
+		dto::CollectionFile::Directory(ref d) => assert_eq!(d.path, khemmis_path.to_str().unwrap()),
 		_ => panic!("Expected directory"),
 	}
 
 	match files[1] {
-		CollectionFile::Directory(ref d) => assert_eq!(d.path, tobokegao_path.to_str().unwrap()),
+		dto::CollectionFile::Directory(ref d) => {
+			assert_eq!(d.path, tobokegao_path.to_str().unwrap())
+		}
 		_ => panic!("Expected directory"),
 	}
 }
@@ -177,8 +190,8 @@ fn can_get_a_song() {
 	assert_eq!(song.track_number, Some(5));
 	assert_eq!(song.disc_number, None);
 	assert_eq!(song.title, Some("シャーベット (Sherbet)".to_owned()));
-	assert_eq!(song.artist, Some("Tobokegao".to_owned()));
-	assert_eq!(song.album_artist, None);
+	assert_eq!(song.artists, vec!("Tobokegao".to_owned()));
+	assert_eq!(song.album_artists, Vec::<String>::new());
 	assert_eq!(song.album, Some("Picnic".to_owned()));
 	assert_eq!(song.year, Some(2016));
 	assert_eq!(
