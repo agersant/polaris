@@ -94,6 +94,7 @@ pub fn read(path: &Path) -> Option<SongTags> {
 		Some(AudioFormat::OGG) => read_vorbis(path),
 		Some(AudioFormat::OPUS) => read_opus(path),
 		Some(AudioFormat::WAVE) => read_wave(path),
+		Some(AudioFormat::M4B) => read_mp4(path), // Metadata of m4b same as mp4
 		None => return None,
 	};
 	match data {

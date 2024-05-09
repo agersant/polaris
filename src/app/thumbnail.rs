@@ -157,6 +157,7 @@ fn read(image_path: &Path) -> Result<DynamicImage, Error> {
 		Some(AudioFormat::OGG) => read_vorbis(image_path),
 		Some(AudioFormat::OPUS) => read_opus(image_path),
 		Some(AudioFormat::WAVE) => read_wave(image_path),
+		Some(AudioFormat::M4B) => read_mp4(image_path), // Metadata of m4b same as mp4
 		None => image::open(image_path).map_err(|e| Error::Image(image_path.to_owned(), e)),
 	}
 }
