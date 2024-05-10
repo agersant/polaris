@@ -205,12 +205,12 @@ fn read_mp4(path: &Path) -> Result<DynamicImage, Error> {
 		.and_then(|d| image::load_from_memory(d.data).map_err(|e| Error::Image(path.to_owned(), e)))
 }
 
-fn read_vorbis(_: &Path) -> Result<DynamicImage, Error> {
-	Err(Error::UnsupportedFormat("vorbis"))
+fn read_vorbis(path: &Path) -> Result<DynamicImage, Error> {
+	read_flac(path)
 }
 
-fn read_opus(_: &Path) -> Result<DynamicImage, Error> {
-	Err(Error::UnsupportedFormat("opus"))
+fn read_opus(path: &Path) -> Result<DynamicImage, Error> {
+	read_flac(path)
 }
 
 #[cfg(test)]
