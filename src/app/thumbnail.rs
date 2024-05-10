@@ -149,14 +149,13 @@ fn generate_thumbnail(image_path: &Path, options: &Options) -> Result<DynamicIma
 fn read(image_path: &Path) -> Result<DynamicImage, Error> {
 	match get_audio_format(image_path) {
 		Some(AudioFormat::AIFF) => read_aiff(image_path),
-		Some(AudioFormat::APE) => read_ape(image_path),
 		Some(AudioFormat::FLAC) => read_flac(image_path),
 		Some(AudioFormat::MP3) => read_mp3(image_path),
-		Some(AudioFormat::MP4) => read_mp4(image_path),
-		Some(AudioFormat::MPC) => read_ape(image_path),
 		Some(AudioFormat::OGG) => read_vorbis(image_path),
 		Some(AudioFormat::OPUS) => read_opus(image_path),
 		Some(AudioFormat::WAVE) => read_wave(image_path),
+		Some(AudioFormat::APE) | Some(AudioFormat::MPC) => read_ape(image_path),
+		Some(AudioFormat::MP4) | Some(AudioFormat::M4B) => read_mp4(image_path),
 		None => image::open(image_path).map_err(|e| Error::Image(image_path.to_owned(), e)),
 	}
 }
