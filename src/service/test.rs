@@ -19,7 +19,6 @@ mod swagger;
 mod user;
 mod web;
 
-use crate::app::index;
 use crate::service::dto;
 use crate::service::test::constants::*;
 
@@ -91,7 +90,7 @@ pub trait TestService {
 
 		loop {
 			let browse_request = protocol::browse(Path::new(""));
-			let response = self.fetch_json::<(), Vec<index::CollectionFile>>(&browse_request);
+			let response = self.fetch_json::<(), Vec<dto::CollectionFile>>(&browse_request);
 			let entries = response.body();
 			if !entries.is_empty() {
 				break;
@@ -101,7 +100,7 @@ pub trait TestService {
 
 		loop {
 			let flatten_request = protocol::flatten(Path::new(""));
-			let response = self.fetch_json::<_, Vec<index::Song>>(&flatten_request);
+			let response = self.fetch_json::<_, Vec<dto::Song>>(&flatten_request);
 			let entries = response.body();
 			if !entries.is_empty() {
 				break;
