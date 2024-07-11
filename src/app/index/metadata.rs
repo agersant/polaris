@@ -86,14 +86,13 @@ impl From<id3::Tag> for SongTags {
 pub fn read(path: &Path) -> Option<SongTags> {
 	let data = match utils::get_audio_format(path) {
 		Some(AudioFormat::AIFF) => read_aiff(path),
-		Some(AudioFormat::APE) => read_ape(path),
 		Some(AudioFormat::FLAC) => read_flac(path),
 		Some(AudioFormat::MP3) => read_mp3(path),
-		Some(AudioFormat::MP4) => read_mp4(path),
-		Some(AudioFormat::MPC) => read_ape(path),
 		Some(AudioFormat::OGG) => read_vorbis(path),
 		Some(AudioFormat::OPUS) => read_opus(path),
 		Some(AudioFormat::WAVE) => read_wave(path),
+		Some(AudioFormat::APE) | Some(AudioFormat::MPC) => read_ape(path),
+		Some(AudioFormat::MP4) | Some(AudioFormat::M4B) => read_mp4(path),
 		None => return None,
 	};
 	match data {
