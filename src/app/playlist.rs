@@ -72,7 +72,6 @@ impl Manager {
 			}
 		}
 
-		// Create playlist
 		let mut connection = self.db.connect().await?;
 
 		// Find owner
@@ -81,6 +80,7 @@ impl Manager {
 			.await?
 			.ok_or(Error::UserNotFound)?;
 
+		// Create playlist
 		sqlx::query!(
 			"INSERT INTO playlists (owner, name) VALUES($1, $2)",
 			user_id,
