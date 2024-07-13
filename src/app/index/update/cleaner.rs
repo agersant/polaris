@@ -1,16 +1,16 @@
-use diesel::prelude::*;
 use rayon::prelude::*;
+use sqlx::{QueryBuilder, Sqlite};
 use std::path::Path;
 
 use crate::app::vfs;
-use crate::db::{self, directories, songs, DB};
+use crate::db::{self, DB};
 
 const INDEX_BUILDING_CLEAN_BUFFER_SIZE: usize = 500; // Deletions in each transaction
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
 	#[error(transparent)]
-	Database(#[from] diesel::result::Error),
+	Database(#[from] sqlx::Error),
 	#[error(transparent)]
 	DatabaseConnection(#[from] db::Error),
 	#[error(transparent)]
@@ -29,19 +29,23 @@ impl Cleaner {
 		Self { db, vfs_manager }
 	}
 
-	pub fn clean(&self) -> Result<(), Error> {
-		let vfs = self.vfs_manager.get_vfs()?;
+	pub async fn clean(&self) -> Result<(), Error> {
+		let vfs = self.vfs_manager.get_vfs().await?;
 
-		let all_directories: Vec<String> = {
-			let mut connection = self.db.connect()?;
-			directories::table
-				.select(directories::path)
-				.load(&mut connection)?
-		};
+		let (all_directories, all_songs) = {
+			let mut connection = self.db.connect().await?;
 
-		let all_songs: Vec<String> = {
-			let mut connection = self.db.connect()?;
-			songs::table.select(songs::path).load(&mut connection)?
+			let directories = sqlx::query_scalar!("SELECT path FROM directories")
+				.fetch_all(connection.as_mut())
+				.await
+				.unwrap();
+
+			let songs = sqlx::query_scalar!("SELECT path FROM songs")
+				.fetch_all(connection.as_mut())
+				.await
+				.unwrap();
+
+			(directories, songs)
 		};
 
 		let list_missing_directories = || {
@@ -69,14 +73,26 @@ impl Cleaner {
 			thread_pool.join(list_missing_directories, list_missing_songs);
 
 		{
-			let mut connection = self.db.connect()?;
+			let mut connection = self.db.connect().await?;
+
 			for chunk in missing_directories[..].chunks(INDEX_BUILDING_CLEAN_BUFFER_SIZE) {
-				diesel::delete(directories::table.filter(directories::path.eq_any(chunk)))
-					.execute(&mut connection)?;
+				QueryBuilder::<Sqlite>::new("DELETE FROM directories WHERE path IN ")
+					.push_tuples(chunk, |mut b, path| {
+						b.push_bind(path);
+					})
+					.build()
+					.execute(connection.as_mut())
+					.await?;
 			}
+
 			for chunk in missing_songs[..].chunks(INDEX_BUILDING_CLEAN_BUFFER_SIZE) {
-				diesel::delete(songs::table.filter(songs::path.eq_any(chunk)))
-					.execute(&mut connection)?;
+				QueryBuilder::<Sqlite>::new("DELETE FROM songs WHERE path IN ")
+					.push_tuples(chunk, |mut b, path| {
+						b.push_bind(path);
+					})
+					.build()
+					.execute(connection.as_mut())
+					.await?;
 			}
 		}
 

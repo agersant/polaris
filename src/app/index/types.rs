@@ -2,7 +2,6 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 use crate::app::vfs::VFS;
-use crate::db::songs;
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CollectionFile {
@@ -10,23 +9,22 @@ pub enum CollectionFile {
 	Song(Song),
 }
 
-#[derive(Debug, PartialEq, Eq, Queryable, QueryableByName, Serialize, Deserialize)]
-#[diesel(table_name = songs)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Song {
 	#[serde(skip_serializing, skip_deserializing)]
-	id: i32,
+	pub id: i64,
 	pub path: String,
 	#[serde(skip_serializing, skip_deserializing)]
 	pub parent: String,
-	pub track_number: Option<i32>,
-	pub disc_number: Option<i32>,
+	pub track_number: Option<i64>,
+	pub disc_number: Option<i64>,
 	pub title: Option<String>,
 	pub artist: Option<String>,
 	pub album_artist: Option<String>,
-	pub year: Option<i32>,
+	pub year: Option<i64>,
 	pub album: Option<String>,
 	pub artwork: Option<String>,
-	pub duration: Option<i32>,
+	pub duration: Option<i64>,
 	pub lyricist: Option<String>,
 	pub composer: Option<String>,
 	pub genre: Option<String>,
@@ -49,18 +47,18 @@ impl Song {
 	}
 }
 
-#[derive(Debug, PartialEq, Eq, Queryable, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Directory {
 	#[serde(skip_serializing, skip_deserializing)]
-	id: i32,
+	pub id: i64,
 	pub path: String,
 	#[serde(skip_serializing, skip_deserializing)]
 	pub parent: Option<String>,
 	pub artist: Option<String>,
-	pub year: Option<i32>,
+	pub year: Option<i64>,
 	pub album: Option<String>,
 	pub artwork: Option<String>,
-	pub date_added: i32,
+	pub date_added: i64,
 }
 
 impl Directory {

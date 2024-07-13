@@ -5,20 +5,20 @@ use crate::service::dto;
 use crate::service::test::{protocol, ServiceType, TestService};
 use crate::test_name;
 
-#[test]
-fn returns_api_version() {
-	let mut service = ServiceType::new(&test_name!());
+#[actix_web::test]
+async fn returns_api_version() {
+	let mut service = ServiceType::new(&test_name!()).await;
 	let request = protocol::version();
-	let response = service.fetch_json::<_, dto::Version>(&request);
+	let response = service.fetch_json::<_, dto::Version>(&request).await;
 	assert_eq!(response.status(), StatusCode::OK);
 }
 
-#[test]
-fn initial_setup_golden_path() {
-	let mut service = ServiceType::new(&test_name!());
+#[actix_web::test]
+async fn initial_setup_golden_path() {
+	let mut service = ServiceType::new(&test_name!()).await;
 	let request = protocol::initial_setup();
 	{
-		let response = service.fetch_json::<_, dto::InitialSetup>(&request);
+		let response = service.fetch_json::<_, dto::InitialSetup>(&request).await;
 		assert_eq!(response.status(), StatusCode::OK);
 		let initial_setup = response.body();
 		assert_eq!(
@@ -28,9 +28,9 @@ fn initial_setup_golden_path() {
 			}
 		);
 	}
-	service.complete_initial_setup();
+	service.complete_initial_setup().await;
 	{
-		let response = service.fetch_json::<_, dto::InitialSetup>(&request);
+		let response = service.fetch_json::<_, dto::InitialSetup>(&request).await;
 		assert_eq!(response.status(), StatusCode::OK);
 		let initial_setup = response.body();
 		assert_eq!(
@@ -42,40 +42,44 @@ fn initial_setup_golden_path() {
 	}
 }
 
-#[test]
-fn trigger_index_golden_path() {
-	let mut service = ServiceType::new(&test_name!());
-	service.complete_initial_setup();
-	service.login_admin();
+#[actix_web::test]
+async fn trigger_index_golden_path() {
+	let mut service = ServiceType::new(&test_name!()).await;
+	service.complete_initial_setup().await;
+	service.login_admin().await;
 
 	let request = protocol::random();
 
-	let response = service.fetch_json::<_, Vec<index::Directory>>(&request);
+	let response = service
+		.fetch_json::<_, Vec<index::Directory>>(&request)
+		.await;
 	let entries = response.body();
 	assert_eq!(entries.len(), 0);
 
-	service.index();
+	service.index().await;
 
-	let response = service.fetch_json::<_, Vec<index::Directory>>(&request);
+	let response = service
+		.fetch_json::<_, Vec<index::Directory>>(&request)
+		.await;
 	let entries = response.body();
 	assert_eq!(entries.len(), 3);
 }
 
-#[test]
-fn trigger_index_requires_auth() {
-	let mut service = ServiceType::new(&test_name!());
-	service.complete_initial_setup();
+#[actix_web::test]
+async fn trigger_index_requires_auth() {
+	let mut service = ServiceType::new(&test_name!()).await;
+	service.complete_initial_setup().await;
 	let request = protocol::trigger_index();
-	let response = service.fetch(&request);
+	let response = service.fetch(&request).await;
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
-#[test]
-fn trigger_index_requires_admin() {
-	let mut service = ServiceType::new(&test_name!());
-	service.complete_initial_setup();
-	service.login();
+#[actix_web::test]
+async fn trigger_index_requires_admin() {
+	let mut service = ServiceType::new(&test_name!()).await;
+	service.complete_initial_setup().await;
+	service.login().await;
 	let request = protocol::trigger_index();
-	let response = service.fetch(&request);
+	let response = service.fetch(&request).await;
 	assert_eq!(response.status(), StatusCode::FORBIDDEN);
 }

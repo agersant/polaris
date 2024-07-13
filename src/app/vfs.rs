@@ -1,10 +1,10 @@
 use core::ops::Deref;
-use diesel::prelude::*;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use sqlx::{Acquire, QueryBuilder, Sqlite};
 use std::path::{self, Path, PathBuf};
 
-use crate::db::{self, mount_points, DB};
+use crate::db::{self, DB};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -15,11 +15,10 @@ pub enum Error {
 	#[error(transparent)]
 	DatabaseConnection(#[from] db::Error),
 	#[error(transparent)]
-	Database(#[from] diesel::result::Error),
+	Database(#[from] sqlx::Error),
 }
 
-#[derive(Clone, Debug, Deserialize, Insertable, PartialEq, Eq, Queryable, Serialize)]
-#[diesel(table_name = mount_points)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 pub struct MountDir {
 	pub source: String,
 	pub name: String,
@@ -98,31 +97,39 @@ impl Manager {
 		Self { db }
 	}
 
-	pub fn get_vfs(&self) -> Result<VFS, Error> {
-		let mount_dirs = self.mount_dirs()?;
+	pub async fn get_vfs(&self) -> Result<VFS, Error> {
+		let mount_dirs = self.mount_dirs().await?;
 		let mounts = mount_dirs.into_iter().map(|p| p.into()).collect();
 		Ok(VFS::new(mounts))
 	}
 
-	pub fn mount_dirs(&self) -> Result<Vec<MountDir>, Error> {
-		use self::mount_points::dsl::*;
-		let mut connection = self.db.connect()?;
-		let mount_dirs: Vec<MountDir> = mount_points
-			.select((source, name))
-			.get_results(&mut connection)?;
-		Ok(mount_dirs)
+	pub async fn mount_dirs(&self) -> Result<Vec<MountDir>, Error> {
+		Ok(
+			sqlx::query_as!(MountDir, "SELECT source, name FROM mount_points")
+				.fetch_all(self.db.connect().await?.as_mut())
+				.await?,
+		)
 	}
 
-	pub fn set_mount_dirs(&self, mount_dirs: &[MountDir]) -> Result<(), Error> {
-		let mut connection = self.db.connect()?;
-		connection.transaction::<_, diesel::result::Error, _>(|connection| {
-			use self::mount_points::dsl::*;
-			diesel::delete(mount_points).execute(&mut *connection)?;
-			diesel::insert_into(mount_points)
-				.values(mount_dirs)
-				.execute(&mut *connection)?; // TODO https://github.com/diesel-rs/diesel/issues/1822
-			Ok(())
-		})?;
+	pub async fn set_mount_dirs(&self, mount_dirs: &[MountDir]) -> Result<(), Error> {
+		let mut connection = self.db.connect().await?;
+
+		connection.begin().await?;
+
+		sqlx::query!("DELETE FROM mount_points")
+			.execute(connection.as_mut())
+			.await?;
+
+		if !mount_dirs.is_empty() {
+			QueryBuilder::<Sqlite>::new("INSERT INTO mount_points(source, name) ")
+				.push_values(mount_dirs, |mut b, dir| {
+					b.push_bind(&dir.source).push_bind(&dir.name);
+				})
+				.build()
+				.execute(connection.as_mut())
+				.await?;
+		}
+
 		Ok(())
 	}
 }

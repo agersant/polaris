@@ -1,7 +1,6 @@
 use actix_web::{
 	dev::Service,
 	middleware::{Compress, Logger, NormalizePath},
-	rt::System,
 	web::{self, ServiceConfig},
 	App as ActixApp, HttpServer,
 };
@@ -43,9 +42,9 @@ pub fn make_config(app: App) -> impl FnOnce(&mut ServiceConfig) + Clone {
 	}
 }
 
-pub fn run(app: App) -> Result<(), std::io::Error> {
+pub fn launch(app: App) -> Result<(), std::io::Error> {
 	let address = ("0.0.0.0", app.port);
-	System::new().block_on(
+	tokio::spawn(
 		HttpServer::new(move || {
 			ActixApp::new()
 				.wrap(Logger::default())
@@ -72,5 +71,6 @@ pub fn run(app: App) -> Result<(), std::io::Error> {
 			e
 		})?
 		.run(),
-	)
+	);
+	Ok(())
 }

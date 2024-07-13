@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::app::{config, ddns, index::Index, lastfm, playlist, settings, thumbnail, user, vfs};
+use crate::app::{config, ddns, index::Index, playlist, settings, user, vfs};
 use crate::db::DB;
 use crate::test::*;
 
@@ -9,13 +9,10 @@ pub struct Context {
 	pub index: Index,
 	pub config_manager: config::Manager,
 	pub ddns_manager: ddns::Manager,
-	pub lastfm_manager: lastfm::Manager,
 	pub playlist_manager: playlist::Manager,
 	pub settings_manager: settings::Manager,
-	pub thumbnail_manager: thumbnail::Manager,
 	pub user_manager: user::Manager,
 	pub vfs_manager: vfs::Manager,
-	pub test_directory: PathBuf,
 }
 
 pub struct ContextBuilder {
@@ -53,14 +50,12 @@ impl ContextBuilder {
 			});
 		self
 	}
-
-	pub fn build(self) -> Context {
-		let cache_output_dir = self.test_directory.join("cache");
+	pub async fn build(self) -> Context {
 		let db_path = self.test_directory.join("db.sqlite");
 
-		let db = DB::new(&db_path).unwrap();
+		let db = DB::new(&db_path).await.unwrap();
 		let settings_manager = settings::Manager::new(db.clone());
-		let auth_secret = settings_manager.get_auth_secret().unwrap();
+		let auth_secret = settings_manager.get_auth_secret().await.unwrap();
 		let user_manager = user::Manager::new(db.clone(), auth_secret);
 		let vfs_manager = vfs::Manager::new(db.clone());
 		let ddns_manager = ddns::Manager::new(db.clone());
@@ -72,23 +67,18 @@ impl ContextBuilder {
 		);
 		let index = Index::new(db.clone(), vfs_manager.clone(), settings_manager.clone());
 		let playlist_manager = playlist::Manager::new(db.clone(), vfs_manager.clone());
-		let thumbnail_manager = thumbnail::Manager::new(cache_output_dir);
-		let lastfm_manager = lastfm::Manager::new(index.clone(), user_manager.clone());
 
-		config_manager.apply(&self.config).unwrap();
+		config_manager.apply(&self.config).await.unwrap();
 
 		Context {
 			db,
 			index,
 			config_manager,
 			ddns_manager,
-			lastfm_manager,
 			playlist_manager,
 			settings_manager,
-			thumbnail_manager,
 			user_manager,
 			vfs_manager,
-			test_directory: self.test_directory,
 		}
 	}
 }

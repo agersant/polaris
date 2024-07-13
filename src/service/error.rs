@@ -18,7 +18,7 @@ pub enum APIError {
 	#[error("Could not encode Branca token")]
 	BrancaTokenEncoding,
 	#[error("Database error:\n\n{0}")]
-	Database(diesel::result::Error),
+	Database(sqlx::Error),
 	#[error("DDNS update query failed with HTTP status {0}")]
 	DdnsUpdateQueryFailed(u16),
 	#[error("Cannot delete your own account")]

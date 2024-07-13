@@ -20,7 +20,7 @@ pub enum Error {
 	#[error(transparent)]
 	IndexClean(#[from] cleaner::Error),
 	#[error(transparent)]
-	Database(#[from] diesel::result::Error),
+	Database(#[from] sqlx::Error),
 	#[error(transparent)]
 	DatabaseConnection(#[from] db::Error),
 	#[error(transparent)]
@@ -28,46 +28,44 @@ pub enum Error {
 }
 
 impl Index {
-	pub fn update(&self) -> Result<(), Error> {
+	pub async fn update(&self) -> Result<(), Error> {
 		let start = time::Instant::now();
 		info!("Beginning library index update");
 
-		let album_art_pattern = self.settings_manager.get_index_album_art_pattern().ok();
+		let album_art_pattern = self
+			.settings_manager
+			.get_index_album_art_pattern()
+			.await
+			.ok();
 
 		let cleaner = Cleaner::new(self.db.clone(), self.vfs_manager.clone());
-		cleaner.clean()?;
+		cleaner.clean().await?;
 
-		let (insert_sender, insert_receiver) = crossbeam_channel::unbounded();
-		let inserter_db = self.db.clone();
-		let insertion_thread = std::thread::spawn(move || {
-			let mut inserter = Inserter::new(inserter_db, insert_receiver);
-			inserter.insert();
+		let (insert_sender, insert_receiver) = tokio::sync::mpsc::unbounded_channel();
+		let insertion = tokio::spawn({
+			let db = self.db.clone();
+			async {
+				let mut inserter = Inserter::new(db, insert_receiver);
+				inserter.insert().await;
+			}
 		});
 
 		let (collect_sender, collect_receiver) = crossbeam_channel::unbounded();
-		let collector_thread = std::thread::spawn(move || {
+		let collection = tokio::task::spawn_blocking(|| {
 			let collector = Collector::new(collect_receiver, insert_sender, album_art_pattern);
 			collector.collect();
 		});
 
-		let vfs = self.vfs_manager.get_vfs()?;
-		let traverser_thread = std::thread::spawn(move || {
+		let vfs = self.vfs_manager.get_vfs().await?;
+		let traversal = tokio::task::spawn_blocking(move || {
 			let mounts = vfs.mounts();
 			let traverser = Traverser::new(collect_sender);
 			traverser.traverse(mounts.iter().map(|p| p.source.clone()).collect());
 		});
 
-		if let Err(e) = traverser_thread.join() {
-			error!("Error joining on traverser thread: {:?}", e);
-		}
-
-		if let Err(e) = collector_thread.join() {
-			error!("Error joining on collector thread: {:?}", e);
-		}
-
-		if let Err(e) = insertion_thread.join() {
-			error!("Error joining on inserter thread: {:?}", e);
-		}
+		traversal.await.unwrap();
+		collection.await.unwrap();
+		insertion.await.unwrap();
 
 		info!(
 			"Library index update took {} seconds",

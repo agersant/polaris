@@ -1,13 +1,11 @@
-use crossbeam_channel::Receiver;
-use diesel::prelude::*;
 use log::error;
+use sqlx::{QueryBuilder, Sqlite};
+use tokio::sync::mpsc::UnboundedReceiver;
 
-use crate::db::{directories, songs, DB};
+use crate::db::DB;
 
 const INDEX_BUILDING_INSERT_BUFFER_SIZE: usize = 1000; // Insertions in each transaction
 
-#[derive(Debug, Insertable)]
-#[diesel(table_name = songs)]
 pub struct Song {
 	pub path: String,
 	pub parent: String,
@@ -26,8 +24,6 @@ pub struct Song {
 	pub label: Option<String>,
 }
 
-#[derive(Debug, Insertable)]
-#[diesel(table_name = directories)]
 pub struct Directory {
 	pub path: String,
 	pub parent: Option<String>,
@@ -44,14 +40,14 @@ pub enum Item {
 }
 
 pub struct Inserter {
-	receiver: Receiver<Item>,
+	receiver: UnboundedReceiver<Item>,
 	new_directories: Vec<Directory>,
 	new_songs: Vec<Song>,
 	db: DB,
 }
 
 impl Inserter {
-	pub fn new(db: DB, receiver: Receiver<Item>) -> Self {
+	pub fn new(db: DB, receiver: UnboundedReceiver<Item>) -> Self {
 		let new_directories = Vec::with_capacity(INDEX_BUILDING_INSERT_BUFFER_SIZE);
 		let new_songs = Vec::with_capacity(INDEX_BUILDING_INSERT_BUFFER_SIZE);
 		Self {
@@ -62,63 +58,90 @@ impl Inserter {
 		}
 	}
 
-	pub fn insert(&mut self) {
-		while let Ok(item) = self.receiver.recv() {
-			self.insert_item(item);
+	pub async fn insert(&mut self) {
+		while let Some(item) = self.receiver.recv().await {
+			self.insert_item(item).await;
 		}
+		self.flush_directories().await;
+		self.flush_songs().await;
 	}
 
-	fn insert_item(&mut self, insert: Item) {
+	async fn insert_item(&mut self, insert: Item) {
 		match insert {
 			Item::Directory(d) => {
 				self.new_directories.push(d);
 				if self.new_directories.len() >= INDEX_BUILDING_INSERT_BUFFER_SIZE {
-					self.flush_directories();
+					self.flush_directories().await;
 				}
 			}
 			Item::Song(s) => {
 				self.new_songs.push(s);
 				if self.new_songs.len() >= INDEX_BUILDING_INSERT_BUFFER_SIZE {
-					self.flush_songs();
+					self.flush_songs().await;
 				}
 			}
 		};
 	}
 
-	fn flush_directories(&mut self) {
-		let res = self.db.connect().ok().and_then(|mut connection| {
-			diesel::insert_into(directories::table)
-				.values(&self.new_directories)
-				.execute(&mut *connection) // TODO https://github.com/diesel-rs/diesel/issues/1822
-				.ok()
-		});
-		if res.is_none() {
-			error!("Could not insert new directories in database");
-		}
-		self.new_directories.clear();
+	async fn flush_directories(&mut self) {
+		let Ok(mut connection) = self.db.connect().await else {
+			error!("Could not acquire connection to insert new directories in database");
+			return;
+		};
+
+		let result = QueryBuilder::<Sqlite>::new(
+			"INSERT INTO directories(path, parent, artist, year, album, artwork, date_added) ",
+		)
+		.push_values(&self.new_directories, |mut b, directory| {
+			b.push_bind(&directory.path)
+				.push_bind(&directory.parent)
+				.push_bind(&directory.artist)
+				.push_bind(directory.year)
+				.push_bind(&directory.album)
+				.push_bind(&directory.artwork)
+				.push_bind(directory.date_added);
+		})
+		.build()
+		.execute(connection.as_mut())
+		.await;
+
+		match result {
+			Ok(_) => self.new_directories.clear(),
+			Err(_) => error!("Could not insert new directories in database"),
+		};
 	}
 
-	fn flush_songs(&mut self) {
-		let res = self.db.connect().ok().and_then(|mut connection| {
-			diesel::insert_into(songs::table)
-				.values(&self.new_songs)
-				.execute(&mut *connection) // TODO https://github.com/diesel-rs/diesel/issues/1822
-				.ok()
-		});
-		if res.is_none() {
-			error!("Could not insert new songs in database");
-		}
-		self.new_songs.clear();
-	}
-}
+	async fn flush_songs(&mut self) {
+		let Ok(mut connection) = self.db.connect().await else {
+			error!("Could not acquire connection to insert new songs in database");
+			return;
+		};
 
-impl Drop for Inserter {
-	fn drop(&mut self) {
-		if !self.new_directories.is_empty() {
-			self.flush_directories();
-		}
-		if !self.new_songs.is_empty() {
-			self.flush_songs();
-		}
+		let result = QueryBuilder::<Sqlite>::new("INSERT INTO songs(path, parent, track_number, disc_number, title, artist, album_artist, year, album, artwork, duration, lyricist, composer, genre, label) ")
+		.push_values(&self.new_songs, |mut b, song| {
+			b.push_bind(&song.path)
+				.push_bind(&song.parent)
+				.push_bind(song.track_number)
+				.push_bind(song.disc_number)
+				.push_bind(&song.title)
+				.push_bind(&song.artist)
+				.push_bind(&song.album_artist)
+				.push_bind(song.year)
+				.push_bind(&song.album)
+				.push_bind(&song.artwork)
+				.push_bind(song.duration)
+				.push_bind(&song.lyricist)
+				.push_bind(&song.composer)
+				.push_bind(&song.genre)
+				.push_bind(&song.label);
+		})
+		.build()
+		.execute(connection.as_mut())
+		.await;
+
+		match result {
+			Ok(_) => self.new_songs.clear(),
+			Err(_) => error!("Could not insert new songs in database"),
+		};
 	}
 }

@@ -32,10 +32,8 @@ pub enum Error {
 #[derive(Clone)]
 pub struct App {
 	pub port: u16,
-	pub auth_secret: settings::AuthSecret,
 	pub web_dir_path: PathBuf,
 	pub swagger_dir_path: PathBuf,
-	pub db: DB,
 	pub index: index::Index,
 	pub config_manager: config::Manager,
 	pub ddns_manager: ddns::Manager,
@@ -48,8 +46,8 @@ pub struct App {
 }
 
 impl App {
-	pub fn new(port: u16, paths: Paths) -> Result<Self, Error> {
-		let db = DB::new(&paths.db_file_path)?;
+	pub async fn new(port: u16, paths: Paths) -> Result<Self, Error> {
+		let db = DB::new(&paths.db_file_path).await?;
 		fs::create_dir_all(&paths.web_dir_path)
 			.map_err(|e| Error::Io(paths.web_dir_path.clone(), e))?;
 		fs::create_dir_all(&paths.swagger_dir_path)
@@ -61,7 +59,7 @@ impl App {
 
 		let vfs_manager = vfs::Manager::new(db.clone());
 		let settings_manager = settings::Manager::new(db.clone());
-		let auth_secret = settings_manager.get_auth_secret()?;
+		let auth_secret = settings_manager.get_auth_secret().await?;
 		let ddns_manager = ddns::Manager::new(db.clone());
 		let user_manager = user::Manager::new(db.clone(), auth_secret);
 		let index = index::Index::new(db.clone(), vfs_manager.clone(), settings_manager.clone());
@@ -77,14 +75,11 @@ impl App {
 
 		if let Some(config_path) = paths.config_file_path {
 			let config = config::Config::from_path(&config_path)?;
-			config_manager.apply(&config)?;
+			config_manager.apply(&config).await?;
 		}
-
-		let auth_secret = settings_manager.get_auth_secret()?;
 
 		Ok(Self {
 			port,
-			auth_secret,
 			web_dir_path: paths.web_dir_path,
 			swagger_dir_path: paths.swagger_dir_path,
 			index,
@@ -96,7 +91,6 @@ impl App {
 			thumbnail_manager,
 			user_manager,
 			vfs_manager,
-			db,
 		})
 	}
 }

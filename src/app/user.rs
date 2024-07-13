@@ -1,4 +1,3 @@
-use diesel::prelude::*;
 use pbkdf2::password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString};
 use pbkdf2::Pbkdf2;
 use rand::rngs::OsRng;
@@ -6,12 +5,12 @@ use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::app::settings::AuthSecret;
-use crate::db::{self, users, DB};
+use crate::db::{self, DB};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
 	#[error(transparent)]
-	Database(#[from] diesel::result::Error),
+	Database(#[from] sqlx::Error),
 	#[error(transparent)]
 	DatabaseConnection(#[from] db::Error),
 	#[error("Cannot use empty username")]
@@ -36,12 +35,10 @@ pub enum Error {
 	BrancaTokenEncoding,
 }
 
-#[derive(Debug, Insertable, Queryable)]
-#[diesel(table_name = users)]
+#[derive(Debug)]
 pub struct User {
 	pub name: String,
-	pub password_hash: String,
-	pub admin: i32,
+	pub admin: i64,
 }
 
 impl User {
@@ -90,61 +87,62 @@ impl Manager {
 		Self { db, auth_secret }
 	}
 
-	pub fn create(&self, new_user: &NewUser) -> Result<(), Error> {
+	pub async fn create(&self, new_user: &NewUser) -> Result<(), Error> {
 		if new_user.name.is_empty() {
 			return Err(Error::EmptyUsername);
 		}
 
 		let password_hash = hash_password(&new_user.password)?;
-		let mut connection = self.db.connect()?;
-		let new_user = User {
-			name: new_user.name.to_owned(),
+
+		sqlx::query!(
+			"INSERT INTO users (name, password_hash, admin) VALUES($1, $2, $3)",
+			new_user.name,
 			password_hash,
-			admin: new_user.admin as i32,
-		};
+			new_user.admin
+		)
+		.execute(self.db.connect().await?.as_mut())
+		.await?;
 
-		diesel::insert_into(users::table)
-			.values(&new_user)
-			.execute(&mut connection)?;
 		Ok(())
 	}
 
-	pub fn delete(&self, username: &str) -> Result<(), Error> {
-		use crate::db::users::dsl::*;
-		let mut connection = self.db.connect()?;
-		diesel::delete(users.filter(name.eq(username))).execute(&mut connection)?;
+	pub async fn delete(&self, username: &str) -> Result<(), Error> {
+		sqlx::query!("DELETE FROM users WHERE name = $1", username)
+			.execute(self.db.connect().await?.as_mut())
+			.await?;
 		Ok(())
 	}
 
-	pub fn set_password(&self, username: &str, password: &str) -> Result<(), Error> {
+	pub async fn set_password(&self, username: &str, password: &str) -> Result<(), Error> {
 		let hash = hash_password(password)?;
-		let mut connection = self.db.connect()?;
-		use crate::db::users::dsl::*;
-		diesel::update(users.filter(name.eq(username)))
-			.set(password_hash.eq(hash))
-			.execute(&mut connection)?;
+		sqlx::query!(
+			"UPDATE users SET password_hash = $1 WHERE name = $2",
+			hash,
+			username
+		)
+		.execute(self.db.connect().await?.as_mut())
+		.await?;
 		Ok(())
 	}
 
-	pub fn set_is_admin(&self, username: &str, is_admin: bool) -> Result<(), Error> {
-		use crate::db::users::dsl::*;
-		let mut connection = self.db.connect()?;
-		diesel::update(users.filter(name.eq(username)))
-			.set(admin.eq(is_admin as i32))
-			.execute(&mut connection)?;
+	pub async fn set_is_admin(&self, username: &str, is_admin: bool) -> Result<(), Error> {
+		sqlx::query!(
+			"UPDATE users SET admin = $1 WHERE name = $2",
+			is_admin,
+			username
+		)
+		.execute(self.db.connect().await?.as_mut())
+		.await?;
 		Ok(())
 	}
 
-	pub fn login(&self, username: &str, password: &str) -> Result<AuthToken, Error> {
-		use crate::db::users::dsl::*;
-		let mut connection = self.db.connect()?;
-		match users
-			.select(password_hash)
-			.filter(name.eq(username))
-			.get_result(&mut connection)
+	pub async fn login(&self, username: &str, password: &str) -> Result<AuthToken, Error> {
+		match sqlx::query_scalar!("SELECT password_hash FROM users WHERE name = $1", username)
+			.fetch_optional(self.db.connect().await?.as_mut())
+			.await?
 		{
-			Err(diesel::result::Error::NotFound) => Err(Error::IncorrectUsername),
-			Ok(hash) => {
+			None => Err(Error::IncorrectUsername),
+			Some(hash) => {
 				let hash: String = hash;
 				if verify_password(&hash, password) {
 					let authorization = Authorization {
@@ -156,17 +154,16 @@ impl Manager {
 					Err(Error::IncorrectPassword)
 				}
 			}
-			Err(e) => Err(e.into()),
 		}
 	}
 
-	pub fn authenticate(
+	pub async fn authenticate(
 		&self,
 		auth_token: &AuthToken,
 		scope: AuthorizationScope,
 	) -> Result<Authorization, Error> {
 		let authorization = self.decode_auth_token(auth_token, scope)?;
-		if self.exists(&authorization.username)? {
+		if self.exists(&authorization.username).await? {
 			Ok(authorization)
 		} else {
 			Err(Error::IncorrectUsername)
@@ -208,86 +205,76 @@ impl Manager {
 		.map(AuthToken)
 	}
 
-	pub fn count(&self) -> Result<i64, Error> {
-		use crate::db::users::dsl::*;
-		let mut connection = self.db.connect()?;
-		let count = users.count().get_result(&mut connection)?;
+	pub async fn count(&self) -> Result<i32, Error> {
+		let count = sqlx::query_scalar!("SELECT COUNT(*) FROM users")
+			.fetch_one(self.db.connect().await?.as_mut())
+			.await?;
 		Ok(count)
 	}
 
-	pub fn list(&self) -> Result<Vec<User>, Error> {
-		use crate::db::users::dsl::*;
-		let mut connection = self.db.connect()?;
-		let listed_users = users
-			.select((name, password_hash, admin))
-			.get_results(&mut connection)?;
+	pub async fn list(&self) -> Result<Vec<User>, Error> {
+		let listed_users = sqlx::query_as!(User, "SELECT name, admin FROM users")
+			.fetch_all(self.db.connect().await?.as_mut())
+			.await?;
 		Ok(listed_users)
 	}
 
-	pub fn exists(&self, username: &str) -> Result<bool, Error> {
-		use crate::db::users::dsl::*;
-		let mut connection = self.db.connect()?;
-		let results: Vec<String> = users
-			.select(name)
-			.filter(name.eq(username))
-			.get_results(&mut connection)?;
-		Ok(!results.is_empty())
+	pub async fn exists(&self, username: &str) -> Result<bool, Error> {
+		Ok(
+			0 < sqlx::query_scalar!("SELECT COUNT(*) FROM users WHERE name = $1", username)
+				.fetch_one(self.db.connect().await?.as_mut())
+				.await?,
+		)
 	}
 
-	pub fn is_admin(&self, username: &str) -> Result<bool, Error> {
-		use crate::db::users::dsl::*;
-		let mut connection = self.db.connect()?;
-		let is_admin: i32 = users
-			.filter(name.eq(username))
-			.select(admin)
-			.get_result(&mut connection)?;
-		Ok(is_admin != 0)
+	pub async fn is_admin(&self, username: &str) -> Result<bool, Error> {
+		Ok(
+			0 < sqlx::query_scalar!("SELECT admin FROM users WHERE name = $1", username)
+				.fetch_one(self.db.connect().await?.as_mut())
+				.await?,
+		)
 	}
 
-	pub fn read_preferences(&self, username: &str) -> Result<Preferences, Error> {
-		use crate::db::users::dsl::*;
-		let mut connection = self.db.connect()?;
-		let (theme_base, theme_accent, read_lastfm_username) = users
-			.select((web_theme_base, web_theme_accent, lastfm_username))
-			.filter(name.eq(username))
-			.get_result(&mut connection)?;
-		Ok(Preferences {
-			web_theme_base: theme_base,
-			web_theme_accent: theme_accent,
-			lastfm_username: read_lastfm_username,
-		})
+	pub async fn read_preferences(&self, username: &str) -> Result<Preferences, Error> {
+		Ok(sqlx::query_as!(
+			Preferences,
+			"SELECT web_theme_base, web_theme_accent, lastfm_username FROM users WHERE name = $1",
+			username
+		)
+		.fetch_one(self.db.connect().await?.as_mut())
+		.await?)
 	}
 
-	pub fn write_preferences(
+	pub async fn write_preferences(
 		&self,
 		username: &str,
 		preferences: &Preferences,
 	) -> Result<(), Error> {
-		use crate::db::users::dsl::*;
-		let mut connection = self.db.connect()?;
-		diesel::update(users.filter(name.eq(username)))
-			.set((
-				web_theme_base.eq(&preferences.web_theme_base),
-				web_theme_accent.eq(&preferences.web_theme_accent),
-			))
-			.execute(&mut connection)?;
+		sqlx::query!(
+			"UPDATE users SET web_theme_base = $1, web_theme_accent = $2 WHERE name = $3",
+			preferences.web_theme_base,
+			preferences.web_theme_accent,
+			username
+		)
+		.execute(self.db.connect().await?.as_mut())
+		.await?;
 		Ok(())
 	}
 
-	pub fn lastfm_link(
+	pub async fn lastfm_link(
 		&self,
 		username: &str,
 		lastfm_login: &str,
 		session_key: &str,
 	) -> Result<(), Error> {
-		use crate::db::users::dsl::*;
-		let mut connection = self.db.connect()?;
-		diesel::update(users.filter(name.eq(username)))
-			.set((
-				lastfm_username.eq(lastfm_login),
-				lastfm_session_key.eq(session_key),
-			))
-			.execute(&mut connection)?;
+		sqlx::query!(
+			"UPDATE users SET lastfm_username = $1, lastfm_session_key = $2 WHERE name = $3",
+			lastfm_login,
+			session_key,
+			username
+		)
+		.execute(self.db.connect().await?.as_mut())
+		.await?;
 		Ok(())
 	}
 
@@ -298,27 +285,29 @@ impl Manager {
 		})
 	}
 
-	pub fn get_lastfm_session_key(&self, username: &str) -> Result<String, Error> {
-		use crate::db::users::dsl::*;
-		let mut connection = self.db.connect()?;
-		let token: Option<String> = users
-			.filter(name.eq(username))
-			.select(lastfm_session_key)
-			.get_result(&mut connection)?;
+	pub async fn get_lastfm_session_key(&self, username: &str) -> Result<String, Error> {
+		let token: Option<String> = sqlx::query_scalar!(
+			"SELECT lastfm_session_key FROM users WHERE name = $1",
+			username
+		)
+		.fetch_one(self.db.connect().await?.as_mut())
+		.await?;
 		token.ok_or(Error::MissingLastFMSessionKey)
 	}
 
-	pub fn is_lastfm_linked(&self, username: &str) -> bool {
-		self.get_lastfm_session_key(username).is_ok()
+	pub async fn is_lastfm_linked(&self, username: &str) -> bool {
+		self.get_lastfm_session_key(username).await.is_ok()
 	}
 
-	pub fn lastfm_unlink(&self, username: &str) -> Result<(), Error> {
-		use crate::db::users::dsl::*;
-		let mut connection = self.db.connect()?;
+	pub async fn lastfm_unlink(&self, username: &str) -> Result<(), Error> {
 		let null: Option<String> = None;
-		diesel::update(users.filter(name.eq(username)))
-			.set((lastfm_session_key.eq(&null), lastfm_username.eq(&null)))
-			.execute(&mut connection)?;
+		sqlx::query!(
+			"UPDATE users SET lastfm_session_key = $1, lastfm_username = $1 WHERE name = $2",
+			null,
+			username
+		)
+		.execute(self.db.connect().await?.as_mut())
+		.await?;
 		Ok(())
 	}
 }
@@ -352,9 +341,9 @@ mod test {
 	const TEST_USERNAME: &str = "Walter";
 	const TEST_PASSWORD: &str = "super_secret!";
 
-	#[test]
-	fn create_delete_user_golden_path() {
-		let ctx = test::ContextBuilder::new(test_name!()).build();
+	#[tokio::test]
+	async fn create_delete_user_golden_path() {
+		let ctx = test::ContextBuilder::new(test_name!()).build().await;
 
 		let new_user = NewUser {
 			name: TEST_USERNAME.to_owned(),
@@ -362,56 +351,56 @@ mod test {
 			admin: false,
 		};
 
-		ctx.user_manager.create(&new_user).unwrap();
-		assert_eq!(ctx.user_manager.list().unwrap().len(), 1);
+		ctx.user_manager.create(&new_user).await.unwrap();
+		assert_eq!(ctx.user_manager.list().await.unwrap().len(), 1);
 
-		ctx.user_manager.delete(&new_user.name).unwrap();
-		assert_eq!(ctx.user_manager.list().unwrap().len(), 0);
+		ctx.user_manager.delete(&new_user.name).await.unwrap();
+		assert_eq!(ctx.user_manager.list().await.unwrap().len(), 0);
 	}
 
-	#[test]
-	fn cannot_create_user_with_blank_username() {
-		let ctx = test::ContextBuilder::new(test_name!()).build();
+	#[tokio::test]
+	async fn cannot_create_user_with_blank_username() {
+		let ctx = test::ContextBuilder::new(test_name!()).build().await;
 		let new_user = NewUser {
 			name: "".to_owned(),
 			password: TEST_PASSWORD.to_owned(),
 			admin: false,
 		};
 		assert!(matches!(
-			ctx.user_manager.create(&new_user).unwrap_err(),
+			ctx.user_manager.create(&new_user).await.unwrap_err(),
 			Error::EmptyUsername
 		));
 	}
 
-	#[test]
-	fn cannot_create_user_with_blank_password() {
-		let ctx = test::ContextBuilder::new(test_name!()).build();
+	#[tokio::test]
+	async fn cannot_create_user_with_blank_password() {
+		let ctx = test::ContextBuilder::new(test_name!()).build().await;
 		let new_user = NewUser {
 			name: TEST_USERNAME.to_owned(),
 			password: "".to_owned(),
 			admin: false,
 		};
 		assert!(matches!(
-			ctx.user_manager.create(&new_user).unwrap_err(),
+			ctx.user_manager.create(&new_user).await.unwrap_err(),
 			Error::EmptyPassword
 		));
 	}
 
-	#[test]
-	fn cannot_create_duplicate_user() {
-		let ctx = test::ContextBuilder::new(test_name!()).build();
+	#[tokio::test]
+	async fn cannot_create_duplicate_user() {
+		let ctx = test::ContextBuilder::new(test_name!()).build().await;
 		let new_user = NewUser {
 			name: TEST_USERNAME.to_owned(),
 			password: TEST_PASSWORD.to_owned(),
 			admin: false,
 		};
-		ctx.user_manager.create(&new_user).unwrap();
-		ctx.user_manager.create(&new_user).unwrap_err();
+		ctx.user_manager.create(&new_user).await.unwrap();
+		ctx.user_manager.create(&new_user).await.unwrap_err();
 	}
 
-	#[test]
-	fn can_read_write_preferences() {
-		let ctx = test::ContextBuilder::new(test_name!()).build();
+	#[tokio::test]
+	async fn can_read_write_preferences() {
+		let ctx = test::ContextBuilder::new(test_name!()).build().await;
 
 		let new_preferences = Preferences {
 			web_theme_base: Some("very-dark-theme".to_owned()),
@@ -424,19 +413,20 @@ mod test {
 			password: TEST_PASSWORD.to_owned(),
 			admin: false,
 		};
-		ctx.user_manager.create(&new_user).unwrap();
+		ctx.user_manager.create(&new_user).await.unwrap();
 
 		ctx.user_manager
 			.write_preferences(TEST_USERNAME, &new_preferences)
+			.await
 			.unwrap();
 
-		let read_preferences = ctx.user_manager.read_preferences("Walter").unwrap();
+		let read_preferences = ctx.user_manager.read_preferences("Walter").await.unwrap();
 		assert_eq!(new_preferences, read_preferences);
 	}
 
-	#[test]
-	fn login_rejects_bad_password() {
-		let ctx = test::ContextBuilder::new(test_name!()).build();
+	#[tokio::test]
+	async fn login_rejects_bad_password() {
+		let ctx = test::ContextBuilder::new(test_name!()).build().await;
 
 		let new_user = NewUser {
 			name: TEST_USERNAME.to_owned(),
@@ -444,30 +434,35 @@ mod test {
 			admin: false,
 		};
 
-		ctx.user_manager.create(&new_user).unwrap();
+		ctx.user_manager.create(&new_user).await.unwrap();
 		assert!(matches!(
 			ctx.user_manager
 				.login(TEST_USERNAME, "not the password")
+				.await
 				.unwrap_err(),
 			Error::IncorrectPassword
 		));
 	}
 
-	#[test]
-	fn login_golden_path() {
-		let ctx = test::ContextBuilder::new(test_name!()).build();
+	#[tokio::test]
+	async fn login_golden_path() {
+		let ctx = test::ContextBuilder::new(test_name!()).build().await;
 		let new_user = NewUser {
 			name: TEST_USERNAME.to_owned(),
 			password: TEST_PASSWORD.to_owned(),
 			admin: false,
 		};
-		ctx.user_manager.create(&new_user).unwrap();
-		assert!(ctx.user_manager.login(TEST_USERNAME, TEST_PASSWORD).is_ok())
+		ctx.user_manager.create(&new_user).await.unwrap();
+		assert!(ctx
+			.user_manager
+			.login(TEST_USERNAME, TEST_PASSWORD)
+			.await
+			.is_ok())
 	}
 
-	#[test]
-	fn authenticate_rejects_bad_token() {
-		let ctx = test::ContextBuilder::new(test_name!()).build();
+	#[tokio::test]
+	async fn authenticate_rejects_bad_token() {
+		let ctx = test::ContextBuilder::new(test_name!()).build().await;
 
 		let new_user = NewUser {
 			name: TEST_USERNAME.to_owned(),
@@ -475,17 +470,18 @@ mod test {
 			admin: false,
 		};
 
-		ctx.user_manager.create(&new_user).unwrap();
+		ctx.user_manager.create(&new_user).await.unwrap();
 		let fake_token = AuthToken("fake token".to_owned());
 		assert!(ctx
 			.user_manager
 			.authenticate(&fake_token, AuthorizationScope::PolarisAuth)
+			.await
 			.is_err())
 	}
 
-	#[test]
-	fn authenticate_golden_path() {
-		let ctx = test::ContextBuilder::new(test_name!()).build();
+	#[tokio::test]
+	async fn authenticate_golden_path() {
+		let ctx = test::ContextBuilder::new(test_name!()).build().await;
 
 		let new_user = NewUser {
 			name: TEST_USERNAME.to_owned(),
@@ -493,14 +489,16 @@ mod test {
 			admin: false,
 		};
 
-		ctx.user_manager.create(&new_user).unwrap();
+		ctx.user_manager.create(&new_user).await.unwrap();
 		let token = ctx
 			.user_manager
 			.login(TEST_USERNAME, TEST_PASSWORD)
+			.await
 			.unwrap();
 		let authorization = ctx
 			.user_manager
 			.authenticate(&token, AuthorizationScope::PolarisAuth)
+			.await
 			.unwrap();
 		assert_eq!(
 			authorization,
@@ -511,9 +509,9 @@ mod test {
 		)
 	}
 
-	#[test]
-	fn authenticate_validates_scope() {
-		let ctx = test::ContextBuilder::new(test_name!()).build();
+	#[tokio::test]
+	async fn authenticate_validates_scope() {
+		let ctx = test::ContextBuilder::new(test_name!()).build().await;
 
 		let new_user = NewUser {
 			name: TEST_USERNAME.to_owned(),
@@ -521,14 +519,15 @@ mod test {
 			admin: false,
 		};
 
-		ctx.user_manager.create(&new_user).unwrap();
+		ctx.user_manager.create(&new_user).await.unwrap();
 		let token = ctx
 			.user_manager
 			.generate_lastfm_link_token(TEST_USERNAME)
 			.unwrap();
 		let authorization = ctx
 			.user_manager
-			.authenticate(&token, AuthorizationScope::PolarisAuth);
+			.authenticate(&token, AuthorizationScope::PolarisAuth)
+			.await;
 		assert!(matches!(
 			authorization.unwrap_err(),
 			Error::IncorrectAuthorizationScope

@@ -139,9 +139,9 @@ pub struct DDNSConfig {
 impl From<DDNSConfig> for ddns::Config {
 	fn from(c: DDNSConfig) -> Self {
 		Self {
-			host: c.host,
-			username: c.username,
-			password: c.password,
+			ddns_host: c.host,
+			ddns_username: c.username,
+			ddns_password: c.password,
 		}
 	}
 }
@@ -149,9 +149,9 @@ impl From<DDNSConfig> for ddns::Config {
 impl From<ddns::Config> for DDNSConfig {
 	fn from(c: ddns::Config) -> Self {
 		Self {
-			host: c.host,
-			username: c.username,
-			password: c.password,
+			host: c.ddns_host,
+			username: c.ddns_username,
+			password: c.ddns_password,
 		}
 	}
 }
@@ -204,7 +204,7 @@ impl From<Config> for config::Config {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NewSettings {
 	pub album_art_pattern: Option<String>,
-	pub reindex_every_n_seconds: Option<i32>,
+	pub reindex_every_n_seconds: Option<i64>,
 }
 
 impl From<NewSettings> for settings::NewSettings {
@@ -219,7 +219,7 @@ impl From<NewSettings> for settings::NewSettings {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Settings {
 	pub album_art_pattern: String,
-	pub reindex_every_n_seconds: i32,
+	pub reindex_every_n_seconds: i64,
 }
 
 impl From<settings::Settings> for Settings {

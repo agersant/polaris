@@ -16,7 +16,7 @@ use base64::prelude::*;
 use futures_util::future::err;
 use percent_encoding::percent_decode_str;
 use std::future::Future;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::pin::Pin;
 use std::str;
 
@@ -141,25 +141,27 @@ impl FromRequest for Auth {
 			// Auth via bearer token in query parameter
 			if let Ok(query) = query_params_future.await {
 				let auth_token = user::AuthToken(query.auth_token.clone());
-				let authorization = block(move || {
-					user_manager.authenticate(&auth_token, user::AuthorizationScope::PolarisAuth)
-				})
-				.await?;
-				return Ok(Auth {
-					username: authorization.username,
-				});
+				if let Ok(auth) = user_manager
+					.authenticate(&auth_token, user::AuthorizationScope::PolarisAuth)
+					.await
+				{
+					return Ok(Auth {
+						username: auth.username,
+					});
+				}
 			}
 
 			// Auth via bearer token in authorization header
 			if let Ok(bearer_auth) = bearer_auth_future.await {
 				let auth_token = user::AuthToken(bearer_auth.token().to_owned());
-				let authorization = block(move || {
-					user_manager.authenticate(&auth_token, user::AuthorizationScope::PolarisAuth)
-				})
-				.await?;
-				return Ok(Auth {
-					username: authorization.username,
-				});
+				if let Ok(auth) = user_manager
+					.authenticate(&auth_token, user::AuthorizationScope::PolarisAuth)
+					.await
+				{
+					return Ok(Auth {
+						username: auth.username,
+					});
+				}
 			}
 
 			Err(ErrorUnauthorized(APIError::AuthenticationRequired))
@@ -185,21 +187,18 @@ impl FromRequest for AdminRights {
 		let auth_future = Auth::from_request(request, payload);
 
 		Box::pin(async move {
-			let user_manager_count = user_manager.clone();
-			let user_count = block(move || user_manager_count.count()).await;
+			let user_count = user_manager.count().await;
 			match user_count {
-				Err(e) => return Err(e.into()),
+				Err(_) => return Err(ErrorInternalServerError(APIError::Internal)),
 				Ok(0) => return Ok(AdminRights { auth: None }),
 				_ => (),
 			};
 
 			let auth = auth_future.await?;
-			let username = auth.username.clone();
-			let is_admin = block(move || user_manager.is_admin(&username)).await?;
-			if is_admin {
-				Ok(AdminRights { auth: Some(auth) })
-			} else {
-				Err(ErrorForbidden(APIError::AdminPermissionRequired))
+			match user_manager.is_admin(&auth.username).await {
+				Ok(true) => Ok(AdminRights { auth: Some(auth) }),
+				Ok(false) => Err(ErrorForbidden(APIError::AdminPermissionRequired)),
+				Err(_) => Err(ErrorInternalServerError(APIError::Internal)),
 			}
 		})
 	}
@@ -228,18 +227,6 @@ impl Responder for MediaFile {
 	}
 }
 
-async fn block<F, I, E>(f: F) -> Result<I, APIError>
-where
-	F: FnOnce() -> Result<I, E> + Send + 'static,
-	I: Send + 'static,
-	E: Send + std::fmt::Debug + 'static + Into<APIError>,
-{
-	actix_web::web::block(f)
-		.await
-		.map_err(|_| APIError::Internal)
-		.and_then(|r| r.map_err(|e| e.into()))
-}
-
 #[get("/version")]
 async fn version() -> Json<dto::Version> {
 	let current_version = dto::Version {
@@ -253,14 +240,13 @@ async fn version() -> Json<dto::Version> {
 async fn initial_setup(
 	user_manager: Data<user::Manager>,
 ) -> Result<Json<dto::InitialSetup>, APIError> {
-	let initial_setup = block(move || -> Result<dto::InitialSetup, APIError> {
-		let users = user_manager.list()?;
+	let initial_setup = {
+		let users = user_manager.list().await?;
 		let has_any_admin = users.iter().any(|u| u.is_admin());
-		Ok(dto::InitialSetup {
+		dto::InitialSetup {
 			has_any_users: has_any_admin,
-		})
-	})
-	.await?;
+		}
+	};
 	Ok(Json(initial_setup))
 }
 
@@ -270,7 +256,7 @@ async fn apply_config(
 	config_manager: Data<config::Manager>,
 	config: Json<dto::Config>,
 ) -> Result<HttpResponse, APIError> {
-	block(move || config_manager.apply(&config.to_owned().into())).await?;
+	config_manager.apply(&config.to_owned().into()).await?;
 	Ok(HttpResponse::new(StatusCode::OK))
 }
 
@@ -279,7 +265,7 @@ async fn get_settings(
 	settings_manager: Data<settings::Manager>,
 	_admin_rights: AdminRights,
 ) -> Result<Json<dto::Settings>, APIError> {
-	let settings = block(move || settings_manager.read()).await?;
+	let settings = settings_manager.read().await?;
 	Ok(Json(settings.into()))
 }
 
@@ -289,7 +275,9 @@ async fn put_settings(
 	settings_manager: Data<settings::Manager>,
 	new_settings: Json<dto::NewSettings>,
 ) -> Result<HttpResponse, APIError> {
-	block(move || settings_manager.amend(&new_settings.to_owned().into())).await?;
+	settings_manager
+		.amend(&new_settings.to_owned().into())
+		.await?;
 	Ok(HttpResponse::new(StatusCode::OK))
 }
 
@@ -298,7 +286,7 @@ async fn list_mount_dirs(
 	vfs_manager: Data<vfs::Manager>,
 	_admin_rights: AdminRights,
 ) -> Result<Json<Vec<dto::MountDir>>, APIError> {
-	let mount_dirs = block(move || vfs_manager.mount_dirs()).await?;
+	let mount_dirs = vfs_manager.mount_dirs().await?;
 	let mount_dirs = mount_dirs.into_iter().map(|m| m.into()).collect();
 	Ok(Json(mount_dirs))
 }
@@ -310,7 +298,7 @@ async fn put_mount_dirs(
 	new_mount_dirs: Json<Vec<dto::MountDir>>,
 ) -> Result<HttpResponse, APIError> {
 	let new_mount_dirs: Vec<MountDir> = new_mount_dirs.iter().cloned().map(|m| m.into()).collect();
-	block(move || vfs_manager.set_mount_dirs(&new_mount_dirs)).await?;
+	vfs_manager.set_mount_dirs(&new_mount_dirs).await?;
 	Ok(HttpResponse::new(StatusCode::OK))
 }
 
@@ -319,7 +307,7 @@ async fn get_ddns_config(
 	ddns_manager: Data<ddns::Manager>,
 	_admin_rights: AdminRights,
 ) -> Result<Json<dto::DDNSConfig>, APIError> {
-	let ddns_config = block(move || ddns_manager.config()).await?;
+	let ddns_config = ddns_manager.config().await?;
 	Ok(Json(ddns_config.into()))
 }
 
@@ -329,7 +317,9 @@ async fn put_ddns_config(
 	ddns_manager: Data<ddns::Manager>,
 	new_ddns_config: Json<dto::DDNSConfig>,
 ) -> Result<HttpResponse, APIError> {
-	block(move || ddns_manager.set_config(&new_ddns_config.to_owned().into())).await?;
+	ddns_manager
+		.set_config(&new_ddns_config.to_owned().into())
+		.await?;
 	Ok(HttpResponse::new(StatusCode::OK))
 }
 
@@ -338,7 +328,7 @@ async fn list_users(
 	user_manager: Data<user::Manager>,
 	_admin_rights: AdminRights,
 ) -> Result<Json<Vec<dto::User>>, APIError> {
-	let users = block(move || user_manager.list()).await?;
+	let users = user_manager.list().await?;
 	let users = users.into_iter().map(|u| u.into()).collect();
 	Ok(Json(users))
 }
@@ -350,7 +340,7 @@ async fn create_user(
 	new_user: Json<dto::NewUser>,
 ) -> Result<HttpResponse, APIError> {
 	let new_user = new_user.to_owned().into();
-	block(move || user_manager.create(&new_user)).await?;
+	user_manager.create(&new_user).await?;
 	Ok(HttpResponse::new(StatusCode::OK))
 }
 
@@ -367,16 +357,14 @@ async fn update_user(
 		}
 	}
 
-	block(move || -> Result<(), APIError> {
-		if let Some(password) = &user_update.new_password {
-			user_manager.set_password(&name, password)?;
-		}
-		if let Some(is_admin) = &user_update.new_is_admin {
-			user_manager.set_is_admin(&name, *is_admin)?;
-		}
-		Ok(())
-	})
-	.await?;
+	if let Some(password) = &user_update.new_password {
+		user_manager.set_password(&name, password).await?;
+	}
+
+	if let Some(is_admin) = &user_update.new_is_admin {
+		user_manager.set_is_admin(&name, *is_admin).await?;
+	}
+
 	Ok(HttpResponse::new(StatusCode::OK))
 }
 
@@ -391,7 +379,7 @@ async fn delete_user(
 			return Err(APIError::DeletingOwnAccount);
 		}
 	}
-	block(move || user_manager.delete(&name)).await?;
+	user_manager.delete(&name).await?;
 	Ok(HttpResponse::new(StatusCode::OK))
 }
 
@@ -400,7 +388,7 @@ async fn get_preferences(
 	user_manager: Data<user::Manager>,
 	auth: Auth,
 ) -> Result<Json<user::Preferences>, APIError> {
-	let preferences = block(move || user_manager.read_preferences(&auth.username)).await?;
+	let preferences = user_manager.read_preferences(&auth.username).await?;
 	Ok(Json(preferences))
 }
 
@@ -410,7 +398,9 @@ async fn put_preferences(
 	auth: Auth,
 	preferences: Json<user::Preferences>,
 ) -> Result<HttpResponse, APIError> {
-	block(move || user_manager.write_preferences(&auth.username, &preferences)).await?;
+	user_manager
+		.write_preferences(&auth.username, &preferences)
+		.await?;
 	Ok(HttpResponse::new(StatusCode::OK))
 }
 
@@ -429,18 +419,18 @@ async fn login(
 	credentials: Json<dto::Credentials>,
 ) -> Result<HttpResponse, APIError> {
 	let username = credentials.username.clone();
-	let (user::AuthToken(token), is_admin) =
-		block(move || -> Result<(user::AuthToken, bool), APIError> {
-			let auth_token = user_manager.login(&credentials.username, &credentials.password)?;
-			let is_admin = user_manager.is_admin(&credentials.username)?;
-			Ok((auth_token, is_admin))
-		})
+
+	let user::AuthToken(token) = user_manager
+		.login(&credentials.username, &credentials.password)
 		.await?;
+	let is_admin = user_manager.is_admin(&credentials.username).await?;
+
 	let authorization = dto::Authorization {
 		username: username.clone(),
 		token,
 		is_admin,
 	};
+
 	let response = HttpResponse::Ok().json(authorization);
 	Ok(response)
 }
@@ -450,7 +440,7 @@ async fn browse_root(
 	index: Data<Index>,
 	_auth: Auth,
 ) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
-	let result = block(move || index.browse(Path::new(""))).await?;
+	let result = index.browse(Path::new("")).await?;
 	Ok(Json(result))
 }
 
@@ -460,17 +450,14 @@ async fn browse(
 	_auth: Auth,
 	path: web::Path<String>,
 ) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
-	let result = block(move || {
-		let path = percent_decode_str(&path).decode_utf8_lossy();
-		index.browse(Path::new(path.as_ref()))
-	})
-	.await?;
+	let path = percent_decode_str(&path).decode_utf8_lossy();
+	let result = index.browse(Path::new(path.as_ref())).await?;
 	Ok(Json(result))
 }
 
 #[get("/flatten")]
 async fn flatten_root(index: Data<Index>, _auth: Auth) -> Result<Json<Vec<index::Song>>, APIError> {
-	let songs = block(move || index.flatten(Path::new(""))).await?;
+	let songs = index.flatten(Path::new("")).await?;
 	Ok(Json(songs))
 }
 
@@ -480,23 +467,20 @@ async fn flatten(
 	_auth: Auth,
 	path: web::Path<String>,
 ) -> Result<Json<Vec<index::Song>>, APIError> {
-	let songs = block(move || {
-		let path = percent_decode_str(&path).decode_utf8_lossy();
-		index.flatten(Path::new(path.as_ref()))
-	})
-	.await?;
+	let path = percent_decode_str(&path).decode_utf8_lossy();
+	let songs = index.flatten(Path::new(path.as_ref())).await?;
 	Ok(Json(songs))
 }
 
 #[get("/random")]
 async fn random(index: Data<Index>, _auth: Auth) -> Result<Json<Vec<index::Directory>>, APIError> {
-	let result = block(move || index.get_random_albums(20)).await?;
+	let result = index.get_random_albums(20).await?;
 	Ok(Json(result))
 }
 
 #[get("/recent")]
 async fn recent(index: Data<Index>, _auth: Auth) -> Result<Json<Vec<index::Directory>>, APIError> {
-	let result = block(move || index.get_recent_albums(20)).await?;
+	let result = index.get_recent_albums(20).await?;
 	Ok(Json(result))
 }
 
@@ -505,7 +489,7 @@ async fn search_root(
 	index: Data<Index>,
 	_auth: Auth,
 ) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
-	let result = block(move || index.search("")).await?;
+	let result = index.search("").await?;
 	Ok(Json(result))
 }
 
@@ -515,7 +499,7 @@ async fn search(
 	_auth: Auth,
 	query: web::Path<String>,
 ) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
-	let result = block(move || index.search(&query)).await?;
+	let result = index.search(&query).await?;
 	Ok(Json(result))
 }
 
@@ -525,13 +509,9 @@ async fn get_audio(
 	_auth: Auth,
 	path: web::Path<String>,
 ) -> Result<MediaFile, APIError> {
-	let audio_path = block(move || {
-		let vfs = vfs_manager.get_vfs()?;
-		let path = percent_decode_str(&path).decode_utf8_lossy();
-		vfs.virtual_to_real(Path::new(path.as_ref()))
-	})
-	.await?;
-
+	let vfs = vfs_manager.get_vfs().await?;
+	let path = percent_decode_str(&path).decode_utf8_lossy();
+	let audio_path = vfs.virtual_to_real(Path::new(path.as_ref()))?;
 	let named_file = NamedFile::open(audio_path).map_err(|_| APIError::AudioFileIOError)?;
 	Ok(MediaFile::new(named_file))
 }
@@ -545,19 +525,11 @@ async fn get_thumbnail(
 	options_input: web::Query<dto::ThumbnailOptions>,
 ) -> Result<MediaFile, APIError> {
 	let options = thumbnail::Options::from(options_input.0);
-
-	let thumbnail_path = block(move || -> Result<PathBuf, APIError> {
-		let vfs = vfs_manager.get_vfs()?;
-		let path = percent_decode_str(&path).decode_utf8_lossy();
-		let image_path = vfs.virtual_to_real(Path::new(path.as_ref()))?;
-		thumbnails_manager
-			.get_thumbnail(&image_path, &options)
-			.map_err(|e| e.into())
-	})
-	.await?;
-
+	let vfs = vfs_manager.get_vfs().await?;
+	let path = percent_decode_str(&path).decode_utf8_lossy();
+	let image_path = vfs.virtual_to_real(Path::new(path.as_ref()))?;
+	let thumbnail_path = thumbnails_manager.get_thumbnail(&image_path, &options)?;
 	let named_file = NamedFile::open(thumbnail_path).map_err(|_| APIError::ThumbnailFileIOError)?;
-
 	Ok(MediaFile::new(named_file))
 }
 
@@ -566,7 +538,7 @@ async fn list_playlists(
 	playlist_manager: Data<playlist::Manager>,
 	auth: Auth,
 ) -> Result<Json<Vec<dto::ListPlaylistsEntry>>, APIError> {
-	let playlist_names = block(move || playlist_manager.list_playlists(&auth.username)).await?;
+	let playlist_names = playlist_manager.list_playlists(&auth.username).await?;
 	let playlists: Vec<dto::ListPlaylistsEntry> = playlist_names
 		.into_iter()
 		.map(|p| dto::ListPlaylistsEntry { name: p })
@@ -582,7 +554,9 @@ async fn save_playlist(
 	name: web::Path<String>,
 	playlist: Json<dto::SavePlaylistInput>,
 ) -> Result<HttpResponse, APIError> {
-	block(move || playlist_manager.save_playlist(&name, &auth.username, &playlist.tracks)).await?;
+	playlist_manager
+		.save_playlist(&name, &auth.username, &playlist.tracks)
+		.await?;
 	Ok(HttpResponse::new(StatusCode::OK))
 }
 
@@ -592,7 +566,9 @@ async fn read_playlist(
 	auth: Auth,
 	name: web::Path<String>,
 ) -> Result<Json<Vec<index::Song>>, APIError> {
-	let songs = block(move || playlist_manager.read_playlist(&name, &auth.username)).await?;
+	let songs = playlist_manager
+		.read_playlist(&name, &auth.username)
+		.await?;
 	Ok(Json(songs))
 }
 
@@ -602,7 +578,9 @@ async fn delete_playlist(
 	auth: Auth,
 	name: web::Path<String>,
 ) -> Result<HttpResponse, APIError> {
-	block(move || playlist_manager.delete_playlist(&name, &auth.username)).await?;
+	playlist_manager
+		.delete_playlist(&name, &auth.username)
+		.await?;
 	Ok(HttpResponse::new(StatusCode::OK))
 }
 
@@ -613,15 +591,13 @@ async fn lastfm_now_playing(
 	auth: Auth,
 	path: web::Path<String>,
 ) -> Result<HttpResponse, APIError> {
-	block(move || -> Result<(), APIError> {
-		if !user_manager.is_lastfm_linked(&auth.username) {
-			return Err(APIError::LastFMAccountNotLinked);
-		}
-		let path = percent_decode_str(&path).decode_utf8_lossy();
-		lastfm_manager.now_playing(&auth.username, Path::new(path.as_ref()))?;
-		Ok(())
-	})
-	.await?;
+	if !user_manager.is_lastfm_linked(&auth.username).await {
+		return Err(APIError::LastFMAccountNotLinked);
+	}
+	let path = percent_decode_str(&path).decode_utf8_lossy();
+	lastfm_manager
+		.now_playing(&auth.username, Path::new(path.as_ref()))
+		.await?;
 	Ok(HttpResponse::new(StatusCode::OK))
 }
 
@@ -632,15 +608,13 @@ async fn lastfm_scrobble(
 	auth: Auth,
 	path: web::Path<String>,
 ) -> Result<HttpResponse, APIError> {
-	block(move || -> Result<(), APIError> {
-		if !user_manager.is_lastfm_linked(&auth.username) {
-			return Err(APIError::LastFMAccountNotLinked);
-		}
-		let path = percent_decode_str(&path).decode_utf8_lossy();
-		lastfm_manager.scrobble(&auth.username, Path::new(path.as_ref()))?;
-		Ok(())
-	})
-	.await?;
+	if !user_manager.is_lastfm_linked(&auth.username).await {
+		return Err(APIError::LastFMAccountNotLinked);
+	}
+	let path = percent_decode_str(&path).decode_utf8_lossy();
+	lastfm_manager
+		.scrobble(&auth.username, Path::new(path.as_ref()))
+		.await?;
 	Ok(HttpResponse::new(StatusCode::OK))
 }
 
@@ -649,8 +623,7 @@ async fn lastfm_link_token(
 	lastfm_manager: Data<lastfm::Manager>,
 	auth: Auth,
 ) -> Result<Json<dto::LastFMLinkToken>, APIError> {
-	let user::AuthToken(value) =
-		block(move || lastfm_manager.generate_link_token(&auth.username)).await?;
+	let user::AuthToken(value) = lastfm_manager.generate_link_token(&auth.username)?;
 	Ok(Json(dto::LastFMLinkToken { value }))
 }
 
@@ -660,27 +633,27 @@ async fn lastfm_link(
 	user_manager: Data<user::Manager>,
 	payload: web::Query<dto::LastFMLink>,
 ) -> Result<HttpResponse, APIError> {
-	let popup_content_string = block(move || {
-		let auth_token = user::AuthToken(payload.auth_token.clone());
-		let authorization =
-			user_manager.authenticate(&auth_token, user::AuthorizationScope::LastFMLink)?;
-		let lastfm_token = &payload.token;
-		lastfm_manager.link(&authorization.username, lastfm_token)?;
+	let auth_token = user::AuthToken(payload.auth_token.clone());
+	let authorization = user_manager
+		.authenticate(&auth_token, user::AuthorizationScope::LastFMLink)
+		.await?;
+	let lastfm_token = &payload.token;
+	lastfm_manager
+		.link(&authorization.username, lastfm_token)
+		.await?;
 
-		// Percent decode
-		let base64_content = percent_decode_str(&payload.content).decode_utf8_lossy();
+	// Percent decode
+	let base64_content = percent_decode_str(&payload.content).decode_utf8_lossy();
 
-		// Base64 decode
-		let popup_content = BASE64_STANDARD_NO_PAD
-			.decode(base64_content.as_bytes())
-			.map_err(|_| APIError::LastFMLinkContentBase64DecodeError)?;
+	// Base64 decode
+	let popup_content = BASE64_STANDARD_NO_PAD
+		.decode(base64_content.as_bytes())
+		.map_err(|_| APIError::LastFMLinkContentBase64DecodeError)?;
 
-		// UTF-8 decode
-		str::from_utf8(&popup_content)
-			.map_err(|_| APIError::LastFMLinkContentEncodingError)
-			.map(|s| s.to_owned())
-	})
-	.await?;
+	// UTF-8 decode
+	let popup_content_string = str::from_utf8(&popup_content)
+		.map_err(|_| APIError::LastFMLinkContentEncodingError)
+		.map(|s| s.to_owned())?;
 
 	Ok(HttpResponse::build(StatusCode::OK)
 		.content_type("text/html; charset=utf-8")
@@ -692,6 +665,6 @@ async fn lastfm_unlink(
 	lastfm_manager: Data<lastfm::Manager>,
 	auth: Auth,
 ) -> Result<HttpResponse, APIError> {
-	block(move || lastfm_manager.unlink(&auth.username)).await?;
+	lastfm_manager.unlink(&auth.username).await?;
 	Ok(HttpResponse::new(StatusCode::OK))
 }

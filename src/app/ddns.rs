@@ -1,11 +1,9 @@
 use base64::prelude::*;
-use diesel::prelude::*;
 use log::{debug, error};
 use serde::{Deserialize, Serialize};
-use std::thread;
-use std::time;
+use std::time::Duration;
 
-use crate::db::{self, ddns_config, DB};
+use crate::db::{self, DB};
 
 const DDNS_UPDATE_URL: &str = "https://ydns.io/api/v1/update/";
 
@@ -18,15 +16,14 @@ pub enum Error {
 	#[error(transparent)]
 	DatabaseConnection(#[from] db::Error),
 	#[error(transparent)]
-	Database(#[from] diesel::result::Error),
+	Database(#[from] sqlx::Error),
 }
 
-#[derive(Clone, Debug, Deserialize, Insertable, PartialEq, Eq, Queryable, Serialize)]
-#[diesel(table_name = ddns_config)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 pub struct Config {
-	pub host: String,
-	pub username: String,
-	pub password: String,
+	pub ddns_host: String,
+	pub ddns_username: String,
+	pub ddns_password: String,
 }
 
 #[derive(Clone)]
@@ -39,15 +36,15 @@ impl Manager {
 		Self { db }
 	}
 
-	fn update_my_ip(&self) -> Result<(), Error> {
-		let config = self.config()?;
-		if config.host.is_empty() || config.username.is_empty() {
+	async fn update_my_ip(&self) -> Result<(), Error> {
+		let config = self.config().await?;
+		if config.ddns_host.is_empty() || config.ddns_username.is_empty() {
 			debug!("Skipping DDNS update because credentials are missing");
 			return Ok(());
 		}
 
-		let full_url = format!("{}?host={}", DDNS_UPDATE_URL, &config.host);
-		let credentials = format!("{}:{}", &config.username, &config.password);
+		let full_url = format!("{}?host={}", DDNS_UPDATE_URL, &config.ddns_host);
+		let credentials = format!("{}:{}", &config.ddns_username, &config.ddns_password);
 		let response = ureq::get(full_url.as_str())
 			.set(
 				"Authorization",
@@ -62,40 +59,38 @@ impl Manager {
 		}
 	}
 
-	pub fn config(&self) -> Result<Config, Error> {
-		use crate::db::ddns_config::dsl::*;
-		let mut connection = self.db.connect()?;
-		Ok(ddns_config
-			.select((host, username, password))
-			.get_result(&mut connection)?)
+	pub async fn config(&self) -> Result<Config, Error> {
+		Ok(sqlx::query_as!(
+			Config,
+			"SELECT ddns_host, ddns_username, ddns_password FROM config"
+		)
+		.fetch_one(self.db.connect().await?.as_mut())
+		.await?)
 	}
 
-	pub fn set_config(&self, new_config: &Config) -> Result<(), Error> {
-		use crate::db::ddns_config::dsl::*;
-		let mut connection = self.db.connect()?;
-		diesel::update(ddns_config)
-			.set((
-				host.eq(&new_config.host),
-				username.eq(&new_config.username),
-				password.eq(&new_config.password),
-			))
-			.execute(&mut connection)?;
+	pub async fn set_config(&self, new_config: &Config) -> Result<(), Error> {
+		sqlx::query!(
+			"UPDATE config SET ddns_host = $1, ddns_username = $2, ddns_password = $3",
+			new_config.ddns_host,
+			new_config.ddns_username,
+			new_config.ddns_password
+		)
+		.execute(self.db.connect().await?.as_mut())
+		.await?;
 		Ok(())
 	}
 
 	pub fn begin_periodic_updates(&self) {
-		let cloned = self.clone();
-		std::thread::spawn(move || {
-			cloned.run();
-		});
-	}
-
-	fn run(&self) {
-		loop {
-			if let Err(e) = self.update_my_ip() {
-				error!("Dynamic DNS update error: {:?}", e);
+		tokio::spawn({
+			let ddns = self.clone();
+			async move {
+				loop {
+					if let Err(e) = ddns.update_my_ip().await {
+						error!("Dynamic DNS update error: {:?}", e);
+					}
+					tokio::time::sleep(Duration::from_secs(60 * 30)).await;
+				}
 			}
-			thread::sleep(time::Duration::from_secs(60 * 30));
-		}
+		});
 	}
 }

@@ -1,19 +1,18 @@
-use crossbeam_channel::{Receiver, Sender};
 use log::error;
 use regex::Regex;
 
 use super::*;
 
 pub struct Collector {
-	receiver: Receiver<traverser::Directory>,
-	sender: Sender<inserter::Item>,
+	receiver: crossbeam_channel::Receiver<traverser::Directory>,
+	sender: tokio::sync::mpsc::UnboundedSender<inserter::Item>,
 	album_art_pattern: Option<Regex>,
 }
 
 impl Collector {
 	pub fn new(
-		receiver: Receiver<traverser::Directory>,
-		sender: Sender<inserter::Item>,
+		receiver: crossbeam_channel::Receiver<traverser::Directory>,
+		sender: tokio::sync::mpsc::UnboundedSender<inserter::Item>,
 		album_art_pattern: Option<Regex>,
 	) -> Self {
 		Self {

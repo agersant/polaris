@@ -1,7 +1,6 @@
 use actix_test::TestServer;
 use actix_web::{
 	middleware::{Compress, Logger},
-	rt::{System, SystemRunner},
 	web::Bytes,
 	App as ActixApp,
 };
@@ -18,7 +17,6 @@ use crate::service::test::TestService;
 use crate::test::*;
 
 pub struct ActixTestService {
-	system_runner: SystemRunner,
 	authorization: Option<dto::Authorization>,
 	server: TestServer,
 }
@@ -26,7 +24,7 @@ pub struct ActixTestService {
 pub type ServiceType = ActixTestService;
 
 impl ActixTestService {
-	fn process_internal<T: Serialize + Clone + 'static>(
+	async fn process_internal<T: Serialize + Clone + 'static>(
 		&mut self,
 		request: &Request<T>,
 	) -> (Builder, Option<Bytes>) {
@@ -50,9 +48,7 @@ impl ActixTestService {
 			actix_request = actix_request.bearer_auth(&authorization.token);
 		}
 
-		let mut actix_response = self
-			.system_runner
-			.block_on(async move { actix_request.send_json(&body).await.unwrap() });
+		let mut actix_response = actix_request.send_json(&body).await.unwrap();
 
 		let mut response_builder = Response::builder().status(actix_response.status());
 		let headers = response_builder.headers_mut().unwrap();
@@ -62,10 +58,7 @@ impl ActixTestService {
 
 		let is_success = actix_response.status().is_success();
 		let body = if is_success {
-			Some(
-				self.system_runner
-					.block_on(async move { actix_response.body().await.unwrap() }),
-			)
+			Some(actix_response.body().await.unwrap())
 		} else {
 			None
 		};
@@ -75,7 +68,7 @@ impl ActixTestService {
 }
 
 impl TestService for ActixTestService {
-	fn new(test_name: &str) -> Self {
+	async fn new(test_name: &str) -> Self {
 		let output_dir = prepare_test_directory(test_name);
 
 		let paths = Paths {
@@ -89,9 +82,8 @@ impl TestService for ActixTestService {
 			web_dir_path: ["test-data", "web"].iter().collect(),
 		};
 
-		let app = App::new(5050, paths).unwrap();
+		let app = App::new(5050, paths).await.unwrap();
 
-		let system_runner = System::new();
 		let server = actix_test::start(move || {
 			let config = make_config(app.clone());
 			ActixApp::new()
@@ -102,31 +94,33 @@ impl TestService for ActixTestService {
 
 		ActixTestService {
 			authorization: None,
-			system_runner,
 			server,
 		}
 	}
 
-	fn fetch<T: Serialize + Clone + 'static>(&mut self, request: &Request<T>) -> Response<()> {
-		let (response_builder, _body) = self.process_internal(request);
+	async fn fetch<T: Serialize + Clone + 'static>(
+		&mut self,
+		request: &Request<T>,
+	) -> Response<()> {
+		let (response_builder, _body) = self.process_internal(request).await;
 		response_builder.body(()).unwrap()
 	}
 
-	fn fetch_bytes<T: Serialize + Clone + 'static>(
+	async fn fetch_bytes<T: Serialize + Clone + 'static>(
 		&mut self,
 		request: &Request<T>,
 	) -> Response<Vec<u8>> {
-		let (response_builder, body) = self.process_internal(request);
+		let (response_builder, body) = self.process_internal(request).await;
 		response_builder
 			.body(body.unwrap().deref().to_owned())
 			.unwrap()
 	}
 
-	fn fetch_json<T: Serialize + Clone + 'static, U: DeserializeOwned>(
+	async fn fetch_json<T: Serialize + Clone + 'static, U: DeserializeOwned>(
 		&mut self,
 		request: &Request<T>,
 	) -> Response<U> {
-		let (response_builder, body) = self.process_internal(request);
+		let (response_builder, body) = self.process_internal(request).await;
 		let body = serde_json::from_slice(&body.unwrap()).unwrap();
 		response_builder.body(body).unwrap()
 	}

@@ -80,23 +80,23 @@ impl Paths {
 	pub fn new(cli_options: &CLIOptions) -> Self {
 		let mut paths = Self::from_build();
 		if let Some(path) = &cli_options.cache_dir_path {
-			paths.cache_dir_path = path.clone();
+			path.clone_into(&mut paths.cache_dir_path);
 		}
 		if let Some(path) = &cli_options.config_file_path {
 			paths.config_file_path = Some(path.clone());
 		}
 		if let Some(path) = &cli_options.database_file_path {
-			paths.db_file_path = path.clone();
+			path.clone_into(&mut paths.db_file_path);
 		}
 		#[cfg(unix)]
 		if let Some(path) = &cli_options.pid_file_path {
-			paths.pid_file_path = path.clone();
+			path.clone_into(&mut paths.pid_file_path);
 		}
 		if let Some(path) = &cli_options.swagger_dir_path {
-			paths.swagger_dir_path = path.clone();
+			path.clone_into(&mut paths.swagger_dir_path);
 		}
 		if let Some(path) = &cli_options.web_dir_path {
-			paths.web_dir_path = path.clone();
+			path.clone_into(&mut paths.web_dir_path);
 		}
 
 		let log_to_file = cli_options.log_file_path.is_some() || !cli_options.foreground;

@@ -1,6 +1,7 @@
 use log::error;
-use std::sync::{Arc, Condvar, Mutex};
+use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::Notify;
 
 use crate::app::{settings, vfs};
 use crate::db::DB;
@@ -20,7 +21,7 @@ pub struct Index {
 	db: DB,
 	vfs_manager: vfs::Manager,
 	settings_manager: settings::Manager,
-	pending_reindex: Arc<(Mutex<bool>, Condvar)>,
+	pending_reindex: Arc<Notify>,
 }
 
 impl Index {
@@ -29,63 +30,45 @@ impl Index {
 			db,
 			vfs_manager,
 			settings_manager,
-
-			pending_reindex: Arc::new((
-				#[allow(clippy::mutex_atomic)]
-				Mutex::new(false),
-				Condvar::new(),
-			)),
+			pending_reindex: Arc::new(Notify::new()),
 		};
 
-		let commands_index = index.clone();
-		std::thread::spawn(move || {
-			commands_index.process_commands();
+		tokio::spawn({
+			let index = index.clone();
+			async move {
+				loop {
+					index.pending_reindex.notified().await;
+					if let Err(e) = index.update().await {
+						error!("Error while updating index: {}", e);
+					}
+				}
+			}
 		});
 
 		index
 	}
 
 	pub fn trigger_reindex(&self) {
-		let (lock, cvar) = &*self.pending_reindex;
-		let mut pending_reindex = lock.lock().unwrap();
-		*pending_reindex = true;
-		cvar.notify_one();
+		self.pending_reindex.notify_one();
 	}
 
 	pub fn begin_periodic_updates(&self) {
-		let auto_index = self.clone();
-		std::thread::spawn(move || {
-			auto_index.automatic_reindex();
-		});
-	}
-
-	fn process_commands(&self) {
-		loop {
-			{
-				let (lock, cvar) = &*self.pending_reindex;
-				let mut pending = lock.lock().unwrap();
-				while !*pending {
-					pending = cvar.wait(pending).unwrap();
+		tokio::spawn({
+			let index = self.clone();
+			async move {
+				loop {
+					index.trigger_reindex();
+					let sleep_duration = index
+						.settings_manager
+						.get_index_sleep_duration()
+						.await
+						.unwrap_or_else(|e| {
+							error!("Could not retrieve index sleep duration: {}", e);
+							Duration::from_secs(1800)
+						});
+					tokio::time::sleep(sleep_duration).await;
 				}
-				*pending = false;
 			}
-			if let Err(e) = self.update() {
-				error!("Error while updating index: {}", e);
-			}
-		}
-	}
-
-	fn automatic_reindex(&self) {
-		loop {
-			self.trigger_reindex();
-			let sleep_duration = self
-				.settings_manager
-				.get_index_sleep_duration()
-				.unwrap_or_else(|e| {
-					error!("Could not retrieve index sleep duration: {}", e);
-					Duration::from_secs(1800)
-				});
-			std::thread::sleep(sleep_duration);
-		}
+		});
 	}
 }

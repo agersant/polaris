@@ -26,18 +26,19 @@ use crate::service::test::constants::*;
 pub use crate::service::actix::test::ServiceType;
 
 pub trait TestService {
-	fn new(test_name: &str) -> Self;
-	fn fetch<T: Serialize + Clone + 'static>(&mut self, request: &Request<T>) -> Response<()>;
-	fn fetch_bytes<T: Serialize + Clone + 'static>(
+	async fn new(test_name: &str) -> Self;
+	async fn fetch<T: Serialize + Clone + 'static>(&mut self, request: &Request<T>)
+		-> Response<()>;
+	async fn fetch_bytes<T: Serialize + Clone + 'static>(
 		&mut self,
 		request: &Request<T>,
 	) -> Response<Vec<u8>>;
-	fn fetch_json<T: Serialize + Clone + 'static, U: DeserializeOwned>(
+	async fn fetch_json<T: Serialize + Clone + 'static, U: DeserializeOwned>(
 		&mut self,
 		request: &Request<T>,
 	) -> Response<U>;
 
-	fn complete_initial_setup(&mut self) {
+	async fn complete_initial_setup(&mut self) {
 		let configuration = dto::Config {
 			users: Some(vec![
 				dto::NewUser {
@@ -58,40 +59,43 @@ pub trait TestService {
 			..Default::default()
 		};
 		let request = protocol::apply_config(configuration);
-		let response = self.fetch(&request);
+		let response = self.fetch(&request).await;
 		assert_eq!(response.status(), StatusCode::OK);
 	}
 
-	fn login_internal(&mut self, username: &str, password: &str) {
+	async fn login_internal(&mut self, username: &str, password: &str) {
 		let request = protocol::login(username, password);
-		let response = self.fetch_json::<_, dto::Authorization>(&request);
+		let response = self.fetch_json::<_, dto::Authorization>(&request).await;
 		assert_eq!(response.status(), StatusCode::OK);
 		let authorization = response.into_body();
 		self.set_authorization(Some(authorization));
 	}
 
-	fn login_admin(&mut self) {
-		self.login_internal(TEST_USERNAME_ADMIN, TEST_PASSWORD_ADMIN);
+	async fn login_admin(&mut self) {
+		self.login_internal(TEST_USERNAME_ADMIN, TEST_PASSWORD_ADMIN)
+			.await;
 	}
 
-	fn login(&mut self) {
-		self.login_internal(TEST_USERNAME, TEST_PASSWORD);
+	async fn login(&mut self) {
+		self.login_internal(TEST_USERNAME, TEST_PASSWORD).await;
 	}
 
-	fn logout(&mut self) {
+	async fn logout(&mut self) {
 		self.set_authorization(None);
 	}
 
 	fn set_authorization(&mut self, authorization: Option<dto::Authorization>);
 
-	fn index(&mut self) {
+	async fn index(&mut self) {
 		let request = protocol::trigger_index();
-		let response = self.fetch(&request);
+		let response = self.fetch(&request).await;
 		assert_eq!(response.status(), StatusCode::OK);
 
 		loop {
 			let browse_request = protocol::browse(Path::new(""));
-			let response = self.fetch_json::<(), Vec<index::CollectionFile>>(&browse_request);
+			let response = self
+				.fetch_json::<(), Vec<index::CollectionFile>>(&browse_request)
+				.await;
 			let entries = response.body();
 			if !entries.is_empty() {
 				break;
@@ -101,7 +105,9 @@ pub trait TestService {
 
 		loop {
 			let flatten_request = protocol::flatten(Path::new(""));
-			let response = self.fetch_json::<_, Vec<index::Song>>(&flatten_request);
+			let response = self
+				.fetch_json::<_, Vec<index::Song>>(&flatten_request)
+				.await;
 			let entries = response.body();
 			if !entries.is_empty() {
 				break;

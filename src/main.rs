@@ -1,12 +1,8 @@
 #![cfg_attr(all(windows, feature = "ui"), windows_subsystem = "windows")]
 #![recursion_limit = "256"]
 
-#[macro_use]
-extern crate diesel;
-#[macro_use]
-extern crate diesel_migrations;
-
-use log::info;
+use log::{error, info};
+use options::CLIOptions;
 use simplelog::{
 	ColorChoice, CombinedLogger, LevelFilter, SharedLogger, TermLogger, TerminalMode, WriteLogger,
 };
@@ -27,6 +23,8 @@ mod utils;
 pub enum Error {
 	#[error(transparent)]
 	App(#[from] app::Error),
+	#[error("Could not start web services")]
+	ServiceStartup(std::io::Error),
 	#[error("Could not parse command line arguments:\n\n{0}")]
 	CliArgsParsing(getopts::Fail),
 	#[cfg(unix)]
@@ -139,16 +137,21 @@ fn main() -> Result<(), Error> {
 	info!("Swagger files location is {:#?}", paths.swagger_dir_path);
 	info!("Web client files location is {:#?}", paths.web_dir_path);
 
+	async_main(cli_options, paths)
+}
+
+#[tokio::main]
+async fn async_main(cli_options: CLIOptions, paths: paths::Paths) -> Result<(), Error> {
 	// Create and run app
-	let app = app::App::new(cli_options.port.unwrap_or(5050), paths)?;
+	let app = app::App::new(cli_options.port.unwrap_or(5050), paths).await?;
 	app.index.begin_periodic_updates();
 	app.ddns_manager.begin_periodic_updates();
 
 	// Start server
 	info!("Starting up server");
-	std::thread::spawn(move || {
-		let _ = service::run(app);
-	});
+	if let Err(e) = service::launch(app) {
+		return Err(Error::ServiceStartup(e));
+	}
 
 	// Send readiness notification
 	#[cfg(unix)]

@@ -5,33 +5,33 @@ use crate::service::dto::ThumbnailSize;
 use crate::service::test::{constants::*, protocol, ServiceType, TestService};
 use crate::test_name;
 
-#[test]
-fn audio_requires_auth() {
-	let mut service = ServiceType::new(&test_name!());
+#[actix_web::test]
+async fn audio_requires_auth() {
+	let mut service = ServiceType::new(&test_name!()).await;
 
 	let path: PathBuf = [TEST_MOUNT_NAME, "Khemmis", "Hunted", "02 - Candlelight.mp3"]
 		.iter()
 		.collect();
 
 	let request = protocol::audio(&path);
-	let response = service.fetch(&request);
+	let response = service.fetch(&request).await;
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
-#[test]
-fn audio_golden_path() {
-	let mut service = ServiceType::new(&test_name!());
-	service.complete_initial_setup();
-	service.login_admin();
-	service.index();
-	service.login();
+#[actix_web::test]
+async fn audio_golden_path() {
+	let mut service = ServiceType::new(&test_name!()).await;
+	service.complete_initial_setup().await;
+	service.login_admin().await;
+	service.index().await;
+	service.login().await;
 
 	let path: PathBuf = [TEST_MOUNT_NAME, "Khemmis", "Hunted", "02 - Candlelight.mp3"]
 		.iter()
 		.collect();
 
 	let request = protocol::audio(&path);
-	let response = service.fetch_bytes(&request);
+	let response = service.fetch_bytes(&request).await;
 	assert_eq!(response.status(), StatusCode::OK);
 	assert_eq!(response.body().len(), 24_142);
 	assert_eq!(
@@ -40,13 +40,13 @@ fn audio_golden_path() {
 	);
 }
 
-#[test]
-fn audio_does_not_encode_content() {
-	let mut service = ServiceType::new(&test_name!());
-	service.complete_initial_setup();
-	service.login_admin();
-	service.index();
-	service.login();
+#[actix_web::test]
+async fn audio_does_not_encode_content() {
+	let mut service = ServiceType::new(&test_name!()).await;
+	service.complete_initial_setup().await;
+	service.login_admin().await;
+	service.index().await;
+	service.login().await;
 
 	let path: PathBuf = [TEST_MOUNT_NAME, "Khemmis", "Hunted", "02 - Candlelight.mp3"]
 		.iter()
@@ -59,7 +59,7 @@ fn audio_does_not_encode_content() {
 		HeaderValue::from_str("gzip, deflate, br").unwrap(),
 	);
 
-	let response = service.fetch_bytes(&request);
+	let response = service.fetch_bytes(&request).await;
 	assert_eq!(response.status(), StatusCode::OK);
 	assert_eq!(response.body().len(), 24_142);
 	assert_eq!(response.headers().get(header::TRANSFER_ENCODING), None);
@@ -69,13 +69,13 @@ fn audio_does_not_encode_content() {
 	);
 }
 
-#[test]
-fn audio_partial_content() {
-	let mut service = ServiceType::new(&test_name!());
-	service.complete_initial_setup();
-	service.login_admin();
-	service.index();
-	service.login();
+#[actix_web::test]
+async fn audio_partial_content() {
+	let mut service = ServiceType::new(&test_name!()).await;
+	service.complete_initial_setup().await;
+	service.login_admin().await;
+	service.index().await;
+	service.login().await;
 
 	let path: PathBuf = [TEST_MOUNT_NAME, "Khemmis", "Hunted", "02 - Candlelight.mp3"]
 		.iter()
@@ -88,7 +88,7 @@ fn audio_partial_content() {
 		HeaderValue::from_str("bytes=100-299").unwrap(),
 	);
 
-	let response = service.fetch_bytes(&request);
+	let response = service.fetch_bytes(&request).await;
 	assert_eq!(response.status(), StatusCode::PARTIAL_CONTENT);
 	assert_eq!(response.body().len(), 200);
 	assert_eq!(
@@ -97,22 +97,22 @@ fn audio_partial_content() {
 	);
 }
 
-#[test]
-fn audio_bad_path_returns_not_found() {
-	let mut service = ServiceType::new(&test_name!());
-	service.complete_initial_setup();
-	service.login();
+#[actix_web::test]
+async fn audio_bad_path_returns_not_found() {
+	let mut service = ServiceType::new(&test_name!()).await;
+	service.complete_initial_setup().await;
+	service.login().await;
 
 	let path: PathBuf = ["not_my_collection"].iter().collect();
 
 	let request = protocol::audio(&path);
-	let response = service.fetch(&request);
+	let response = service.fetch(&request).await;
 	assert_eq!(response.status(), StatusCode::NOT_FOUND);
 }
 
-#[test]
-fn thumbnail_requires_auth() {
-	let mut service = ServiceType::new(&test_name!());
+#[actix_web::test]
+async fn thumbnail_requires_auth() {
+	let mut service = ServiceType::new(&test_name!()).await;
 
 	let path: PathBuf = [TEST_MOUNT_NAME, "Khemmis", "Hunted", "Folder.jpg"]
 		.iter()
@@ -121,17 +121,17 @@ fn thumbnail_requires_auth() {
 	let size = None;
 	let pad = None;
 	let request = protocol::thumbnail(&path, size, pad);
-	let response = service.fetch(&request);
+	let response = service.fetch(&request).await;
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
-#[test]
-fn thumbnail_golden_path() {
-	let mut service = ServiceType::new(&test_name!());
-	service.complete_initial_setup();
-	service.login_admin();
-	service.index();
-	service.login();
+#[actix_web::test]
+async fn thumbnail_golden_path() {
+	let mut service = ServiceType::new(&test_name!()).await;
+	service.complete_initial_setup().await;
+	service.login_admin().await;
+	service.index().await;
+	service.login().await;
 
 	let path: PathBuf = [TEST_MOUNT_NAME, "Khemmis", "Hunted", "Folder.jpg"]
 		.iter()
@@ -140,60 +140,60 @@ fn thumbnail_golden_path() {
 	let size = None;
 	let pad = None;
 	let request = protocol::thumbnail(&path, size, pad);
-	let response = service.fetch_bytes(&request);
+	let response = service.fetch_bytes(&request).await;
 	assert_eq!(response.status(), StatusCode::OK);
 }
 
-#[test]
-fn thumbnail_bad_path_returns_not_found() {
-	let mut service = ServiceType::new(&test_name!());
-	service.complete_initial_setup();
-	service.login();
+#[actix_web::test]
+async fn thumbnail_bad_path_returns_not_found() {
+	let mut service = ServiceType::new(&test_name!()).await;
+	service.complete_initial_setup().await;
+	service.login().await;
 
 	let path: PathBuf = ["not_my_collection"].iter().collect();
 
 	let size = None;
 	let pad = None;
 	let request = protocol::thumbnail(&path, size, pad);
-	let response = service.fetch(&request);
+	let response = service.fetch(&request).await;
 	assert_eq!(response.status(), StatusCode::NOT_FOUND);
 }
 
-#[test]
-fn thumbnail_size_default() {
-	thumbnail_size(&test_name!(), None, None, 400);
+#[actix_web::test]
+async fn thumbnail_size_default() {
+	thumbnail_size(&test_name!(), None, None, 400).await;
 }
 
-#[test]
-fn thumbnail_size_small() {
-	thumbnail_size(&test_name!(), Some(ThumbnailSize::Small), None, 400);
+#[actix_web::test]
+async fn thumbnail_size_small() {
+	thumbnail_size(&test_name!(), Some(ThumbnailSize::Small), None, 400).await;
 }
 
-#[test]
+#[actix_web::test]
 #[cfg(not(tarpaulin))]
-fn thumbnail_size_large() {
-	thumbnail_size(&test_name!(), Some(ThumbnailSize::Large), None, 1200);
+async fn thumbnail_size_large() {
+	thumbnail_size(&test_name!(), Some(ThumbnailSize::Large), None, 1200).await;
 }
 
-#[test]
+#[actix_web::test]
 #[cfg(not(tarpaulin))]
-fn thumbnail_size_native() {
-	thumbnail_size(&test_name!(), Some(ThumbnailSize::Native), None, 1423);
+async fn thumbnail_size_native() {
+	thumbnail_size(&test_name!(), Some(ThumbnailSize::Native), None, 1423).await;
 }
 
-fn thumbnail_size(name: &str, size: Option<ThumbnailSize>, pad: Option<bool>, expected: u32) {
-	let mut service = ServiceType::new(name);
-	service.complete_initial_setup();
-	service.login_admin();
-	service.index();
-	service.login();
+async fn thumbnail_size(name: &str, size: Option<ThumbnailSize>, pad: Option<bool>, expected: u32) {
+	let mut service = ServiceType::new(name).await;
+	service.complete_initial_setup().await;
+	service.login_admin().await;
+	service.index().await;
+	service.login().await;
 
 	let path: PathBuf = [TEST_MOUNT_NAME, "Tobokegao", "Picnic", "Folder.png"]
 		.iter()
 		.collect();
 
 	let request = protocol::thumbnail(&path, size, pad);
-	let response = service.fetch_bytes(&request);
+	let response = service.fetch_bytes(&request).await;
 	assert_eq!(response.status(), StatusCode::OK);
 	let thumbnail = image::load_from_memory(response.body()).unwrap().to_rgb8();
 	assert_eq!(thumbnail.width(), expected);

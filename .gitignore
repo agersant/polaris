@@ -9,6 +9,8 @@ TestConfig.toml
 
 # Runtime artifacts
 *.sqlite
+**/*.sqlite-shm
+**/*.sqlite-wal
 polaris.log
 polaris.pid
 /thumbnails

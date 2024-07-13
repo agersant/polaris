@@ -6,8 +6,6 @@ edition = "2021"
 build = "build.rs"
 
 [features]
-default = ["bundle-sqlite"]
-bundle-sqlite = ["libsqlite3-sys"]
 ui = ["native-windows-gui", "native-windows-derive"]
 
 [dependencies]
@@ -18,16 +16,11 @@ ape = "0.5"
 base64 = "0.21"
 branca = "0.10.1"
 crossbeam-channel = "0.5"
-diesel_migrations = { version = "2.0", features = ["sqlite"] }
 futures-util = { version = "0.3" }
 getopts = "0.2.21"
 http = "0.2.8"
 id3 = "1.7.0"
 lewton = "0.10.2"
-libsqlite3-sys = { version = "0.26", features = [
-	"bundled",
-	"bundled-windows",
-], optional = true }
 log = "0.4.17"
 metaflac = "0.2.5"
 mp3-duration = "0.1.10"
@@ -44,19 +37,16 @@ serde = { version = "1.0.147", features = ["derive"] }
 serde_derive = "1.0.147"
 serde_json = "1.0.87"
 simplelog = "0.12.0"
+sqlx = { version = "0.7.4", features = ["migrate", "runtime-tokio", "sqlite"] }
 thiserror = "1.0.37"
+tokio = { version = "1.38", features = ["macros", "rt-multi-thread"] }
 toml = "0.7"
 ureq = "2.7"
 url = "2.3"
 
-[dependencies.diesel]
-version = "2.0.2"
-default_features = false
-features = ["libsqlite3-sys", "r2d2", "sqlite"]
-
 [dependencies.image]
 version = "0.24.4"
-default_features = false
+default-features = false
 features = ["bmp", "gif", "jpeg", "png"]
 
 [target.'cfg(windows)'.dependencies]
@@ -81,3 +71,6 @@ winres = "0.1"
 actix-test = "0.1.0"
 headers = "0.3"
 fs_extra = "1.2.0"
+
+[profile.dev.package.sqlx-macros]
+opt-level = 3
