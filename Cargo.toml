@@ -36,13 +36,14 @@ simplelog = "0.12.0"
 thiserror = "1.0.37"
 tokio = { version = "1.38", features = ["macros", "rt-multi-thread"] }
 toml = "0.7"
+tower-http = { version = "0.5.2", features = ["fs"] }
 ureq = "2.7"
 url = "2.3"
 
 [dependencies.axum]
 version = "0.7.5"
 default-features = false
-features = ["http1", "json", "tokio", "tower-log", "tracing", "query"]
+features = ["http1", "json", "tokio", "tower-log", "query"]
 
 [dependencies.image]
 version = "0.24.4"

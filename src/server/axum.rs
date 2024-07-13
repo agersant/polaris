@@ -1,4 +1,5 @@
 use axum::Router;
+use tower_http::services::ServeDir;
 
 use crate::app::App;
 
@@ -9,6 +10,8 @@ pub mod test;
 
 pub fn make_router(app: App) -> Router {
 	Router::new()
+		.nest_service("/swagger", ServeDir::new(app.swagger_dir_path))
+		.nest_service("/", ServeDir::new(app.web_dir_path))
 	// move |cfg: &mut ServiceConfig| {
 	// 	cfg.app_data(web::Data::new(app.index))
 	// 		.app_data(web::Data::new(app.config_manager))
@@ -24,16 +27,6 @@ pub fn make_router(app: App) -> Router {
 	// 				.configure(api::make_config())
 	// 				.wrap(NormalizePath::trim()),
 	// 		)
-	// 		.service(
-	// 			actix_files::Files::new("/swagger", app.swagger_dir_path)
-	// 				.redirect_to_slash_directory()
-	// 				.index_file("index.html"),
-	// 		)
-	// 		.service(
-	// 			actix_files::Files::new("/", app.web_dir_path)
-	// 				.redirect_to_slash_directory()
-	// 				.index_file("index.html"),
-	// 		);
 	// }
 }
 
