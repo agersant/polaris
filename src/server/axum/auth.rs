@@ -15,6 +15,12 @@ pub struct Auth {
 	username: String,
 }
 
+impl Auth {
+	pub fn get_username(&self) -> &String {
+		return &self.username;
+	}
+}
+
 #[async_trait]
 impl<S> FromRequestParts<S> for Auth
 where
@@ -58,6 +64,12 @@ pub struct AdminRights {
 	auth: Option<Auth>,
 }
 
+impl AdminRights {
+	pub fn get_auth(&self) -> &Option<Auth> {
+		return &self.auth;
+	}
+}
+
 #[async_trait]
 impl<S> FromRequestParts<S> for AdminRights
 where
@@ -69,14 +81,12 @@ where
 	async fn from_request_parts(parts: &mut Parts, app: &S) -> Result<Self, Self::Rejection> {
 		let user_manager = user::Manager::from_ref(app);
 
-		let auth_future = Auth::from_request_parts(parts, app);
-
 		let user_count = user_manager.count().await?;
 		if user_count == 0 {
 			return Ok(AdminRights { auth: None });
 		}
 
-		let auth = auth_future.await?;
+		let auth = Auth::from_request_parts(parts, app).await?;
 		if user_manager.is_admin(&auth.username).await? {
 			Ok(AdminRights { auth: Some(auth) })
 		} else {

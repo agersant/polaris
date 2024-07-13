@@ -8,7 +8,7 @@ impl IntoResponse for APIError {
 		let message = self.to_string();
 		let status_code = match self {
 			APIError::AuthorizationTokenEncoding => StatusCode::INTERNAL_SERVER_ERROR,
-			APIError::AdminPermissionRequired => StatusCode::UNAUTHORIZED,
+			APIError::AdminPermissionRequired => StatusCode::FORBIDDEN,
 			APIError::AudioFileIOError => StatusCode::NOT_FOUND,
 			APIError::AuthenticationRequired => StatusCode::UNAUTHORIZED,
 			APIError::BrancaTokenEncoding => StatusCode::INTERNAL_SERVER_ERROR,

@@ -34,6 +34,18 @@ impl FromRef<App> for app::config::Manager {
 	}
 }
 
+impl FromRef<App> for app::ddns::Manager {
+	fn from_ref(app: &App) -> Self {
+		app.ddns_manager.clone()
+	}
+}
+
+impl FromRef<App> for app::index::Index {
+	fn from_ref(app: &App) -> Self {
+		app.index.clone()
+	}
+}
+
 impl FromRef<App> for app::user::Manager {
 	fn from_ref(app: &App) -> Self {
 		app.user_manager.clone()
@@ -43,5 +55,11 @@ impl FromRef<App> for app::user::Manager {
 impl FromRef<App> for app::settings::Manager {
 	fn from_ref(app: &App) -> Self {
 		app.settings_manager.clone()
+	}
+}
+
+impl FromRef<App> for app::vfs::Manager {
+	fn from_ref(app: &App) -> Self {
+		app.vfs_manager.clone()
 	}
 }

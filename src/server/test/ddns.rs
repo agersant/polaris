@@ -32,12 +32,13 @@ async fn get_ddns_config_golden_path() {
 #[tokio::test]
 async fn put_ddns_config_requires_admin() {
 	let mut service = ServiceType::new(&test_name!()).await;
-	let request = protocol::put_ddns_config(dto::DDNSConfig {
-		host: "test".to_owned(),
-		username: "test".to_owned(),
-		password: "test".to_owned(),
-	});
 	service.complete_initial_setup().await;
+
+	let request = protocol::put_ddns_config(dto::DDNSConfig {
+		host: "host".to_owned(),
+		username: "ddns_user".to_owned(),
+		password: "ddns_password".to_owned(),
+	});
 
 	let response = service.fetch(&request).await;
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
