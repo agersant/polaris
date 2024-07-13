@@ -1,11 +1,11 @@
 use http::StatusCode;
 use std::path::PathBuf;
 
-use crate::service::dto;
-use crate::service::test::{constants::*, protocol, ServiceType, TestService};
+use crate::server::dto;
+use crate::server::test::{constants::*, protocol, ServiceType, TestService};
 use crate::test_name;
 
-#[actix_web::test]
+#[tokio::test]
 async fn lastfm_scrobble_ignores_unlinked_user() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -22,7 +22,7 @@ async fn lastfm_scrobble_ignores_unlinked_user() {
 	assert_eq!(response.status(), StatusCode::NO_CONTENT);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn lastfm_now_playing_ignores_unlinked_user() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -39,7 +39,7 @@ async fn lastfm_now_playing_ignores_unlinked_user() {
 	assert_eq!(response.status(), StatusCode::NO_CONTENT);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn lastfm_link_token_requires_auth() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	let request = protocol::lastfm_link_token();
@@ -47,7 +47,7 @@ async fn lastfm_link_token_requires_auth() {
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn lastfm_link_token_golden_path() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;

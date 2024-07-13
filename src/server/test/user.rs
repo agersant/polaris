@@ -2,11 +2,11 @@ use http::StatusCode;
 use std::default::Default;
 
 use crate::app::user;
-use crate::service::dto;
-use crate::service::test::{constants::*, protocol, ServiceType, TestService};
+use crate::server::dto;
+use crate::server::test::{constants::*, protocol, ServiceType, TestService};
 use crate::test_name;
 
-#[actix_web::test]
+#[tokio::test]
 async fn list_users_requires_admin() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -20,7 +20,7 @@ async fn list_users_requires_admin() {
 	assert_eq!(response.status(), StatusCode::FORBIDDEN);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn list_users_golden_path() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -30,7 +30,7 @@ async fn list_users_golden_path() {
 	assert_eq!(response.status(), StatusCode::OK);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn create_user_requires_admin() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -48,7 +48,7 @@ async fn create_user_requires_admin() {
 	assert_eq!(response.status(), StatusCode::FORBIDDEN);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn create_user_golden_path() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -64,7 +64,7 @@ async fn create_user_golden_path() {
 	assert_eq!(response.status(), StatusCode::OK);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn update_user_requires_admin() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -78,7 +78,7 @@ async fn update_user_requires_admin() {
 	assert_eq!(response.status(), StatusCode::FORBIDDEN);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn update_user_golden_path() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -89,7 +89,7 @@ async fn update_user_golden_path() {
 	assert_eq!(response.status(), StatusCode::OK);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn update_user_cannot_unadmin_self() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -106,7 +106,7 @@ async fn update_user_cannot_unadmin_self() {
 	assert_eq!(response.status(), StatusCode::CONFLICT);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn delete_user_requires_admin() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -120,7 +120,7 @@ async fn delete_user_requires_admin() {
 	assert_eq!(response.status(), StatusCode::FORBIDDEN);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn delete_user_golden_path() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -131,7 +131,7 @@ async fn delete_user_golden_path() {
 	assert_eq!(response.status(), StatusCode::OK);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn delete_user_cannot_delete_self() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -141,7 +141,7 @@ async fn delete_user_cannot_delete_self() {
 	assert_eq!(response.status(), StatusCode::CONFLICT);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn get_preferences_requires_auth() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	let request = protocol::get_preferences();
@@ -149,7 +149,7 @@ async fn get_preferences_requires_auth() {
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn get_preferences_golden_path() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -160,7 +160,7 @@ async fn get_preferences_golden_path() {
 	assert_eq!(response.status(), StatusCode::OK);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn put_preferences_requires_auth() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	let request = protocol::put_preferences(user::Preferences::default());
@@ -168,7 +168,7 @@ async fn put_preferences_requires_auth() {
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn put_preferences_golden_path() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;

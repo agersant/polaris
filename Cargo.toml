@@ -9,15 +9,12 @@ build = "build.rs"
 ui = ["native-windows-gui", "native-windows-derive"]
 
 [dependencies]
-actix-files = { version = "0.6" }
-actix-web-httpauth = { version = "0.8" }
 ape = "0.5"
 base64 = "0.21"
 branca = "0.10.1"
 crossbeam-channel = "0.5"
 futures-util = { version = "0.3" }
 getopts = "0.2.21"
-http = "0.2.8"
 id3 = "1.7.0"
 lewton = "0.10.2"
 log = "0.4.17"
@@ -42,10 +39,10 @@ toml = "0.7"
 ureq = "2.7"
 url = "2.3"
 
-[dependencies.actix-web]
-version = "4"
+[dependencies.axum]
+version = "0.7.5"
 default-features = false
-features = ["macros", "compress-brotli", "compress-gzip"]
+features = ["http1", "json", "tokio", "tower-log", "tracing", "query"]
 
 [dependencies.image]
 version = "0.24.4"
@@ -76,8 +73,10 @@ embed-resource = "1.8"
 winres = "0.1"
 
 [dev-dependencies]
-actix-test = "0.1.0"
-headers = "0.3"
+axum-test = "15.3"
+bytes = "1.6.1"
+headers = "0.4"
+http = "1.1.0"
 fs_extra = "1.2.0"
 
 [profile.dev.package.sqlx-macros]

@@ -1,9 +1,9 @@
 use http::StatusCode;
 
-use crate::service::test::{protocol, ServiceType, TestService};
+use crate::server::test::{protocol, ServiceType, TestService};
 use crate::test_name;
 
-#[actix_web::test]
+#[tokio::test]
 async fn serves_web_client() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	let request = protocol::web_index();

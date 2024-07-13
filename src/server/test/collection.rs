@@ -2,10 +2,10 @@ use http::StatusCode;
 use std::path::{Path, PathBuf};
 
 use crate::app::index;
-use crate::service::test::{add_trailing_slash, constants::*, protocol, ServiceType, TestService};
+use crate::server::test::{add_trailing_slash, constants::*, protocol, ServiceType, TestService};
 use crate::test_name;
 
-#[actix_web::test]
+#[tokio::test]
 async fn browse_requires_auth() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	let request = protocol::browse(&PathBuf::new());
@@ -13,7 +13,7 @@ async fn browse_requires_auth() {
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn browse_root() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -30,7 +30,7 @@ async fn browse_root() {
 	assert_eq!(entries.len(), 1);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn browse_directory() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -48,7 +48,7 @@ async fn browse_directory() {
 	assert_eq!(entries.len(), 5);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn browse_bad_directory() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -60,7 +60,7 @@ async fn browse_bad_directory() {
 	assert_eq!(response.status(), StatusCode::NOT_FOUND);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn flatten_requires_auth() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	let request = protocol::flatten(&PathBuf::new());
@@ -68,7 +68,7 @@ async fn flatten_requires_auth() {
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn flatten_root() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -83,7 +83,7 @@ async fn flatten_root() {
 	assert_eq!(entries.len(), 13);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn flatten_directory() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -98,7 +98,7 @@ async fn flatten_directory() {
 	assert_eq!(entries.len(), 13);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn flatten_bad_directory() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -110,7 +110,7 @@ async fn flatten_bad_directory() {
 	assert_eq!(response.status(), StatusCode::NOT_FOUND);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn random_requires_auth() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	let request = protocol::random();
@@ -118,7 +118,7 @@ async fn random_requires_auth() {
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn random_golden_path() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -135,7 +135,7 @@ async fn random_golden_path() {
 	assert_eq!(entries.len(), 3);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn random_with_trailing_slash() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -153,7 +153,7 @@ async fn random_with_trailing_slash() {
 	assert_eq!(entries.len(), 3);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn recent_requires_auth() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	let request = protocol::recent();
@@ -161,7 +161,7 @@ async fn recent_requires_auth() {
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn recent_golden_path() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -178,7 +178,7 @@ async fn recent_golden_path() {
 	assert_eq!(entries.len(), 3);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn recent_with_trailing_slash() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -196,7 +196,7 @@ async fn recent_with_trailing_slash() {
 	assert_eq!(entries.len(), 3);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn search_requires_auth() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	let request = protocol::search("");
@@ -204,7 +204,7 @@ async fn search_requires_auth() {
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn search_without_query() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -217,7 +217,7 @@ async fn search_without_query() {
 	assert_eq!(response.status(), StatusCode::OK);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn search_with_query() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;

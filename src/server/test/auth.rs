@@ -1,11 +1,11 @@
 use headers::{self, HeaderMapExt};
 use http::StatusCode;
 
-use crate::service::dto;
-use crate::service::test::{constants::*, protocol, ServiceType, TestService};
+use crate::server::dto;
+use crate::server::test::{constants::*, protocol, ServiceType, TestService};
 use crate::test_name;
 
-#[actix_web::test]
+#[tokio::test]
 async fn login_rejects_bad_username() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -15,7 +15,7 @@ async fn login_rejects_bad_username() {
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn login_rejects_bad_password() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -25,7 +25,7 @@ async fn login_rejects_bad_password() {
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn login_golden_path() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -40,7 +40,7 @@ async fn login_golden_path() {
 	assert!(!authorization.token.is_empty());
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn authentication_via_bearer_http_header_rejects_bad_token() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -53,7 +53,7 @@ async fn authentication_via_bearer_http_header_rejects_bad_token() {
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn authentication_via_bearer_http_header_golden_path() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -74,7 +74,7 @@ async fn authentication_via_bearer_http_header_golden_path() {
 	assert_eq!(response.status(), StatusCode::OK);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn authentication_via_query_param_rejects_bad_token() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -88,7 +88,7 @@ async fn authentication_via_query_param_rejects_bad_token() {
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn authentication_via_query_param_golden_path() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;

@@ -13,7 +13,7 @@ mod app;
 mod db;
 mod options;
 mod paths;
-mod service;
+mod server;
 #[cfg(test)]
 mod test;
 mod ui;
@@ -149,7 +149,7 @@ async fn async_main(cli_options: CLIOptions, paths: paths::Paths) -> Result<(), 
 
 	// Start server
 	info!("Starting up server");
-	if let Err(e) = service::launch(app) {
+	if let Err(e) = server::launch(app).await {
 		return Err(Error::ServiceStartup(e));
 	}
 

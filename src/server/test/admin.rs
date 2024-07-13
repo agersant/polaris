@@ -1,11 +1,11 @@
 use http::StatusCode;
 
 use crate::app::index;
-use crate::service::dto;
-use crate::service::test::{protocol, ServiceType, TestService};
+use crate::server::dto;
+use crate::server::test::{protocol, ServiceType, TestService};
 use crate::test_name;
 
-#[actix_web::test]
+#[tokio::test]
 async fn returns_api_version() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	let request = protocol::version();
@@ -13,7 +13,7 @@ async fn returns_api_version() {
 	assert_eq!(response.status(), StatusCode::OK);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn initial_setup_golden_path() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	let request = protocol::initial_setup();
@@ -42,7 +42,7 @@ async fn initial_setup_golden_path() {
 	}
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn trigger_index_golden_path() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -65,7 +65,7 @@ async fn trigger_index_golden_path() {
 	assert_eq!(entries.len(), 3);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn trigger_index_requires_auth() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -74,7 +74,7 @@ async fn trigger_index_requires_auth() {
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn trigger_index_requires_admin() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;

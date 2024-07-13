@@ -1,9 +1,9 @@
 use http::StatusCode;
 
-use crate::service::test::{add_trailing_slash, protocol, ServiceType, TestService};
+use crate::server::test::{add_trailing_slash, protocol, ServiceType, TestService};
 use crate::test_name;
 
-#[actix_web::test]
+#[tokio::test]
 async fn can_get_swagger_index() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	let request = protocol::swagger_index();
@@ -11,7 +11,7 @@ async fn can_get_swagger_index() {
 	assert_eq!(response.status(), StatusCode::OK);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn can_get_swagger_index_with_trailing_slash() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	let mut request = protocol::swagger_index();

@@ -1,11 +1,11 @@
 use http::{header, HeaderValue, StatusCode};
 use std::path::PathBuf;
 
-use crate::service::dto::ThumbnailSize;
-use crate::service::test::{constants::*, protocol, ServiceType, TestService};
+use crate::server::dto::ThumbnailSize;
+use crate::server::test::{constants::*, protocol, ServiceType, TestService};
 use crate::test_name;
 
-#[actix_web::test]
+#[tokio::test]
 async fn audio_requires_auth() {
 	let mut service = ServiceType::new(&test_name!()).await;
 
@@ -18,7 +18,7 @@ async fn audio_requires_auth() {
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn audio_golden_path() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -40,7 +40,7 @@ async fn audio_golden_path() {
 	);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn audio_does_not_encode_content() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -69,7 +69,7 @@ async fn audio_does_not_encode_content() {
 	);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn audio_partial_content() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -97,7 +97,7 @@ async fn audio_partial_content() {
 	);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn audio_bad_path_returns_not_found() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -110,7 +110,7 @@ async fn audio_bad_path_returns_not_found() {
 	assert_eq!(response.status(), StatusCode::NOT_FOUND);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn thumbnail_requires_auth() {
 	let mut service = ServiceType::new(&test_name!()).await;
 
@@ -125,7 +125,7 @@ async fn thumbnail_requires_auth() {
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn thumbnail_golden_path() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -144,7 +144,7 @@ async fn thumbnail_golden_path() {
 	assert_eq!(response.status(), StatusCode::OK);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn thumbnail_bad_path_returns_not_found() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -159,23 +159,23 @@ async fn thumbnail_bad_path_returns_not_found() {
 	assert_eq!(response.status(), StatusCode::NOT_FOUND);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn thumbnail_size_default() {
 	thumbnail_size(&test_name!(), None, None, 400).await;
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn thumbnail_size_small() {
 	thumbnail_size(&test_name!(), Some(ThumbnailSize::Small), None, 400).await;
 }
 
-#[actix_web::test]
+#[tokio::test]
 #[cfg(not(tarpaulin))]
 async fn thumbnail_size_large() {
 	thumbnail_size(&test_name!(), Some(ThumbnailSize::Large), None, 1200).await;
 }
 
-#[actix_web::test]
+#[tokio::test]
 #[cfg(not(tarpaulin))]
 async fn thumbnail_size_native() {
 	thumbnail_size(&test_name!(), Some(ThumbnailSize::Native), None, 1423).await;

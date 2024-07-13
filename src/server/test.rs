@@ -1,6 +1,9 @@
+use bytes::Bytes;
+use http::response::Builder;
 use http::{Request, Response, StatusCode};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use std::ops::Deref;
 use std::path::Path;
 use std::time::Duration;
 
@@ -20,23 +23,45 @@ mod user;
 mod web;
 
 use crate::app::index;
-use crate::service::dto;
-use crate::service::test::constants::*;
+use crate::server::dto;
+use crate::server::test::constants::*;
 
-pub use crate::service::actix::test::ServiceType;
+pub use crate::server::axum::test::ServiceType;
 
 pub trait TestService {
 	async fn new(test_name: &str) -> Self;
-	async fn fetch<T: Serialize + Clone + 'static>(&mut self, request: &Request<T>)
-		-> Response<()>;
+
+	async fn execute_request<T: Serialize + Clone + 'static>(
+		&mut self,
+		request: &Request<T>,
+	) -> (Builder, Option<Bytes>);
+
+	async fn fetch<T: Serialize + Clone + 'static>(
+		&mut self,
+		request: &Request<T>,
+	) -> Response<()> {
+		let (response_builder, _body) = self.execute_request(request).await;
+		response_builder.body(()).unwrap()
+	}
+
 	async fn fetch_bytes<T: Serialize + Clone + 'static>(
 		&mut self,
 		request: &Request<T>,
-	) -> Response<Vec<u8>>;
+	) -> Response<Vec<u8>> {
+		let (response_builder, body) = self.execute_request(request).await;
+		response_builder
+			.body(body.unwrap().deref().to_owned())
+			.unwrap()
+	}
+
 	async fn fetch_json<T: Serialize + Clone + 'static, U: DeserializeOwned>(
 		&mut self,
 		request: &Request<T>,
-	) -> Response<U>;
+	) -> Response<U> {
+		let (response_builder, body) = self.execute_request(request).await;
+		let body = serde_json::from_slice(&body.unwrap()).unwrap();
+		response_builder.body(body).unwrap()
+	}
 
 	async fn complete_initial_setup(&mut self) {
 		let configuration = dto::Config {

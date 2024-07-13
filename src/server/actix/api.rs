@@ -26,7 +26,7 @@ use crate::app::{
 	lastfm, playlist, settings, thumbnail, user,
 	vfs::{self, MountDir},
 };
-use crate::service::{dto, error::*};
+use crate::server::{dto, error::*};
 
 pub fn make_config() -> impl FnOnce(&mut ServiceConfig) + Clone {
 	move |cfg: &mut ServiceConfig| {

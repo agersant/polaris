@@ -1,11 +1,11 @@
 use http::StatusCode;
 
 use crate::app::index;
-use crate::service::dto;
-use crate::service::test::{constants::*, protocol, ServiceType, TestService};
+use crate::server::dto;
+use crate::server::test::{constants::*, protocol, ServiceType, TestService};
 use crate::test_name;
 
-#[actix_web::test]
+#[tokio::test]
 async fn list_playlists_requires_auth() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	let request = protocol::playlists();
@@ -13,7 +13,7 @@ async fn list_playlists_requires_auth() {
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn list_playlists_golden_path() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -25,7 +25,7 @@ async fn list_playlists_golden_path() {
 	assert_eq!(response.status(), StatusCode::OK);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn save_playlist_requires_auth() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	let my_playlist = dto::SavePlaylistInput { tracks: Vec::new() };
@@ -34,7 +34,7 @@ async fn save_playlist_requires_auth() {
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn save_playlist_golden_path() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -46,7 +46,7 @@ async fn save_playlist_golden_path() {
 	assert_eq!(response.status(), StatusCode::OK);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn save_playlist_large() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -61,7 +61,7 @@ async fn save_playlist_large() {
 	assert_eq!(response.status(), StatusCode::OK);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn get_playlist_requires_auth() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	let request = protocol::read_playlist(TEST_PLAYLIST_NAME);
@@ -69,7 +69,7 @@ async fn get_playlist_requires_auth() {
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn get_playlist_golden_path() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -87,7 +87,7 @@ async fn get_playlist_golden_path() {
 	assert_eq!(response.status(), StatusCode::OK);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn get_playlist_bad_name_returns_not_found() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -98,7 +98,7 @@ async fn get_playlist_bad_name_returns_not_found() {
 	assert_eq!(response.status(), StatusCode::NOT_FOUND);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn delete_playlist_requires_auth() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	let request = protocol::delete_playlist(TEST_PLAYLIST_NAME);
@@ -106,7 +106,7 @@ async fn delete_playlist_requires_auth() {
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn delete_playlist_golden_path() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
@@ -124,7 +124,7 @@ async fn delete_playlist_golden_path() {
 	assert_eq!(response.status(), StatusCode::OK);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn delete_playlist_bad_name_returns_not_found() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;

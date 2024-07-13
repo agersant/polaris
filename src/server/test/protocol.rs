@@ -2,8 +2,8 @@ use http::{Method, Request};
 use percent_encoding::{percent_encode, NON_ALPHANUMERIC};
 use std::path::Path;
 
-use crate::service::dto;
-use crate::{app::user, service::dto::ThumbnailSize};
+use crate::server::dto;
+use crate::{app::user, server::dto::ThumbnailSize};
 
 pub fn web_index() -> Request<()> {
 	Request::builder()
