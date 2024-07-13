@@ -10,7 +10,6 @@ ui = ["native-windows-gui", "native-windows-derive"]
 
 [dependencies]
 actix-files = { version = "0.6" }
-actix-web = { version = "4" }
 actix-web-httpauth = { version = "0.8" }
 ape = "0.5"
 base64 = "0.21"
@@ -37,17 +36,26 @@ serde = { version = "1.0.147", features = ["derive"] }
 serde_derive = "1.0.147"
 serde_json = "1.0.87"
 simplelog = "0.12.0"
-sqlx = { version = "0.7.4", features = ["migrate", "runtime-tokio", "sqlite"] }
 thiserror = "1.0.37"
 tokio = { version = "1.38", features = ["macros", "rt-multi-thread"] }
 toml = "0.7"
 ureq = "2.7"
 url = "2.3"
 
+[dependencies.actix-web]
+version = "4"
+default-features = false
+features = ["macros", "compress-brotli", "compress-gzip"]
+
 [dependencies.image]
 version = "0.24.4"
 default-features = false
 features = ["bmp", "gif", "jpeg", "png"]
+
+[dependencies.sqlx]
+version = "0.7.4"
+default-features = false
+features = ["macros", "migrate", "runtime-tokio", "sqlite"]
 
 [target.'cfg(windows)'.dependencies]
 native-windows-gui = { version = "1.0.13", default-features = false, features = [
