@@ -1,5 +1,5 @@
 use axum::{
-	extract::{Path, Query, State},
+	extract::{DefaultBodyLimit, Path, Query, State},
 	response::Html,
 	routing::{delete, get, post, put},
 	Json, Router,
@@ -8,7 +8,7 @@ use base64::{prelude::BASE64_STANDARD_NO_PAD, Engine};
 use percent_encoding::percent_decode_str;
 
 use crate::{
-	app::{config, ddns, index, lastfm, settings, user, vfs, App},
+	app::{config, ddns, index, lastfm, playlist, settings, user, vfs, App},
 	server::{dto, error::APIError},
 };
 
@@ -41,6 +41,10 @@ pub fn router() -> Router<App> {
 		.route("/recent", get(get_recent))
 		.route("/search", get(get_search_root))
 		.route("/search/*query", get(get_search))
+		.route("/playlists", get(get_playlists))
+		.route("/playlist/:name", put(put_playlist))
+		.route("/playlist/:name", get(get_playlist))
+		.route("/playlist/:name", delete(delete_playlist))
 		.route("/lastfm/now_playing/*path", put(put_lastfm_now_playing))
 		.route("/lastfm/scrobble/*path", post(post_lastfm_scrobble))
 		.route("/lastfm/link_token", get(get_lastfm_link_token))
@@ -52,6 +56,7 @@ pub fn router() -> Router<App> {
 		.route("/random/", get(get_random))
 		.route("/recent/", get(get_recent))
 		.route("/search/", get(get_search_root))
+		.layer(DefaultBodyLimit::max(10 * 1024 * 1024)) // 10MB
 }
 
 async fn get_version() -> Json<dto::Version> {
@@ -309,6 +314,53 @@ async fn get_search(
 ) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
 	let result = index.search(&query).await?;
 	Ok(Json(result))
+}
+
+async fn get_playlists(
+	auth: Auth,
+	State(playlist_manager): State<playlist::Manager>,
+) -> Result<Json<Vec<dto::ListPlaylistsEntry>>, APIError> {
+	let playlist_names = playlist_manager.list_playlists(auth.get_username()).await?;
+	let playlists: Vec<dto::ListPlaylistsEntry> = playlist_names
+		.into_iter()
+		.map(|p| dto::ListPlaylistsEntry { name: p })
+		.collect();
+
+	Ok(Json(playlists))
+}
+
+async fn put_playlist(
+	auth: Auth,
+	State(playlist_manager): State<playlist::Manager>,
+	Path(name): Path<String>,
+	playlist: Json<dto::SavePlaylistInput>,
+) -> Result<(), APIError> {
+	playlist_manager
+		.save_playlist(&name, auth.get_username(), &playlist.tracks)
+		.await?;
+	Ok(())
+}
+
+async fn get_playlist(
+	auth: Auth,
+	State(playlist_manager): State<playlist::Manager>,
+	Path(name): Path<String>,
+) -> Result<Json<Vec<index::Song>>, APIError> {
+	let songs = playlist_manager
+		.read_playlist(&name, auth.get_username())
+		.await?;
+	Ok(Json(songs))
+}
+
+async fn delete_playlist(
+	auth: Auth,
+	State(playlist_manager): State<playlist::Manager>,
+	Path(name): Path<String>,
+) -> Result<(), APIError> {
+	playlist_manager
+		.delete_playlist(&name, auth.get_username())
+		.await?;
+	Ok(())
 }
 
 async fn put_lastfm_now_playing(

@@ -106,11 +106,11 @@ impl Manager {
 		.execute(connection.as_mut())
 		.await?;
 
-		if !new_songs.is_empty() {
+		for chunk in new_songs.chunks(10_000) {
 			QueryBuilder::<Sqlite>::new("INSERT INTO playlist_songs (playlist, path, ordering) ")
-				.push_values(new_songs, |mut b, song| {
+				.push_values(chunk, |mut b, song| {
 					b.push_bind(playlist_id)
-						.push_bind(song.path)
+						.push_bind(&song.path)
 						.push_bind(song.ordering);
 				})
 				.build()

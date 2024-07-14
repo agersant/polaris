@@ -50,6 +50,12 @@ impl FromRef<App> for app::lastfm::Manager {
 	}
 }
 
+impl FromRef<App> for app::playlist::Manager {
+	fn from_ref(app: &App) -> Self {
+		app.playlist_manager.clone()
+	}
+}
+
 impl FromRef<App> for app::user::Manager {
 	fn from_ref(app: &App) -> Self {
 		app.user_manager.clone()
