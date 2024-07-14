@@ -1548,6 +1548,7 @@ dependencies = [
  "sqlx",
  "thiserror",
  "tokio",
+ "tokio-util",
  "toml 0.7.8",
  "tower-http",
  "ureq 2.7.1",

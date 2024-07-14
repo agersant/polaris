@@ -125,7 +125,7 @@ pub trait TestService {
 			if !entries.is_empty() {
 				break;
 			}
-			tokio::time::sleep(Duration::from_secs(1)).await;
+			tokio::time::sleep(Duration::from_millis(100)).await;
 		}
 
 		loop {
@@ -137,7 +137,7 @@ pub trait TestService {
 			if !entries.is_empty() {
 				break;
 			}
-			tokio::time::sleep(Duration::from_secs(1)).await;
+			tokio::time::sleep(Duration::from_millis(100)).await;
 		}
 	}
 }

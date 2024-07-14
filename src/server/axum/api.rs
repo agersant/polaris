@@ -1,14 +1,16 @@
 use axum::{
+	body::Body,
 	extract::{DefaultBodyLimit, Path, Query, State},
-	response::Html,
+	response::{Html, IntoResponse},
 	routing::{delete, get, post, put},
 	Json, Router,
 };
 use base64::{prelude::BASE64_STANDARD_NO_PAD, Engine};
 use percent_encoding::percent_decode_str;
+use tokio_util::io::ReaderStream;
 
 use crate::{
-	app::{config, ddns, index, lastfm, playlist, settings, user, vfs, App},
+	app::{config, ddns, index, lastfm, playlist, settings, thumbnail, user, vfs, App},
 	server::{dto, error::APIError},
 };
 
@@ -45,6 +47,7 @@ pub fn router() -> Router<App> {
 		.route("/playlist/:name", put(put_playlist))
 		.route("/playlist/:name", get(get_playlist))
 		.route("/playlist/:name", delete(delete_playlist))
+		.route("/thumbnail/*path", get(get_thumbnail))
 		.route("/lastfm/now_playing/*path", put(put_lastfm_now_playing))
 		.route("/lastfm/scrobble/*path", post(post_lastfm_scrobble))
 		.route("/lastfm/link_token", get(get_lastfm_link_token))
@@ -361,6 +364,26 @@ async fn delete_playlist(
 		.delete_playlist(&name, auth.get_username())
 		.await?;
 	Ok(())
+}
+
+async fn get_thumbnail(
+	_auth: Auth,
+	State(vfs_manager): State<vfs::Manager>,
+	State(thumbnails_manager): State<thumbnail::Manager>,
+	Path(path): Path<String>,
+	Query(options_input): Query<dto::ThumbnailOptions>,
+) -> Result<impl IntoResponse, APIError> {
+	let options = thumbnail::Options::from(options_input);
+	let vfs = vfs_manager.get_vfs().await?;
+	let path = percent_decode_str(&path).decode_utf8_lossy();
+	let image_path = vfs.virtual_to_real(std::path::Path::new(path.as_ref()))?;
+	let thumbnail_path = thumbnails_manager.get_thumbnail(&image_path, &options)?;
+
+	let Ok(file) = tokio::fs::File::open(thumbnail_path).await else {
+		return Err(APIError::ThumbnailFileIOError);
+	};
+
+	Ok(Body::from_stream(ReaderStream::new(file)))
 }
 
 async fn put_lastfm_now_playing(

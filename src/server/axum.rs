@@ -68,6 +68,12 @@ impl FromRef<App> for app::settings::Manager {
 	}
 }
 
+impl FromRef<App> for app::thumbnail::Manager {
+	fn from_ref(app: &App) -> Self {
+		app.thumbnail_manager.clone()
+	}
+}
+
 impl FromRef<App> for app::vfs::Manager {
 	fn from_ref(app: &App) -> Self {
 		app.vfs_manager.clone()
