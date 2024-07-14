@@ -141,7 +141,7 @@ fn read_mp3(path: &Path) -> Result<SongTags, Error> {
 }
 
 fn read_aiff(path: &Path) -> Result<SongTags, Error> {
-	let tag = id3::Tag::read_from_aiff_path(path).or_else(|error| {
+	let tag = id3::Tag::read_from_path(path).or_else(|error| {
 		if let Some(tag) = error.partial_tag {
 			Ok(tag)
 		} else {
@@ -152,7 +152,7 @@ fn read_aiff(path: &Path) -> Result<SongTags, Error> {
 }
 
 fn read_wave(path: &Path) -> Result<SongTags, Error> {
-	let tag = id3::Tag::read_from_wav_path(path).or_else(|error| {
+	let tag = id3::Tag::read_from_path(path).or_else(|error| {
 		if let Some(tag) = error.partial_tag {
 			Ok(tag)
 		} else {

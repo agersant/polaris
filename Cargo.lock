@@ -557,13 +557,14 @@ dependencies = [
 
 [[package]]
 name = "embed-resource"
-version = "1.8.0"
+version = "2.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e62abb876c07e4754fae5c14cafa77937841f01740637e17d78dc04352f32a5e"
+checksum = "c6985554d0688b687c5cb73898a34fbe3ad6c24c58c238a4d91d5e840670ee9d"
 dependencies = [
  "cc",
+ "memchr",
  "rustc_version 0.4.0",
- "toml 0.5.11",
+ "toml 0.8.14",
  "vswhom",
  "winreg",
 ]
@@ -1005,9 +1006,9 @@ dependencies = [
 
 [[package]]
 name = "id3"
-version = "1.7.0"
+version = "1.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9389dd9c8c4671b1e4b2878a6329bccb573f9c24a75bc91c641c451ce5436501"
+checksum = "55f4e785f2c700217ee82a1c727c720449421742abd5fcb2f1df04e1244760e9"
 dependencies = [
  "bitflags 2.4.0",
  "byteorder",
@@ -1171,9 +1172,9 @@ checksum = "490cc448043f947bae3cbee9c203358d62dbee0db12107a74be5c30ccfd09771"
 
 [[package]]
 name = "memchr"
-version = "2.6.3"
+version = "2.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f232d6ef707e1956a43342693d2a31e72989554d58299d7a88738cc95b0d35c"
+checksum = "78ca9ab1a0babb1e7d5695e3530886289c18cf2f87ec19a575a0abdce112e3a3"
 
 [[package]]
 name = "memoffset"
@@ -1186,13 +1187,12 @@ dependencies = [
 
 [[package]]
 name = "metaflac"
-version = "0.2.5"
+version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1470d3cc1bb0d692af5eb3afb594330b8ba09fd91c32c4e1c6322172a5ba750"
+checksum = "d0f083edae4a21f5acb1fda8220d1c14fa31f725bfd4e21005a14c2d8944db9b"
 dependencies = [
  "byteorder",
  "hex",
- "log",
 ]
 
 [[package]]
@@ -1965,9 +1965,9 @@ dependencies = [
 
 [[package]]
 name = "sd-notify"
-version = "0.4.1"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "621e3680f3e07db4c9c2c3fb07c6223ab2fab2e54bd3c04c3ae037990f428c32"
+checksum = "4646d6f919800cd25c50edb49438a1381e2cd4833c027e75e8897981c50b8b5e"
 
 [[package]]
 name = "semver"
@@ -3259,11 +3259,12 @@ dependencies = [
 
 [[package]]
 name = "winreg"
-version = "0.10.1"
+version = "0.52.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80d0f4e272c85def139476380b12f9ac60926689dd2e01d4923222f40580869d"
+checksum = "a277a57398d4bfa075df44f501a17cfdf8542d224f0d36095a2adc7aee4ef0a5"
 dependencies = [
- "winapi",
+ "cfg-if",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
