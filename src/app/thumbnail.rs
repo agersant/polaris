@@ -1,4 +1,5 @@
-use image::{DynamicImage, GenericImage, GenericImageView, ImageBuffer, ImageOutputFormat};
+use image::codecs::jpeg::JpegEncoder;
+use image::{DynamicImage, GenericImage, GenericImageView, ImageBuffer};
 use std::cmp;
 use std::collections::hash_map::DefaultHasher;
 use std::fs::{self, File};
@@ -95,7 +96,7 @@ impl Manager {
 		let mut out_file =
 			File::create(&path).map_err(|e| Error::Io(self.thumbnails_dir_path.clone(), e))?;
 		thumbnail
-			.write_to(&mut out_file, ImageOutputFormat::Jpeg(quality))
+			.write_with_encoder(JpegEncoder::new_with_quality(&mut out_file, quality))
 			.map_err(|e| Error::Image(image_path.to_owned(), e))?;
 		Ok(path)
 	}
