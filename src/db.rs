@@ -17,8 +17,8 @@ pub enum Error {
 	ConnectionPool,
 	#[error("Filesystem error for `{0}`: `{1}`")]
 	Io(PathBuf, std::io::Error),
-	#[error("Could not apply database migrations")]
-	Migration,
+	#[error("Could not apply database migrations: {0}")]
+	Migration(sqlx::migrate::MigrateError),
 }
 
 #[derive(Clone)]
@@ -53,7 +53,7 @@ impl DB {
 			.run(&self.pool)
 			.await
 			.and(Ok(()))
-			.or(Err(Error::Migration))
+			.map_err(Error::Migration)
 	}
 }
 

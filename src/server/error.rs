@@ -173,7 +173,7 @@ impl From<db::Error> for APIError {
 			db::Error::ConnectionPoolBuild => APIError::Internal,
 			db::Error::ConnectionPool => APIError::Internal,
 			db::Error::Io(p, e) => APIError::Io(p, e),
-			db::Error::Migration => APIError::Internal,
+			db::Error::Migration(_) => APIError::Internal,
 		}
 	}
 }
