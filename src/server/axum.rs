@@ -44,6 +44,12 @@ impl FromRef<App> for app::index::Index {
 	}
 }
 
+impl FromRef<App> for app::lastfm::Manager {
+	fn from_ref(app: &App) -> Self {
+		app.lastfm_manager.clone()
+	}
+}
+
 impl FromRef<App> for app::user::Manager {
 	fn from_ref(app: &App) -> Self {
 		app.user_manager.clone()

@@ -1,12 +1,14 @@
 use axum::{
-	extract::{Path, State},
+	extract::{Path, Query, State},
+	response::Html,
 	routing::{delete, get, post, put},
 	Json, Router,
 };
+use base64::{prelude::BASE64_STANDARD_NO_PAD, Engine};
 use percent_encoding::percent_decode_str;
 
 use crate::{
-	app::{config, ddns, index, settings, user, vfs, App},
+	app::{config, ddns, index, lastfm, settings, user, vfs, App},
 	server::{dto, error::APIError},
 };
 
@@ -39,6 +41,11 @@ pub fn router() -> Router<App> {
 		.route("/recent", get(get_recent))
 		.route("/search", get(get_search_root))
 		.route("/search/*query", get(get_search))
+		.route("/lastfm/now_playing/*path", put(put_lastfm_now_playing))
+		.route("/lastfm/scrobble/*path", post(post_lastfm_scrobble))
+		.route("/lastfm/link_token", get(get_lastfm_link_token))
+		.route("/lastfm/link", get(get_lastfm_link))
+		.route("/lastfm/link", delete(delete_lastfm_link))
 		// TODO figure out NormalizePathLayer and remove this
 		.route("/browse/", get(get_browse_root))
 		.route("/flatten/", get(get_flatten_root))
@@ -302,4 +309,82 @@ async fn get_search(
 ) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
 	let result = index.search(&query).await?;
 	Ok(Json(result))
+}
+
+async fn put_lastfm_now_playing(
+	auth: Auth,
+	State(lastfm_manager): State<lastfm::Manager>,
+	State(user_manager): State<user::Manager>,
+	Path(path): Path<String>,
+) -> Result<(), APIError> {
+	if !user_manager.is_lastfm_linked(auth.get_username()).await {
+		return Err(APIError::LastFMAccountNotLinked);
+	}
+	let path = percent_decode_str(&path).decode_utf8_lossy();
+	lastfm_manager
+		.now_playing(auth.get_username(), std::path::Path::new(path.as_ref()))
+		.await?;
+	Ok(())
+}
+
+async fn post_lastfm_scrobble(
+	auth: Auth,
+	State(lastfm_manager): State<lastfm::Manager>,
+	State(user_manager): State<user::Manager>,
+	Path(path): Path<String>,
+) -> Result<(), APIError> {
+	if !user_manager.is_lastfm_linked(auth.get_username()).await {
+		return Err(APIError::LastFMAccountNotLinked);
+	}
+	let path = percent_decode_str(&path).decode_utf8_lossy();
+	lastfm_manager
+		.scrobble(auth.get_username(), std::path::Path::new(path.as_ref()))
+		.await?;
+	Ok(())
+}
+
+async fn get_lastfm_link_token(
+	auth: Auth,
+	State(lastfm_manager): State<lastfm::Manager>,
+) -> Result<Json<dto::LastFMLinkToken>, APIError> {
+	let user::AuthToken(value) = lastfm_manager.generate_link_token(auth.get_username())?;
+	Ok(Json(dto::LastFMLinkToken { value }))
+}
+
+async fn get_lastfm_link(
+	State(lastfm_manager): State<lastfm::Manager>,
+	State(user_manager): State<user::Manager>,
+	Query(payload): Query<dto::LastFMLink>,
+) -> Result<Html<String>, APIError> {
+	let auth_token = user::AuthToken(payload.auth_token.clone());
+	let authorization = user_manager
+		.authenticate(&auth_token, user::AuthorizationScope::LastFMLink)
+		.await?;
+	let lastfm_token = &payload.token;
+	lastfm_manager
+		.link(&authorization.username, lastfm_token)
+		.await?;
+
+	// Percent decode
+	let base64_content = percent_decode_str(&payload.content).decode_utf8_lossy();
+
+	// Base64 decode
+	let popup_content = BASE64_STANDARD_NO_PAD
+		.decode(base64_content.as_bytes())
+		.map_err(|_| APIError::LastFMLinkContentBase64DecodeError)?;
+
+	// UTF-8 decode
+	let popup_content_string = std::str::from_utf8(&popup_content)
+		.map_err(|_| APIError::LastFMLinkContentEncodingError)
+		.map(|s| s.to_owned())?;
+
+	Ok(Html(popup_content_string))
+}
+
+async fn delete_lastfm_link(
+	auth: Auth,
+	State(lastfm_manager): State<lastfm::Manager>,
+) -> Result<(), APIError> {
+	lastfm_manager.unlink(auth.get_username()).await?;
+	Ok(())
 }
