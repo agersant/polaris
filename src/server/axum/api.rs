@@ -1,13 +1,14 @@
 use axum::{
-	body::Body,
 	extract::{DefaultBodyLimit, Path, Query, State},
 	response::{Html, IntoResponse},
 	routing::{delete, get, post, put},
 	Json, Router,
 };
+use axum_extra::headers::Range;
+use axum_extra::TypedHeader;
+use axum_range::{KnownSize, Ranged};
 use base64::{prelude::BASE64_STANDARD_NO_PAD, Engine};
 use percent_encoding::percent_decode_str;
-use tokio_util::io::ReaderStream;
 
 use crate::{
 	app::{config, ddns, index, lastfm, playlist, settings, thumbnail, user, vfs, App},
@@ -47,6 +48,7 @@ pub fn router() -> Router<App> {
 		.route("/playlist/:name", put(put_playlist))
 		.route("/playlist/:name", get(get_playlist))
 		.route("/playlist/:name", delete(delete_playlist))
+		.route("/audio/*path", get(get_audio))
 		.route("/thumbnail/*path", get(get_thumbnail))
 		.route("/lastfm/now_playing/*path", put(put_lastfm_now_playing))
 		.route("/lastfm/scrobble/*path", post(post_lastfm_scrobble))
@@ -366,12 +368,35 @@ async fn delete_playlist(
 	Ok(())
 }
 
+async fn get_audio(
+	_auth: Auth,
+	State(vfs_manager): State<vfs::Manager>,
+	Path(path): Path<String>,
+	range: Option<TypedHeader<Range>>,
+) -> Result<impl IntoResponse, APIError> {
+	let vfs = vfs_manager.get_vfs().await?;
+	let path = percent_decode_str(&path).decode_utf8_lossy();
+	let audio_path = vfs.virtual_to_real(std::path::Path::new(path.as_ref()))?;
+
+	let Ok(file) = tokio::fs::File::open(audio_path).await else {
+		return Err(APIError::AudioFileIOError);
+	};
+
+	let Ok(body) = KnownSize::file(file).await else {
+		return Err(APIError::AudioFileIOError);
+	};
+
+	let range = range.map(|TypedHeader(r)| r);
+	Ok(Ranged::new(range, body))
+}
+
 async fn get_thumbnail(
 	_auth: Auth,
 	State(vfs_manager): State<vfs::Manager>,
 	State(thumbnails_manager): State<thumbnail::Manager>,
 	Path(path): Path<String>,
 	Query(options_input): Query<dto::ThumbnailOptions>,
+	range: Option<TypedHeader<Range>>,
 ) -> Result<impl IntoResponse, APIError> {
 	let options = thumbnail::Options::from(options_input);
 	let vfs = vfs_manager.get_vfs().await?;
@@ -383,7 +408,12 @@ async fn get_thumbnail(
 		return Err(APIError::ThumbnailFileIOError);
 	};
 
-	Ok(Body::from_stream(ReaderStream::new(file)))
+	let Ok(body) = KnownSize::file(file).await else {
+		return Err(APIError::ThumbnailFileIOError);
+	};
+
+	let range = range.map(|TypedHeader(r)| r);
+	Ok(Ranged::new(range, body))
 }
 
 async fn put_lastfm_now_playing(
