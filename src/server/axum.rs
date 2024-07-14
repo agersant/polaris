@@ -21,10 +21,8 @@ pub fn make_router(app: App) -> Router {
 pub async fn launch(app: App) -> Result<(), std::io::Error> {
 	let port = app.port;
 	let router = make_router(app);
-
 	let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}")).await?;
 	axum::serve(listener, router).await?;
-
 	Ok(())
 }
 

@@ -3,6 +3,7 @@ use axum::{
 	routing::{delete, get, post, put},
 	Json, Router,
 };
+use percent_encoding::percent_decode_str;
 
 use crate::{
 	app::{config, ddns, index, settings, user, vfs, App},
@@ -30,6 +31,20 @@ pub fn router() -> Router<App> {
 		.route("/preferences", get(get_preferences))
 		.route("/preferences", put(put_preferences))
 		.route("/trigger_index", post(post_trigger_index))
+		.route("/browse", get(get_browse_root))
+		.route("/browse/*path", get(get_browse))
+		.route("/flatten", get(get_flatten_root))
+		.route("/flatten/*path", get(get_flatten))
+		.route("/random", get(get_random))
+		.route("/recent", get(get_recent))
+		.route("/search", get(get_search_root))
+		.route("/search/*query", get(get_search))
+		// TODO figure out NormalizePathLayer and remove this
+		.route("/browse/", get(get_browse_root))
+		.route("/flatten/", get(get_flatten_root))
+		.route("/random/", get(get_random))
+		.route("/recent/", get(get_recent))
+		.route("/search/", get(get_search_root))
 }
 
 async fn get_version() -> Json<dto::Version> {
@@ -218,4 +233,73 @@ async fn post_trigger_index(
 ) -> Result<(), APIError> {
 	index.trigger_reindex();
 	Ok(())
+}
+
+async fn get_browse_root(
+	_auth: Auth,
+	State(index): State<index::Index>,
+) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
+	let result = index.browse(std::path::Path::new("")).await?;
+	Ok(Json(result))
+}
+
+async fn get_browse(
+	_auth: Auth,
+	State(index): State<index::Index>,
+	Path(path): Path<String>,
+) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
+	let path = percent_decode_str(&path).decode_utf8_lossy();
+	let result = index.browse(std::path::Path::new(path.as_ref())).await?;
+	Ok(Json(result))
+}
+
+async fn get_flatten_root(
+	_auth: Auth,
+	State(index): State<index::Index>,
+) -> Result<Json<Vec<index::Song>>, APIError> {
+	let songs = index.flatten(std::path::Path::new("")).await?;
+	Ok(Json(songs))
+}
+
+async fn get_flatten(
+	_auth: Auth,
+	State(index): State<index::Index>,
+	Path(path): Path<String>,
+) -> Result<Json<Vec<index::Song>>, APIError> {
+	let path = percent_decode_str(&path).decode_utf8_lossy();
+	let songs = index.flatten(std::path::Path::new(path.as_ref())).await?;
+	Ok(Json(songs))
+}
+
+async fn get_random(
+	_auth: Auth,
+	State(index): State<index::Index>,
+) -> Result<Json<Vec<index::Directory>>, APIError> {
+	let result = index.get_random_albums(20).await?;
+	Ok(Json(result))
+}
+
+async fn get_recent(
+	_auth: Auth,
+	State(index): State<index::Index>,
+) -> Result<Json<Vec<index::Directory>>, APIError> {
+	let result = index.get_recent_albums(20).await?;
+	Ok(Json(result))
+}
+
+async fn get_search_root(
+	_auth: Auth,
+	State(index): State<index::Index>,
+) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
+	let result = index.search("").await?;
+	Ok(Json(result))
+}
+
+async fn get_search(
+	_auth: Auth,
+	State(index): State<index::Index>,
+	Path(query): Path<String>,
+) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
+	let result = index.search(&query).await?;
+	Ok(Json(result))
 }

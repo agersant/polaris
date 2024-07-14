@@ -17,7 +17,7 @@ pub struct Auth {
 
 impl Auth {
 	pub fn get_username(&self) -> &String {
-		return &self.username;
+		&self.username
 	}
 }
 
@@ -66,7 +66,7 @@ pub struct AdminRights {
 
 impl AdminRights {
 	pub fn get_auth(&self) -> &Option<Auth> {
-		return &self.auth;
+		&self.auth
 	}
 }
 
