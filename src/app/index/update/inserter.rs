@@ -1,8 +1,14 @@
+use std::borrow::Cow;
+
 use log::error;
-use sqlx::{QueryBuilder, Sqlite};
+use sqlx::{
+	encode::IsNull,
+	sqlite::{SqliteArgumentValue, SqliteTypeInfo},
+	QueryBuilder, Sqlite,
+};
 use tokio::sync::mpsc::UnboundedReceiver;
 
-use crate::db::DB;
+use crate::{app::index::MultiString, db::DB};
 
 const INDEX_BUILDING_INSERT_BUFFER_SIZE: usize = 1000; // Insertions in each transaction
 
@@ -12,22 +18,22 @@ pub struct Song {
 	pub track_number: Option<i32>,
 	pub disc_number: Option<i32>,
 	pub title: Option<String>,
-	pub artist: Option<String>,
-	pub album_artist: Option<String>,
+	pub artists: MultiString,
+	pub album_artists: MultiString,
 	pub year: Option<i32>,
 	pub album: Option<String>,
 	pub artwork: Option<String>,
 	pub duration: Option<i32>,
-	pub lyricist: Option<String>,
-	pub composer: Option<String>,
-	pub genre: Option<String>,
-	pub label: Option<String>,
+	pub lyricists: MultiString,
+	pub composers: MultiString,
+	pub genres: MultiString,
+	pub labels: MultiString,
 }
 
 pub struct Directory {
 	pub path: String,
 	pub parent: Option<String>,
-	pub artist: Option<String>,
+	pub artists: MultiString,
 	pub year: Option<i32>,
 	pub album: Option<String>,
 	pub artwork: Option<String>,
@@ -44,6 +50,39 @@ pub struct Inserter {
 	new_directories: Vec<Directory>,
 	new_songs: Vec<Song>,
 	db: DB,
+}
+
+static MULTI_STRING_SEPARATOR: &str = "\u{000C}";
+
+impl<'q> sqlx::Encode<'q, Sqlite> for MultiString {
+	fn encode_by_ref(&self, args: &mut Vec<SqliteArgumentValue<'q>>) -> IsNull {
+		if self.0.is_empty() {
+			IsNull::Yes
+		} else {
+			let joined = self.0.join(MULTI_STRING_SEPARATOR);
+			args.push(SqliteArgumentValue::Text(Cow::Owned(joined)));
+			IsNull::No
+		}
+	}
+}
+
+impl From<Option<String>> for MultiString {
+	fn from(value: Option<String>) -> Self {
+		match value {
+			None => MultiString(Vec::new()),
+			Some(s) => MultiString(
+				s.split(MULTI_STRING_SEPARATOR)
+					.map(|s| s.to_string())
+					.collect(),
+			),
+		}
+	}
+}
+
+impl sqlx::Type<Sqlite> for MultiString {
+	fn type_info() -> SqliteTypeInfo {
+		<&str as sqlx::Type<Sqlite>>::type_info()
+	}
 }
 
 impl Inserter {
@@ -90,12 +129,12 @@ impl Inserter {
 		};
 
 		let result = QueryBuilder::<Sqlite>::new(
-			"INSERT INTO directories(path, parent, artist, year, album, artwork, date_added) ",
+			"INSERT INTO directories(path, parent, artists, year, album, artwork, date_added) ",
 		)
 		.push_values(&self.new_directories, |mut b, directory| {
 			b.push_bind(&directory.path)
 				.push_bind(&directory.parent)
-				.push_bind(&directory.artist)
+				.push_bind(&directory.artists)
 				.push_bind(directory.year)
 				.push_bind(&directory.album)
 				.push_bind(&directory.artwork)
@@ -117,23 +156,23 @@ impl Inserter {
 			return;
 		};
 
-		let result = QueryBuilder::<Sqlite>::new("INSERT INTO songs(path, parent, track_number, disc_number, title, artist, album_artist, year, album, artwork, duration, lyricist, composer, genre, label) ")
+		let result = QueryBuilder::<Sqlite>::new("INSERT INTO songs(path, parent, track_number, disc_number, title, artists, album_artists, year, album, artwork, duration, lyricists, composers, genres, labels) ")
 		.push_values(&self.new_songs, |mut b, song| {
 			b.push_bind(&song.path)
 				.push_bind(&song.parent)
 				.push_bind(song.track_number)
 				.push_bind(song.disc_number)
 				.push_bind(&song.title)
-				.push_bind(&song.artist)
-				.push_bind(&song.album_artist)
+				.push_bind(&song.artists)
+				.push_bind(&song.album_artists)
 				.push_bind(song.year)
 				.push_bind(&song.album)
 				.push_bind(&song.artwork)
 				.push_bind(song.duration)
-				.push_bind(&song.lyricist)
-				.push_bind(&song.composer)
-				.push_bind(&song.genre)
-				.push_bind(&song.label);
+				.push_bind(&song.lyricists)
+				.push_bind(&song.composers)
+				.push_bind(&song.genres)
+				.push_bind(&song.labels);
 		})
 		.build()
 		.execute(connection.as_mut())

@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
 
-use crate::app::{config, ddns, settings, thumbnail, user, vfs};
+use crate::app::{config, ddns, index, settings, thumbnail, user, vfs};
 use std::convert::From;
 
-pub const API_MAJOR_VERSION: i32 = 7;
+pub const API_MAJOR_VERSION: i32 = 8;
 pub const API_MINOR_VERSION: i32 = 0;
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
@@ -231,5 +231,99 @@ impl From<settings::Settings> for Settings {
 	}
 }
 
-// TODO: Preferences, CollectionFile, Song and Directory should have dto types
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum CollectionFile {
+	Directory(Directory),
+	Song(Song),
+}
+
+impl From<index::CollectionFile> for CollectionFile {
+	fn from(f: index::CollectionFile) -> Self {
+		match f {
+			index::CollectionFile::Directory(d) => Self::Directory(d.into()),
+			index::CollectionFile::Song(s) => Self::Song(s.into()),
+		}
+	}
+}
+
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Song {
+	pub path: String,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub track_number: Option<i64>,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub disc_number: Option<i64>,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub title: Option<String>,
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub artists: Vec<String>,
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub album_artists: Vec<String>,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub year: Option<i64>,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub album: Option<String>,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub artwork: Option<String>,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub duration: Option<i64>,
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub lyricists: Vec<String>,
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub composers: Vec<String>,
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub genres: Vec<String>,
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub labels: Vec<String>,
+}
+
+impl From<index::Song> for Song {
+	fn from(s: index::Song) -> Self {
+		Self {
+			path: s.path,
+			track_number: s.track_number,
+			disc_number: s.disc_number,
+			title: s.title,
+			artists: s.artists.0,
+			album_artists: s.album_artists.0,
+			year: s.year,
+			album: s.album,
+			artwork: s.artwork,
+			duration: s.duration,
+			lyricists: s.lyricists.0,
+			composers: s.composers.0,
+			genres: s.genres.0,
+			labels: s.labels.0,
+		}
+	}
+}
+
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Directory {
+	pub path: String,
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub artists: Vec<String>,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub year: Option<i64>,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub album: Option<String>,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub artwork: Option<String>,
+	pub date_added: i64,
+}
+
+impl From<index::Directory> for Directory {
+	fn from(d: index::Directory) -> Self {
+		Self {
+			path: d.path,
+			artists: d.artists.0,
+			year: d.year,
+			album: d.album,
+			artwork: d.artwork,
+			date_added: d.date_added,
+		}
+	}
+}
+
+// TODO: Preferences, CollectionFile should have dto types
 // TODO Song dto type should skip `None` values when serializing, to lower payload sizes by a lot

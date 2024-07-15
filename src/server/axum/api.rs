@@ -255,70 +255,70 @@ async fn post_trigger_index(
 async fn get_browse_root(
 	_auth: Auth,
 	State(index): State<index::Index>,
-) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
+) -> Result<Json<Vec<dto::CollectionFile>>, APIError> {
 	let result = index.browse(std::path::Path::new("")).await?;
-	Ok(Json(result))
+	Ok(Json(result.into_iter().map(|f| f.into()).collect()))
 }
 
 async fn get_browse(
 	_auth: Auth,
 	State(index): State<index::Index>,
 	Path(path): Path<String>,
-) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
+) -> Result<Json<Vec<dto::CollectionFile>>, APIError> {
 	let path = percent_decode_str(&path).decode_utf8_lossy();
 	let result = index.browse(std::path::Path::new(path.as_ref())).await?;
-	Ok(Json(result))
+	Ok(Json(result.into_iter().map(|f| f.into()).collect()))
 }
 
 async fn get_flatten_root(
 	_auth: Auth,
 	State(index): State<index::Index>,
-) -> Result<Json<Vec<index::Song>>, APIError> {
+) -> Result<Json<Vec<dto::Song>>, APIError> {
 	let songs = index.flatten(std::path::Path::new("")).await?;
-	Ok(Json(songs))
+	Ok(Json(songs.into_iter().map(|f| f.into()).collect()))
 }
 
 async fn get_flatten(
 	_auth: Auth,
 	State(index): State<index::Index>,
 	Path(path): Path<String>,
-) -> Result<Json<Vec<index::Song>>, APIError> {
+) -> Result<Json<Vec<dto::Song>>, APIError> {
 	let path = percent_decode_str(&path).decode_utf8_lossy();
 	let songs = index.flatten(std::path::Path::new(path.as_ref())).await?;
-	Ok(Json(songs))
+	Ok(Json(songs.into_iter().map(|f| f.into()).collect()))
 }
 
 async fn get_random(
 	_auth: Auth,
 	State(index): State<index::Index>,
-) -> Result<Json<Vec<index::Directory>>, APIError> {
+) -> Result<Json<Vec<dto::Directory>>, APIError> {
 	let result = index.get_random_albums(20).await?;
-	Ok(Json(result))
+	Ok(Json(result.into_iter().map(|f| f.into()).collect()))
 }
 
 async fn get_recent(
 	_auth: Auth,
 	State(index): State<index::Index>,
-) -> Result<Json<Vec<index::Directory>>, APIError> {
+) -> Result<Json<Vec<dto::Directory>>, APIError> {
 	let result = index.get_recent_albums(20).await?;
-	Ok(Json(result))
+	Ok(Json(result.into_iter().map(|f| f.into()).collect()))
 }
 
 async fn get_search_root(
 	_auth: Auth,
 	State(index): State<index::Index>,
-) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
+) -> Result<Json<Vec<dto::CollectionFile>>, APIError> {
 	let result = index.search("").await?;
-	Ok(Json(result))
+	Ok(Json(result.into_iter().map(|f| f.into()).collect()))
 }
 
 async fn get_search(
 	_auth: Auth,
 	State(index): State<index::Index>,
 	Path(query): Path<String>,
-) -> Result<Json<Vec<index::CollectionFile>>, APIError> {
+) -> Result<Json<Vec<dto::CollectionFile>>, APIError> {
 	let result = index.search(&query).await?;
-	Ok(Json(result))
+	Ok(Json(result.into_iter().map(|f| f.into()).collect()))
 }
 
 async fn get_playlists(
@@ -350,11 +350,11 @@ async fn get_playlist(
 	auth: Auth,
 	State(playlist_manager): State<playlist::Manager>,
 	Path(name): Path<String>,
-) -> Result<Json<Vec<index::Song>>, APIError> {
+) -> Result<Json<Vec<dto::Song>>, APIError> {
 	let songs = playlist_manager
 		.read_playlist(&name, auth.get_username())
 		.await?;
-	Ok(Json(songs))
+	Ok(Json(songs.into_iter().map(|f| f.into()).collect()))
 }
 
 async fn delete_playlist(

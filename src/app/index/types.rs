@@ -1,34 +1,34 @@
-use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 use crate::app::vfs::VFS;
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq)]
+pub struct MultiString(pub Vec<String>);
+
+#[derive(Debug, PartialEq, Eq)]
 pub enum CollectionFile {
 	Directory(Directory),
 	Song(Song),
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Song {
-	#[serde(skip_serializing, skip_deserializing)]
 	pub id: i64,
 	pub path: String,
-	#[serde(skip_serializing, skip_deserializing)]
 	pub parent: String,
 	pub track_number: Option<i64>,
 	pub disc_number: Option<i64>,
 	pub title: Option<String>,
-	pub artist: Option<String>,
-	pub album_artist: Option<String>,
+	pub artists: MultiString,
+	pub album_artists: MultiString,
 	pub year: Option<i64>,
 	pub album: Option<String>,
 	pub artwork: Option<String>,
 	pub duration: Option<i64>,
-	pub lyricist: Option<String>,
-	pub composer: Option<String>,
-	pub genre: Option<String>,
-	pub label: Option<String>,
+	pub lyricists: MultiString,
+	pub composers: MultiString,
+	pub genres: MultiString,
+	pub labels: MultiString,
 }
 
 impl Song {
@@ -47,14 +47,12 @@ impl Song {
 	}
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Directory {
-	#[serde(skip_serializing, skip_deserializing)]
 	pub id: i64,
 	pub path: String,
-	#[serde(skip_serializing, skip_deserializing)]
 	pub parent: Option<String>,
-	pub artist: Option<String>,
+	pub artists: MultiString,
 	pub year: Option<i64>,
 	pub album: Option<String>,
 	pub artwork: Option<String>,

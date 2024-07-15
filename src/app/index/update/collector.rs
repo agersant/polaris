@@ -1,6 +1,8 @@
 use log::error;
 use regex::Regex;
 
+use crate::app::index::MultiString;
+
 use super::*;
 
 pub struct Collector {
@@ -31,7 +33,7 @@ impl Collector {
 	fn collect_directory(&self, directory: traverser::Directory) {
 		let mut directory_album = None;
 		let mut directory_year = None;
-		let mut directory_artist = None;
+		let mut directory_artists = None;
 		let mut inconsistent_directory_album = false;
 		let mut inconsistent_directory_year = false;
 		let mut inconsistent_directory_artist = false;
@@ -56,14 +58,13 @@ impl Collector {
 				directory_album = tags.album.as_ref().cloned();
 			}
 
-			if tags.album_artist.is_some() {
+			if !tags.album_artists.is_empty() {
 				inconsistent_directory_artist |=
-					directory_artist.is_some() && directory_artist != tags.album_artist;
-				directory_artist = tags.album_artist.as_ref().cloned();
-			} else if tags.artist.is_some() {
-				inconsistent_directory_artist |=
-					directory_artist.is_some() && directory_artist != tags.artist;
-				directory_artist = tags.artist.as_ref().cloned();
+					directory_artists.as_ref() != Some(&tags.album_artists);
+				directory_artists = Some(tags.album_artists.clone());
+			} else if !tags.artists.is_empty() {
+				inconsistent_directory_artist |= directory_artists.as_ref() != Some(&tags.artists);
+				directory_artists = Some(tags.artists.clone());
 			}
 
 			let artwork_path = if tags.has_artwork {
@@ -79,15 +80,15 @@ impl Collector {
 				track_number: tags.track_number.map(|n| n as i32),
 				title: tags.title,
 				duration: tags.duration.map(|n| n as i32),
-				artist: tags.artist,
-				album_artist: tags.album_artist,
+				artists: MultiString(tags.artists),
+				album_artists: MultiString(tags.album_artists),
 				album: tags.album,
 				year: tags.year,
 				artwork: artwork_path,
-				lyricist: tags.lyricist,
-				composer: tags.composer,
-				genre: tags.genre,
-				label: tags.label,
+				lyricists: MultiString(tags.lyricists),
+				composers: MultiString(tags.composers),
+				genres: MultiString(tags.genres),
+				labels: MultiString(tags.labels),
 			})) {
 				error!("Error while sending song from collector: {}", e);
 			}
@@ -100,7 +101,7 @@ impl Collector {
 			directory_album = None;
 		}
 		if inconsistent_directory_artist {
-			directory_artist = None;
+			directory_artists = None;
 		}
 
 		if let Err(e) = self
@@ -110,7 +111,7 @@ impl Collector {
 				parent: directory_parent_string,
 				artwork: directory_artwork,
 				album: directory_album,
-				artist: directory_artist,
+				artists: MultiString(directory_artists.unwrap_or_default()),
 				year: directory_year,
 				date_added: directory.created,
 			})) {

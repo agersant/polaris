@@ -86,7 +86,7 @@ impl Manager {
 	async fn scrobble_from_path(&self, track: &Path) -> Result<Scrobble, Error> {
 		let song = self.index.get_song(track).await?;
 		Ok(Scrobble::new(
-			song.artist.as_deref().unwrap_or(""),
+			song.artists.0.first().map(|s| s.as_str()).unwrap_or(""),
 			song.title.as_deref().unwrap_or(""),
 			song.album.as_deref().unwrap_or(""),
 		))

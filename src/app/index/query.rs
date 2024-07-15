@@ -167,8 +167,8 @@ impl Index {
 				WHERE	(	path LIKE $1
 						OR	title LIKE $1
 						OR album LIKE $1
-						OR artist LIKE $1
-						OR album_artist LIKE $1
+						OR artists LIKE $1
+						OR album_artists LIKE $1
 						)
 					AND parent NOT LIKE $1
 				"#,

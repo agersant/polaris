@@ -203,8 +203,8 @@ async fn can_get_a_song() {
 	assert_eq!(song.track_number, Some(5));
 	assert_eq!(song.disc_number, None);
 	assert_eq!(song.title, Some("シャーベット (Sherbet)".to_owned()));
-	assert_eq!(song.artist, Some("Tobokegao".to_owned()));
-	assert_eq!(song.album_artist, None);
+	assert_eq!(song.artists, MultiString(vec!["Tobokegao".to_owned()]));
+	assert_eq!(song.album_artists, MultiString(vec![]));
 	assert_eq!(song.album, Some("Picnic".to_owned()));
 	assert_eq!(song.year, Some(2016));
 	assert_eq!(

@@ -1,6 +1,5 @@
 use http::StatusCode;
 
-use crate::app::index;
 use crate::server::dto;
 use crate::server::test::{protocol, ServiceType, TestService};
 use crate::test_name;
@@ -50,17 +49,13 @@ async fn trigger_index_golden_path() {
 
 	let request = protocol::random();
 
-	let response = service
-		.fetch_json::<_, Vec<index::Directory>>(&request)
-		.await;
+	let response = service.fetch_json::<_, Vec<dto::Directory>>(&request).await;
 	let entries = response.body();
 	assert_eq!(entries.len(), 0);
 
 	service.index().await;
 
-	let response = service
-		.fetch_json::<_, Vec<index::Directory>>(&request)
-		.await;
+	let response = service.fetch_json::<_, Vec<dto::Directory>>(&request).await;
 	let entries = response.body();
 	assert_eq!(entries.len(), 3);
 }
