@@ -1,8 +1,7 @@
 use std::path::PathBuf;
 use thiserror::Error;
 
-use crate::app::index::QueryError;
-use crate::app::{config, ddns, lastfm, playlist, settings, thumbnail, user, vfs};
+use crate::app::{config, ddns, index, lastfm, playlist, settings, thumbnail, user, vfs};
 use crate::db;
 
 #[derive(Error, Debug)]
@@ -102,13 +101,13 @@ impl From<playlist::Error> for APIError {
 	}
 }
 
-impl From<QueryError> for APIError {
-	fn from(error: QueryError) -> APIError {
+impl From<index::Error> for APIError {
+	fn from(error: index::Error) -> APIError {
 		match error {
-			QueryError::Database(e) => APIError::Database(e),
-			QueryError::DatabaseConnection(e) => e.into(),
-			QueryError::SongNotFound(_) => APIError::SongMetadataNotFound,
-			QueryError::Vfs(e) => e.into(),
+			index::Error::Database(e) => APIError::Database(e),
+			index::Error::DatabaseConnection(e) => e.into(),
+			index::Error::SongNotFound(_) => APIError::SongMetadataNotFound,
+			index::Error::Vfs(e) => e.into(),
 		}
 	}
 }

@@ -9,7 +9,7 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
-use crate::app::index::metadata::{self, SongMetadata};
+use crate::app::scanner::metadata::{self, SongMetadata};
 
 #[derive(Debug)]
 pub struct Song {

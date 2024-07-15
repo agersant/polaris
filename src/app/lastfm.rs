@@ -3,7 +3,7 @@ use std::path::Path;
 use user::AuthToken;
 
 use crate::app::{
-	index::{Index, QueryError},
+	index::{self, Index},
 	user,
 };
 
@@ -19,7 +19,7 @@ pub enum Error {
 	#[error("Failed to emit last.fm now playing update")]
 	NowPlaying(rustfm_scrobble::ScrobblerError),
 	#[error(transparent)]
-	Query(#[from] QueryError),
+	Query(#[from] index::Error),
 	#[error(transparent)]
 	User(#[from] user::Error),
 }

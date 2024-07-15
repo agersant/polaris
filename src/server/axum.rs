@@ -62,6 +62,12 @@ impl FromRef<App> for app::user::Manager {
 	}
 }
 
+impl FromRef<App> for app::scanner::Scanner {
+	fn from_ref(app: &App) -> Self {
+		app.scanner.clone()
+	}
+}
+
 impl FromRef<App> for app::settings::Manager {
 	fn from_ref(app: &App) -> Self {
 		app.settings_manager.clone()

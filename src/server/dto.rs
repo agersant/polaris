@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::app::{config, ddns, index, settings, thumbnail, user, vfs};
+use crate::app::{config, ddns, index, scanner, settings, thumbnail, user, vfs};
 use std::convert::From;
 
 pub const API_MAJOR_VERSION: i32 = 8;
@@ -277,8 +277,8 @@ pub struct Song {
 	pub labels: Vec<String>,
 }
 
-impl From<index::Song> for Song {
-	fn from(s: index::Song) -> Self {
+impl From<scanner::Song> for Song {
+	fn from(s: scanner::Song) -> Self {
 		Self {
 			path: s.path,
 			track_number: s.track_number,
@@ -312,8 +312,8 @@ pub struct Directory {
 	pub date_added: i64,
 }
 
-impl From<index::Directory> for Directory {
-	fn from(d: index::Directory) -> Self {
+impl From<scanner::Directory> for Directory {
+	fn from(d: scanner::Directory) -> Self {
 		Self {
 			path: d.path,
 			artists: d.artists.0,

@@ -1,14 +1,8 @@
-use std::borrow::Cow;
-
 use log::error;
-use sqlx::{
-	encode::IsNull,
-	sqlite::{SqliteArgumentValue, SqliteTypeInfo},
-	QueryBuilder, Sqlite,
-};
+use sqlx::{QueryBuilder, Sqlite};
 use tokio::sync::mpsc::UnboundedReceiver;
 
-use crate::{app::index::MultiString, db::DB};
+use crate::{app::scanner::MultiString, db::DB};
 
 const INDEX_BUILDING_INSERT_BUFFER_SIZE: usize = 1000; // Insertions in each transaction
 
@@ -50,39 +44,6 @@ pub struct Inserter {
 	new_directories: Vec<Directory>,
 	new_songs: Vec<Song>,
 	db: DB,
-}
-
-static MULTI_STRING_SEPARATOR: &str = "\u{000C}";
-
-impl<'q> sqlx::Encode<'q, Sqlite> for MultiString {
-	fn encode_by_ref(&self, args: &mut Vec<SqliteArgumentValue<'q>>) -> IsNull {
-		if self.0.is_empty() {
-			IsNull::Yes
-		} else {
-			let joined = self.0.join(MULTI_STRING_SEPARATOR);
-			args.push(SqliteArgumentValue::Text(Cow::Owned(joined)));
-			IsNull::No
-		}
-	}
-}
-
-impl From<Option<String>> for MultiString {
-	fn from(value: Option<String>) -> Self {
-		match value {
-			None => MultiString(Vec::new()),
-			Some(s) => MultiString(
-				s.split(MULTI_STRING_SEPARATOR)
-					.map(|s| s.to_string())
-					.collect(),
-			),
-		}
-	}
-}
-
-impl sqlx::Type<Sqlite> for MultiString {
-	fn type_info() -> SqliteTypeInfo {
-		<&str as sqlx::Type<Sqlite>>::type_info()
-	}
 }
 
 impl Inserter {

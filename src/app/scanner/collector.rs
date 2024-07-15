@@ -1,9 +1,10 @@
 use log::error;
 use regex::Regex;
 
-use crate::app::index::MultiString;
+use crate::app::scanner::MultiString;
 
-use super::*;
+use super::inserter;
+use super::traverser;
 
 pub struct Collector {
 	receiver: crossbeam_channel::Receiver<traverser::Directory>,

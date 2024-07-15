@@ -1,22 +1,10 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use super::*;
-use crate::db;
-
-#[derive(thiserror::Error, Debug)]
-pub enum QueryError {
-	#[error(transparent)]
-	Database(#[from] sqlx::Error),
-	#[error(transparent)]
-	DatabaseConnection(#[from] db::Error),
-	#[error("Song was not found: `{0}`")]
-	SongNotFound(PathBuf),
-	#[error(transparent)]
-	Vfs(#[from] vfs::Error),
-}
+use crate::app::scanner;
 
 impl Index {
-	pub async fn browse<P>(&self, virtual_path: P) -> Result<Vec<CollectionFile>, QueryError>
+	pub async fn browse<P>(&self, virtual_path: P) -> Result<Vec<CollectionFile>, Error>
 	where
 		P: AsRef<Path>,
 	{
@@ -26,10 +14,12 @@ impl Index {
 
 		if virtual_path.as_ref().components().count() == 0 {
 			// Browse top-level
-			let real_directories =
-				sqlx::query_as!(Directory, "SELECT * FROM directories WHERE parent IS NULL")
-					.fetch_all(connection.as_mut())
-					.await?;
+			let real_directories = sqlx::query_as!(
+				scanner::Directory,
+				"SELECT * FROM directories WHERE parent IS NULL"
+			)
+			.fetch_all(connection.as_mut())
+			.await?;
 			let virtual_directories = real_directories
 				.into_iter()
 				.filter_map(|d| d.virtualize(&vfs));
@@ -40,7 +30,7 @@ impl Index {
 			let real_path_string = real_path.as_path().to_string_lossy().into_owned();
 
 			let real_directories = sqlx::query_as!(
-				Directory,
+				scanner::Directory,
 				"SELECT * FROM directories WHERE parent = $1 ORDER BY path COLLATE NOCASE ASC",
 				real_path_string
 			)
@@ -54,7 +44,7 @@ impl Index {
 			output.extend(virtual_directories.map(CollectionFile::Directory));
 
 			let real_songs = sqlx::query_as!(
-				Song,
+				scanner::Song,
 				"SELECT * FROM songs WHERE parent = $1 ORDER BY path COLLATE NOCASE ASC",
 				real_path_string
 			)
@@ -68,7 +58,7 @@ impl Index {
 		Ok(output)
 	}
 
-	pub async fn flatten<P>(&self, virtual_path: P) -> Result<Vec<Song>, QueryError>
+	pub async fn flatten<P>(&self, virtual_path: P) -> Result<Vec<scanner::Song>, Error>
 	where
 		P: AsRef<Path>,
 	{
@@ -83,28 +73,31 @@ impl Index {
 				path_buf.as_path().to_string_lossy().into_owned()
 			};
 			sqlx::query_as!(
-				Song,
+				scanner::Song,
 				"SELECT * FROM songs WHERE path LIKE $1 ORDER BY path COLLATE NOCASE ASC",
 				song_path_filter
 			)
 			.fetch_all(connection.as_mut())
 			.await?
 		} else {
-			sqlx::query_as!(Song, "SELECT * FROM songs ORDER BY path COLLATE NOCASE ASC")
-				.fetch_all(connection.as_mut())
-				.await?
+			sqlx::query_as!(
+				scanner::Song,
+				"SELECT * FROM songs ORDER BY path COLLATE NOCASE ASC"
+			)
+			.fetch_all(connection.as_mut())
+			.await?
 		};
 
 		let virtual_songs = real_songs.into_iter().filter_map(|s| s.virtualize(&vfs));
 		Ok(virtual_songs.collect::<Vec<_>>())
 	}
 
-	pub async fn get_random_albums(&self, count: i64) -> Result<Vec<Directory>, QueryError> {
+	pub async fn get_random_albums(&self, count: i64) -> Result<Vec<scanner::Directory>, Error> {
 		let vfs = self.vfs_manager.get_vfs().await?;
 		let mut connection = self.db.connect().await?;
 
 		let real_directories = sqlx::query_as!(
-			Directory,
+			scanner::Directory,
 			"SELECT * FROM directories WHERE album IS NOT NULL ORDER BY RANDOM() DESC LIMIT $1",
 			count
 		)
@@ -117,12 +110,12 @@ impl Index {
 		Ok(virtual_directories.collect::<Vec<_>>())
 	}
 
-	pub async fn get_recent_albums(&self, count: i64) -> Result<Vec<Directory>, QueryError> {
+	pub async fn get_recent_albums(&self, count: i64) -> Result<Vec<scanner::Directory>, Error> {
 		let vfs = self.vfs_manager.get_vfs().await?;
 		let mut connection = self.db.connect().await?;
 
 		let real_directories = sqlx::query_as!(
-			Directory,
+			scanner::Directory,
 			"SELECT * FROM directories WHERE album IS NOT NULL ORDER BY date_added DESC LIMIT $1",
 			count
 		)
@@ -135,7 +128,7 @@ impl Index {
 		Ok(virtual_directories.collect::<Vec<_>>())
 	}
 
-	pub async fn search(&self, query: &str) -> Result<Vec<CollectionFile>, QueryError> {
+	pub async fn search(&self, query: &str) -> Result<Vec<CollectionFile>, Error> {
 		let vfs = self.vfs_manager.get_vfs().await?;
 		let mut connection = self.db.connect().await?;
 		let like_test = format!("%{}%", query);
@@ -144,7 +137,7 @@ impl Index {
 		// Find dirs with matching path and parent not matching
 		{
 			let real_directories = sqlx::query_as!(
-				Directory,
+				scanner::Directory,
 				"SELECT * FROM directories WHERE path LIKE $1 AND parent NOT LIKE $1",
 				like_test
 			)
@@ -161,7 +154,7 @@ impl Index {
 		// Find songs with matching title/album/artist and non-matching parent
 		{
 			let real_songs = sqlx::query_as!(
-				Song,
+				scanner::Song,
 				r#"
 				SELECT * FROM songs
 				WHERE	(	path LIKE $1
@@ -185,7 +178,7 @@ impl Index {
 		Ok(output)
 	}
 
-	pub async fn get_song(&self, virtual_path: &Path) -> Result<Song, QueryError> {
+	pub async fn get_song(&self, virtual_path: &Path) -> Result<scanner::Song, Error> {
 		let vfs = self.vfs_manager.get_vfs().await?;
 		let mut connection = self.db.connect().await?;
 
@@ -193,7 +186,7 @@ impl Index {
 		let real_path_string = real_path.as_path().to_string_lossy();
 
 		let real_song = sqlx::query_as!(
-			Song,
+			scanner::Song,
 			"SELECT * FROM songs WHERE path = $1",
 			real_path_string
 		)
@@ -202,7 +195,7 @@ impl Index {
 
 		match real_song.virtualize(&vfs) {
 			Some(s) => Ok(s),
-			None => Err(QueryError::SongNotFound(real_path)),
+			None => Err(Error::SongNotFound(real_path)),
 		}
 	}
 }

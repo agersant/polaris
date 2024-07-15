@@ -1,7 +1,7 @@
 use core::clone::Clone;
 use sqlx::{Acquire, QueryBuilder, Sqlite};
 
-use crate::app::index::Song;
+use crate::app::scanner::Song;
 use crate::app::vfs;
 use crate::db::{self, DB};
 
@@ -237,7 +237,7 @@ mod test {
 			.build()
 			.await;
 
-		ctx.index.update().await.unwrap();
+		ctx.scanner.scan().await.unwrap();
 
 		let playlist_content: Vec<String> = ctx
 			.index
@@ -302,7 +302,7 @@ mod test {
 			.build()
 			.await;
 
-		ctx.index.update().await.unwrap();
+		ctx.scanner.scan().await.unwrap();
 
 		let playlist_content: Vec<String> = ctx
 			.index

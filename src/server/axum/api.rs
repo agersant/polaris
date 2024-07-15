@@ -11,7 +11,7 @@ use base64::{prelude::BASE64_STANDARD_NO_PAD, Engine};
 use percent_encoding::percent_decode_str;
 
 use crate::{
-	app::{config, ddns, index, lastfm, playlist, settings, thumbnail, user, vfs, App},
+	app::{config, ddns, index, lastfm, playlist, scanner, settings, thumbnail, user, vfs, App},
 	server::{dto, error::APIError},
 };
 
@@ -246,9 +246,9 @@ async fn put_preferences(
 
 async fn post_trigger_index(
 	_admin_rights: AdminRights,
-	State(index): State<index::Index>,
+	State(scanner): State<scanner::Scanner>,
 ) -> Result<(), APIError> {
-	index.trigger_reindex();
+	scanner.trigger_scan();
 	Ok(())
 }
 

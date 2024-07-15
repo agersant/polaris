@@ -1,11 +1,6 @@
 use log::{error, info};
 use std::time;
 
-mod cleaner;
-mod collector;
-mod inserter;
-mod traverser;
-
 use crate::app::index::Index;
 use crate::app::vfs;
 use crate::db;
@@ -27,8 +22,8 @@ pub enum Error {
 	Vfs(#[from] vfs::Error),
 }
 
-impl Index {
-	pub async fn update(&self) -> Result<(), Error> {
+impl Scanner {
+	pub async fn scan(&self) -> Result<(), Error> {
 		let start = time::Instant::now();
 		info!("Beginning library index update");
 

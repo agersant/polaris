@@ -9,6 +9,7 @@ pub mod ddns;
 pub mod index;
 pub mod lastfm;
 pub mod playlist;
+pub mod scanner;
 pub mod settings;
 pub mod thumbnail;
 pub mod user;
@@ -34,6 +35,7 @@ pub struct App {
 	pub port: u16,
 	pub web_dir_path: PathBuf,
 	pub swagger_dir_path: PathBuf,
+	pub scanner: scanner::Scanner,
 	pub index: index::Index,
 	pub config_manager: config::Manager,
 	pub ddns_manager: ddns::Manager,
@@ -62,7 +64,9 @@ impl App {
 		let auth_secret = settings_manager.get_auth_secret().await?;
 		let ddns_manager = ddns::Manager::new(db.clone());
 		let user_manager = user::Manager::new(db.clone(), auth_secret);
-		let index = index::Index::new(db.clone(), vfs_manager.clone(), settings_manager.clone());
+		let scanner =
+			scanner::Scanner::new(db.clone(), vfs_manager.clone(), settings_manager.clone());
+		let index = index::Index::new(db.clone(), vfs_manager.clone());
 		let config_manager = config::Manager::new(
 			settings_manager.clone(),
 			user_manager.clone(),
@@ -82,6 +86,7 @@ impl App {
 			port,
 			web_dir_path: paths.web_dir_path,
 			swagger_dir_path: paths.swagger_dir_path,
+			scanner,
 			index,
 			config_manager,
 			ddns_manager,
