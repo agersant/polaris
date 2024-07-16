@@ -254,6 +254,7 @@ fn read_vorbis(path: &Path) -> Result<SongTags, Error> {
 				"COMPOSER" => tags.composer = Some(value),
 				"GENRE" => tags.genre = Some(value),
 				"PUBLISHER" => tags.label = Some(value),
+				"METADATA_BLOCK_PICTURE" => tags.has_artwork = true,
 				_ => (),
 			}
 		}
@@ -295,6 +296,7 @@ fn read_opus(path: &Path) -> Result<SongTags, Error> {
 				"COMPOSER" => tags.composer = Some(value),
 				"GENRE" => tags.genre = Some(value),
 				"PUBLISHER" => tags.label = Some(value),
+				"METADATA_BLOCK_PICTURE" => tags.has_artwork = true,
 				_ => (),
 			}
 		}
