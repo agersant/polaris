@@ -1,3 +1,6 @@
+# Dev environment
+.direnv
+
 # Build output
 target
 
