@@ -24,6 +24,7 @@ mod web;
 
 use crate::server::dto;
 use crate::server::test::constants::*;
+use protocol::V8;
 
 pub use crate::server::axum::test::ServiceType;
 
@@ -116,7 +117,7 @@ pub trait TestService {
 		assert_eq!(response.status(), StatusCode::OK);
 
 		loop {
-			let browse_request = protocol::browse(Path::new(""));
+			let browse_request = protocol::browse::<V8>(Path::new(""));
 			let response = self
 				.fetch_json::<(), Vec<dto::CollectionFile>>(&browse_request)
 				.await;
@@ -128,7 +129,7 @@ pub trait TestService {
 		}
 
 		loop {
-			let flatten_request = protocol::flatten(Path::new(""));
+			let flatten_request = protocol::flatten::<V8>(Path::new(""));
 			let response = self.fetch_json::<_, Vec<dto::Song>>(&flatten_request).await;
 			let entries = response.body();
 			if !entries.is_empty() {

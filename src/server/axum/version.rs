@@ -1,15 +1,10 @@
 use axum::{async_trait, extract::FromRequestParts};
 use http::request::Parts;
 
-use crate::server::{dto, error::APIError};
-
-pub enum Version {
-	V7,
-	V8,
-}
+use crate::server::{error::APIError, APIMajorVersion};
 
 #[async_trait]
-impl<S> FromRequestParts<S> for Version
+impl<S> FromRequestParts<S> for APIMajorVersion
 where
 	S: Send + Sync,
 {
@@ -19,18 +14,14 @@ where
 		let version_header = match parts.headers.get("Accept-Version").map(|h| h.to_str()) {
 			Some(Ok(h)) => h,
 			Some(Err(_)) => return Err(APIError::InvalidAPIVersionHeader),
-			None => return Ok(Version::V7), // TODO Drop support for implicit version in future release
+			None => return Ok(APIMajorVersion::V7), // TODO Drop support for implicit version in future release
 		};
 
-		let version: dto::Version = match serde_json::from_str(version_header) {
+		let version = match str::parse::<i32>(version_header) {
 			Ok(v) => v,
 			Err(_) => return Err(APIError::APIVersionHeaderParseError),
 		};
 
-		Ok(match version.major {
-			7 => Version::V7,
-			8 => Version::V8,
-			_ => return Err(APIError::UnsupportedAPIVersion),
-		})
+		APIMajorVersion::try_from(version)
 	}
 }

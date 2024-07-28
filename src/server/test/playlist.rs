@@ -1,6 +1,7 @@
 use http::StatusCode;
 
 use crate::server::dto;
+use crate::server::test::protocol::V8;
 use crate::server::test::{constants::*, protocol, ServiceType, TestService};
 use crate::test_name;
 
@@ -63,7 +64,7 @@ async fn save_playlist_large() {
 #[tokio::test]
 async fn get_playlist_requires_auth() {
 	let mut service = ServiceType::new(&test_name!()).await;
-	let request = protocol::read_playlist(TEST_PLAYLIST_NAME);
+	let request = protocol::read_playlist::<V8>(TEST_PLAYLIST_NAME);
 	let response = service.fetch(&request).await;
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
@@ -81,7 +82,7 @@ async fn get_playlist_golden_path() {
 		assert_eq!(response.status(), StatusCode::OK);
 	}
 
-	let request = protocol::read_playlist(TEST_PLAYLIST_NAME);
+	let request = protocol::read_playlist::<V8>(TEST_PLAYLIST_NAME);
 	let response = service.fetch_json::<_, Vec<dto::Song>>(&request).await;
 	assert_eq!(response.status(), StatusCode::OK);
 }
@@ -92,7 +93,7 @@ async fn get_playlist_bad_name_returns_not_found() {
 	service.complete_initial_setup().await;
 	service.login().await;
 
-	let request = protocol::read_playlist(TEST_PLAYLIST_NAME);
+	let request = protocol::read_playlist::<V8>(TEST_PLAYLIST_NAME);
 	let response = service.fetch(&request).await;
 	assert_eq!(response.status(), StatusCode::NOT_FOUND);
 }

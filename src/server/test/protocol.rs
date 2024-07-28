@@ -5,6 +5,25 @@ use std::path::Path;
 use crate::server::dto;
 use crate::{app::user, server::dto::ThumbnailSize};
 
+pub trait ProtocolVersion {
+	fn header_value() -> i32;
+}
+
+pub struct V7;
+pub struct V8;
+
+impl ProtocolVersion for V7 {
+	fn header_value() -> i32 {
+		7
+	}
+}
+
+impl ProtocolVersion for V8 {
+	fn header_value() -> i32 {
+		8
+	}
+}
+
 pub fn web_index() -> Request<()> {
 	Request::builder()
 		.method(Method::GET)
@@ -145,45 +164,50 @@ pub fn trigger_index() -> Request<()> {
 		.unwrap()
 }
 
-pub fn browse(path: &Path) -> Request<()> {
+pub fn browse<VERSION: ProtocolVersion>(path: &Path) -> Request<()> {
 	let path = path.to_string_lossy();
 	let endpoint = format!("/api/browse/{}", url_encode(path.as_ref()));
 	Request::builder()
+		.header("Accept-Version", VERSION::header_value())
 		.method(Method::GET)
 		.uri(&endpoint)
 		.body(())
 		.unwrap()
 }
 
-pub fn flatten(path: &Path) -> Request<()> {
+pub fn flatten<VERSION: ProtocolVersion>(path: &Path) -> Request<()> {
 	let path = path.to_string_lossy();
 	let endpoint = format!("/api/flatten/{}", url_encode(path.as_ref()));
 	Request::builder()
+		.header("Accept-Version", VERSION::header_value())
 		.method(Method::GET)
 		.uri(&endpoint)
 		.body(())
 		.unwrap()
 }
 
-pub fn random() -> Request<()> {
+pub fn random<VERSION: ProtocolVersion>() -> Request<()> {
 	Request::builder()
+		.header("Accept-Version", VERSION::header_value())
 		.method(Method::GET)
 		.uri("/api/random")
 		.body(())
 		.unwrap()
 }
 
-pub fn recent() -> Request<()> {
+pub fn recent<VERSION: ProtocolVersion>() -> Request<()> {
 	Request::builder()
+		.header("Accept-Version", VERSION::header_value())
 		.method(Method::GET)
 		.uri("/api/recent")
 		.body(())
 		.unwrap()
 }
 
-pub fn search(query: &str) -> Request<()> {
+pub fn search<VERSION: ProtocolVersion>(query: &str) -> Request<()> {
 	let endpoint = format!("/api/search/{}", url_encode(query));
 	Request::builder()
+		.header("Accept-Version", VERSION::header_value())
 		.method(Method::GET)
 		.uri(&endpoint)
 		.body(())
@@ -253,9 +277,10 @@ pub fn save_playlist(
 		.unwrap()
 }
 
-pub fn read_playlist(name: &str) -> Request<()> {
+pub fn read_playlist<VERSION: ProtocolVersion>(name: &str) -> Request<()> {
 	let endpoint = format!("/api/playlist/{}", url_encode(name));
 	Request::builder()
+		.header("Accept-Version", VERSION::header_value())
 		.method(Method::GET)
 		.uri(&endpoint)
 		.body(())

@@ -2,6 +2,7 @@ use headers::{self, HeaderMapExt};
 use http::StatusCode;
 
 use crate::server::dto;
+use crate::server::test::protocol::V8;
 use crate::server::test::{constants::*, protocol, ServiceType, TestService};
 use crate::test_name;
 
@@ -45,7 +46,7 @@ async fn authentication_via_bearer_http_header_rejects_bad_token() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
 
-	let mut request = protocol::random();
+	let mut request = protocol::random::<V8>();
 	let bearer = headers::Authorization::bearer("garbage").unwrap();
 	request.headers_mut().typed_insert(bearer);
 
@@ -67,7 +68,7 @@ async fn authentication_via_bearer_http_header_golden_path() {
 
 	service.logout().await;
 
-	let mut request = protocol::random();
+	let mut request = protocol::random::<V8>();
 	let bearer = headers::Authorization::bearer(&authorization.token).unwrap();
 	request.headers_mut().typed_insert(bearer);
 	let response = service.fetch(&request).await;
@@ -79,7 +80,7 @@ async fn authentication_via_query_param_rejects_bad_token() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
 
-	let mut request = protocol::random();
+	let mut request = protocol::random::<V8>();
 	*request.uri_mut() = (request.uri().to_string() + "?auth_token=garbage-token")
 		.parse()
 		.unwrap();
@@ -102,7 +103,7 @@ async fn authentication_via_query_param_golden_path() {
 
 	service.logout().await;
 
-	let mut request = protocol::random();
+	let mut request = protocol::random::<V8>();
 	*request.uri_mut() = format!("{}?auth_token={}", request.uri(), authorization.token)
 		.parse()
 		.unwrap();

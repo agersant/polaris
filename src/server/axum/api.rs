@@ -12,11 +12,10 @@ use percent_encoding::percent_decode_str;
 
 use crate::{
 	app::{config, ddns, index, lastfm, playlist, scanner, settings, thumbnail, user, vfs, App},
-	server::{dto, error::APIError},
+	server::{dto, error::APIError, APIMajorVersion, API_MAJOR_VERSION, API_MINOR_VERSION},
 };
 
 use super::auth::{AdminRights, Auth};
-use super::version::Version;
 
 pub fn router() -> Router<App> {
 	Router::new()
@@ -68,8 +67,8 @@ pub fn router() -> Router<App> {
 
 async fn get_version() -> Json<dto::Version> {
 	let current_version = dto::Version {
-		major: dto::API_MAJOR_VERSION,
-		minor: dto::API_MINOR_VERSION,
+		major: API_MAJOR_VERSION,
+		minor: API_MINOR_VERSION,
 	};
 	Json(current_version)
 }
@@ -254,16 +253,19 @@ async fn post_trigger_index(
 	Ok(())
 }
 
-fn collection_files_to_response(files: Vec<index::CollectionFile>, version: Version) -> Response {
-	match version {
-		Version::V7 => Json(
+fn collection_files_to_response(
+	files: Vec<index::CollectionFile>,
+	api_version: APIMajorVersion,
+) -> Response {
+	match api_version {
+		APIMajorVersion::V7 => Json(
 			files
 				.into_iter()
 				.map(|f| f.into())
 				.collect::<Vec<dto::v7::CollectionFile>>(),
 		)
 		.into_response(),
-		Version::V8 => Json(
+		APIMajorVersion::V8 => Json(
 			files
 				.into_iter()
 				.map(|f| f.into())
@@ -273,16 +275,16 @@ fn collection_files_to_response(files: Vec<index::CollectionFile>, version: Vers
 	}
 }
 
-fn songs_to_response(files: Vec<scanner::Song>, version: Version) -> Response {
-	match version {
-		Version::V7 => Json(
+fn songs_to_response(files: Vec<scanner::Song>, api_version: APIMajorVersion) -> Response {
+	match api_version {
+		APIMajorVersion::V7 => Json(
 			files
 				.into_iter()
 				.map(|f| f.into())
 				.collect::<Vec<dto::v7::Song>>(),
 		)
 		.into_response(),
-		Version::V8 => Json(
+		APIMajorVersion::V8 => Json(
 			files
 				.into_iter()
 				.map(|f| f.into())
@@ -292,16 +294,19 @@ fn songs_to_response(files: Vec<scanner::Song>, version: Version) -> Response {
 	}
 }
 
-fn directories_to_response(files: Vec<scanner::Directory>, version: Version) -> Response {
-	match version {
-		Version::V7 => Json(
+fn directories_to_response(
+	files: Vec<scanner::Directory>,
+	api_version: APIMajorVersion,
+) -> Response {
+	match api_version {
+		APIMajorVersion::V7 => Json(
 			files
 				.into_iter()
 				.map(|f| f.into())
 				.collect::<Vec<dto::v7::Directory>>(),
 		)
 		.into_response(),
-		Version::V8 => Json(
+		APIMajorVersion::V8 => Json(
 			files
 				.into_iter()
 				.map(|f| f.into())
@@ -313,19 +318,19 @@ fn directories_to_response(files: Vec<scanner::Directory>, version: Version) -> 
 
 async fn get_browse_root(
 	_auth: Auth,
-	version: Version,
+	api_version: APIMajorVersion,
 	State(index): State<index::Index>,
 ) -> Response {
 	let result = match index.browse(std::path::Path::new("")).await {
 		Ok(r) => r,
 		Err(e) => return APIError::from(e).into_response(),
 	};
-	collection_files_to_response(result, version)
+	collection_files_to_response(result, api_version)
 }
 
 async fn get_browse(
 	_auth: Auth,
-	version: Version,
+	api_version: APIMajorVersion,
 	State(index): State<index::Index>,
 	Path(path): Path<String>,
 ) -> Response {
@@ -334,24 +339,24 @@ async fn get_browse(
 		Ok(r) => r,
 		Err(e) => return APIError::from(e).into_response(),
 	};
-	collection_files_to_response(result, version)
+	collection_files_to_response(result, api_version)
 }
 
 async fn get_flatten_root(
 	_auth: Auth,
-	version: Version,
+	api_version: APIMajorVersion,
 	State(index): State<index::Index>,
 ) -> Response {
 	let songs = match index.flatten(std::path::Path::new("")).await {
 		Ok(s) => s,
 		Err(e) => return APIError::from(e).into_response(),
 	};
-	songs_to_response(songs, version)
+	songs_to_response(songs, api_version)
 }
 
 async fn get_flatten(
 	_auth: Auth,
-	version: Version,
+	api_version: APIMajorVersion,
 	State(index): State<index::Index>,
 	Path(path): Path<String>,
 ) -> Response {
@@ -360,40 +365,48 @@ async fn get_flatten(
 		Ok(s) => s,
 		Err(e) => return APIError::from(e).into_response(),
 	};
-	songs_to_response(songs, version)
+	songs_to_response(songs, api_version)
 }
 
-async fn get_random(_auth: Auth, version: Version, State(index): State<index::Index>) -> Response {
+async fn get_random(
+	_auth: Auth,
+	api_version: APIMajorVersion,
+	State(index): State<index::Index>,
+) -> Response {
 	let directories = match index.get_random_albums(20).await {
 		Ok(d) => d,
 		Err(e) => return APIError::from(e).into_response(),
 	};
-	directories_to_response(directories, version)
+	directories_to_response(directories, api_version)
 }
 
-async fn get_recent(_auth: Auth, version: Version, State(index): State<index::Index>) -> Response {
+async fn get_recent(
+	_auth: Auth,
+	api_version: APIMajorVersion,
+	State(index): State<index::Index>,
+) -> Response {
 	let directories = match index.get_recent_albums(20).await {
 		Ok(d) => d,
 		Err(e) => return APIError::from(e).into_response(),
 	};
-	directories_to_response(directories, version)
+	directories_to_response(directories, api_version)
 }
 
 async fn get_search_root(
 	_auth: Auth,
-	version: Version,
+	api_version: APIMajorVersion,
 	State(index): State<index::Index>,
 ) -> Response {
 	let files = match index.search("").await {
 		Ok(f) => f,
 		Err(e) => return APIError::from(e).into_response(),
 	};
-	collection_files_to_response(files, version)
+	collection_files_to_response(files, api_version)
 }
 
 async fn get_search(
 	_auth: Auth,
-	version: Version,
+	api_version: APIMajorVersion,
 	State(index): State<index::Index>,
 	Path(query): Path<String>,
 ) -> Response {
@@ -401,7 +414,7 @@ async fn get_search(
 		Ok(f) => f,
 		Err(e) => return APIError::from(e).into_response(),
 	};
-	collection_files_to_response(files, version)
+	collection_files_to_response(files, api_version)
 }
 
 async fn get_playlists(
@@ -431,7 +444,7 @@ async fn put_playlist(
 
 async fn get_playlist(
 	auth: Auth,
-	version: Version,
+	api_version: APIMajorVersion,
 	State(playlist_manager): State<playlist::Manager>,
 	Path(name): Path<String>,
 ) -> Response {
@@ -442,7 +455,7 @@ async fn get_playlist(
 		Ok(s) => s,
 		Err(e) => return APIError::from(e).into_response(),
 	};
-	songs_to_response(songs, version)
+	songs_to_response(songs, api_version)
 }
 
 async fn delete_playlist(

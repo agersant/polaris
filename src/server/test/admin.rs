@@ -1,6 +1,7 @@
 use http::StatusCode;
 
 use crate::server::dto;
+use crate::server::test::protocol::V8;
 use crate::server::test::{protocol, ServiceType, TestService};
 use crate::test_name;
 
@@ -47,7 +48,7 @@ async fn trigger_index_golden_path() {
 	service.complete_initial_setup().await;
 	service.login_admin().await;
 
-	let request = protocol::random();
+	let request = protocol::random::<V8>();
 
 	let response = service.fetch_json::<_, Vec<dto::Directory>>(&request).await;
 	let entries = response.body();
