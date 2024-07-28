@@ -1,5 +1,13 @@
 # Changelog
 
+## Polaris 0.15.0
+
+### Server
+
+- API version is now 8.0
+- Clients are now expected to send their preferred API major version in a `Accept-Version` header. Omitting this defaults to `7`, but will become an error in future Polaris releases.
+- Added support for multi-value metadata for the following fields: `artist`, `album artist`, `genre`, `label`, `lyricist` and `composer`.
+
 ## Polaris 0.14.2
 
 ### Server
