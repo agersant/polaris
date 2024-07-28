@@ -2,7 +2,7 @@
     "openapi": "3.0.0",
     "info": {
         "description": "",
-        "version": "5.0",
+        "version": "8.0",
         "title": "Polaris",
         "termsOfService": ""
     },
@@ -465,6 +465,11 @@
                 ],
                 "summary": "Reads the content of the top-level directory in the music collection",
                 "operationId": "getBrowse",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/APIVersion"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Successful operation",
@@ -503,6 +508,9 @@
                         "schema": {
                             "type": "string"
                         }
+                    },
+                    {
+                        "$ref": "#/components/parameters/APIVersion"
                     }
                 ],
                 "responses": {
@@ -535,6 +543,11 @@
                 ],
                 "summary": "Recursively lists all the songs in the music collection",
                 "operationId": "getFlatten",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/APIVersion"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Successful operation",
@@ -573,6 +586,9 @@
                         "schema": {
                             "type": "string"
                         }
+                    },
+                    {
+                        "$ref": "#/components/parameters/APIVersion"
                     }
                 ],
                 "responses": {
@@ -605,6 +621,11 @@
                 ],
                 "summary": "Returns a list of random albums",
                 "operationId": "getRandom",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/APIVersion"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Successful operation",
@@ -635,6 +656,11 @@
                 ],
                 "summary": "Returns the albums most recently added to the collection",
                 "operationId": "getRecent",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/APIVersion"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Successful operation",
@@ -673,6 +699,9 @@
                         "schema": {
                             "type": "string"
                         }
+                    },
+                    {
+                        "$ref": "#/components/parameters/APIVersion"
                     }
                 ],
                 "responses": {
@@ -757,7 +786,11 @@
                         "description": "The maximum size of the thumbnail, either small (400x400), large (1200x1200) or native",
                         "schema": {
                             "type": "string",
-                            "enum": ["small", "large", "native"],
+                            "enum": [
+                                "small",
+                                "large",
+                                "native"
+                            ],
                             "default": "small"
                         }
                     },
@@ -836,6 +869,9 @@
                         "schema": {
                             "type": "string"
                         }
+                    },
+                    {
+                        "$ref": "#/components/parameters/APIVersion"
                     }
                 ],
                 "responses": {
@@ -1346,13 +1382,19 @@
                         "type": "string",
                         "example": "Anthem of the World"
                     },
-                    "artist": {
-                        "type": "string",
-                        "example": "Stratovarius"
+                    "artists": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "example": "Stratovarius"
+                        }
                     },
-                    "album_artist": {
-                        "type": "string",
-                        "example": null
+                    "album_artists": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "example": null
+                        }
                     },
                     "year": {
                         "type": "integer",
@@ -1370,21 +1412,33 @@
                         "type": "integer",
                         "example": 571
                     },
-                    "lyricist": {
-                        "type": "string",
-                        "example": "Timo Tolkki"
+                    "lyricists": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "example": "Timo Tolkki"
+                        }
                     },
-                    "composer": {
-                        "type": "string",
-                        "example": "Timo Tolkki"
+                    "composers": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "example": "Timo Tolkki"
+                        }
                     },
-                    "genre": {
-                        "type": "string",
-                        "example": "Genre"
+                    "genres": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "example": "Metal"
+                        }
                     },
-                    "label": {
-                        "type": "string",
-                        "example": "Noise Records"
+                    "labels": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "example": "Noise Records"
+                        }
                     }
                 }
             },
@@ -1407,6 +1461,16 @@
                             "example": "My Music/Metal/Stratovarius/Destiny/Anthem of the World.mp3"
                         }
                     }
+                }
+            }
+        },
+        "parameters": {
+            "APIVersion": {
+                "name": "Accept-Version",
+                "in": "header",
+                "description": "Major version of Polaris API this client understands. If omitted, server assumes version 7.",
+                "schema": {
+                    "type": "integer"
                 }
             }
         },

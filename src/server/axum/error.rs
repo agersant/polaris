@@ -7,6 +7,9 @@ impl IntoResponse for APIError {
 	fn into_response(self) -> Response {
 		let message = self.to_string();
 		let status_code = match self {
+			APIError::InvalidAPIVersionHeader => StatusCode::BAD_REQUEST,
+			APIError::APIVersionHeaderParseError => StatusCode::BAD_REQUEST,
+			APIError::UnsupportedAPIVersion => StatusCode::NOT_ACCEPTABLE,
 			APIError::AuthorizationTokenEncoding => StatusCode::INTERNAL_SERVER_ERROR,
 			APIError::AdminPermissionRequired => StatusCode::FORBIDDEN,
 			APIError::AudioFileIOError => StatusCode::NOT_FOUND,

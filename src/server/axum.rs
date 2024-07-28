@@ -6,6 +6,7 @@ use crate::app::{self, App};
 mod api;
 mod auth;
 mod error;
+mod version;
 
 #[cfg(test)]
 pub mod test;

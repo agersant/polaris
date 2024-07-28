@@ -100,6 +100,7 @@ pub struct Directory {
 	pub id: i64,
 	pub path: String,
 	pub parent: Option<String>,
+	// TODO remove all below when explorer and metadata browsing are separate
 	pub artists: MultiString,
 	pub year: Option<i64>,
 	pub album: Option<String>,

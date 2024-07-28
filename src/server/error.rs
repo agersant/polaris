@@ -6,6 +6,12 @@ use crate::db;
 
 #[derive(Error, Debug)]
 pub enum APIError {
+	#[error("Could not read API version header")]
+	InvalidAPIVersionHeader,
+	#[error("Could not parse API version header")]
+	APIVersionHeaderParseError,
+	#[error("Unsupported API version")]
+	UnsupportedAPIVersion,
 	#[error("Could not encode authorization token")]
 	AuthorizationTokenEncoding,
 	#[error("Administrator permission is required")]

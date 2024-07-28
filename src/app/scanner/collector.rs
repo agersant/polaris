@@ -60,11 +60,12 @@ impl Collector {
 			}
 
 			if !tags.album_artists.is_empty() {
-				inconsistent_directory_artist |=
-					directory_artists.as_ref() != Some(&tags.album_artists);
+				inconsistent_directory_artist |= directory_artists.is_some()
+					&& directory_artists.as_ref() != Some(&tags.album_artists);
 				directory_artists = Some(tags.album_artists.clone());
 			} else if !tags.artists.is_empty() {
-				inconsistent_directory_artist |= directory_artists.as_ref() != Some(&tags.artists);
+				inconsistent_directory_artist |= directory_artists.is_some()
+					&& directory_artists.as_ref() != Some(&tags.artists);
 				directory_artists = Some(tags.artists.clone());
 			}
 
