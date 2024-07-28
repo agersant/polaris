@@ -46,6 +46,7 @@ jobs:
         run: make preview PREFIX=/some/random/prefix
       - uses: actions-rs/toolchain@v1
         with:
+          toolchain: stable
           profile: minimal
       - name: Install
         run: sudo --preserve-env=PATH make install
@@ -77,6 +78,7 @@ jobs:
         run: make preview-xdg XDG_DATA_HOME=/my/own/xdg/home
       - uses: actions-rs/toolchain@v1
         with:
+          toolchain: stable
           profile: minimal
       - name: Install
         run: make install-xdg
@@ -99,6 +101,7 @@ jobs:
       - name: Install Rust Toolchain
         uses: actions-rs/toolchain@v1
         with:
+          toolchain: stable
           profile: minimal
       - name: Make release
         uses: ./.github/actions/make-windows-release

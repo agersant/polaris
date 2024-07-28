@@ -76,6 +76,7 @@ jobs:
       - name: Install Rust Toolchain
         uses: actions-rs/toolchain@v1
         with:
+          toolchain: stable
           profile: minimal
       - name: Make release
         uses: ./.github/actions/make-windows-release
