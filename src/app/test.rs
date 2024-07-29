@@ -7,6 +7,7 @@ use crate::test::*;
 pub struct Context {
 	pub db: DB,
 	pub browser: collection::Browser,
+	pub index: collection::Index,
 	pub updater: collection::Updater,
 	pub config_manager: config::Manager,
 	pub ddns_manager: ddns::Manager,
@@ -81,6 +82,7 @@ impl ContextBuilder {
 		Context {
 			db,
 			browser,
+			index,
 			updater,
 			config_manager,
 			ddns_manager,

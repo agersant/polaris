@@ -23,6 +23,17 @@ impl<'q> sqlx::Encode<'q, Sqlite> for MultiString {
 	}
 }
 
+impl<'q> sqlx::Decode<'q, Sqlite> for MultiString {
+	fn decode(
+		value: <Sqlite as sqlx::database::HasValueRef<'q>>::ValueRef,
+	) -> Result<Self, sqlx::error::BoxDynError> {
+		let s: &str = sqlx::Decode::<Sqlite>::decode(value)?;
+		Ok(MultiString(
+			s.split(MultiString::SEPARATOR).map(str::to_owned).collect(),
+		))
+	}
+}
+
 impl sqlx::Type<Sqlite> for MultiString {
 	fn type_info() -> SqliteTypeInfo {
 		<&str as sqlx::Type<Sqlite>>::type_info()

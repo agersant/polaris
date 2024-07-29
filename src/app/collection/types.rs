@@ -1,11 +1,13 @@
 use std::path::PathBuf;
 
+use sqlx::prelude::FromRow;
+
 use crate::{
 	app::vfs::{self},
 	db,
 };
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, FromRow, PartialEq, Eq)]
 pub struct MultiString(pub Vec<String>);
 
 impl MultiString {
@@ -43,7 +45,7 @@ pub enum File {
 	Song(Song),
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Song {
 	pub id: i64,
 	pub path: String,
@@ -71,4 +73,13 @@ pub struct Directory {
 	pub path: String,
 	pub virtual_path: String,
 	pub virtual_parent: Option<String>,
+}
+
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct Album {
+	pub name: Option<String>,
+	pub artwork: Option<String>,
+	pub artists: Vec<String>,
+	pub year: Option<i64>,
+	pub date_added: i64,
 }

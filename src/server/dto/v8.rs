@@ -229,21 +229,6 @@ impl From<settings::Settings> for Settings {
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub enum CollectionFile {
-	Directory(Directory),
-	Song(Song),
-}
-
-impl From<collection::File> for CollectionFile {
-	fn from(f: collection::File) -> Self {
-		match f {
-			collection::File::Directory(d) => Self::Directory(d.into()),
-			collection::File::Song(s) => Self::Song(s.into()),
-		}
-	}
-}
-
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Song {
 	pub path: String,
 	#[serde(default, skip_serializing_if = "Option::is_none")]
@@ -296,16 +281,47 @@ impl From<collection::Song> for Song {
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Directory {
+pub struct BrowserEntry {
 	pub path: String,
+	pub is_directory: bool,
 }
 
-impl From<collection::Directory> for Directory {
-	fn from(d: collection::Directory) -> Self {
-		Self {
-			path: d.virtual_path,
+impl From<collection::File> for BrowserEntry {
+	fn from(file: collection::File) -> Self {
+		match file {
+			collection::File::Directory(d) => Self {
+				is_directory: true,
+				path: d.virtual_path,
+			},
+			collection::File::Song(s) => Self {
+				is_directory: false,
+				path: s.virtual_path,
+			},
 		}
 	}
 }
 
-// TODO: Preferencesshould have dto types
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Album {
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub name: Option<String>,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub artwork: Option<String>,
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub artists: Vec<String>,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub year: Option<i64>,
+}
+
+impl From<collection::Album> for Album {
+	fn from(a: collection::Album) -> Self {
+		Self {
+			name: a.name,
+			artwork: a.artwork,
+			artists: a.artists,
+			year: a.year,
+		}
+	}
+}
+
+// TODO: Preferences should have dto types

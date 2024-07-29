@@ -119,7 +119,7 @@ pub trait TestService {
 		loop {
 			let browse_request = protocol::browse::<V8>(Path::new(""));
 			let response = self
-				.fetch_json::<(), Vec<dto::CollectionFile>>(&browse_request)
+				.fetch_json::<(), Vec<dto::BrowserEntry>>(&browse_request)
 				.await;
 			let entries = response.body();
 			if !entries.is_empty() {

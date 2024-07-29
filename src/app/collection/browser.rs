@@ -108,22 +108,6 @@ impl Browser {
 		Ok(songs)
 	}
 
-	pub async fn get_random_albums(
-		&self,
-		count: i64,
-	) -> Result<Vec<collection::Directory>, collection::Error> {
-		// TODO move to Index
-		Ok(vec![])
-	}
-
-	pub async fn get_recent_albums(
-		&self,
-		count: i64,
-	) -> Result<Vec<collection::Directory>, collection::Error> {
-		// TODO move to Index
-		Ok(vec![])
-	}
-
 	pub async fn search(&self, query: &str) -> Result<Vec<collection::File>, collection::Error> {
 		let mut connection = self.db.connect().await?;
 		let like_test = format!("%{}%", query);
@@ -283,28 +267,6 @@ mod test {
 		let path: PathBuf = [TEST_MOUNT_NAME, "Tobokegao", "Picnic"].iter().collect(); // Prefix of '(Picnic Remixes)'
 		let songs = ctx.browser.flatten(path).await.unwrap();
 		assert_eq!(songs.len(), 7);
-	}
-
-	#[tokio::test]
-	async fn can_get_random_albums() {
-		let mut ctx = test::ContextBuilder::new(test_name!())
-			.mount(TEST_MOUNT_NAME, "test-data/small-collection")
-			.build()
-			.await;
-		ctx.updater.update().await.unwrap();
-		let albums = ctx.browser.get_random_albums(1).await.unwrap();
-		assert_eq!(albums.len(), 1);
-	}
-
-	#[tokio::test]
-	async fn can_get_recent_albums() {
-		let mut ctx = test::ContextBuilder::new(test_name!())
-			.mount(TEST_MOUNT_NAME, "test-data/small-collection")
-			.build()
-			.await;
-		ctx.updater.update().await.unwrap();
-		let albums = ctx.browser.get_recent_albums(2).await.unwrap();
-		assert_eq!(albums.len(), 2);
 	}
 
 	#[tokio::test]

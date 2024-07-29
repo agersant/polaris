@@ -47,6 +47,8 @@ impl Updater {
 			}
 		});
 
+		// TODO populate index w/ whatever is already in DB
+
 		updater
 	}
 

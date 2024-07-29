@@ -33,6 +33,12 @@ impl FromRef<App> for app::collection::Browser {
 	}
 }
 
+impl FromRef<App> for app::collection::Index {
+	fn from_ref(app: &App) -> Self {
+		app.index.clone()
+	}
+}
+
 impl FromRef<App> for app::collection::Updater {
 	fn from_ref(app: &App) -> Self {
 		app.updater.clone()

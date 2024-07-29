@@ -302,7 +302,6 @@ pub struct Directory {
 	pub year: Option<i64>,
 	pub album: Option<String>,
 	pub artwork: Option<String>,
-	pub date_added: i64,
 }
 
 impl From<collection::Directory> for Directory {
@@ -313,7 +312,21 @@ impl From<collection::Directory> for Directory {
 			year: None,
 			album: None,
 			artwork: None,
-			date_added: 0,
+		}
+	}
+}
+
+impl From<collection::Album> for Directory {
+	fn from(a: collection::Album) -> Self {
+		Self {
+			path: todo!(), // TODO implement
+			artist: match a.artists.is_empty() {
+				true => None,
+				false => Some(a.artists.join("")),
+			},
+			year: a.year,
+			album: a.name,
+			artwork: a.artwork,
 		}
 	}
 }

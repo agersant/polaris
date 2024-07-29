@@ -50,13 +50,13 @@ async fn trigger_index_golden_path() {
 
 	let request = protocol::random::<V8>();
 
-	let response = service.fetch_json::<_, Vec<dto::Directory>>(&request).await;
+	let response = service.fetch_json::<_, Vec<dto::Album>>(&request).await;
 	let entries = response.body();
 	assert_eq!(entries.len(), 0);
 
 	service.index().await;
 
-	let response = service.fetch_json::<_, Vec<dto::Directory>>(&request).await;
+	let response = service.fetch_json::<_, Vec<dto::Album>>(&request).await;
 	let entries = response.body();
 	assert_eq!(entries.len(), 3);
 }

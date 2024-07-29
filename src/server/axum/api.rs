@@ -269,7 +269,7 @@ fn collection_files_to_response(
 			files
 				.into_iter()
 				.map(|f| f.into())
-				.collect::<Vec<dto::CollectionFile>>(),
+				.collect::<Vec<dto::BrowserEntry>>(),
 		)
 		.into_response(),
 	}
@@ -294,23 +294,20 @@ fn songs_to_response(files: Vec<collection::Song>, api_version: APIMajorVersion)
 	}
 }
 
-fn directories_to_response(
-	files: Vec<collection::Directory>,
-	api_version: APIMajorVersion,
-) -> Response {
+fn albums_to_response(albums: Vec<collection::Album>, api_version: APIMajorVersion) -> Response {
 	match api_version {
 		APIMajorVersion::V7 => Json(
-			files
+			albums
 				.into_iter()
 				.map(|f| f.into())
 				.collect::<Vec<dto::v7::Directory>>(),
 		)
 		.into_response(),
 		APIMajorVersion::V8 => Json(
-			files
+			albums
 				.into_iter()
 				.map(|f| f.into())
-				.collect::<Vec<dto::Directory>>(),
+				.collect::<Vec<dto::Album>>(),
 		)
 		.into_response(),
 	}
@@ -371,25 +368,25 @@ async fn get_flatten(
 async fn get_random(
 	_auth: Auth,
 	api_version: APIMajorVersion,
-	State(browser): State<collection::Browser>,
+	State(index): State<collection::Index>,
 ) -> Response {
-	let directories = match browser.get_random_albums(20).await {
+	let albums = match index.get_random_albums(20).await {
 		Ok(d) => d,
 		Err(e) => return APIError::from(e).into_response(),
 	};
-	directories_to_response(directories, api_version)
+	albums_to_response(albums, api_version)
 }
 
 async fn get_recent(
 	_auth: Auth,
 	api_version: APIMajorVersion,
-	State(browser): State<collection::Browser>,
+	State(index): State<collection::Index>,
 ) -> Response {
-	let directories = match browser.get_recent_albums(20).await {
+	let albums = match index.get_recent_albums(20).await {
 		Ok(d) => d,
 		Err(e) => return APIError::from(e).into_response(),
 	};
-	directories_to_response(directories, api_version)
+	albums_to_response(albums, api_version)
 }
 
 async fn get_search_root(

@@ -24,7 +24,7 @@ async fn browse_root() {
 
 	let request = protocol::browse::<V8>(&PathBuf::new());
 	let response = service
-		.fetch_json::<_, Vec<dto::CollectionFile>>(&request)
+		.fetch_json::<_, Vec<dto::BrowserEntry>>(&request)
 		.await;
 	assert_eq!(response.status(), StatusCode::OK);
 	let entries = response.body();
@@ -42,7 +42,7 @@ async fn browse_directory() {
 	let path: PathBuf = [TEST_MOUNT_NAME, "Khemmis", "Hunted"].iter().collect();
 	let request = protocol::browse::<V8>(&path);
 	let response = service
-		.fetch_json::<_, Vec<dto::CollectionFile>>(&request)
+		.fetch_json::<_, Vec<dto::BrowserEntry>>(&request)
 		.await;
 	assert_eq!(response.status(), StatusCode::OK);
 	let entries = response.body();
@@ -168,7 +168,7 @@ async fn random_golden_path() {
 	service.login().await;
 
 	let request = protocol::random::<V8>();
-	let response = service.fetch_json::<_, Vec<dto::Directory>>(&request).await;
+	let response = service.fetch_json::<_, Vec<dto::Album>>(&request).await;
 	assert_eq!(response.status(), StatusCode::OK);
 	let entries = response.body();
 	assert_eq!(entries.len(), 3);
@@ -184,7 +184,24 @@ async fn random_with_trailing_slash() {
 
 	let mut request = protocol::random::<V8>();
 	add_trailing_slash(&mut request);
-	let response = service.fetch_json::<_, Vec<dto::Directory>>(&request).await;
+	let response = service.fetch_json::<_, Vec<dto::Album>>(&request).await;
+	assert_eq!(response.status(), StatusCode::OK);
+	let entries = response.body();
+	assert_eq!(entries.len(), 3);
+}
+
+#[tokio::test]
+async fn random_golden_path_api_v7() {
+	let mut service = ServiceType::new(&test_name!()).await;
+	service.complete_initial_setup().await;
+	service.login_admin().await;
+	service.index().await;
+	service.login().await;
+
+	let request = protocol::random::<V7>();
+	let response = service
+		.fetch_json::<_, Vec<dto::v7::Directory>>(&request)
+		.await;
 	assert_eq!(response.status(), StatusCode::OK);
 	let entries = response.body();
 	assert_eq!(entries.len(), 3);
@@ -207,7 +224,7 @@ async fn recent_golden_path() {
 	service.login().await;
 
 	let request = protocol::recent::<V8>();
-	let response = service.fetch_json::<_, Vec<dto::Directory>>(&request).await;
+	let response = service.fetch_json::<_, Vec<dto::Album>>(&request).await;
 	assert_eq!(response.status(), StatusCode::OK);
 	let entries = response.body();
 	assert_eq!(entries.len(), 3);
@@ -223,7 +240,24 @@ async fn recent_with_trailing_slash() {
 
 	let mut request = protocol::recent::<V8>();
 	add_trailing_slash(&mut request);
-	let response = service.fetch_json::<_, Vec<dto::Directory>>(&request).await;
+	let response = service.fetch_json::<_, Vec<dto::Album>>(&request).await;
+	assert_eq!(response.status(), StatusCode::OK);
+	let entries = response.body();
+	assert_eq!(entries.len(), 3);
+}
+
+#[tokio::test]
+async fn recent_golden_path_api_v7() {
+	let mut service = ServiceType::new(&test_name!()).await;
+	service.complete_initial_setup().await;
+	service.login_admin().await;
+	service.index().await;
+	service.login().await;
+
+	let request = protocol::recent::<V7>();
+	let response = service
+		.fetch_json::<_, Vec<dto::v7::Directory>>(&request)
+		.await;
 	assert_eq!(response.status(), StatusCode::OK);
 	let entries = response.body();
 	assert_eq!(entries.len(), 3);
@@ -245,7 +279,7 @@ async fn search_without_query() {
 
 	let request = protocol::search::<V8>("");
 	let response = service
-		.fetch_json::<_, Vec<dto::CollectionFile>>(&request)
+		.fetch_json::<_, Vec<dto::BrowserEntry>>(&request)
 		.await;
 	assert_eq!(response.status(), StatusCode::OK);
 }
@@ -260,14 +294,18 @@ async fn search_with_query() {
 
 	let request = protocol::search::<V8>("door");
 	let response = service
-		.fetch_json::<_, Vec<dto::CollectionFile>>(&request)
+		.fetch_json::<_, Vec<dto::BrowserEntry>>(&request)
 		.await;
 	let results = response.body();
 	assert_eq!(results.len(), 1);
-	match results[0] {
-		dto::CollectionFile::Song(ref s) => {
-			assert_eq!(s.title, Some("Beyond The Door".into()))
-		}
-		_ => panic!(),
-	}
+
+	let path: PathBuf = [
+		TEST_MOUNT_NAME,
+		"Khemmis",
+		"Hunted",
+		"04 - Beyond The Door.mp3",
+	]
+	.iter()
+	.collect();
+	assert_eq!(results[0].path, path.to_string_lossy());
 }
