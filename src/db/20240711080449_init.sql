@@ -48,19 +48,16 @@ CREATE TABLE users (
 CREATE TABLE directories (
 	id INTEGER PRIMARY KEY NOT NULL,
 	path TEXT NOT NULL,
-	parent TEXT,
-	artists TEXT,
-	year INTEGER,
-	album TEXT,
-	artwork TEXT,
-	date_added INTEGER DEFAULT 0 NOT NULL,
+	virtual_path TEXT NOT NULL,
+	virtual_parent TEXT,
 	UNIQUE(path) ON CONFLICT REPLACE
 );
 
 CREATE TABLE songs (
 	id INTEGER PRIMARY KEY NOT NULL,
 	path TEXT NOT NULL,
-	parent TEXT NOT NULL,
+	virtual_path TEXT NOT NULL,
+	virtual_parent TEXT NOT NULL,
 	track_number INTEGER,
 	disc_number INTEGER,
 	title TEXT,
@@ -74,6 +71,7 @@ CREATE TABLE songs (
 	composers TEXT,
 	genres TEXT,
 	labels TEXT,
+	date_added INTEGER DEFAULT 0 NOT NULL,
 	UNIQUE(path) ON CONFLICT REPLACE
 );
 

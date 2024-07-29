@@ -144,7 +144,7 @@ fn main() -> Result<(), Error> {
 async fn async_main(cli_options: CLIOptions, paths: paths::Paths) -> Result<(), Error> {
 	// Create and run app
 	let app = app::App::new(cli_options.port.unwrap_or(5050), paths).await?;
-	app.scanner.begin_periodic_scans();
+	app.updater.begin_periodic_scans();
 	app.ddns_manager.begin_periodic_updates();
 
 	// Start server

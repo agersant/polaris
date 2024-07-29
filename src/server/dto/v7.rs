@@ -1,9 +1,8 @@
 use serde::{Deserialize, Serialize};
 
 use crate::app::{
-	config, ddns, index,
-	scanner::{self, MultiString},
-	settings, thumbnail, user, vfs,
+	collection::{self, MultiString},
+	config, ddns, settings, thumbnail, user, vfs,
 };
 use std::convert::From;
 
@@ -238,11 +237,11 @@ pub enum CollectionFile {
 	Song(Song),
 }
 
-impl From<index::CollectionFile> for CollectionFile {
-	fn from(f: index::CollectionFile) -> Self {
+impl From<collection::File> for CollectionFile {
+	fn from(f: collection::File) -> Self {
 		match f {
-			index::CollectionFile::Directory(d) => Self::Directory(d.into()),
-			index::CollectionFile::Song(s) => Self::Song(s.into()),
+			collection::File::Directory(d) => Self::Directory(d.into()),
+			collection::File::Song(s) => Self::Song(s.into()),
 		}
 	}
 }
@@ -275,10 +274,10 @@ pub struct Song {
 	pub label: Option<String>,
 }
 
-impl From<scanner::Song> for Song {
-	fn from(s: scanner::Song) -> Self {
+impl From<collection::Song> for Song {
+	fn from(s: collection::Song) -> Self {
 		Self {
-			path: s.path,
+			path: s.virtual_path,
 			track_number: s.track_number,
 			disc_number: s.disc_number,
 			title: s.title,
@@ -306,15 +305,15 @@ pub struct Directory {
 	pub date_added: i64,
 }
 
-impl From<scanner::Directory> for Directory {
-	fn from(d: scanner::Directory) -> Self {
+impl From<collection::Directory> for Directory {
+	fn from(d: collection::Directory) -> Self {
 		Self {
-			path: d.path,
-			artist: d.artists.to_v7_string(),
-			year: d.year,
-			album: d.album,
-			artwork: d.artwork,
-			date_added: d.date_added,
+			path: d.virtual_path,
+			artist: None,
+			year: None,
+			album: None,
+			artwork: None,
+			date_added: 0,
 		}
 	}
 }

@@ -20,6 +20,7 @@ impl IntoResponse for APIError {
 			}
 			APIError::Database(_) => StatusCode::INTERNAL_SERVER_ERROR,
 			APIError::DeletingOwnAccount => StatusCode::CONFLICT,
+			APIError::DirectoryNotFound(_) => StatusCode::NOT_FOUND,
 			APIError::EmbeddedArtworkNotFound => StatusCode::NOT_FOUND,
 			APIError::EmptyPassword => StatusCode::BAD_REQUEST,
 			APIError::EmptyUsername => StatusCode::BAD_REQUEST,
@@ -36,7 +37,6 @@ impl IntoResponse for APIError {
 			APIError::PasswordHashing => StatusCode::INTERNAL_SERVER_ERROR,
 			APIError::PlaylistNotFound => StatusCode::NOT_FOUND,
 			APIError::Settings(_) => StatusCode::INTERNAL_SERVER_ERROR,
-			APIError::SongMetadataNotFound => StatusCode::NOT_FOUND,
 			APIError::ThumbnailFlacDecoding(_, _) => StatusCode::INTERNAL_SERVER_ERROR,
 			APIError::ThumbnailFileIOError => StatusCode::NOT_FOUND,
 			APIError::ThumbnailId3Decoding(_, _) => StatusCode::INTERNAL_SERVER_ERROR,

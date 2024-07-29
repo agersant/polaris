@@ -2,10 +2,7 @@ use rustfm_scrobble::{Scrobble, Scrobbler};
 use std::path::Path;
 use user::AuthToken;
 
-use crate::app::{
-	index::{self, Index},
-	user,
-};
+use crate::app::{collection, user};
 
 const LASTFM_API_KEY: &str = "02b96c939a2b451c31dfd67add1f696e";
 const LASTFM_API_SECRET: &str = "0f25a80ceef4b470b5cb97d99d4b3420";
@@ -19,21 +16,21 @@ pub enum Error {
 	#[error("Failed to emit last.fm now playing update")]
 	NowPlaying(rustfm_scrobble::ScrobblerError),
 	#[error(transparent)]
-	Query(#[from] index::Error),
+	Query(#[from] collection::Error),
 	#[error(transparent)]
 	User(#[from] user::Error),
 }
 
 #[derive(Clone)]
 pub struct Manager {
-	index: Index,
+	browser: collection::Browser,
 	user_manager: user::Manager,
 }
 
 impl Manager {
-	pub fn new(index: Index, user_manager: user::Manager) -> Self {
+	pub fn new(browser: collection::Browser, user_manager: user::Manager) -> Self {
 		Self {
-			index,
+			browser,
 			user_manager,
 		}
 	}
@@ -84,7 +81,7 @@ impl Manager {
 	}
 
 	async fn scrobble_from_path(&self, track: &Path) -> Result<Scrobble, Error> {
-		let song = self.index.get_song(track).await?;
+		let song = self.browser.get_song(track).await?;
 		Ok(Scrobble::new(
 			song.artists.0.first().map(|s| s.as_str()).unwrap_or(""),
 			song.title.as_deref().unwrap_or(""),

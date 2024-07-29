@@ -44,22 +44,26 @@ pub struct SongMetadata {
 	pub labels: Vec<String>,
 }
 
-pub fn read(path: &Path) -> Option<SongMetadata> {
-	let data = match utils::get_audio_format(path) {
-		Some(AudioFormat::AIFF) => read_id3(path),
-		Some(AudioFormat::FLAC) => read_flac(path),
-		Some(AudioFormat::MP3) => read_mp3(path),
-		Some(AudioFormat::OGG) => read_vorbis(path),
-		Some(AudioFormat::OPUS) => read_opus(path),
-		Some(AudioFormat::WAVE) => read_id3(path),
-		Some(AudioFormat::APE) | Some(AudioFormat::MPC) => read_ape(path),
-		Some(AudioFormat::MP4) | Some(AudioFormat::M4B) => read_mp4(path),
+pub fn read_metadata<P: AsRef<Path>>(path: P) -> Option<SongMetadata> {
+	let data = match utils::get_audio_format(&path) {
+		Some(AudioFormat::AIFF) => read_id3(&path),
+		Some(AudioFormat::FLAC) => read_flac(&path),
+		Some(AudioFormat::MP3) => read_mp3(&path),
+		Some(AudioFormat::OGG) => read_vorbis(&path),
+		Some(AudioFormat::OPUS) => read_opus(&path),
+		Some(AudioFormat::WAVE) => read_id3(&path),
+		Some(AudioFormat::APE) | Some(AudioFormat::MPC) => read_ape(&path),
+		Some(AudioFormat::MP4) | Some(AudioFormat::M4B) => read_mp4(&path),
 		None => return None,
 	};
 	match data {
 		Ok(d) => Some(d),
 		Err(e) => {
-			error!("Error while reading file metadata for '{:?}': {}", path, e);
+			error!(
+				"Error while reading file metadata for '{:?}': {}",
+				path.as_ref(),
+				e
+			);
 			None
 		}
 	}
@@ -78,7 +82,7 @@ impl ID3Ext for id3::Tag {
 	}
 }
 
-fn read_id3(path: &Path) -> Result<SongMetadata, Error> {
+fn read_id3<P: AsRef<Path>>(path: P) -> Result<SongMetadata, Error> {
 	let tag = id3::Tag::read_from_path(path).or_else(|error| {
 		if let Some(tag) = error.partial_tag {
 			Ok(tag)
@@ -122,8 +126,8 @@ fn read_id3(path: &Path) -> Result<SongMetadata, Error> {
 	})
 }
 
-fn read_mp3(path: &Path) -> Result<SongMetadata, Error> {
-	let mut metadata = read_id3(path)?;
+fn read_mp3<P: AsRef<Path>>(path: P) -> Result<SongMetadata, Error> {
+	let mut metadata = read_id3(&path)?;
 	let duration = {
 		mp3_duration::from_path(path)
 			.map(|d| d.as_secs() as u32)
@@ -167,7 +171,7 @@ mod ape_ext {
 	}
 }
 
-fn read_ape(path: &Path) -> Result<SongMetadata, Error> {
+fn read_ape<P: AsRef<Path>>(path: P) -> Result<SongMetadata, Error> {
 	let tag = ape::read_from_path(path)?;
 	let artists = ape_ext::read_strings(tag.items("Artist"));
 	let album = tag.item("Album").and_then(ape_ext::read_string);
@@ -197,8 +201,8 @@ fn read_ape(path: &Path) -> Result<SongMetadata, Error> {
 	})
 }
 
-fn read_vorbis(path: &Path) -> Result<SongMetadata, Error> {
-	let file = fs::File::open(path).map_err(|e| Error::Io(path.to_owned(), e))?;
+fn read_vorbis<P: AsRef<Path>>(path: P) -> Result<SongMetadata, Error> {
+	let file = fs::File::open(&path).map_err(|e| Error::Io(path.as_ref().to_owned(), e))?;
 	let source = OggStreamReader::new(file)?;
 
 	let mut metadata = SongMetadata::default();
@@ -224,7 +228,7 @@ fn read_vorbis(path: &Path) -> Result<SongMetadata, Error> {
 	Ok(metadata)
 }
 
-fn read_opus(path: &Path) -> Result<SongMetadata, Error> {
+fn read_opus<P: AsRef<Path>>(path: P) -> Result<SongMetadata, Error> {
 	let headers = opus_headers::parse_from_path(path)?;
 
 	let mut metadata = SongMetadata::default();
@@ -250,7 +254,7 @@ fn read_opus(path: &Path) -> Result<SongMetadata, Error> {
 	Ok(metadata)
 }
 
-fn read_flac(path: &Path) -> Result<SongMetadata, Error> {
+fn read_flac<P: AsRef<Path>>(path: P) -> Result<SongMetadata, Error> {
 	let tag = metaflac::Tag::read_from_path(path)?;
 	let vorbis = tag
 		.vorbis_comments()
@@ -285,7 +289,7 @@ fn read_flac(path: &Path) -> Result<SongMetadata, Error> {
 	})
 }
 
-fn read_mp4(path: &Path) -> Result<SongMetadata, Error> {
+fn read_mp4<P: AsRef<Path>>(path: P) -> Result<SongMetadata, Error> {
 	let mut tag = mp4ameta::Tag::read_from_path(path)?;
 	let label_ident = mp4ameta::FreeformIdent::new("com.apple.iTunes", "Label");
 
@@ -336,35 +340,35 @@ fn reads_file_metadata() {
 		..sample_tags.clone()
 	};
 	assert_eq!(
-		read(Path::new("test-data/formats/sample.aif")).unwrap(),
+		read_metadata(Path::new("test-data/formats/sample.aif")).unwrap(),
 		sample_tags
 	);
 	assert_eq!(
-		read(Path::new("test-data/formats/sample.mp3")).unwrap(),
+		read_metadata(Path::new("test-data/formats/sample.mp3")).unwrap(),
 		mp3_sample_tag
 	);
 	assert_eq!(
-		read(Path::new("test-data/formats/sample.ogg")).unwrap(),
+		read_metadata(Path::new("test-data/formats/sample.ogg")).unwrap(),
 		sample_tags
 	);
 	assert_eq!(
-		read(Path::new("test-data/formats/sample.flac")).unwrap(),
+		read_metadata(Path::new("test-data/formats/sample.flac")).unwrap(),
 		flac_sample_tag
 	);
 	assert_eq!(
-		read(Path::new("test-data/formats/sample.m4a")).unwrap(),
+		read_metadata(Path::new("test-data/formats/sample.m4a")).unwrap(),
 		m4a_sample_tag
 	);
 	assert_eq!(
-		read(Path::new("test-data/formats/sample.opus")).unwrap(),
+		read_metadata(Path::new("test-data/formats/sample.opus")).unwrap(),
 		sample_tags
 	);
 	assert_eq!(
-		read(Path::new("test-data/formats/sample.ape")).unwrap(),
+		read_metadata(Path::new("test-data/formats/sample.ape")).unwrap(),
 		sample_tags
 	);
 	assert_eq!(
-		read(Path::new("test-data/formats/sample.wav")).unwrap(),
+		read_metadata(Path::new("test-data/formats/sample.wav")).unwrap(),
 		sample_tags
 	);
 }
@@ -372,27 +376,27 @@ fn reads_file_metadata() {
 #[test]
 fn reads_embedded_artwork() {
 	assert!(
-		read(Path::new("test-data/artwork/sample.aif"))
+		read_metadata(Path::new("test-data/artwork/sample.aif"))
 			.unwrap()
 			.has_artwork
 	);
 	assert!(
-		read(Path::new("test-data/artwork/sample.mp3"))
+		read_metadata(Path::new("test-data/artwork/sample.mp3"))
 			.unwrap()
 			.has_artwork
 	);
 	assert!(
-		read(Path::new("test-data/artwork/sample.flac"))
+		read_metadata(Path::new("test-data/artwork/sample.flac"))
 			.unwrap()
 			.has_artwork
 	);
 	assert!(
-		read(Path::new("test-data/artwork/sample.m4a"))
+		read_metadata(Path::new("test-data/artwork/sample.m4a"))
 			.unwrap()
 			.has_artwork
 	);
 	assert!(
-		read(Path::new("test-data/artwork/sample.wav"))
+		read_metadata(Path::new("test-data/artwork/sample.wav"))
 			.unwrap()
 			.has_artwork
 	);

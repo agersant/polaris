@@ -8,8 +8,6 @@ use crate::db::{self, DB};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-	#[error("The following real path could not be mapped to a virtual path: `{0}`")]
-	CouldNotMapToVirtualPath(PathBuf),
 	#[error("The following virtual path could not be mapped to a real path: `{0}`")]
 	CouldNotMapToRealPath(PathBuf),
 	#[error(transparent)]
@@ -54,18 +52,10 @@ impl VFS {
 		VFS { mounts }
 	}
 
-	pub fn real_to_virtual<P: AsRef<Path>>(&self, real_path: P) -> Result<PathBuf, Error> {
-		for mount in &self.mounts {
-			if let Ok(p) = real_path.as_ref().strip_prefix(&mount.source) {
-				let mount_path = Path::new(&mount.name);
-				return if p.components().count() == 0 {
-					Ok(mount_path.to_path_buf())
-				} else {
-					Ok(mount_path.join(p))
-				};
-			}
-		}
-		Err(Error::CouldNotMapToVirtualPath(real_path.as_ref().into()))
+	pub fn exists<P: AsRef<Path>>(&self, virtual_path: P) -> bool {
+		self.mounts
+			.iter()
+			.any(|m| virtual_path.as_ref().starts_with(&m.name))
 	}
 
 	pub fn virtual_to_real<P: AsRef<Path>>(&self, virtual_path: P) -> Result<PathBuf, Error> {
@@ -160,18 +150,6 @@ mod test {
 		let real_path = Path::new("test_dir");
 		let converted_path = vfs.virtual_to_real(Path::new("root")).unwrap();
 		assert_eq!(converted_path, real_path);
-	}
-
-	#[test]
-	fn converts_real_to_virtual() {
-		let vfs = VFS::new(vec![Mount {
-			name: "root".to_owned(),
-			source: Path::new("test_dir").to_owned(),
-		}]);
-		let virtual_path: PathBuf = ["root", "somewhere", "something.png"].iter().collect();
-		let real_path: PathBuf = ["test_dir", "somewhere", "something.png"].iter().collect();
-		let converted_path = vfs.real_to_virtual(real_path.as_path()).unwrap();
-		assert_eq!(converted_path, virtual_path);
 	}
 
 	#[test]

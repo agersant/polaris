@@ -11,7 +11,7 @@ use base64::{prelude::BASE64_STANDARD_NO_PAD, Engine};
 use percent_encoding::percent_decode_str;
 
 use crate::{
-	app::{config, ddns, index, lastfm, playlist, scanner, settings, thumbnail, user, vfs, App},
+	app::{collection, config, ddns, lastfm, playlist, settings, thumbnail, user, vfs, App},
 	server::{dto, error::APIError, APIMajorVersion, API_MAJOR_VERSION, API_MINOR_VERSION},
 };
 
@@ -247,14 +247,14 @@ async fn put_preferences(
 
 async fn post_trigger_index(
 	_admin_rights: AdminRights,
-	State(scanner): State<scanner::Scanner>,
+	State(updater): State<collection::Updater>,
 ) -> Result<(), APIError> {
-	scanner.trigger_scan();
+	updater.trigger_scan();
 	Ok(())
 }
 
 fn collection_files_to_response(
-	files: Vec<index::CollectionFile>,
+	files: Vec<collection::File>,
 	api_version: APIMajorVersion,
 ) -> Response {
 	match api_version {
@@ -275,7 +275,7 @@ fn collection_files_to_response(
 	}
 }
 
-fn songs_to_response(files: Vec<scanner::Song>, api_version: APIMajorVersion) -> Response {
+fn songs_to_response(files: Vec<collection::Song>, api_version: APIMajorVersion) -> Response {
 	match api_version {
 		APIMajorVersion::V7 => Json(
 			files
@@ -295,7 +295,7 @@ fn songs_to_response(files: Vec<scanner::Song>, api_version: APIMajorVersion) ->
 }
 
 fn directories_to_response(
-	files: Vec<scanner::Directory>,
+	files: Vec<collection::Directory>,
 	api_version: APIMajorVersion,
 ) -> Response {
 	match api_version {
@@ -319,9 +319,9 @@ fn directories_to_response(
 async fn get_browse_root(
 	_auth: Auth,
 	api_version: APIMajorVersion,
-	State(index): State<index::Index>,
+	State(browser): State<collection::Browser>,
 ) -> Response {
-	let result = match index.browse(std::path::Path::new("")).await {
+	let result = match browser.browse(std::path::Path::new("")).await {
 		Ok(r) => r,
 		Err(e) => return APIError::from(e).into_response(),
 	};
@@ -331,11 +331,11 @@ async fn get_browse_root(
 async fn get_browse(
 	_auth: Auth,
 	api_version: APIMajorVersion,
-	State(index): State<index::Index>,
+	State(browser): State<collection::Browser>,
 	Path(path): Path<String>,
 ) -> Response {
 	let path = percent_decode_str(&path).decode_utf8_lossy();
-	let result = match index.browse(std::path::Path::new(path.as_ref())).await {
+	let result = match browser.browse(std::path::Path::new(path.as_ref())).await {
 		Ok(r) => r,
 		Err(e) => return APIError::from(e).into_response(),
 	};
@@ -345,9 +345,9 @@ async fn get_browse(
 async fn get_flatten_root(
 	_auth: Auth,
 	api_version: APIMajorVersion,
-	State(index): State<index::Index>,
+	State(browser): State<collection::Browser>,
 ) -> Response {
-	let songs = match index.flatten(std::path::Path::new("")).await {
+	let songs = match browser.flatten(std::path::Path::new("")).await {
 		Ok(s) => s,
 		Err(e) => return APIError::from(e).into_response(),
 	};
@@ -357,11 +357,11 @@ async fn get_flatten_root(
 async fn get_flatten(
 	_auth: Auth,
 	api_version: APIMajorVersion,
-	State(index): State<index::Index>,
+	State(browser): State<collection::Browser>,
 	Path(path): Path<String>,
 ) -> Response {
 	let path = percent_decode_str(&path).decode_utf8_lossy();
-	let songs = match index.flatten(std::path::Path::new(path.as_ref())).await {
+	let songs = match browser.flatten(std::path::Path::new(path.as_ref())).await {
 		Ok(s) => s,
 		Err(e) => return APIError::from(e).into_response(),
 	};
@@ -371,9 +371,9 @@ async fn get_flatten(
 async fn get_random(
 	_auth: Auth,
 	api_version: APIMajorVersion,
-	State(index): State<index::Index>,
+	State(browser): State<collection::Browser>,
 ) -> Response {
-	let directories = match index.get_random_albums(20).await {
+	let directories = match browser.get_random_albums(20).await {
 		Ok(d) => d,
 		Err(e) => return APIError::from(e).into_response(),
 	};
@@ -383,9 +383,9 @@ async fn get_random(
 async fn get_recent(
 	_auth: Auth,
 	api_version: APIMajorVersion,
-	State(index): State<index::Index>,
+	State(browser): State<collection::Browser>,
 ) -> Response {
-	let directories = match index.get_recent_albums(20).await {
+	let directories = match browser.get_recent_albums(20).await {
 		Ok(d) => d,
 		Err(e) => return APIError::from(e).into_response(),
 	};
@@ -395,9 +395,9 @@ async fn get_recent(
 async fn get_search_root(
 	_auth: Auth,
 	api_version: APIMajorVersion,
-	State(index): State<index::Index>,
+	State(browser): State<collection::Browser>,
 ) -> Response {
-	let files = match index.search("").await {
+	let files = match browser.search("").await {
 		Ok(f) => f,
 		Err(e) => return APIError::from(e).into_response(),
 	};
@@ -407,10 +407,10 @@ async fn get_search_root(
 async fn get_search(
 	_auth: Auth,
 	api_version: APIMajorVersion,
-	State(index): State<index::Index>,
+	State(browser): State<collection::Browser>,
 	Path(query): Path<String>,
 ) -> Response {
-	let files = match index.search(&query).await {
+	let files = match browser.search(&query).await {
 		Ok(f) => f,
 		Err(e) => return APIError::from(e).into_response(),
 	};

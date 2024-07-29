@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::app::{config, ddns, index, scanner, settings, thumbnail, user, vfs};
+use crate::app::{collection, config, ddns, settings, thumbnail, user, vfs};
 use std::convert::From;
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
@@ -234,11 +234,11 @@ pub enum CollectionFile {
 	Song(Song),
 }
 
-impl From<index::CollectionFile> for CollectionFile {
-	fn from(f: index::CollectionFile) -> Self {
+impl From<collection::File> for CollectionFile {
+	fn from(f: collection::File) -> Self {
 		match f {
-			index::CollectionFile::Directory(d) => Self::Directory(d.into()),
-			index::CollectionFile::Song(s) => Self::Song(s.into()),
+			collection::File::Directory(d) => Self::Directory(d.into()),
+			collection::File::Song(s) => Self::Song(s.into()),
 		}
 	}
 }
@@ -274,10 +274,10 @@ pub struct Song {
 	pub labels: Vec<String>,
 }
 
-impl From<scanner::Song> for Song {
-	fn from(s: scanner::Song) -> Self {
+impl From<collection::Song> for Song {
+	fn from(s: collection::Song) -> Self {
 		Self {
-			path: s.path,
+			path: s.virtual_path,
 			track_number: s.track_number,
 			disc_number: s.disc_number,
 			title: s.title,
@@ -298,26 +298,12 @@ impl From<scanner::Song> for Song {
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Directory {
 	pub path: String,
-	#[serde(default, skip_serializing_if = "Vec::is_empty")]
-	pub artists: Vec<String>,
-	#[serde(default, skip_serializing_if = "Option::is_none")]
-	pub year: Option<i64>,
-	#[serde(default, skip_serializing_if = "Option::is_none")]
-	pub album: Option<String>,
-	#[serde(default, skip_serializing_if = "Option::is_none")]
-	pub artwork: Option<String>,
-	pub date_added: i64,
 }
 
-impl From<scanner::Directory> for Directory {
-	fn from(d: scanner::Directory) -> Self {
+impl From<collection::Directory> for Directory {
+	fn from(d: collection::Directory) -> Self {
 		Self {
-			path: d.path,
-			artists: d.artists.0,
-			year: d.year,
-			album: d.album,
-			artwork: d.artwork,
-			date_added: d.date_added,
+			path: d.virtual_path,
 		}
 	}
 }

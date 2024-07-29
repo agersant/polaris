@@ -4,12 +4,12 @@ use std::path::PathBuf;
 use crate::db::{self, DB};
 use crate::paths::Paths;
 
+pub mod collection;
 pub mod config;
 pub mod ddns;
-pub mod index;
+pub mod formats;
 pub mod lastfm;
 pub mod playlist;
-pub mod scanner;
 pub mod settings;
 pub mod thumbnail;
 pub mod user;
@@ -35,8 +35,9 @@ pub struct App {
 	pub port: u16,
 	pub web_dir_path: PathBuf,
 	pub swagger_dir_path: PathBuf,
-	pub scanner: scanner::Scanner,
-	pub index: index::Index,
+	pub updater: collection::Updater,
+	pub browser: collection::Browser,
+	pub index: collection::Index,
 	pub config_manager: config::Manager,
 	pub ddns_manager: ddns::Manager,
 	pub lastfm_manager: lastfm::Manager,
@@ -64,9 +65,14 @@ impl App {
 		let auth_secret = settings_manager.get_auth_secret().await?;
 		let ddns_manager = ddns::Manager::new(db.clone());
 		let user_manager = user::Manager::new(db.clone(), auth_secret);
-		let scanner =
-			scanner::Scanner::new(db.clone(), vfs_manager.clone(), settings_manager.clone());
-		let index = index::Index::new(db.clone(), vfs_manager.clone());
+		let index = collection::Index::new();
+		let browser = collection::Browser::new(db.clone(), vfs_manager.clone());
+		let updater = collection::Updater::new(
+			db.clone(),
+			index.clone(),
+			settings_manager.clone(),
+			vfs_manager.clone(),
+		);
 		let config_manager = config::Manager::new(
 			settings_manager.clone(),
 			user_manager.clone(),
@@ -75,7 +81,7 @@ impl App {
 		);
 		let playlist_manager = playlist::Manager::new(db.clone(), vfs_manager.clone());
 		let thumbnail_manager = thumbnail::Manager::new(thumbnails_dir_path);
-		let lastfm_manager = lastfm::Manager::new(index.clone(), user_manager.clone());
+		let lastfm_manager = lastfm::Manager::new(browser.clone(), user_manager.clone());
 
 		if let Some(config_path) = paths.config_file_path {
 			let config = config::Config::from_path(&config_path)?;
@@ -86,7 +92,8 @@ impl App {
 			port,
 			web_dir_path: paths.web_dir_path,
 			swagger_dir_path: paths.swagger_dir_path,
-			scanner,
+			updater,
+			browser,
 			index,
 			config_manager,
 			ddns_manager,

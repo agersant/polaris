@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use thiserror::Error;
 
-use crate::app::{config, ddns, index, lastfm, playlist, settings, thumbnail, user, vfs};
+use crate::app::{collection, config, ddns, lastfm, playlist, settings, thumbnail, user, vfs};
 use crate::db;
 
 #[derive(Error, Debug)]
@@ -24,6 +24,8 @@ pub enum APIError {
 	BrancaTokenEncoding,
 	#[error("Database error:\n\n{0}")]
 	Database(sqlx::Error),
+	#[error("Directory not found: {0}")]
+	DirectoryNotFound(PathBuf),
 	#[error("DDNS update query failed with HTTP status {0}")]
 	DdnsUpdateQueryFailed(u16),
 	#[error("Cannot delete your own account")]
@@ -60,8 +62,6 @@ pub enum APIError {
 	PlaylistNotFound,
 	#[error("Settings error:\n\n{0}")]
 	Settings(settings::Error),
-	#[error("Song not found")]
-	SongMetadataNotFound,
 	#[error("Could not decode thumbnail from flac file `{0}`:\n\n{1}")]
 	ThumbnailFlacDecoding(PathBuf, metaflac::Error),
 	#[error("Thumbnail file could not be opened")]
@@ -80,6 +80,19 @@ pub enum APIError {
 	UserNotFound,
 	#[error("Path not found in virtual filesystem")]
 	VFSPathNotFound,
+}
+
+impl From<collection::Error> for APIError {
+	fn from(error: collection::Error) -> APIError {
+		match error {
+			collection::Error::DirectoryNotFound(d) => APIError::DirectoryNotFound(d),
+			collection::Error::Database(e) => APIError::Database(e),
+			collection::Error::DatabaseConnection(e) => e.into(),
+			collection::Error::Vfs(e) => e.into(),
+			collection::Error::ThreadPoolBuilder(_) => APIError::Internal,
+			collection::Error::ThreadJoining(_) => APIError::Internal,
+		}
+	}
 }
 
 impl From<config::Error> for APIError {
@@ -103,17 +116,6 @@ impl From<playlist::Error> for APIError {
 			playlist::Error::PlaylistNotFound => APIError::PlaylistNotFound,
 			playlist::Error::UserNotFound => APIError::UserNotFound,
 			playlist::Error::Vfs(e) => e.into(),
-		}
-	}
-}
-
-impl From<index::Error> for APIError {
-	fn from(error: index::Error) -> APIError {
-		match error {
-			index::Error::Database(e) => APIError::Database(e),
-			index::Error::DatabaseConnection(e) => e.into(),
-			index::Error::SongNotFound(_) => APIError::SongMetadataNotFound,
-			index::Error::Vfs(e) => e.into(),
 		}
 	}
 }
@@ -153,7 +155,6 @@ impl From<user::Error> for APIError {
 impl From<vfs::Error> for APIError {
 	fn from(error: vfs::Error) -> APIError {
 		match error {
-			vfs::Error::CouldNotMapToVirtualPath(_) => APIError::VFSPathNotFound,
 			vfs::Error::CouldNotMapToRealPath(_) => APIError::VFSPathNotFound,
 			vfs::Error::Database(e) => APIError::Database(e),
 			vfs::Error::DatabaseConnection(e) => e.into(),

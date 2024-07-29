@@ -1,8 +1,7 @@
 use core::clone::Clone;
 use sqlx::{Acquire, QueryBuilder, Sqlite};
 
-use crate::app::scanner::Song;
-use crate::app::vfs;
+use crate::app::{collection::Song, vfs};
 use crate::db::{self, DB};
 
 #[derive(thiserror::Error, Debug)]
@@ -126,8 +125,6 @@ impl Manager {
 		playlist_name: &str,
 		owner: &str,
 	) -> Result<Vec<Song>, Error> {
-		let vfs = self.vfs_manager.get_vfs().await?;
-
 		let songs = {
 			let mut connection = self.db.connect().await?;
 
@@ -163,13 +160,7 @@ impl Manager {
 			.await?
 		};
 
-		// Map real path to virtual paths
-		let virtual_songs = songs
-			.into_iter()
-			.filter_map(|s| s.virtualize(&vfs))
-			.collect();
-
-		Ok(virtual_songs)
+		Ok(songs)
 	}
 
 	pub async fn delete_playlist(&self, playlist_name: &str, owner: &str) -> Result<(), Error> {
@@ -231,21 +222,21 @@ mod test {
 
 	#[tokio::test]
 	async fn save_playlist_is_idempotent() {
-		let ctx = test::ContextBuilder::new(test_name!())
+		let mut ctx = test::ContextBuilder::new(test_name!())
 			.user(TEST_USER, TEST_PASSWORD, false)
 			.mount(TEST_MOUNT_NAME, "test-data/small-collection")
 			.build()
 			.await;
 
-		ctx.scanner.scan().await.unwrap();
+		ctx.updater.update().await.unwrap();
 
 		let playlist_content: Vec<String> = ctx
-			.index
+			.browser
 			.flatten(Path::new(TEST_MOUNT_NAME))
 			.await
 			.unwrap()
 			.into_iter()
-			.map(|s| s.path)
+			.map(|s| s.virtual_path)
 			.collect();
 		assert_eq!(playlist_content.len(), 13);
 
@@ -296,21 +287,21 @@ mod test {
 
 	#[tokio::test]
 	async fn read_playlist_golden_path() {
-		let ctx = test::ContextBuilder::new(test_name!())
+		let mut ctx = test::ContextBuilder::new(test_name!())
 			.user(TEST_USER, TEST_PASSWORD, false)
 			.mount(TEST_MOUNT_NAME, "test-data/small-collection")
 			.build()
 			.await;
 
-		ctx.scanner.scan().await.unwrap();
+		ctx.updater.update().await.unwrap();
 
 		let playlist_content: Vec<String> = ctx
-			.index
+			.browser
 			.flatten(Path::new(TEST_MOUNT_NAME))
 			.await
 			.unwrap()
 			.into_iter()
-			.map(|s| s.path)
+			.map(|s| s.virtual_path)
 			.collect();
 		assert_eq!(playlist_content.len(), 13);
 
@@ -336,6 +327,6 @@ mod test {
 		]
 		.iter()
 		.collect();
-		assert_eq!(songs[0].path, first_song_path.to_str().unwrap());
+		assert_eq!(songs[0].virtual_path, first_song_path.to_str().unwrap());
 	}
 }

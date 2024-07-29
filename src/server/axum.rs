@@ -27,6 +27,18 @@ pub async fn launch(app: App) -> Result<(), std::io::Error> {
 	Ok(())
 }
 
+impl FromRef<App> for app::collection::Browser {
+	fn from_ref(app: &App) -> Self {
+		app.browser.clone()
+	}
+}
+
+impl FromRef<App> for app::collection::Updater {
+	fn from_ref(app: &App) -> Self {
+		app.updater.clone()
+	}
+}
+
 impl FromRef<App> for app::config::Manager {
 	fn from_ref(app: &App) -> Self {
 		app.config_manager.clone()
@@ -36,12 +48,6 @@ impl FromRef<App> for app::config::Manager {
 impl FromRef<App> for app::ddns::Manager {
 	fn from_ref(app: &App) -> Self {
 		app.ddns_manager.clone()
-	}
-}
-
-impl FromRef<App> for app::index::Index {
-	fn from_ref(app: &App) -> Self {
-		app.index.clone()
 	}
 }
 
@@ -60,12 +66,6 @@ impl FromRef<App> for app::playlist::Manager {
 impl FromRef<App> for app::user::Manager {
 	fn from_ref(app: &App) -> Self {
 		app.user_manager.clone()
-	}
-}
-
-impl FromRef<App> for app::scanner::Scanner {
-	fn from_ref(app: &App) -> Self {
-		app.scanner.clone()
 	}
 }
 
