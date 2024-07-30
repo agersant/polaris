@@ -14,7 +14,7 @@ use crate::{
 #[derive(Clone)]
 pub struct Updater {
 	db: DB,
-	index: Index,
+	index_manager: IndexManager,
 	settings_manager: settings::Manager,
 	vfs_manager: vfs::Manager,
 	pending_scan: Arc<Notify>,
@@ -23,13 +23,13 @@ pub struct Updater {
 impl Updater {
 	pub fn new(
 		db: DB,
-		index: Index,
+		index_manager: IndexManager,
 		settings_manager: settings::Manager,
 		vfs_manager: vfs::Manager,
 	) -> Self {
 		let updater = Self {
 			db,
-			index,
+			index_manager,
 			vfs_manager,
 			settings_manager,
 			pending_scan: Arc::new(Notify::new()),
@@ -123,7 +123,7 @@ impl Updater {
 
 		let song_task = tokio::spawn(async move {
 			let capacity = 500;
-			let mut lookup_tables = Lookups::default();
+			let mut index = Index::default();
 			let mut buffer: Vec<Song> = Vec::with_capacity(capacity);
 
 			loop {
@@ -134,18 +134,18 @@ impl Updater {
 					0 => break,
 					_ => {
 						for song in buffer.drain(0..) {
-							lookup_tables.add_song(&song);
+							index.add_song(&song);
 							song_inserter.insert(song).await;
 						}
 					}
 				}
 			}
 			song_inserter.flush().await;
-			lookup_tables
+			index
 		});
 
-		let lookup_tables = tokio::join!(scanner.scan(), directory_task, song_task).2?;
-		self.index.replace_lookup_tables(lookup_tables).await;
+		let index = tokio::join!(scanner.scan(), directory_task, song_task).2?;
+		self.index_manager.replace_index(index).await;
 
 		info!(
 			"Library index update took {} seconds",

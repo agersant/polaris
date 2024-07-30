@@ -7,7 +7,7 @@ use crate::test::*;
 pub struct Context {
 	pub db: DB,
 	pub browser: collection::Browser,
-	pub index: collection::Index,
+	pub index_manager: collection::IndexManager,
 	pub updater: collection::Updater,
 	pub config_manager: config::Manager,
 	pub ddns_manager: ddns::Manager,
@@ -68,10 +68,10 @@ impl ContextBuilder {
 			ddns_manager.clone(),
 		);
 		let browser = collection::Browser::new(db.clone(), vfs_manager.clone());
-		let index = collection::Index::new();
+		let index_manager = collection::IndexManager::new();
 		let updater = collection::Updater::new(
 			db.clone(),
-			index.clone(),
+			index_manager.clone(),
 			settings_manager.clone(),
 			vfs_manager.clone(),
 		);
@@ -82,7 +82,7 @@ impl ContextBuilder {
 		Context {
 			db,
 			browser,
-			index,
+			index_manager,
 			updater,
 			config_manager,
 			ddns_manager,

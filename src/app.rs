@@ -37,7 +37,7 @@ pub struct App {
 	pub swagger_dir_path: PathBuf,
 	pub updater: collection::Updater,
 	pub browser: collection::Browser,
-	pub index: collection::Index,
+	pub index_manager: collection::IndexManager,
 	pub config_manager: config::Manager,
 	pub ddns_manager: ddns::Manager,
 	pub lastfm_manager: lastfm::Manager,
@@ -65,11 +65,11 @@ impl App {
 		let auth_secret = settings_manager.get_auth_secret().await?;
 		let ddns_manager = ddns::Manager::new(db.clone());
 		let user_manager = user::Manager::new(db.clone(), auth_secret);
-		let index = collection::Index::new();
+		let index_manager = collection::IndexManager::new();
 		let browser = collection::Browser::new(db.clone(), vfs_manager.clone());
 		let updater = collection::Updater::new(
 			db.clone(),
-			index.clone(),
+			index_manager.clone(),
 			settings_manager.clone(),
 			vfs_manager.clone(),
 		);
@@ -94,7 +94,7 @@ impl App {
 			swagger_dir_path: paths.swagger_dir_path,
 			updater,
 			browser,
-			index,
+			index_manager,
 			config_manager,
 			ddns_manager,
 			lastfm_manager,

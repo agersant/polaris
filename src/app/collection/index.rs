@@ -9,27 +9,27 @@ use tokio::sync::RwLock;
 use crate::app::collection;
 
 #[derive(Clone)]
-pub struct Index {
-	lookups: Arc<RwLock<Lookups>>,
+pub struct IndexManager {
+	index: Arc<RwLock<Index>>,
 }
 
-impl Index {
+impl IndexManager {
 	pub fn new() -> Self {
 		Self {
-			lookups: Arc::default(),
+			index: Arc::default(),
 		}
 	}
 
-	pub(super) async fn replace_lookup_tables(&mut self, new_lookups: Lookups) {
-		let mut lock = self.lookups.write().await;
-		*lock = new_lookups;
+	pub(super) async fn replace_index(&mut self, new_index: Index) {
+		let mut lock = self.index.write().await;
+		*lock = new_index;
 	}
 
 	pub async fn get_random_albums(
 		&self,
 		count: usize,
 	) -> Result<Vec<collection::Album>, collection::Error> {
-		let lookups = self.lookups.read().await;
+		let lookups = self.index.read().await;
 		Ok(lookups
 			.songs_by_albums
 			.keys()
@@ -56,12 +56,12 @@ struct AlbumKey {
 }
 
 #[derive(Default)]
-pub(super) struct Lookups {
+pub(super) struct Index {
 	all_songs: HashMap<String, collection::Song>,
 	songs_by_albums: HashMap<AlbumKey, HashSet<String>>, // TODO should this store collection::Album structs instead?
 }
 
-impl Lookups {
+impl Index {
 	pub fn add_song(&mut self, song: &collection::Song) {
 		self.all_songs
 			.insert(song.virtual_path.clone(), song.clone());
@@ -125,7 +125,7 @@ mod test {
 			.build()
 			.await;
 		ctx.updater.update().await.unwrap();
-		let albums = ctx.index.get_random_albums(1).await.unwrap();
+		let albums = ctx.index_manager.get_random_albums(1).await.unwrap();
 		assert_eq!(albums.len(), 1);
 	}
 
@@ -136,7 +136,7 @@ mod test {
 			.build()
 			.await;
 		ctx.updater.update().await.unwrap();
-		let albums = ctx.index.get_recent_albums(2).await.unwrap();
+		let albums = ctx.index_manager.get_recent_albums(2).await.unwrap();
 		assert_eq!(albums.len(), 2);
 	}
 }

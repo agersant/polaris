@@ -33,9 +33,9 @@ impl FromRef<App> for app::collection::Browser {
 	}
 }
 
-impl FromRef<App> for app::collection::Index {
+impl FromRef<App> for app::collection::IndexManager {
 	fn from_ref(app: &App) -> Self {
-		app.index.clone()
+		app.index_manager.clone()
 	}
 }
 

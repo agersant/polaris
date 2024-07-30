@@ -368,9 +368,9 @@ async fn get_flatten(
 async fn get_random(
 	_auth: Auth,
 	api_version: APIMajorVersion,
-	State(index): State<collection::Index>,
+	State(index_manager): State<collection::IndexManager>,
 ) -> Response {
-	let albums = match index.get_random_albums(20).await {
+	let albums = match index_manager.get_random_albums(20).await {
 		Ok(d) => d,
 		Err(e) => return APIError::from(e).into_response(),
 	};
@@ -380,9 +380,9 @@ async fn get_random(
 async fn get_recent(
 	_auth: Auth,
 	api_version: APIMajorVersion,
-	State(index): State<collection::Index>,
+	State(index_manager): State<collection::IndexManager>,
 ) -> Response {
-	let albums = match index.get_recent_albums(20).await {
+	let albums = match index_manager.get_recent_albums(20).await {
 		Ok(d) => d,
 		Err(e) => return APIError::from(e).into_response(),
 	};
