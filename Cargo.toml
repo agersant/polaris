@@ -13,6 +13,7 @@ ape = "0.5"
 axum-extra = { version = "0.9.3", features = ["typed-header"] }
 axum-range = "0.4.0"
 base64 = "0.22.1"
+bitcode = { version = "0.6.3", features = ["serde"] }
 branca = "0.10.1"
 crossbeam-channel = "0.5.13"
 futures-util = { version = "0.3.30" }

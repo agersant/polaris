@@ -67,7 +67,7 @@ impl App {
 		let auth_secret = settings_manager.get_auth_secret().await?;
 		let ddns_manager = ddns::Manager::new(db.clone());
 		let user_manager = user::Manager::new(db.clone(), auth_secret);
-		let index_manager = collection::IndexManager::new();
+		let index_manager = collection::IndexManager::new(db.clone()).await;
 		let browser = collection::Browser::new(db.clone(), vfs_manager.clone());
 		let updater = collection::Updater::new(
 			db.clone(),

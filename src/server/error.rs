@@ -89,6 +89,8 @@ impl From<collection::Error> for APIError {
 			collection::Error::Database(e) => APIError::Database(e),
 			collection::Error::DatabaseConnection(e) => e.into(),
 			collection::Error::Vfs(e) => e.into(),
+			collection::Error::IndexDeserializationError => APIError::Internal,
+			collection::Error::IndexSerializationError => APIError::Internal,
 			collection::Error::ThreadPoolBuilder(_) => APIError::Internal,
 			collection::Error::ThreadJoining(_) => APIError::Internal,
 		}

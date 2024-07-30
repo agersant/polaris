@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use serde::{Deserialize, Serialize};
 use sqlx::prelude::FromRow;
 
 use crate::{
@@ -7,7 +8,7 @@ use crate::{
 	db,
 };
 
-#[derive(Clone, Debug, FromRow, PartialEq, Eq)]
+#[derive(Clone, Debug, FromRow, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MultiString(pub Vec<String>);
 
 impl MultiString {
@@ -33,6 +34,10 @@ pub enum Error {
 	DatabaseConnection(#[from] db::Error),
 	#[error(transparent)]
 	Vfs(#[from] vfs::Error),
+	#[error("Could not serialize collection")]
+	IndexDeserializationError,
+	#[error("Could not deserialize collection")]
+	IndexSerializationError,
 	#[error(transparent)]
 	ThreadPoolBuilder(#[from] rayon::ThreadPoolBuildError),
 	#[error(transparent)]
@@ -45,7 +50,7 @@ pub enum File {
 	Song(Song),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Song {
 	pub id: i64,
 	pub path: String,

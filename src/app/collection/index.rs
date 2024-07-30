@@ -4,26 +4,65 @@ use std::{
 	sync::Arc,
 };
 
+use log::{error, info};
 use rand::{rngs::ThreadRng, seq::IteratorRandom};
+use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 
-use crate::app::collection;
+use crate::{app::collection, db::DB};
 
 #[derive(Clone)]
 pub struct IndexManager {
+	db: DB,
 	index: Arc<RwLock<Index>>,
 }
 
 impl IndexManager {
-	pub fn new() -> Self {
-		Self {
+	pub async fn new(db: DB) -> Self {
+		let mut index_manager = Self {
+			db,
 			index: Arc::default(),
+		};
+		if let Err(e) = index_manager.try_restore_index().await {
+			error!("Failed to restore index: {}", e);
 		}
+		index_manager
 	}
 
 	pub(super) async fn replace_index(&mut self, new_index: Index) {
 		let mut lock = self.index.write().await;
 		*lock = new_index;
+	}
+
+	pub(super) async fn persist_index(&mut self, index: &Index) -> Result<(), collection::Error> {
+		let serialized = match bitcode::serialize(index) {
+			Ok(s) => s,
+			Err(_) => return Err(collection::Error::IndexSerializationError),
+		};
+		sqlx::query!("UPDATE collection_index SET content = $1", serialized)
+			.execute(self.db.connect().await?.as_mut())
+			.await?;
+		Ok(())
+	}
+
+	async fn try_restore_index(&mut self) -> Result<bool, collection::Error> {
+		let serialized = sqlx::query_scalar!("SELECT content FROM collection_index")
+			.fetch_one(self.db.connect().await?.as_mut())
+			.await?;
+
+		let Some(serialized) = serialized else {
+			info!("Database did not contain a collection to restore");
+			return Ok(false);
+		};
+
+		let index = match bitcode::deserialize(&serialized[..]) {
+			Ok(i) => i,
+			Err(_) => return Err(collection::Error::IndexDeserializationError),
+		};
+
+		self.replace_index(index).await;
+
+		Ok(true)
 	}
 
 	pub async fn get_random_albums(
@@ -119,7 +158,7 @@ impl IndexBuilder {
 	}
 }
 
-#[derive(Default)]
+#[derive(Default, Serialize, Deserialize)]
 pub(super) struct Index {
 	songs: HashMap<SongID, collection::Song>,
 	albums: HashMap<AlbumID, Album>,
@@ -148,10 +187,10 @@ impl Index {
 	}
 }
 
-#[derive(Clone, Copy, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct SongID(u64);
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct SongKey {
 	pub virtual_path: String,
 }
@@ -177,7 +216,7 @@ impl collection::Song {
 	}
 }
 
-#[derive(Default)]
+#[derive(Default, Serialize, Deserialize)]
 struct Album {
 	pub name: Option<String>,
 	pub artwork: Option<String>,
@@ -187,7 +226,7 @@ struct Album {
 	pub songs: HashSet<SongID>,
 }
 
-#[derive(Clone, Copy, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct AlbumID(u64);
 
 #[derive(Clone, Eq, Hash, PartialEq)]

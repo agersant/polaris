@@ -75,6 +75,13 @@ CREATE TABLE songs (
 	UNIQUE(path) ON CONFLICT REPLACE
 );
 
+CREATE TABLE collection_index (
+	id INTEGER PRIMARY KEY NOT NULL CHECK(id = 0),
+	content BLOB
+);
+
+INSERT INTO collection_index (id, content) VALUES (0, NULL);
+
 CREATE TABLE playlists (
 	id INTEGER PRIMARY KEY NOT NULL,
 	owner INTEGER NOT NULL,

@@ -68,7 +68,7 @@ impl ContextBuilder {
 			ddns_manager.clone(),
 		);
 		let browser = collection::Browser::new(db.clone(), vfs_manager.clone());
-		let index_manager = collection::IndexManager::new();
+		let index_manager = collection::IndexManager::new(db.clone()).await;
 		let updater = collection::Updater::new(
 			db.clone(),
 			index_manager.clone(),
