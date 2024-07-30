@@ -21,13 +21,13 @@ pub struct Updater {
 }
 
 impl Updater {
-	pub fn new(
+	pub async fn new(
 		db: DB,
 		index_manager: IndexManager,
 		settings_manager: settings::Manager,
 		vfs_manager: vfs::Manager,
-	) -> Self {
-		let updater = Self {
+	) -> Result<Self, Error> {
+		let mut updater = Self {
 			db,
 			index_manager,
 			vfs_manager,
@@ -47,9 +47,9 @@ impl Updater {
 			}
 		});
 
-		// TODO populate index w/ whatever is already in DB
+		updater.rebuild_index().await?;
 
-		updater
+		Ok(updater)
 	}
 
 	pub fn trigger_scan(&self) {
@@ -76,9 +76,36 @@ impl Updater {
 		});
 	}
 
+	async fn rebuild_index(&mut self) -> Result<(), Error> {
+		let start = Instant::now();
+		info!("Rebuilding index from disk database");
+
+		let mut index_builder = IndexBuilder::default();
+
+		let mut connection = self.db.connect().await?;
+		let songs = sqlx::query_as!(Song, "SELECT * FROM songs")
+			.fetch_all(connection.as_mut())
+			.await?;
+
+		for song in songs {
+			index_builder.add_song(song);
+		}
+
+		self.index_manager
+			.replace_index(index_builder.build())
+			.await;
+
+		info!(
+			"Index rebuild took {} seconds",
+			start.elapsed().as_millis() as f32 / 1000.0
+		);
+
+		Ok(())
+	}
+
 	pub async fn update(&mut self) -> Result<(), Error> {
 		let start = Instant::now();
-		info!("Beginning library index update");
+		info!("Beginning collection scan");
 
 		let cleaner = Cleaner::new(self.db.clone(), self.vfs_manager.clone());
 		cleaner.clean().await?;
@@ -134,7 +161,7 @@ impl Updater {
 					0 => break,
 					_ => {
 						for song in buffer.drain(0..) {
-							index_builder.add_song(&song);
+							index_builder.add_song(song.clone());
 							song_inserter.insert(song).await;
 						}
 					}
@@ -148,7 +175,7 @@ impl Updater {
 		self.index_manager.replace_index(index).await;
 
 		info!(
-			"Library index update took {} seconds",
+			"Collection scan took {} seconds",
 			start.elapsed().as_millis() as f32 / 1000.0
 		);
 

@@ -21,6 +21,8 @@ pub mod test;
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
 	#[error(transparent)]
+	Collection(#[from] collection::Error),
+	#[error(transparent)]
 	Config(#[from] config::Error),
 	#[error(transparent)]
 	Database(#[from] db::Error),
@@ -72,7 +74,8 @@ impl App {
 			index_manager.clone(),
 			settings_manager.clone(),
 			vfs_manager.clone(),
-		);
+		)
+		.await?;
 		let config_manager = config::Manager::new(
 			settings_manager.clone(),
 			user_manager.clone(),

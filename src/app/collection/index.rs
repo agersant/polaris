@@ -61,13 +61,15 @@ pub(super) struct IndexBuilder {
 }
 
 impl IndexBuilder {
-	pub fn add_song(&mut self, song: &collection::Song) {
-		self.songs.insert(song.into(), song.clone());
-		self.add_song_to_album(song);
+	pub fn add_song(&mut self, song: collection::Song) {
+		let song_id: SongID = song.song_id();
+		self.add_song_to_album(&song);
+		self.songs.insert(song_id, song);
 	}
 
 	fn add_song_to_album(&mut self, song: &collection::Song) {
-		let album_id: AlbumID = song.into();
+		let song_id: SongID = song.song_id();
+		let album_id: AlbumID = song.album_id();
 
 		let album = match self.albums.get_mut(&album_id) {
 			Some(l) => l,
@@ -97,7 +99,7 @@ impl IndexBuilder {
 			album.artists = song.artists.0.clone();
 		}
 
-		album.songs.insert(song.into());
+		album.songs.insert(song_id);
 	}
 
 	pub fn build(self) -> Index {
@@ -168,9 +170,9 @@ impl From<&SongKey> for SongID {
 	}
 }
 
-impl From<&collection::Song> for SongID {
-	fn from(song: &collection::Song) -> Self {
-		let key: SongKey = song.into();
+impl collection::Song {
+	pub(self) fn song_id(&self) -> SongID {
+		let key: SongKey = self.into();
 		(&key).into()
 	}
 }
@@ -214,9 +216,9 @@ impl From<&AlbumKey> for AlbumID {
 	}
 }
 
-impl From<&collection::Song> for AlbumID {
-	fn from(song: &collection::Song) -> Self {
-		let key: AlbumKey = song.into();
+impl collection::Song {
+	pub(self) fn album_id(&self) -> AlbumID {
+		let key: AlbumKey = self.into();
 		(&key).into()
 	}
 }
