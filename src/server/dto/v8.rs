@@ -302,7 +302,7 @@ impl From<collection::File> for BrowserEntry {
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Album {
+pub struct AlbumHeader {
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub name: Option<String>,
 	#[serde(default, skip_serializing_if = "Option::is_none")]
@@ -313,13 +313,30 @@ pub struct Album {
 	pub year: Option<i64>,
 }
 
-impl From<collection::Album> for Album {
+impl From<collection::Album> for AlbumHeader {
 	fn from(a: collection::Album) -> Self {
 		Self {
 			name: a.name,
 			artwork: a.artwork,
 			artists: a.artists,
 			year: a.year,
+		}
+	}
+}
+
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Album {
+	#[serde(flatten)]
+	pub header: AlbumHeader,
+	pub songs: Vec<Song>,
+}
+
+impl From<collection::Album> for Album {
+	fn from(mut a: collection::Album) -> Self {
+		let songs = a.songs.drain(..).map(|s| s.into()).collect();
+		Self {
+			header: a.into(),
+			songs: songs,
 		}
 	}
 }

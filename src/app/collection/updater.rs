@@ -123,7 +123,7 @@ impl Updater {
 
 		let song_task = tokio::spawn(async move {
 			let capacity = 500;
-			let mut index = Index::default();
+			let mut index_builder = IndexBuilder::default();
 			let mut buffer: Vec<Song> = Vec::with_capacity(capacity);
 
 			loop {
@@ -134,14 +134,14 @@ impl Updater {
 					0 => break,
 					_ => {
 						for song in buffer.drain(0..) {
-							index.add_song(&song);
+							index_builder.add_song(&song);
 							song_inserter.insert(song).await;
 						}
 					}
 				}
 			}
 			song_inserter.flush().await;
-			index
+			index_builder.build()
 		});
 
 		let index = tokio::join!(scanner.scan(), directory_task, song_task).2?;

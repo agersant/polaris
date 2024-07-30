@@ -307,7 +307,7 @@ fn albums_to_response(albums: Vec<collection::Album>, api_version: APIMajorVersi
 			albums
 				.into_iter()
 				.map(|f| f.into())
-				.collect::<Vec<dto::Album>>(),
+				.collect::<Vec<dto::AlbumHeader>>(),
 		)
 		.into_response(),
 	}

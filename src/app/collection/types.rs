@@ -82,4 +82,5 @@ pub struct Album {
 	pub artists: Vec<String>,
 	pub year: Option<i64>,
 	pub date_added: i64,
+	pub songs: Vec<Song>,
 }
