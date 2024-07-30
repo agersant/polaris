@@ -164,9 +164,7 @@ impl From<&collection::Song> for SongKey {
 
 impl From<&SongKey> for SongID {
 	fn from(key: &SongKey) -> Self {
-		let mut hasher = DefaultHasher::default();
-		key.hash(&mut hasher);
-		SongID(hasher.finish())
+		SongID(key.id())
 	}
 }
 
@@ -212,9 +210,7 @@ impl From<&collection::Song> for AlbumKey {
 
 impl From<&AlbumKey> for AlbumID {
 	fn from(key: &AlbumKey) -> Self {
-		let mut hasher = DefaultHasher::default();
-		key.hash(&mut hasher);
-		AlbumID(hasher.finish())
+		AlbumID(key.id())
 	}
 }
 
@@ -222,6 +218,18 @@ impl From<&collection::Song> for AlbumID {
 	fn from(song: &collection::Song) -> Self {
 		let key: AlbumKey = song.into();
 		(&key).into()
+	}
+}
+
+trait ID {
+	fn id(&self) -> u64;
+}
+
+impl<T: Hash> ID for T {
+	fn id(&self) -> u64 {
+		let mut hasher = DefaultHasher::default();
+		self.hash(&mut hasher);
+		hasher.finish()
 	}
 }
 
