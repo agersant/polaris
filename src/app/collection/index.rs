@@ -65,6 +65,17 @@ impl IndexManager {
 		Ok(true)
 	}
 
+	pub async fn get_album(
+		&self,
+		album_key: &AlbumKey,
+	) -> Result<collection::Album, collection::Error> {
+		let index = self.index.read().await;
+		let album_id = album_key.into();
+		index
+			.get_album(album_id)
+			.ok_or_else(|| collection::Error::AlbumNotFound)
+	}
+
 	pub async fn get_random_albums(
 		&self,
 		count: usize,
@@ -134,7 +145,7 @@ impl IndexBuilder {
 
 		if !song.album_artists.0.is_empty() {
 			album.artists = song.album_artists.0.clone();
-		} else if !song.album_artists.0.is_empty() {
+		} else if !song.artists.0.is_empty() {
 			album.artists = song.artists.0.clone();
 		}
 
@@ -166,14 +177,16 @@ pub(super) struct Index {
 }
 
 impl Index {
-	pub fn get_album(&self, album_id: AlbumID) -> Option<collection::Album> {
+	pub(self) fn get_album(&self, album_id: AlbumID) -> Option<collection::Album> {
 		self.albums.get(&album_id).map(|a| {
-			let songs = a
+			let mut songs = a
 				.songs
 				.iter()
 				.filter_map(|s| self.songs.get(s))
 				.cloned()
 				.collect::<Vec<_>>();
+
+			songs.sort_by_key(|s| (s.disc_number.unwrap_or(-1), s.track_number.unwrap_or(-1)));
 
 			collection::Album {
 				name: a.name.clone(),
@@ -188,7 +201,7 @@ impl Index {
 }
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq, Serialize, Deserialize)]
-pub struct SongID(u64);
+struct SongID(u64);
 
 #[derive(Clone, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct SongKey {
@@ -227,10 +240,10 @@ struct Album {
 }
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq, Serialize, Deserialize)]
-pub struct AlbumID(u64);
+struct AlbumID(u64);
 
 #[derive(Clone, Eq, Hash, PartialEq)]
-struct AlbumKey {
+pub struct AlbumKey {
 	pub artists: Vec<String>,
 	pub name: Option<String>,
 }

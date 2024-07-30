@@ -26,6 +26,8 @@ pub enum APIError {
 	Database(sqlx::Error),
 	#[error("Directory not found: {0}")]
 	DirectoryNotFound(PathBuf),
+	#[error("Album not found")]
+	AlbumNotFound,
 	#[error("DDNS update query failed with HTTP status {0}")]
 	DdnsUpdateQueryFailed(u16),
 	#[error("Cannot delete your own account")]
@@ -86,6 +88,7 @@ impl From<collection::Error> for APIError {
 	fn from(error: collection::Error) -> APIError {
 		match error {
 			collection::Error::DirectoryNotFound(d) => APIError::DirectoryNotFound(d),
+			collection::Error::AlbumNotFound => APIError::AlbumNotFound,
 			collection::Error::Database(e) => APIError::Database(e),
 			collection::Error::DatabaseConnection(e) => e.into(),
 			collection::Error::Vfs(e) => e.into(),

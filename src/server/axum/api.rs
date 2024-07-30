@@ -12,7 +12,10 @@ use percent_encoding::percent_decode_str;
 
 use crate::{
 	app::{collection, config, ddns, lastfm, playlist, settings, thumbnail, user, vfs, App},
-	server::{dto, error::APIError, APIMajorVersion, API_MAJOR_VERSION, API_MINOR_VERSION},
+	server::{
+		dto, error::APIError, APIMajorVersion, API_ARRAY_SEPARATOR, API_MAJOR_VERSION,
+		API_MINOR_VERSION,
+	},
 };
 
 use super::auth::{AdminRights, Auth};
@@ -40,6 +43,7 @@ pub fn router() -> Router<App> {
 		.route("/browse/*path", get(get_browse))
 		.route("/flatten", get(get_flatten_root))
 		.route("/flatten/*path", get(get_flatten))
+		.route("/artists/:artists/albums/:name", get(get_album))
 		.route("/random", get(get_random))
 		.route("/recent", get(get_recent))
 		.route("/search", get(get_search_root))
@@ -363,6 +367,21 @@ async fn get_flatten(
 		Err(e) => return APIError::from(e).into_response(),
 	};
 	songs_to_response(songs, api_version)
+}
+
+async fn get_album(
+	_auth: Auth,
+	State(index_manager): State<collection::IndexManager>,
+	Path((artists, name)): Path<(String, String)>,
+) -> Result<Json<dto::Album>, APIError> {
+	let album_key = collection::AlbumKey {
+		artists: artists
+			.split(API_ARRAY_SEPARATOR)
+			.map(str::to_owned)
+			.collect::<Vec<_>>(),
+		name: (!name.is_empty()).then_some(name),
+	};
+	Ok(Json(index_manager.get_album(&album_key).await?.into()))
 }
 
 async fn get_random(

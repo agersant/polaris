@@ -28,6 +28,8 @@ impl From<Option<String>> for MultiString {
 pub enum Error {
 	#[error("Directory not found: {0}")]
 	DirectoryNotFound(PathBuf),
+	#[error("Album not found")]
+	AlbumNotFound,
 	#[error(transparent)]
 	Database(#[from] sqlx::Error),
 	#[error(transparent)]
