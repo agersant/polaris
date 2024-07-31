@@ -168,7 +168,9 @@ async fn random_golden_path() {
 	service.login().await;
 
 	let request = protocol::random::<V8>();
-	let response = service.fetch_json::<_, Vec<dto::Album>>(&request).await;
+	let response = service
+		.fetch_json::<_, Vec<dto::AlbumHeader>>(&request)
+		.await;
 	assert_eq!(response.status(), StatusCode::OK);
 	let entries = response.body();
 	assert_eq!(entries.len(), 3);
@@ -184,7 +186,9 @@ async fn random_with_trailing_slash() {
 
 	let mut request = protocol::random::<V8>();
 	add_trailing_slash(&mut request);
-	let response = service.fetch_json::<_, Vec<dto::Album>>(&request).await;
+	let response = service
+		.fetch_json::<_, Vec<dto::AlbumHeader>>(&request)
+		.await;
 	assert_eq!(response.status(), StatusCode::OK);
 	let entries = response.body();
 	assert_eq!(entries.len(), 3);
@@ -205,6 +209,7 @@ async fn random_golden_path_api_v7() {
 	assert_eq!(response.status(), StatusCode::OK);
 	let entries = response.body();
 	assert_eq!(entries.len(), 3);
+	assert!(entries[0].path.starts_with("collection/"));
 }
 
 #[tokio::test]
@@ -224,7 +229,9 @@ async fn recent_golden_path() {
 	service.login().await;
 
 	let request = protocol::recent::<V8>();
-	let response = service.fetch_json::<_, Vec<dto::Album>>(&request).await;
+	let response = service
+		.fetch_json::<_, Vec<dto::AlbumHeader>>(&request)
+		.await;
 	assert_eq!(response.status(), StatusCode::OK);
 	let entries = response.body();
 	assert_eq!(entries.len(), 3);
@@ -240,7 +247,9 @@ async fn recent_with_trailing_slash() {
 
 	let mut request = protocol::recent::<V8>();
 	add_trailing_slash(&mut request);
-	let response = service.fetch_json::<_, Vec<dto::Album>>(&request).await;
+	let response = service
+		.fetch_json::<_, Vec<dto::AlbumHeader>>(&request)
+		.await;
 	assert_eq!(response.status(), StatusCode::OK);
 	let entries = response.body();
 	assert_eq!(entries.len(), 3);
@@ -261,6 +270,7 @@ async fn recent_golden_path_api_v7() {
 	assert_eq!(response.status(), StatusCode::OK);
 	let entries = response.body();
 	assert_eq!(entries.len(), 3);
+	assert!(entries[0].path.starts_with("collection/"));
 }
 
 #[tokio::test]

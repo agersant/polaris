@@ -317,16 +317,22 @@ impl From<collection::Directory> for Directory {
 }
 
 impl From<collection::Album> for Directory {
-	fn from(a: collection::Album) -> Self {
+	fn from(album: collection::Album) -> Self {
+		let path = album
+			.songs
+			.first()
+			.map(|s| s.virtual_parent.clone())
+			.unwrap_or_default();
+
 		Self {
-			path: todo!(), // TODO implement
-			artist: match a.artists.is_empty() {
+			path,
+			artist: match album.artists.is_empty() {
 				true => None,
-				false => Some(a.artists.join("")),
+				false => Some(album.artists.join("")),
 			},
-			year: a.year,
-			album: a.name,
-			artwork: a.artwork,
+			year: album.year,
+			album: album.name,
+			artwork: album.artwork,
 		}
 	}
 }
