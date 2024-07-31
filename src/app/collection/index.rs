@@ -202,16 +202,16 @@ impl IndexBuilder {
 	fn add_album_to_artists(&mut self, song: &collection::Song) {
 		let album_id: AlbumID = song.album_id();
 
-		for artist_name in &song.album_artists.0 {
+		for artist_name in &song.album_artists {
 			let artist = self.get_or_create_artist(artist_name);
 			artist.albums.insert(album_id);
 		}
 
-		for artist_name in &song.artists.0 {
+		for artist_name in &song.artists {
 			let artist = self.get_or_create_artist(artist_name);
-			if song.album_artists.0.is_empty() {
+			if song.album_artists.is_empty() {
 				artist.albums.insert(album_id);
-			} else if !song.album_artists.0.contains(artist_name) {
+			} else if !song.album_artists.contains(artist_name) {
 				artist.album_appearances.insert(album_id);
 			}
 		}
@@ -252,10 +252,10 @@ impl IndexBuilder {
 
 		album.date_added = album.date_added.min(song.date_added);
 
-		if !song.album_artists.0.is_empty() {
-			album.artists = song.album_artists.0.clone();
-		} else if !song.artists.0.is_empty() {
-			album.artists = song.artists.0.clone();
+		if !song.album_artists.is_empty() {
+			album.artists = song.album_artists.clone();
+		} else if !song.artists.is_empty() {
+			album.artists = song.artists.clone();
 		}
 
 		album.songs.insert(song_id);
@@ -413,9 +413,9 @@ pub struct AlbumKey {
 
 impl From<&collection::Song> for AlbumKey {
 	fn from(song: &collection::Song) -> Self {
-		let album_artists = match song.album_artists.0.is_empty() {
-			true => &song.artists.0,
-			false => &song.album_artists.0,
+		let album_artists = match song.album_artists.is_empty() {
+			true => &song.artists,
+			false => &song.album_artists,
 		};
 
 		AlbumKey {

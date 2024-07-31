@@ -1,29 +1,11 @@
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
-use sqlx::prelude::FromRow;
 
 use crate::{
 	app::vfs::{self},
 	db,
 };
-
-// TODO no longer needed!!
-#[derive(Clone, Debug, FromRow, PartialEq, Eq, Serialize, Deserialize)]
-pub struct MultiString(pub Vec<String>);
-
-impl MultiString {
-	pub const SEPARATOR: &'static str = "\u{000C}";
-}
-
-impl From<Option<String>> for MultiString {
-	fn from(value: Option<String>) -> Self {
-		match value {
-			None => Self(Vec::new()),
-			Some(s) => Self(s.split(Self::SEPARATOR).map(|s| s.to_string()).collect()),
-		}
-	}
-}
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -63,16 +45,16 @@ pub struct Song {
 	pub track_number: Option<i64>,
 	pub disc_number: Option<i64>,
 	pub title: Option<String>,
-	pub artists: MultiString,
-	pub album_artists: MultiString,
+	pub artists: Vec<String>,
+	pub album_artists: Vec<String>,
 	pub year: Option<i64>,
 	pub album: Option<String>,
 	pub artwork: Option<PathBuf>,
 	pub duration: Option<i64>,
-	pub lyricists: MultiString,
-	pub composers: MultiString,
-	pub genres: MultiString,
-	pub labels: MultiString,
+	pub lyricists: Vec<String>,
+	pub composers: Vec<String>,
+	pub genres: Vec<String>,
+	pub labels: Vec<String>,
 	pub date_added: i64,
 }
 

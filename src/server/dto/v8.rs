@@ -266,16 +266,16 @@ impl From<collection::Song> for Song {
 			track_number: s.track_number,
 			disc_number: s.disc_number,
 			title: s.title,
-			artists: s.artists.0,
-			album_artists: s.album_artists.0,
+			artists: s.artists,
+			album_artists: s.album_artists,
 			year: s.year,
 			album: s.album,
 			artwork: s.artwork,
 			duration: s.duration,
-			lyricists: s.lyricists.0,
-			composers: s.composers.0,
-			genres: s.genres.0,
-			labels: s.labels.0,
+			lyricists: s.lyricists,
+			composers: s.composers,
+			genres: s.genres,
+			labels: s.labels,
 		}
 	}
 }

@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::app::{
-	collection::{self, MultiString},
+	collection::{self},
 	config, ddns, settings, thumbnail, user, vfs,
 };
 use std::{convert::From, path::PathBuf};
@@ -267,12 +267,16 @@ impl From<collection::File> for CollectionFile {
 	}
 }
 
-impl MultiString {
+trait VecExt {
+	fn to_v7_string(&self) -> Option<String>;
+}
+
+impl VecExt for Vec<String> {
 	fn to_v7_string(&self) -> Option<String> {
-		if self.0.is_empty() {
+		if self.is_empty() {
 			None
 		} else {
-			Some(self.0.join(""))
+			Some(self.join(""))
 		}
 	}
 }
@@ -302,7 +306,7 @@ impl From<collection::Song> for Song {
 			track_number: s.track_number,
 			disc_number: s.disc_number,
 			title: s.title,
-			artist: s.artists.0.first().cloned(),
+			artist: s.artists.first().cloned(),
 			album_artist: s.album_artists.to_v7_string(),
 			year: s.year,
 			album: s.album,

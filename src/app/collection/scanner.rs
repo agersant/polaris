@@ -9,7 +9,7 @@ use tokio::sync::mpsc::UnboundedSender;
 
 use crate::app::vfs;
 use crate::app::{
-	collection::{self, MultiString},
+	collection::{self},
 	formats,
 };
 
@@ -135,16 +135,16 @@ fn process_directory<P: AsRef<Path>, Q: AsRef<Path>>(
 				track_number: metadata.track_number.map(|n| n as i64),
 				disc_number: metadata.disc_number.map(|n| n as i64),
 				title: metadata.title,
-				artists: MultiString(metadata.artists),
-				album_artists: MultiString(metadata.album_artists),
+				artists: metadata.artists,
+				album_artists: metadata.album_artists,
 				year: metadata.year.map(|n| n as i64),
 				album: metadata.album,
 				artwork: metadata.has_artwork.then(|| entry_virtual_path.clone()),
 				duration: metadata.duration.map(|n| n as i64),
-				lyricists: MultiString(metadata.lyricists),
-				composers: MultiString(metadata.composers),
-				genres: MultiString(metadata.genres),
-				labels: MultiString(metadata.labels),
+				lyricists: metadata.lyricists,
+				composers: metadata.composers,
+				genres: metadata.genres,
+				labels: metadata.labels,
 				date_added: get_date_created(&entry_real_path).unwrap_or_default(),
 			});
 		} else if artwork_file.is_none()

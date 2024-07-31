@@ -157,11 +157,8 @@ mod test {
 		assert_eq!(song.track_number, Some(5));
 		assert_eq!(song.disc_number, None);
 		assert_eq!(song.title, Some("シャーベット (Sherbet)".to_owned()));
-		assert_eq!(
-			song.artists,
-			collection::MultiString(vec!["Tobokegao".to_owned()])
-		);
-		assert_eq!(song.album_artists, collection::MultiString(vec![]));
+		assert_eq!(song.artists, vec!["Tobokegao".to_owned()]);
+		assert_eq!(song.album_artists, Vec::<String>::new());
 		assert_eq!(song.album, Some("Picnic".to_owned()));
 		assert_eq!(song.year, Some(2016));
 		assert_eq!(song.artwork, Some(artwork_virtual_path));
