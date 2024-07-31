@@ -302,6 +302,21 @@ impl From<collection::File> for BrowserEntry {
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Artist {
+	pub name: Option<String>,
+	pub albums: Vec<AlbumHeader>,
+}
+
+impl From<collection::Artist> for Artist {
+	fn from(a: collection::Artist) -> Self {
+		Self {
+			name: a.name,
+			albums: a.albums.into_iter().map(|a| a.into()).collect(),
+		}
+	}
+}
+
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AlbumHeader {
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub name: Option<String>,

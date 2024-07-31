@@ -1,4 +1,5 @@
 use std::{
+	borrow::BorrowMut,
 	collections::{HashMap, HashSet},
 	hash::{DefaultHasher, Hash, Hasher},
 	sync::Arc,
@@ -65,6 +66,17 @@ impl IndexManager {
 		Ok(true)
 	}
 
+	pub async fn get_artist(
+		&self,
+		artist_key: &ArtistKey,
+	) -> Result<collection::Artist, collection::Error> {
+		let index = self.index.read().await;
+		let artist_id = artist_key.into();
+		index
+			.get_artist(artist_id)
+			.ok_or_else(|| collection::Error::ArtistNotFound)
+	}
+
 	pub async fn get_album(
 		&self,
 		album_key: &AlbumKey,
@@ -107,6 +119,7 @@ impl IndexManager {
 #[derive(Default)]
 pub(super) struct IndexBuilder {
 	songs: HashMap<SongID, collection::Song>,
+	artists: HashMap<ArtistID, Artist>,
 	albums: HashMap<AlbumID, Album>,
 }
 
@@ -114,20 +127,48 @@ impl IndexBuilder {
 	pub fn add_song(&mut self, song: collection::Song) {
 		let song_id: SongID = song.song_id();
 		self.add_song_to_album(&song);
+		self.add_album_to_artists(&song);
 		self.songs.insert(song_id, song);
+	}
+
+	fn add_album_to_artists(&mut self, song: &collection::Song) {
+		let album_id: AlbumID = song.album_id();
+
+		for artist_name in &song.album_artists.0 {
+			let artist = self.get_or_create_artist(artist_name);
+			artist.albums.insert(album_id);
+		}
+
+		for artist_name in &song.artists.0 {
+			let artist = self.get_or_create_artist(artist_name);
+			if song.album_artists.0.is_empty() {
+				artist.albums.insert(album_id);
+			} else if !song.album_artists.0.contains(artist_name) {
+				artist.album_appearances.insert(album_id);
+			}
+		}
+	}
+
+	fn get_or_create_artist(&mut self, name: &String) -> &mut Artist {
+		let artist_key = ArtistKey {
+			name: Some(name.clone()),
+		};
+		let artist_id: ArtistID = (&artist_key).into();
+		self.artists
+			.entry(artist_id)
+			.or_insert_with(|| Artist {
+				name: Some(name.clone()),
+				albums: HashSet::new(),
+				album_appearances: HashSet::new(),
+			})
+			.borrow_mut()
 	}
 
 	fn add_song_to_album(&mut self, song: &collection::Song) {
 		let song_id: SongID = song.song_id();
 		let album_id: AlbumID = song.album_id();
 
-		let album = match self.albums.get_mut(&album_id) {
-			Some(l) => l,
-			None => {
-				self.albums.insert(album_id, Album::default());
-				self.albums.get_mut(&album_id).unwrap()
-			}
-		};
+		let album = self.albums.entry(album_id).or_default().borrow_mut();
 
 		if album.name.is_none() {
 			album.name = song.album.clone();
@@ -163,6 +204,7 @@ impl IndexBuilder {
 
 		Index {
 			songs: self.songs,
+			artists: self.artists,
 			albums: self.albums,
 			recent_albums,
 		}
@@ -172,11 +214,29 @@ impl IndexBuilder {
 #[derive(Default, Serialize, Deserialize)]
 pub(super) struct Index {
 	songs: HashMap<SongID, collection::Song>,
+	artists: HashMap<ArtistID, Artist>,
 	albums: HashMap<AlbumID, Album>,
 	recent_albums: Vec<AlbumID>,
 }
 
 impl Index {
+	pub(self) fn get_artist(&self, artist_id: ArtistID) -> Option<collection::Artist> {
+		self.artists.get(&artist_id).map(|a| {
+			let mut albums = a
+				.albums
+				.iter()
+				.filter_map(|album_id| self.get_album(*album_id))
+				.collect::<Vec<_>>();
+
+			albums.sort_by(|a, b| (a.year, &a.name).partial_cmp(&(b.year, &b.name)).unwrap());
+
+			collection::Artist {
+				name: a.name.clone(),
+				albums: albums,
+			}
+		})
+	}
+
 	pub(self) fn get_album(&self, album_id: AlbumID) -> Option<collection::Album> {
 		self.albums.get(&album_id).map(|a| {
 			let mut songs = a
@@ -229,7 +289,28 @@ impl collection::Song {
 	}
 }
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
+struct Artist {
+	pub name: Option<String>,
+	pub albums: HashSet<AlbumID>,
+	pub album_appearances: HashSet<AlbumID>,
+}
+
+#[derive(Clone, Copy, Eq, Hash, PartialEq, Serialize, Deserialize)]
+struct ArtistID(u64);
+
+#[derive(Clone, Eq, Hash, PartialEq)]
+pub struct ArtistKey {
+	pub name: Option<String>,
+}
+
+impl From<&ArtistKey> for ArtistID {
+	fn from(key: &ArtistKey) -> Self {
+		ArtistID(key.id())
+	}
+}
+
+#[derive(Clone, Default, Serialize, Deserialize)]
 struct Album {
 	pub name: Option<String>,
 	pub artwork: Option<String>,

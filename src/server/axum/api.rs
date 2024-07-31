@@ -43,6 +43,7 @@ pub fn router() -> Router<App> {
 		.route("/browse/*path", get(get_browse))
 		.route("/flatten", get(get_flatten_root))
 		.route("/flatten/*path", get(get_flatten))
+		.route("/artists/:artist", get(get_artist))
 		.route("/artists/:artists/albums/:name", get(get_album))
 		.route("/random", get(get_random))
 		.route("/recent", get(get_recent))
@@ -367,6 +368,17 @@ async fn get_flatten(
 		Err(e) => return APIError::from(e).into_response(),
 	};
 	songs_to_response(songs, api_version)
+}
+
+async fn get_artist(
+	_auth: Auth,
+	State(index_manager): State<collection::IndexManager>,
+	Path(artist): Path<String>,
+) -> Result<Json<dto::Artist>, APIError> {
+	let artist_key = collection::ArtistKey {
+		name: (!artist.is_empty()).then_some(artist),
+	};
+	Ok(Json(index_manager.get_artist(&artist_key).await?.into()))
 }
 
 async fn get_album(

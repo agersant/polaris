@@ -46,6 +46,8 @@
             cargo-watch
             rust-analyzer
             sqlx-cli
+            samply
+            sqlitebrowser
           ];
 
           env = {

@@ -28,6 +28,8 @@ impl From<Option<String>> for MultiString {
 pub enum Error {
 	#[error("Directory not found: {0}")]
 	DirectoryNotFound(PathBuf),
+	#[error("Artist not found")]
+	ArtistNotFound,
 	#[error("Album not found")]
 	AlbumNotFound,
 	#[error(transparent)]
@@ -36,9 +38,9 @@ pub enum Error {
 	DatabaseConnection(#[from] db::Error),
 	#[error(transparent)]
 	Vfs(#[from] vfs::Error),
-	#[error("Could not serialize collection")]
-	IndexDeserializationError,
 	#[error("Could not deserialize collection")]
+	IndexDeserializationError,
+	#[error("Could not serialize collection")]
 	IndexSerializationError,
 	#[error(transparent)]
 	ThreadPoolBuilder(#[from] rayon::ThreadPoolBuildError),
@@ -80,6 +82,12 @@ pub struct Directory {
 	pub path: String,
 	pub virtual_path: String,
 	pub virtual_parent: Option<String>,
+}
+
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct Artist {
+	pub name: Option<String>,
+	pub albums: Vec<Album>,
 }
 
 #[derive(Debug, Default, PartialEq, Eq)]
