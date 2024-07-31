@@ -78,9 +78,6 @@ impl Updater {
 		let start = Instant::now();
 		info!("Beginning collection scan");
 
-		let cleaner = Cleaner::new(self.db.clone(), self.vfs_manager.clone());
-		cleaner.clean().await?;
-
 		let album_art_pattern = self
 			.settings_manager
 			.get_index_album_art_pattern()
@@ -97,7 +94,6 @@ impl Updater {
 			album_art_pattern,
 		);
 
-		let mut song_inserter = Inserter::<Song>::new(self.db.clone());
 		let mut directory_inserter = Inserter::<Directory>::new(self.db.clone());
 
 		let directory_task = tokio::spawn(async move {
@@ -132,13 +128,11 @@ impl Updater {
 					0 => break,
 					_ => {
 						for song in buffer.drain(0..) {
-							index_builder.add_song(song.clone());
-							song_inserter.insert(song).await;
+							index_builder.add_song(song);
 						}
 					}
 				}
 			}
-			song_inserter.flush().await;
 			index_builder.build()
 		});
 
@@ -148,6 +142,33 @@ impl Updater {
 
 		info!(
 			"Collection scan took {} seconds",
+			start.elapsed().as_millis() as f32 / 1000.0
+		);
+
+		let start = Instant::now();
+		info!("Beginning collection DB update");
+
+		tokio::task::spawn({
+			let db = self.db.clone();
+			let vfs_manager = self.vfs_manager.clone();
+			let index_manager = self.index_manager.clone();
+			async move {
+				let cleaner = Cleaner::new(db.clone(), vfs_manager);
+				if let Err(e) = cleaner.clean().await {
+					error!("Error while cleaning up database: {}", e);
+				}
+
+				let mut song_inserter = Inserter::<Song>::new(db.clone());
+				for song in index_manager.get_songs().await {
+					song_inserter.insert(song).await;
+				}
+				song_inserter.flush().await;
+			}
+		})
+		.await?;
+
+		info!(
+			"Collection DB update took {} seconds",
 			start.elapsed().as_millis() as f32 / 1000.0
 		);
 

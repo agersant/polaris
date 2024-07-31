@@ -43,7 +43,7 @@ impl Scanner {
 		let num_threads = std::env::var_os(key)
 			.map(|v| v.to_string_lossy().to_string())
 			.and_then(|v| usize::from_str(&v).ok())
-			.unwrap_or_else(|| min(num_cpus::get(), 4));
+			.unwrap_or_else(|| min(num_cpus::get(), 8));
 		info!("Browsing collection using {} threads", num_threads);
 
 		let directories_output = self.directories_output.clone();

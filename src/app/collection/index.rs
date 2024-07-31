@@ -2,20 +2,20 @@ use std::{
 	borrow::BorrowMut,
 	collections::{HashMap, HashSet},
 	hash::{DefaultHasher, Hash, Hasher},
-	sync::Arc,
+	sync::{Arc, RwLock},
 };
 
 use log::{error, info};
 use rand::{rngs::ThreadRng, seq::IteratorRandom};
 use serde::{Deserialize, Serialize};
-use tokio::sync::RwLock;
+use tokio::task::spawn_blocking;
 
 use crate::{app::collection, db::DB};
 
 #[derive(Clone)]
 pub struct IndexManager {
 	db: DB,
-	index: Arc<RwLock<Index>>,
+	index: Arc<RwLock<Index>>, // Not a tokio RwLock as we want to do CPU-bound work with Index
 }
 
 impl IndexManager {
@@ -31,8 +31,15 @@ impl IndexManager {
 	}
 
 	pub(super) async fn replace_index(&mut self, new_index: Index) {
-		let mut lock = self.index.write().await;
-		*lock = new_index;
+		spawn_blocking({
+			let index_manager = self.clone();
+			move || {
+				let mut lock = index_manager.index.write().unwrap();
+				*lock = new_index;
+			}
+		})
+		.await
+		.unwrap()
 	}
 
 	pub(super) async fn persist_index(&mut self, index: &Index) -> Result<(), collection::Error> {
@@ -66,53 +73,93 @@ impl IndexManager {
 		Ok(true)
 	}
 
+	pub(super) async fn get_songs(&self) -> Vec<collection::Song> {
+		spawn_blocking({
+			let index_manager = self.clone();
+			move || {
+				let index = index_manager.index.read().unwrap();
+				index.songs.values().cloned().collect::<Vec<_>>()
+			}
+		})
+		.await
+		.unwrap()
+	}
+
 	pub async fn get_artist(
 		&self,
 		artist_key: &ArtistKey,
 	) -> Result<collection::Artist, collection::Error> {
-		let index = self.index.read().await;
-		let artist_id = artist_key.into();
-		index
-			.get_artist(artist_id)
-			.ok_or_else(|| collection::Error::ArtistNotFound)
+		spawn_blocking({
+			let index_manager = self.clone();
+			let artist_id = artist_key.into();
+			move || {
+				let index = index_manager.index.read().unwrap();
+				index
+					.get_artist(artist_id)
+					.ok_or_else(|| collection::Error::ArtistNotFound)
+			}
+		})
+		.await
+		.unwrap()
 	}
 
 	pub async fn get_album(
 		&self,
 		album_key: &AlbumKey,
 	) -> Result<collection::Album, collection::Error> {
-		let index = self.index.read().await;
-		let album_id = album_key.into();
-		index
-			.get_album(album_id)
-			.ok_or_else(|| collection::Error::AlbumNotFound)
+		spawn_blocking({
+			let index_manager = self.clone();
+			let album_id = album_key.into();
+			move || {
+				let index = index_manager.index.read().unwrap();
+				index
+					.get_album(album_id)
+					.ok_or_else(|| collection::Error::AlbumNotFound)
+			}
+		})
+		.await
+		.unwrap()
 	}
 
 	pub async fn get_random_albums(
 		&self,
 		count: usize,
 	) -> Result<Vec<collection::Album>, collection::Error> {
-		let index = self.index.read().await;
-		Ok(index
-			.albums
-			.keys()
-			.choose_multiple(&mut ThreadRng::default(), count)
-			.into_iter()
-			.filter_map(|k| index.get_album(*k))
-			.collect())
+		spawn_blocking({
+			let index_manager = self.clone();
+			move || {
+				let index = index_manager.index.read().unwrap();
+				Ok(index
+					.albums
+					.keys()
+					.choose_multiple(&mut ThreadRng::default(), count)
+					.into_iter()
+					.filter_map(|k| index.get_album(*k))
+					.collect())
+			}
+		})
+		.await
+		.unwrap()
 	}
 
 	pub async fn get_recent_albums(
 		&self,
 		count: usize,
 	) -> Result<Vec<collection::Album>, collection::Error> {
-		let index = self.index.read().await;
-		Ok(index
-			.recent_albums
-			.iter()
-			.take(count)
-			.filter_map(|k| index.get_album(*k))
-			.collect())
+		spawn_blocking({
+			let index_manager = self.clone();
+			move || {
+				let index = index_manager.index.read().unwrap();
+				Ok(index
+					.recent_albums
+					.iter()
+					.take(count)
+					.filter_map(|k| index.get_album(*k))
+					.collect())
+			}
+		})
+		.await
+		.unwrap()
 	}
 }
 

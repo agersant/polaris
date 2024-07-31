@@ -16,6 +16,7 @@ TestConfig.toml
 **/*.sqlite-wal
 polaris.log
 polaris.pid
+profile.json
 /thumbnails
 
 # Release process artifacts (usually runs on CI)

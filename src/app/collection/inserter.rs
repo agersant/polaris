@@ -64,6 +64,9 @@ where
 	}
 
 	pub async fn flush(&mut self) {
+		if self.new_entries.is_empty() {
+			return;
+		}
 		let Ok(connection) = self.db.connect().await else {
 			error!("Could not acquire connection to insert new entries in database");
 			return;
