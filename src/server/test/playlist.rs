@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use http::StatusCode;
 
 use crate::server::dto;
@@ -53,7 +55,7 @@ async fn save_playlist_large() {
 	service.login().await;
 
 	let tracks = (0..100_000)
-		.map(|_| "My Super Cool Song".to_string())
+		.map(|_| Path::new("My Super Cool Song").to_owned())
 		.collect();
 	let my_playlist = dto::SavePlaylistInput { tracks };
 	let request = protocol::save_playlist(TEST_PLAYLIST_NAME, my_playlist);

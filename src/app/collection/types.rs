@@ -8,6 +8,7 @@ use crate::{
 	db,
 };
 
+// TODO no longer needed!!
 #[derive(Clone, Debug, FromRow, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MultiString(pub Vec<String>);
 
@@ -48,18 +49,17 @@ pub enum Error {
 	ThreadJoining(#[from] tokio::task::JoinError),
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub enum File {
-	Directory(Directory),
-	Song(Song),
+	Directory(PathBuf),
+	Song(PathBuf),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Song {
-	pub id: i64,
-	pub path: String,
-	pub virtual_path: String,
-	pub virtual_parent: String,
+	pub path: PathBuf,
+	pub virtual_path: PathBuf,
+	pub virtual_parent: PathBuf,
 	pub track_number: Option<i64>,
 	pub disc_number: Option<i64>,
 	pub title: Option<String>,
@@ -67,7 +67,7 @@ pub struct Song {
 	pub album_artists: MultiString,
 	pub year: Option<i64>,
 	pub album: Option<String>,
-	pub artwork: Option<String>,
+	pub artwork: Option<PathBuf>,
 	pub duration: Option<i64>,
 	pub lyricists: MultiString,
 	pub composers: MultiString,
@@ -78,10 +78,8 @@ pub struct Song {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Directory {
-	pub id: i64,
-	pub path: String,
-	pub virtual_path: String,
-	pub virtual_parent: Option<String>,
+	pub virtual_path: PathBuf,
+	pub virtual_parent: Option<PathBuf>,
 }
 
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -93,7 +91,7 @@ pub struct Artist {
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct Album {
 	pub name: Option<String>,
-	pub artwork: Option<String>,
+	pub artwork: Option<PathBuf>,
 	pub artists: Vec<String>,
 	pub year: Option<i64>,
 	pub date_added: i64,

@@ -2,6 +2,7 @@ use std::{
 	borrow::BorrowMut,
 	collections::{HashMap, HashSet},
 	hash::{DefaultHasher, Hash, Hasher},
+	path::{Path, PathBuf},
 	sync::{Arc, RwLock},
 };
 
@@ -73,18 +74,20 @@ impl IndexManager {
 		Ok(true)
 	}
 
-	pub(super) async fn get_songs(&self) -> Vec<collection::Song> {
+	pub async fn browse(
+		&self,
+		virtual_path: PathBuf,
+	) -> Result<Vec<collection::File>, collection::Error> {
 		spawn_blocking({
 			let index_manager = self.clone();
 			move || {
 				let index = index_manager.index.read().unwrap();
-				index.songs.values().cloned().collect::<Vec<_>>()
+				index.browse(virtual_path)
 			}
 		})
 		.await
 		.unwrap()
 	}
-
 	pub async fn get_artist(
 		&self,
 		artist_key: &ArtistKey,
@@ -165,14 +168,32 @@ impl IndexManager {
 
 #[derive(Default)]
 pub(super) struct IndexBuilder {
+	directories: HashMap<PathBuf, HashSet<collection::File>>,
+	// filesystem: Trie<>,
 	songs: HashMap<SongID, collection::Song>,
 	artists: HashMap<ArtistID, Artist>,
 	albums: HashMap<AlbumID, Album>,
 }
 
 impl IndexBuilder {
+	pub fn add_directory(&mut self, directory: collection::Directory) {
+		self.directories
+			.entry(directory.virtual_path.clone())
+			.or_default();
+		if let Some(parent) = directory.virtual_parent {
+			self.directories
+				.entry(parent.clone())
+				.or_default()
+				.insert(collection::File::Directory(directory.virtual_path));
+		}
+	}
+
 	pub fn add_song(&mut self, song: collection::Song) {
 		let song_id: SongID = song.song_id();
+		self.directories
+			.entry(song.virtual_parent.clone())
+			.or_default()
+			.insert(collection::File::Song(song.virtual_path.clone()));
 		self.add_song_to_album(&song);
 		self.add_album_to_artists(&song);
 		self.songs.insert(song_id, song);
@@ -250,6 +271,7 @@ impl IndexBuilder {
 		});
 
 		Index {
+			directories: self.directories,
 			songs: self.songs,
 			artists: self.artists,
 			albums: self.albums,
@@ -260,6 +282,7 @@ impl IndexBuilder {
 
 #[derive(Default, Serialize, Deserialize)]
 pub(super) struct Index {
+	directories: HashMap<PathBuf, HashSet<collection::File>>,
 	songs: HashMap<SongID, collection::Song>,
 	artists: HashMap<ArtistID, Artist>,
 	albums: HashMap<AlbumID, Album>,
@@ -267,6 +290,18 @@ pub(super) struct Index {
 }
 
 impl Index {
+	pub(self) fn browse<P: AsRef<Path>>(
+		&self,
+		virtual_path: P,
+	) -> Result<Vec<collection::File>, collection::Error> {
+		let Some(files) = self.directories.get(virtual_path.as_ref()) else {
+			return Err(collection::Error::DirectoryNotFound(
+				virtual_path.as_ref().to_owned(),
+			));
+		};
+		Ok(files.iter().cloned().collect())
+	}
+
 	pub(self) fn get_artist(&self, artist_id: ArtistID) -> Option<collection::Artist> {
 		self.artists.get(&artist_id).map(|a| {
 			let mut albums = a
@@ -312,7 +347,7 @@ struct SongID(u64);
 
 #[derive(Clone, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct SongKey {
-	pub virtual_path: String,
+	pub virtual_path: PathBuf,
 }
 
 impl From<&collection::Song> for SongKey {
@@ -360,7 +395,7 @@ impl From<&ArtistKey> for ArtistID {
 #[derive(Clone, Default, Serialize, Deserialize)]
 struct Album {
 	pub name: Option<String>,
-	pub artwork: Option<String>,
+	pub artwork: Option<PathBuf>,
 	pub artists: Vec<String>,
 	pub year: Option<i64>,
 	pub date_added: i64,

@@ -70,7 +70,6 @@ impl App {
 		let index_manager = collection::IndexManager::new(db.clone()).await;
 		let browser = collection::Browser::new(db.clone(), vfs_manager.clone());
 		let updater = collection::Updater::new(
-			db.clone(),
 			index_manager.clone(),
 			settings_manager.clone(),
 			vfs_manager.clone(),

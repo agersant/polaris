@@ -5,7 +5,6 @@ use crate::db::DB;
 use crate::test::*;
 
 pub struct Context {
-	pub db: DB,
 	pub browser: collection::Browser,
 	pub index_manager: collection::IndexManager,
 	pub updater: collection::Updater,
@@ -70,7 +69,6 @@ impl ContextBuilder {
 		let browser = collection::Browser::new(db.clone(), vfs_manager.clone());
 		let index_manager = collection::IndexManager::new(db.clone()).await;
 		let updater = collection::Updater::new(
-			db.clone(),
 			index_manager.clone(),
 			settings_manager.clone(),
 			vfs_manager.clone(),
@@ -82,7 +80,6 @@ impl ContextBuilder {
 		config_manager.apply(&self.config).await.unwrap();
 
 		Context {
-			db,
 			browser,
 			index_manager,
 			updater,

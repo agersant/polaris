@@ -109,10 +109,7 @@ fn process_directory<P: AsRef<Path>, Q: AsRef<Path>>(
 		};
 
 		let entry_real_path = real_path.as_ref().join(&name);
-		let entry_real_path_string = entry_real_path.to_string_lossy().to_string();
-
 		let entry_virtual_path = virtual_path.as_ref().join(&name);
-		let entry_virtual_path_string = entry_virtual_path.to_string_lossy().to_string();
 
 		if entry_real_path.is_dir() {
 			scope.spawn({
@@ -132,14 +129,9 @@ fn process_directory<P: AsRef<Path>, Q: AsRef<Path>>(
 			});
 		} else if let Some(metadata) = formats::read_metadata(&entry_real_path) {
 			songs.push(collection::Song {
-				id: 0,
-				path: entry_real_path_string.clone(),
-				virtual_path: entry_virtual_path.to_string_lossy().to_string(),
-				virtual_parent: entry_virtual_path
-					.parent()
-					.unwrap()
-					.to_string_lossy()
-					.to_string(),
+				path: entry_real_path.clone(),
+				virtual_path: entry_virtual_path.clone(),
+				virtual_parent: entry_virtual_path.parent().unwrap().to_owned(),
 				track_number: metadata.track_number.map(|n| n as i64),
 				disc_number: metadata.disc_number.map(|n| n as i64),
 				title: metadata.title,
@@ -147,9 +139,7 @@ fn process_directory<P: AsRef<Path>, Q: AsRef<Path>>(
 				album_artists: MultiString(metadata.album_artists),
 				year: metadata.year.map(|n| n as i64),
 				album: metadata.album,
-				artwork: metadata
-					.has_artwork
-					.then(|| entry_virtual_path_string.clone()),
+				artwork: metadata.has_artwork.then(|| entry_virtual_path.clone()),
 				duration: metadata.duration.map(|n| n as i64),
 				lyricists: MultiString(metadata.lyricists),
 				composers: MultiString(metadata.composers),
@@ -162,7 +152,7 @@ fn process_directory<P: AsRef<Path>, Q: AsRef<Path>>(
 				.as_ref()
 				.is_some_and(|r| r.is_match(name.to_str().unwrap_or_default()))
 		{
-			artwork_file = Some(entry_virtual_path_string);
+			artwork_file = Some(entry_virtual_path);
 		}
 	}
 
@@ -173,14 +163,8 @@ fn process_directory<P: AsRef<Path>, Q: AsRef<Path>>(
 
 	directories_output
 		.send(collection::Directory {
-			id: 0,
-			path: real_path.as_ref().to_string_lossy().to_string(),
-			virtual_path: virtual_path.as_ref().to_string_lossy().to_string(),
-			virtual_parent: virtual_path
-				.as_ref()
-				.parent()
-				.map(|p| p.to_string_lossy().to_string())
-				.filter(|p| !p.is_empty()),
+			virtual_path: virtual_path.as_ref().to_owned(),
+			virtual_parent: virtual_path.as_ref().parent().map(Path::to_owned),
 		})
 		.ok();
 }

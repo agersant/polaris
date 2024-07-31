@@ -52,12 +52,6 @@ impl VFS {
 		VFS { mounts }
 	}
 
-	pub fn exists<P: AsRef<Path>>(&self, virtual_path: P) -> bool {
-		self.mounts
-			.iter()
-			.any(|m| virtual_path.as_ref().starts_with(&m.name))
-	}
-
 	pub fn virtual_to_real<P: AsRef<Path>>(&self, virtual_path: P) -> Result<PathBuf, Error> {
 		for mount in &self.mounts {
 			let mount_path = Path::new(&mount.name);

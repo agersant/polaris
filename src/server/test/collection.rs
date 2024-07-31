@@ -317,5 +317,5 @@ async fn search_with_query() {
 	]
 	.iter()
 	.collect();
-	assert_eq!(results[0].path, path.to_string_lossy());
+	assert_eq!(results[0].path, path);
 }

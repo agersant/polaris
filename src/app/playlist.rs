@@ -1,5 +1,6 @@
 use core::clone::Clone;
 use sqlx::{Acquire, QueryBuilder, Sqlite};
+use std::path::PathBuf;
 
 use crate::app::{collection::Song, vfs};
 use crate::db::{self, DB};
@@ -48,7 +49,7 @@ impl Manager {
 		&self,
 		playlist_name: &str,
 		owner: &str,
-		content: &[String],
+		content: &[PathBuf],
 	) -> Result<(), Error> {
 		let vfs = self.vfs_manager.get_vfs().await?;
 
@@ -145,19 +146,20 @@ impl Manager {
 			.ok_or(Error::PlaylistNotFound)?;
 
 			// List songs
-			sqlx::query_as!(
-				Song,
-				r#"
-					SELECT s.*
-					FROM playlist_songs ps
-					INNER JOIN songs s ON ps.path = s.path
-					WHERE ps.playlist = $1
-					ORDER BY ps.ordering
-				"#,
-				playlist_id
-			)
-			.fetch_all(connection.as_mut())
-			.await?
+			todo!();
+			// sqlx::query_as!(
+			// 	Song,
+			// 	r#"
+			// 		SELECT s.*
+			// 		FROM playlist_songs ps
+			// 		INNER JOIN songs s ON ps.virtual_path = s.virtual_path
+			// 		WHERE ps.playlist = $1
+			// 		ORDER BY ps.ordering
+			// 	"#,
+			// 	playlist_id
+			// )
+			// .fetch_all(connection.as_mut())
+			// .await?
 		};
 
 		Ok(songs)
@@ -230,14 +232,14 @@ mod test {
 
 		ctx.updater.update().await.unwrap();
 
-		let playlist_content: Vec<String> = ctx
+		let playlist_content = ctx
 			.browser
 			.flatten(Path::new(TEST_MOUNT_NAME))
 			.await
 			.unwrap()
 			.into_iter()
 			.map(|s| s.virtual_path)
-			.collect();
+			.collect::<Vec<_>>();
 		assert_eq!(playlist_content.len(), 13);
 
 		ctx.playlist_manager
@@ -295,14 +297,14 @@ mod test {
 
 		ctx.updater.update().await.unwrap();
 
-		let playlist_content: Vec<String> = ctx
+		let playlist_content = ctx
 			.browser
 			.flatten(Path::new(TEST_MOUNT_NAME))
 			.await
 			.unwrap()
 			.into_iter()
 			.map(|s| s.virtual_path)
-			.collect();
+			.collect::<Vec<_>>();
 		assert_eq!(playlist_content.len(), 13);
 
 		ctx.playlist_manager
@@ -327,6 +329,6 @@ mod test {
 		]
 		.iter()
 		.collect();
-		assert_eq!(songs[0].virtual_path, first_song_path.to_str().unwrap());
+		assert_eq!(songs[0].virtual_path, first_song_path);
 	}
 }

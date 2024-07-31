@@ -4,7 +4,7 @@ use crate::app::{
 	collection::{self, MultiString},
 	config, ddns, settings, thumbnail, user, vfs,
 };
-use std::convert::From;
+use std::{convert::From, path::PathBuf};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct Version {
@@ -240,8 +240,29 @@ pub enum CollectionFile {
 impl From<collection::File> for CollectionFile {
 	fn from(f: collection::File) -> Self {
 		match f {
-			collection::File::Directory(d) => Self::Directory(d.into()),
-			collection::File::Song(s) => Self::Song(s.into()),
+			collection::File::Directory(d) => Self::Directory(Directory {
+				path: d,
+				artist: None,
+				year: None,
+				album: None,
+				artwork: None,
+			}),
+			collection::File::Song(s) => Self::Song(Song {
+				path: s,
+				track_number: None,
+				disc_number: None,
+				title: None,
+				artist: None,
+				album_artist: None,
+				year: None,
+				album: None,
+				artwork: None,
+				duration: None,
+				lyricist: None,
+				composer: None,
+				genre: None,
+				label: None,
+			}),
 		}
 	}
 }
@@ -258,7 +279,7 @@ impl MultiString {
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Song {
-	pub path: String,
+	pub path: PathBuf,
 	pub track_number: Option<i64>,
 	pub disc_number: Option<i64>,
 	pub title: Option<String>,
@@ -266,7 +287,7 @@ pub struct Song {
 	pub album_artist: Option<String>,
 	pub year: Option<i64>,
 	pub album: Option<String>,
-	pub artwork: Option<String>,
+	pub artwork: Option<PathBuf>,
 	pub duration: Option<i64>,
 	pub lyricist: Option<String>,
 	pub composer: Option<String>,
@@ -297,23 +318,11 @@ impl From<collection::Song> for Song {
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Directory {
-	pub path: String,
+	pub path: PathBuf,
 	pub artist: Option<String>,
 	pub year: Option<i64>,
 	pub album: Option<String>,
-	pub artwork: Option<String>,
-}
-
-impl From<collection::Directory> for Directory {
-	fn from(d: collection::Directory) -> Self {
-		Self {
-			path: d.virtual_path,
-			artist: None,
-			year: None,
-			album: None,
-			artwork: None,
-		}
-	}
+	pub artwork: Option<PathBuf>,
 }
 
 impl From<collection::Album> for Directory {

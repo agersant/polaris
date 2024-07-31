@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::app::{collection, config, ddns, settings, thumbnail, user, vfs};
-use std::convert::From;
+use std::{convert::From, path::PathBuf};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct Version {
@@ -73,7 +73,7 @@ pub struct ListPlaylistsEntry {
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SavePlaylistInput {
-	pub tracks: Vec<String>,
+	pub tracks: Vec<std::path::PathBuf>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -230,7 +230,7 @@ impl From<settings::Settings> for Settings {
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Song {
-	pub path: String,
+	pub path: PathBuf,
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub track_number: Option<i64>,
 	#[serde(default, skip_serializing_if = "Option::is_none")]
@@ -246,7 +246,7 @@ pub struct Song {
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub album: Option<String>,
 	#[serde(default, skip_serializing_if = "Option::is_none")]
-	pub artwork: Option<String>,
+	pub artwork: Option<PathBuf>,
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub duration: Option<i64>,
 	#[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -282,7 +282,7 @@ impl From<collection::Song> for Song {
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BrowserEntry {
-	pub path: String,
+	pub path: PathBuf,
 	pub is_directory: bool,
 }
 
@@ -291,11 +291,11 @@ impl From<collection::File> for BrowserEntry {
 		match file {
 			collection::File::Directory(d) => Self {
 				is_directory: true,
-				path: d.virtual_path,
+				path: d,
 			},
 			collection::File::Song(s) => Self {
 				is_directory: false,
-				path: s.virtual_path,
+				path: s,
 			},
 		}
 	}
@@ -332,7 +332,7 @@ impl From<collection::Album> for AlbumHeader {
 	fn from(a: collection::Album) -> Self {
 		Self {
 			name: a.name,
-			artwork: a.artwork,
+			artwork: a.artwork.map(|a| a.to_string_lossy().to_string()),
 			artists: a.artists,
 			year: a.year,
 		}

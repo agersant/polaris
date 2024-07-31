@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use axum::{
 	extract::{DefaultBodyLimit, Path, Query, State},
 	response::{Html, IntoResponse, Response},
@@ -321,9 +323,9 @@ fn albums_to_response(albums: Vec<collection::Album>, api_version: APIMajorVersi
 async fn get_browse_root(
 	_auth: Auth,
 	api_version: APIMajorVersion,
-	State(browser): State<collection::Browser>,
+	State(index_manager): State<collection::IndexManager>,
 ) -> Response {
-	let result = match browser.browse(std::path::Path::new("")).await {
+	let result = match index_manager.browse(PathBuf::new()).await {
 		Ok(r) => r,
 		Err(e) => return APIError::from(e).into_response(),
 	};
@@ -333,11 +335,10 @@ async fn get_browse_root(
 async fn get_browse(
 	_auth: Auth,
 	api_version: APIMajorVersion,
-	State(browser): State<collection::Browser>,
-	Path(path): Path<String>,
+	State(index_manager): State<collection::IndexManager>,
+	Path(path): Path<PathBuf>,
 ) -> Response {
-	let path = percent_decode_str(&path).decode_utf8_lossy();
-	let result = match browser.browse(std::path::Path::new(path.as_ref())).await {
+	let result = match index_manager.browse(path).await {
 		Ok(r) => r,
 		Err(e) => return APIError::from(e).into_response(),
 	};

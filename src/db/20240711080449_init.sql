@@ -45,36 +45,6 @@ CREATE TABLE users (
 	UNIQUE(name)
 );
 
-CREATE TABLE directories (
-	id INTEGER PRIMARY KEY NOT NULL,
-	path TEXT NOT NULL,
-	virtual_path TEXT NOT NULL,
-	virtual_parent TEXT,
-	UNIQUE(path) ON CONFLICT REPLACE
-);
-
-CREATE TABLE songs (
-	id INTEGER PRIMARY KEY NOT NULL,
-	path TEXT NOT NULL,
-	virtual_path TEXT NOT NULL,
-	virtual_parent TEXT NOT NULL,
-	track_number INTEGER,
-	disc_number INTEGER,
-	title TEXT,
-	artists TEXT,
-	album_artists TEXT,
-	year INTEGER,
-	album TEXT,
-	artwork TEXT,
-	duration INTEGER,
-	lyricists TEXT,
-	composers TEXT,
-	genres TEXT,
-	labels TEXT,
-	date_added INTEGER DEFAULT 0 NOT NULL,
-	UNIQUE(path) ON CONFLICT REPLACE
-);
-
 CREATE TABLE collection_index (
 	id INTEGER PRIMARY KEY NOT NULL CHECK(id = 0),
 	content BLOB
@@ -93,7 +63,7 @@ CREATE TABLE playlists (
 CREATE TABLE playlist_songs (
 	id INTEGER PRIMARY KEY NOT NULL,
 	playlist INTEGER NOT NULL,
-	path TEXT NOT NULL,
+	virtual_path TEXT NOT NULL,
 	ordering INTEGER NOT NULL,
 	FOREIGN KEY(playlist) REFERENCES playlists(id) ON DELETE CASCADE ON UPDATE CASCADE,
 	UNIQUE(playlist, ordering) ON CONFLICT REPLACE

@@ -6,14 +6,10 @@ use tokio::{
 	time::Instant,
 };
 
-use crate::{
-	app::{collection::*, settings, vfs},
-	db::DB,
-};
+use crate::app::{collection::*, settings, vfs};
 
 #[derive(Clone)]
 pub struct Updater {
-	db: DB,
 	index_manager: IndexManager,
 	settings_manager: settings::Manager,
 	vfs_manager: vfs::Manager,
@@ -22,13 +18,11 @@ pub struct Updater {
 
 impl Updater {
 	pub async fn new(
-		db: DB,
 		index_manager: IndexManager,
 		settings_manager: settings::Manager,
 		vfs_manager: vfs::Manager,
 	) -> Result<Self, Error> {
 		let updater = Self {
-			db,
 			index_manager,
 			vfs_manager,
 			settings_manager,
@@ -94,81 +88,53 @@ impl Updater {
 			album_art_pattern,
 		);
 
-		let mut directory_inserter = Inserter::<Directory>::new(self.db.clone());
-
-		let directory_task = tokio::spawn(async move {
-			let capacity = 500;
-			let mut buffer: Vec<Directory> = Vec::with_capacity(capacity);
-			loop {
-				match collection_directories_input
-					.recv_many(&mut buffer, capacity)
-					.await
-				{
-					0 => break,
-					_ => {
-						for directory in buffer.drain(0..) {
-							directory_inserter.insert(directory).await;
-						}
-					}
-				}
-			}
-			directory_inserter.flush().await;
-		});
-
-		let song_task = tokio::spawn(async move {
+		let index_task = tokio::spawn(async move {
 			let capacity = 500;
 			let mut index_builder = IndexBuilder::default();
-			let mut buffer: Vec<Song> = Vec::with_capacity(capacity);
+			let mut song_buffer: Vec<Song> = Vec::with_capacity(capacity);
+			let mut directory_buffer: Vec<Directory> = Vec::with_capacity(capacity);
 
 			loop {
-				match collection_songs_input
-					.recv_many(&mut buffer, capacity)
+				let exhausted_songs = match collection_songs_input
+					.recv_many(&mut song_buffer, capacity)
 					.await
 				{
-					0 => break,
+					0 => true,
 					_ => {
-						for song in buffer.drain(0..) {
+						for song in song_buffer.drain(0..) {
 							index_builder.add_song(song);
 						}
+						false
 					}
+				};
+
+				let exhausted_directories = match collection_directories_input
+					.recv_many(&mut directory_buffer, capacity)
+					.await
+				{
+					0 => true,
+					_ => {
+						for directory in directory_buffer.drain(0..) {
+							index_builder.add_directory(directory);
+						}
+						false
+					}
+				};
+
+				if exhausted_directories && exhausted_songs {
+					break;
 				}
 			}
+
 			index_builder.build()
 		});
 
-		let index = tokio::join!(scanner.scan(), directory_task, song_task).2?;
+		let index = tokio::join!(scanner.scan(), index_task).1?;
 		self.index_manager.persist_index(&index).await?;
 		self.index_manager.replace_index(index).await;
 
 		info!(
 			"Collection scan took {} seconds",
-			start.elapsed().as_millis() as f32 / 1000.0
-		);
-
-		let start = Instant::now();
-		info!("Beginning collection DB update");
-
-		tokio::task::spawn({
-			let db = self.db.clone();
-			let vfs_manager = self.vfs_manager.clone();
-			let index_manager = self.index_manager.clone();
-			async move {
-				let cleaner = Cleaner::new(db.clone(), vfs_manager);
-				if let Err(e) = cleaner.clean().await {
-					error!("Error while cleaning up database: {}", e);
-				}
-
-				let mut song_inserter = Inserter::<Song>::new(db.clone());
-				for song in index_manager.get_songs().await {
-					song_inserter.insert(song).await;
-				}
-				song_inserter.flush().await;
-			}
-		})
-		.await?;
-
-		info!(
-			"Collection DB update took {} seconds",
 			start.elapsed().as_millis() as f32 / 1000.0
 		);
 
@@ -181,7 +147,7 @@ mod test {
 	use std::path::PathBuf;
 
 	use crate::{
-		app::{collection::*, settings, test},
+		app::{settings, test},
 		test_name,
 	};
 
@@ -197,71 +163,10 @@ mod test {
 		ctx.updater.update().await.unwrap();
 		ctx.updater.update().await.unwrap(); // Validates that subsequent updates don't run into conflicts
 
-		let mut connection = ctx.db.connect().await.unwrap();
-		let all_directories = sqlx::query_as!(Directory, "SELECT * FROM directories")
-			.fetch_all(connection.as_mut())
-			.await
-			.unwrap();
-		let all_songs = sqlx::query_as!(Song, "SELECT * FROM songs")
-			.fetch_all(connection.as_mut())
-			.await
-			.unwrap();
-		assert_eq!(all_directories.len(), 6);
-		assert_eq!(all_songs.len(), 13);
-	}
+		todo!();
 
-	#[tokio::test]
-	async fn scan_removes_missing_content() {
-		let builder = test::ContextBuilder::new(test_name!());
-
-		let original_collection_dir: PathBuf = ["test-data", "small-collection"].iter().collect();
-		let test_collection_dir: PathBuf = builder.test_directory.join("small-collection");
-
-		let copy_options = fs_extra::dir::CopyOptions::new();
-		fs_extra::dir::copy(
-			original_collection_dir,
-			&builder.test_directory,
-			&copy_options,
-		)
-		.unwrap();
-
-		let mut ctx = builder
-			.mount(TEST_MOUNT_NAME, test_collection_dir.to_str().unwrap())
-			.build()
-			.await;
-
-		ctx.updater.update().await.unwrap();
-
-		{
-			let mut connection = ctx.db.connect().await.unwrap();
-			let all_directories = sqlx::query_as!(Directory, "SELECT * FROM directories")
-				.fetch_all(connection.as_mut())
-				.await
-				.unwrap();
-			let all_songs = sqlx::query_as!(Song, "SELECT * FROM songs")
-				.fetch_all(connection.as_mut())
-				.await
-				.unwrap();
-			assert_eq!(all_directories.len(), 6);
-			assert_eq!(all_songs.len(), 13);
-		}
-
-		let khemmis_directory = test_collection_dir.join("Khemmis");
-		std::fs::remove_dir_all(khemmis_directory).unwrap();
-		ctx.updater.update().await.unwrap();
-		{
-			let mut connection = ctx.db.connect().await.unwrap();
-			let all_directories = sqlx::query_as!(Directory, "SELECT * FROM directories")
-				.fetch_all(connection.as_mut())
-				.await
-				.unwrap();
-			let all_songs = sqlx::query_as!(Song, "SELECT * FROM songs")
-				.fetch_all(connection.as_mut())
-				.await
-				.unwrap();
-			assert_eq!(all_directories.len(), 4);
-			assert_eq!(all_songs.len(), 8);
-		}
+		// assert_eq!(all_directories.len(), 6);
+		// assert_eq!(all_songs.len(), 13);
 	}
 
 	#[tokio::test]
@@ -277,10 +182,7 @@ mod test {
 		let song_virtual_path = picnic_virtual_dir.join("07 - なぜ (Why).mp3");
 
 		let song = ctx.browser.get_song(&song_virtual_path).await.unwrap();
-		assert_eq!(
-			song.artwork,
-			Some(song_virtual_path.to_string_lossy().into_owned())
-		);
+		assert_eq!(song.artwork, Some(song_virtual_path));
 	}
 
 	#[tokio::test]
@@ -306,10 +208,7 @@ mod test {
 				[TEST_MOUNT_NAME, "Khemmis", "Hunted"].iter().collect();
 			let artwork_virtual_path = hunted_virtual_dir.join("Folder.jpg");
 			let song = &ctx.browser.flatten(&hunted_virtual_dir).await.unwrap()[0];
-			assert_eq!(
-				song.artwork,
-				Some(artwork_virtual_path.to_string_lossy().into_owned())
-			);
+			assert_eq!(song.artwork, Some(artwork_virtual_path));
 		}
 	}
 }
