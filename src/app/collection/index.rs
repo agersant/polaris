@@ -304,17 +304,34 @@ impl Index {
 
 	pub(self) fn get_artist(&self, artist_id: ArtistID) -> Option<collection::Artist> {
 		self.artists.get(&artist_id).map(|a| {
-			let mut albums = a
-				.albums
-				.iter()
-				.filter_map(|album_id| self.get_album(*album_id))
-				.collect::<Vec<_>>();
+			let albums = {
+				let mut albums = a
+					.albums
+					.iter()
+					.filter_map(|album_id| self.get_album(*album_id))
+					.collect::<Vec<_>>();
+				albums.sort_by(|a, b| (a.year, &a.name).partial_cmp(&(b.year, &b.name)).unwrap());
+				albums
+			};
 
-			albums.sort_by(|a, b| (a.year, &a.name).partial_cmp(&(b.year, &b.name)).unwrap());
+			let album_appearances = {
+				let mut album_appearances = a
+					.album_appearances
+					.iter()
+					.filter_map(|album_id| self.get_album(*album_id))
+					.collect::<Vec<_>>();
+				album_appearances.sort_by(|a, b| {
+					(&a.artists, a.year, &a.name)
+						.partial_cmp(&(&b.artists, b.year, &b.name))
+						.unwrap()
+				});
+				album_appearances
+			};
 
 			collection::Artist {
 				name: a.name.clone(),
-				albums: albums,
+				albums,
+				album_appearances,
 			}
 		})
 	}

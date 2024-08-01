@@ -68,6 +68,7 @@ pub struct Directory {
 pub struct Artist {
 	pub name: Option<String>,
 	pub albums: Vec<Album>,
+	pub album_appearances: Vec<Album>,
 }
 
 #[derive(Debug, Default, PartialEq, Eq)]

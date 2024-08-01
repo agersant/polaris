@@ -305,6 +305,7 @@ impl From<collection::File> for BrowserEntry {
 pub struct Artist {
 	pub name: Option<String>,
 	pub albums: Vec<AlbumHeader>,
+	pub album_appearances: Vec<AlbumHeader>,
 }
 
 impl From<collection::Artist> for Artist {
@@ -312,6 +313,7 @@ impl From<collection::Artist> for Artist {
 		Self {
 			name: a.name,
 			albums: a.albums.into_iter().map(|a| a.into()).collect(),
+			album_appearances: a.album_appearances.into_iter().map(|a| a.into()).collect(),
 		}
 	}
 }
