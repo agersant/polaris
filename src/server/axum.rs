@@ -27,21 +27,15 @@ pub async fn launch(app: App) -> Result<(), std::io::Error> {
 	Ok(())
 }
 
-impl FromRef<App> for app::collection::Browser {
-	fn from_ref(app: &App) -> Self {
-		app.browser.clone()
-	}
-}
-
-impl FromRef<App> for app::collection::IndexManager {
+impl FromRef<App> for app::index::Manager {
 	fn from_ref(app: &App) -> Self {
 		app.index_manager.clone()
 	}
 }
 
-impl FromRef<App> for app::collection::Updater {
+impl FromRef<App> for app::scanner::Scanner {
 	fn from_ref(app: &App) -> Self {
-		app.updater.clone()
+		app.scanner.clone()
 	}
 }
 

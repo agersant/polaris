@@ -1,9 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::app::{
-	collection::{self},
-	config, ddns, settings, thumbnail, user, vfs,
-};
+use crate::app::{config, ddns, index, settings, thumbnail, user, vfs};
 use std::{convert::From, path::PathBuf};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
@@ -237,17 +234,17 @@ pub enum CollectionFile {
 	Song(Song),
 }
 
-impl From<collection::File> for CollectionFile {
-	fn from(f: collection::File) -> Self {
+impl From<index::File> for CollectionFile {
+	fn from(f: index::File) -> Self {
 		match f {
-			collection::File::Directory(d) => Self::Directory(Directory {
+			index::File::Directory(d) => Self::Directory(Directory {
 				path: d,
 				artist: None,
 				year: None,
 				album: None,
 				artwork: None,
 			}),
-			collection::File::Song(s) => Self::Song(Song {
+			index::File::Song(s) => Self::Song(Song {
 				path: s,
 				track_number: None,
 				disc_number: None,
@@ -299,8 +296,8 @@ pub struct Song {
 	pub label: Option<String>,
 }
 
-impl From<collection::SongKey> for Song {
-	fn from(song_key: collection::SongKey) -> Self {
+impl From<index::SongKey> for Song {
+	fn from(song_key: index::SongKey) -> Self {
 		Self {
 			path: song_key.virtual_path,
 			track_number: None,
@@ -320,8 +317,8 @@ impl From<collection::SongKey> for Song {
 	}
 }
 
-impl From<collection::Song> for Song {
-	fn from(s: collection::Song) -> Self {
+impl From<index::Song> for Song {
+	fn from(s: index::Song) -> Self {
 		Self {
 			path: s.virtual_path,
 			track_number: s.track_number,
@@ -350,8 +347,8 @@ pub struct Directory {
 	pub artwork: Option<PathBuf>,
 }
 
-impl From<collection::Album> for Directory {
-	fn from(album: collection::Album) -> Self {
+impl From<index::Album> for Directory {
+	fn from(album: index::Album) -> Self {
 		let path = album
 			.songs
 			.first()

@@ -13,7 +13,7 @@ use base64::{prelude::BASE64_STANDARD_NO_PAD, Engine};
 use percent_encoding::percent_decode_str;
 
 use crate::{
-	app::{collection, config, ddns, lastfm, playlist, settings, thumbnail, user, vfs, App},
+	app::{config, ddns, index, lastfm, playlist, scanner, settings, thumbnail, user, vfs, App},
 	server::{
 		dto, error::APIError, APIMajorVersion, API_ARRAY_SEPARATOR, API_MAJOR_VERSION,
 		API_MINOR_VERSION,
@@ -254,16 +254,13 @@ async fn put_preferences(
 
 async fn post_trigger_index(
 	_admin_rights: AdminRights,
-	State(updater): State<collection::Updater>,
+	State(scanner): State<scanner::Scanner>,
 ) -> Result<(), APIError> {
-	updater.trigger_scan();
+	scanner.trigger_scan();
 	Ok(())
 }
 
-fn collection_files_to_response(
-	files: Vec<collection::File>,
-	api_version: APIMajorVersion,
-) -> Response {
+fn index_files_to_response(files: Vec<index::File>, api_version: APIMajorVersion) -> Response {
 	match api_version {
 		APIMajorVersion::V7 => Json(
 			files
@@ -282,23 +279,23 @@ fn collection_files_to_response(
 	}
 }
 
-fn songs_to_response(files: Vec<collection::SongKey>, api_version: APIMajorVersion) -> Response {
+fn songs_to_response(files: Vec<PathBuf>, api_version: APIMajorVersion) -> Response {
 	match api_version {
 		APIMajorVersion::V7 => Json(
 			files
 				.into_iter()
-				.map(|f| f.into())
+				.map(|p| index::SongKey { virtual_path: p }.into())
 				.collect::<Vec<dto::v7::Song>>(),
 		)
 		.into_response(),
 		APIMajorVersion::V8 => Json(dto::SongList {
-			paths: files.into_iter().map(|s| s.virtual_path).collect(),
+			paths: files.into_iter().collect(),
 		})
 		.into_response(),
 	}
 }
 
-fn albums_to_response(albums: Vec<collection::Album>, api_version: APIMajorVersion) -> Response {
+fn albums_to_response(albums: Vec<index::Album>, api_version: APIMajorVersion) -> Response {
 	match api_version {
 		APIMajorVersion::V7 => Json(
 			albums
@@ -320,32 +317,32 @@ fn albums_to_response(albums: Vec<collection::Album>, api_version: APIMajorVersi
 async fn get_browse_root(
 	_auth: Auth,
 	api_version: APIMajorVersion,
-	State(index_manager): State<collection::IndexManager>,
+	State(index_manager): State<index::Manager>,
 ) -> Response {
 	let result = match index_manager.browse(PathBuf::new()).await {
 		Ok(r) => r,
 		Err(e) => return APIError::from(e).into_response(),
 	};
-	collection_files_to_response(result, api_version)
+	index_files_to_response(result, api_version)
 }
 
 async fn get_browse(
 	_auth: Auth,
 	api_version: APIMajorVersion,
-	State(index_manager): State<collection::IndexManager>,
+	State(index_manager): State<index::Manager>,
 	Path(path): Path<PathBuf>,
 ) -> Response {
 	let result = match index_manager.browse(path).await {
 		Ok(r) => r,
 		Err(e) => return APIError::from(e).into_response(),
 	};
-	collection_files_to_response(result, api_version)
+	index_files_to_response(result, api_version)
 }
 
 async fn get_flatten_root(
 	_auth: Auth,
 	api_version: APIMajorVersion,
-	State(index_manager): State<collection::IndexManager>,
+	State(index_manager): State<index::Manager>,
 ) -> Response {
 	let songs = match index_manager.flatten(PathBuf::new()).await {
 		Ok(s) => s,
@@ -357,7 +354,7 @@ async fn get_flatten_root(
 async fn get_flatten(
 	_auth: Auth,
 	api_version: APIMajorVersion,
-	State(index_manager): State<collection::IndexManager>,
+	State(index_manager): State<index::Manager>,
 	Path(path): Path<PathBuf>,
 ) -> Response {
 	let songs = match index_manager.flatten(path).await {
@@ -369,10 +366,10 @@ async fn get_flatten(
 
 async fn get_artist(
 	_auth: Auth,
-	State(index_manager): State<collection::IndexManager>,
+	State(index_manager): State<index::Manager>,
 	Path(artist): Path<String>,
 ) -> Result<Json<dto::Artist>, APIError> {
-	let artist_key = collection::ArtistKey {
+	let artist_key = index::ArtistKey {
 		name: (!artist.is_empty()).then_some(artist),
 	};
 	Ok(Json(index_manager.get_artist(&artist_key).await?.into()))
@@ -380,10 +377,10 @@ async fn get_artist(
 
 async fn get_album(
 	_auth: Auth,
-	State(index_manager): State<collection::IndexManager>,
+	State(index_manager): State<index::Manager>,
 	Path((artists, name)): Path<(String, String)>,
 ) -> Result<Json<dto::Album>, APIError> {
-	let album_key = collection::AlbumKey {
+	let album_key = index::AlbumKey {
 		artists: artists
 			.split(API_ARRAY_SEPARATOR)
 			.map(str::to_owned)
@@ -396,7 +393,7 @@ async fn get_album(
 async fn get_random(
 	_auth: Auth,
 	api_version: APIMajorVersion,
-	State(index_manager): State<collection::IndexManager>,
+	State(index_manager): State<index::Manager>,
 ) -> Response {
 	let albums = match index_manager.get_random_albums(20).await {
 		Ok(d) => d,
@@ -408,7 +405,7 @@ async fn get_random(
 async fn get_recent(
 	_auth: Auth,
 	api_version: APIMajorVersion,
-	State(index_manager): State<collection::IndexManager>,
+	State(index_manager): State<index::Manager>,
 ) -> Response {
 	let albums = match index_manager.get_recent_albums(20).await {
 		Ok(d) => d,
@@ -420,26 +417,26 @@ async fn get_recent(
 async fn get_search_root(
 	_auth: Auth,
 	api_version: APIMajorVersion,
-	State(browser): State<collection::Browser>,
+	State(index_manager): State<index::Manager>,
 ) -> Response {
-	let files = match browser.search("").await {
+	let files = match index_manager.search("").await {
 		Ok(f) => f,
 		Err(e) => return APIError::from(e).into_response(),
 	};
-	collection_files_to_response(files, api_version)
+	songs_to_response(files, api_version)
 }
 
 async fn get_search(
 	_auth: Auth,
 	api_version: APIMajorVersion,
-	State(browser): State<collection::Browser>,
+	State(index_manager): State<index::Manager>,
 	Path(query): Path<String>,
 ) -> Response {
-	let files = match browser.search(&query).await {
+	let files = match index_manager.search(&query).await {
 		Ok(f) => f,
 		Err(e) => return APIError::from(e).into_response(),
 	};
-	collection_files_to_response(files, api_version)
+	songs_to_response(files, api_version)
 }
 
 async fn get_playlists(

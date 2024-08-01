@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use thiserror::Error;
 
-use crate::app::{collection, config, ddns, lastfm, playlist, settings, thumbnail, user, vfs};
+use crate::app::{config, ddns, index, lastfm, playlist, settings, thumbnail, user, vfs};
 use crate::db;
 
 #[derive(Error, Debug)]
@@ -30,6 +30,8 @@ pub enum APIError {
 	ArtistNotFound,
 	#[error("Album not found")]
 	AlbumNotFound,
+	#[error("Song not found")]
+	SongNotFound,
 	#[error("DDNS update query failed with HTTP status {0}")]
 	DdnsUpdateQueryFailed(u16),
 	#[error("Cannot delete your own account")]
@@ -86,19 +88,20 @@ pub enum APIError {
 	VFSPathNotFound,
 }
 
-impl From<collection::Error> for APIError {
-	fn from(error: collection::Error) -> APIError {
+impl From<index::Error> for APIError {
+	fn from(error: index::Error) -> APIError {
 		match error {
-			collection::Error::DirectoryNotFound(d) => APIError::DirectoryNotFound(d),
-			collection::Error::ArtistNotFound => APIError::ArtistNotFound,
-			collection::Error::AlbumNotFound => APIError::AlbumNotFound,
-			collection::Error::Database(e) => APIError::Database(e),
-			collection::Error::DatabaseConnection(e) => e.into(),
-			collection::Error::Vfs(e) => e.into(),
-			collection::Error::IndexDeserializationError => APIError::Internal,
-			collection::Error::IndexSerializationError => APIError::Internal,
-			collection::Error::ThreadPoolBuilder(_) => APIError::Internal,
-			collection::Error::ThreadJoining(_) => APIError::Internal,
+			index::Error::DirectoryNotFound(d) => APIError::DirectoryNotFound(d),
+			index::Error::ArtistNotFound => APIError::ArtistNotFound,
+			index::Error::AlbumNotFound => APIError::AlbumNotFound,
+			index::Error::SongNotFound => APIError::SongNotFound,
+			index::Error::Database(e) => APIError::Database(e),
+			index::Error::DatabaseConnection(e) => e.into(),
+			index::Error::Vfs(e) => e.into(),
+			index::Error::IndexDeserializationError => APIError::Internal,
+			index::Error::IndexSerializationError => APIError::Internal,
+			index::Error::ThreadPoolBuilder(_) => APIError::Internal,
+			index::Error::ThreadJoining(_) => APIError::Internal,
 		}
 	}
 }

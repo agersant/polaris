@@ -2,7 +2,6 @@ use core::clone::Clone;
 use sqlx::{Acquire, QueryBuilder, Sqlite};
 use std::path::PathBuf;
 
-use crate::app::collection::SongKey;
 use crate::app::vfs;
 use crate::db::{self, DB};
 
@@ -126,7 +125,7 @@ impl Manager {
 		&self,
 		playlist_name: &str,
 		owner: &str,
-	) -> Result<Vec<SongKey>, Error> {
+	) -> Result<Vec<PathBuf>, Error> {
 		let songs = {
 			let mut connection = self.db.connect().await?;
 
@@ -231,15 +230,14 @@ mod test {
 			.build()
 			.await;
 
-		ctx.updater.update().await.unwrap();
+		ctx.scanner.update().await.unwrap();
 
 		let playlist_content = ctx
-			.browser
-			.flatten(Path::new(TEST_MOUNT_NAME))
+			.index_manager
+			.flatten(PathBuf::from(TEST_MOUNT_NAME))
 			.await
 			.unwrap()
 			.into_iter()
-			.map(|s| s.virtual_path)
 			.collect::<Vec<_>>();
 		assert_eq!(playlist_content.len(), 13);
 
@@ -296,15 +294,14 @@ mod test {
 			.build()
 			.await;
 
-		ctx.updater.update().await.unwrap();
+		ctx.scanner.update().await.unwrap();
 
 		let playlist_content = ctx
-			.browser
-			.flatten(Path::new(TEST_MOUNT_NAME))
+			.index_manager
+			.flatten(PathBuf::from(TEST_MOUNT_NAME))
 			.await
 			.unwrap()
 			.into_iter()
-			.map(|s| s.virtual_path)
 			.collect::<Vec<_>>();
 		assert_eq!(playlist_content.len(), 13);
 
@@ -329,6 +326,6 @@ mod test {
 		]
 		.iter()
 		.collect();
-		assert_eq!(songs[0].virtual_path, first_song_path);
+		assert_eq!(songs[0], first_song_path);
 	}
 }

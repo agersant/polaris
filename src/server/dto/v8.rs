@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::app::{collection, config, ddns, settings, thumbnail, user, vfs};
+use crate::app::{config, ddns, index, settings, thumbnail, user, vfs};
 use std::{convert::From, path::PathBuf};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
@@ -259,8 +259,8 @@ pub struct Song {
 	pub labels: Vec<String>,
 }
 
-impl From<collection::Song> for Song {
-	fn from(s: collection::Song) -> Self {
+impl From<index::Song> for Song {
+	fn from(s: index::Song) -> Self {
 		Self {
 			path: s.virtual_path,
 			track_number: s.track_number,
@@ -291,14 +291,14 @@ pub struct BrowserEntry {
 	pub is_directory: bool,
 }
 
-impl From<collection::File> for BrowserEntry {
-	fn from(file: collection::File) -> Self {
+impl From<index::File> for BrowserEntry {
+	fn from(file: index::File) -> Self {
 		match file {
-			collection::File::Directory(d) => Self {
+			index::File::Directory(d) => Self {
 				is_directory: true,
 				path: d,
 			},
-			collection::File::Song(s) => Self {
+			index::File::Song(s) => Self {
 				is_directory: false,
 				path: s,
 			},
@@ -313,8 +313,8 @@ pub struct Artist {
 	pub album_appearances: Vec<AlbumHeader>,
 }
 
-impl From<collection::Artist> for Artist {
-	fn from(a: collection::Artist) -> Self {
+impl From<index::Artist> for Artist {
+	fn from(a: index::Artist) -> Self {
 		Self {
 			name: a.name,
 			albums: a.albums.into_iter().map(|a| a.into()).collect(),
@@ -335,8 +335,8 @@ pub struct AlbumHeader {
 	pub year: Option<i64>,
 }
 
-impl From<collection::Album> for AlbumHeader {
-	fn from(a: collection::Album) -> Self {
+impl From<index::Album> for AlbumHeader {
+	fn from(a: index::Album) -> Self {
 		Self {
 			name: a.name,
 			artwork: a.artwork.map(|a| a.to_string_lossy().to_string()),
@@ -353,8 +353,8 @@ pub struct Album {
 	pub songs: Vec<Song>,
 }
 
-impl From<collection::Album> for Album {
-	fn from(mut a: collection::Album) -> Self {
+impl From<index::Album> for Album {
+	fn from(mut a: index::Album) -> Self {
 		let songs = a.songs.drain(..).map(|s| s.into()).collect();
 		Self {
 			header: a.into(),

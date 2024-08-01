@@ -1,13 +1,12 @@
 use std::path::PathBuf;
 
-use crate::app::{collection, config, ddns, playlist, settings, user, vfs};
+use crate::app::{config, ddns, index, playlist, scanner, settings, user, vfs};
 use crate::db::DB;
 use crate::test::*;
 
 pub struct Context {
-	pub browser: collection::Browser,
-	pub index_manager: collection::IndexManager,
-	pub updater: collection::Updater,
+	pub index_manager: index::Manager,
+	pub scanner: scanner::Scanner,
 	pub config_manager: config::Manager,
 	pub ddns_manager: ddns::Manager,
 	pub playlist_manager: playlist::Manager,
@@ -66,9 +65,8 @@ impl ContextBuilder {
 			vfs_manager.clone(),
 			ddns_manager.clone(),
 		);
-		let browser = collection::Browser::new(db.clone(), vfs_manager.clone());
-		let index_manager = collection::IndexManager::new(db.clone()).await;
-		let updater = collection::Updater::new(
+		let index_manager = index::Manager::new(db.clone()).await;
+		let scanner = scanner::Scanner::new(
 			index_manager.clone(),
 			settings_manager.clone(),
 			vfs_manager.clone(),
@@ -80,9 +78,8 @@ impl ContextBuilder {
 		config_manager.apply(&self.config).await.unwrap();
 
 		Context {
-			browser,
 			index_manager,
-			updater,
+			scanner,
 			config_manager,
 			ddns_manager,
 			playlist_manager,
