@@ -1,8 +1,7 @@
 use std::path::PathBuf;
 use thiserror::Error;
 
-use crate::app::{config, ddns, index, lastfm, playlist, settings, thumbnail, user, vfs};
-use crate::db;
+use crate::app;
 
 #[derive(Error, Debug)]
 pub enum APIError {
@@ -66,8 +65,6 @@ pub enum APIError {
 	PasswordHashing,
 	#[error("Playlist not found")]
 	PlaylistNotFound,
-	#[error("Settings error:\n\n{0}")]
-	Settings(settings::Error),
 	#[error("Could not decode thumbnail from flac file `{0}`:\n\n{1}")]
 	ThumbnailFlacDecoding(PathBuf, metaflac::Error),
 	#[error("Thumbnail file could not be opened")]
@@ -78,8 +75,6 @@ pub enum APIError {
 	ThumbnailImageDecoding(PathBuf, image::error::ImageError),
 	#[error("Could not decode thumbnail from mp4 file `{0}`:\n\n{1}")]
 	ThumbnailMp4Decoding(PathBuf, mp4ameta::Error),
-	#[error("Toml deserialization error:\n\n{0}")]
-	TomlDeserialization(toml::de::Error),
 	#[error("Unsupported thumbnail format: `{0}`")]
 	UnsupportedThumbnailFormat(&'static str),
 	#[error("User not found")]
@@ -88,135 +83,63 @@ pub enum APIError {
 	VFSPathNotFound,
 }
 
-impl From<index::Error> for APIError {
-	fn from(error: index::Error) -> APIError {
+impl From<app::Error> for APIError {
+	fn from(error: app::Error) -> APIError {
 		match error {
-			index::Error::DirectoryNotFound(d) => APIError::DirectoryNotFound(d),
-			index::Error::ArtistNotFound => APIError::ArtistNotFound,
-			index::Error::AlbumNotFound => APIError::AlbumNotFound,
-			index::Error::SongNotFound => APIError::SongNotFound,
-			index::Error::Database(e) => APIError::Database(e),
-			index::Error::DatabaseConnection(e) => e.into(),
-			index::Error::Vfs(e) => e.into(),
-			index::Error::IndexDeserializationError => APIError::Internal,
-			index::Error::IndexSerializationError => APIError::Internal,
-			index::Error::ThreadPoolBuilder(_) => APIError::Internal,
-			index::Error::ThreadJoining(_) => APIError::Internal,
-		}
-	}
-}
+			app::Error::ThreadPoolBuilder(_) => APIError::Internal,
+			app::Error::ThreadJoining(_) => APIError::Internal,
 
-impl From<config::Error> for APIError {
-	fn from(error: config::Error) -> APIError {
-		match error {
-			config::Error::Ddns(e) => e.into(),
-			config::Error::Io(p, e) => APIError::Io(p, e),
-			config::Error::Settings(e) => e.into(),
-			config::Error::Toml(e) => APIError::TomlDeserialization(e),
-			config::Error::User(e) => e.into(),
-			config::Error::Vfs(e) => e.into(),
-		}
-	}
-}
+			app::Error::Io(p, e) => APIError::Io(p, e),
+			app::Error::Ape(_) => APIError::Internal,
+			app::Error::Id3(p, e) => APIError::ThumbnailId3Decoding(p, e),
+			app::Error::Metaflac(p, e) => APIError::ThumbnailFlacDecoding(p, e),
+			app::Error::Mp4aMeta(p, e) => APIError::ThumbnailMp4Decoding(p, e),
+			app::Error::Opus(_) => APIError::Internal,
+			app::Error::Vorbis(_) => APIError::Internal,
+			app::Error::VorbisCommentNotFoundInFlacFile => APIError::Internal,
+			app::Error::Image(p, e) => APIError::ThumbnailImageDecoding(p, e),
+			app::Error::UnsupportedFormat(f) => APIError::UnsupportedThumbnailFormat(f),
 
-impl From<playlist::Error> for APIError {
-	fn from(error: playlist::Error) -> APIError {
-		match error {
-			playlist::Error::Database(e) => APIError::Database(e),
-			playlist::Error::DatabaseConnection(e) => e.into(),
-			playlist::Error::PlaylistNotFound => APIError::PlaylistNotFound,
-			playlist::Error::UserNotFound => APIError::UserNotFound,
-			playlist::Error::Vfs(e) => e.into(),
-		}
-	}
-}
+			app::Error::Database(e) => APIError::Database(e),
+			app::Error::ConnectionPoolBuild => APIError::Internal,
+			app::Error::ConnectionPool => APIError::Internal,
+			app::Error::Migration(_) => APIError::Internal,
 
-impl From<settings::Error> for APIError {
-	fn from(error: settings::Error) -> APIError {
-		match error {
-			settings::Error::AuthenticationSecretNotFound => APIError::Settings(error),
-			settings::Error::DatabaseConnection(e) => e.into(),
-			settings::Error::AuthenticationSecretInvalid => APIError::Settings(error),
-			settings::Error::MiscSettingsNotFound => APIError::Settings(error),
-			settings::Error::IndexAlbumArtPatternInvalid => APIError::Settings(error),
-			settings::Error::Database(e) => APIError::Database(e),
-		}
-	}
-}
+			app::Error::UpdateQueryFailed(s) => APIError::DdnsUpdateQueryFailed(s),
+			app::Error::UpdateQueryTransport => APIError::DdnsUpdateQueryFailed(0),
 
-impl From<user::Error> for APIError {
-	fn from(error: user::Error) -> APIError {
-		match error {
-			user::Error::AuthorizationTokenEncoding => APIError::AuthorizationTokenEncoding,
-			user::Error::BrancaTokenEncoding => APIError::BrancaTokenEncoding,
-			user::Error::Database(e) => APIError::Database(e),
-			user::Error::DatabaseConnection(e) => e.into(),
-			user::Error::EmptyPassword => APIError::EmptyPassword,
-			user::Error::EmptyUsername => APIError::EmptyUsername,
-			user::Error::IncorrectAuthorizationScope => APIError::IncorrectCredentials,
-			user::Error::IncorrectPassword => APIError::IncorrectCredentials,
-			user::Error::IncorrectUsername => APIError::IncorrectCredentials,
-			user::Error::InvalidAuthToken => APIError::IncorrectCredentials,
-			user::Error::MissingLastFMSessionKey => APIError::IncorrectCredentials,
-			user::Error::PasswordHashing => APIError::PasswordHashing,
-		}
-	}
-}
+			app::Error::AuthenticationSecretNotFound => APIError::Internal,
+			app::Error::AuthenticationSecretInvalid => APIError::Internal,
+			app::Error::MiscSettingsNotFound => APIError::Internal,
+			app::Error::IndexAlbumArtPatternInvalid => APIError::Internal,
 
-impl From<vfs::Error> for APIError {
-	fn from(error: vfs::Error) -> APIError {
-		match error {
-			vfs::Error::CouldNotMapToRealPath(_) => APIError::VFSPathNotFound,
-			vfs::Error::Database(e) => APIError::Database(e),
-			vfs::Error::DatabaseConnection(e) => e.into(),
-		}
-	}
-}
+			app::Error::Toml(_) => APIError::Internal,
+			app::Error::IndexDeserializationError => APIError::Internal,
+			app::Error::IndexSerializationError => APIError::Internal,
 
-impl From<ddns::Error> for APIError {
-	fn from(error: ddns::Error) -> APIError {
-		match error {
-			ddns::Error::Database(e) => APIError::Database(e),
-			ddns::Error::DatabaseConnection(e) => e.into(),
-			ddns::Error::UpdateQueryFailed(s) => APIError::DdnsUpdateQueryFailed(s),
-			ddns::Error::UpdateQueryTransport => APIError::DdnsUpdateQueryFailed(0),
-		}
-	}
-}
+			app::Error::CouldNotMapToRealPath(_) => APIError::VFSPathNotFound,
+			app::Error::UserNotFound => APIError::UserNotFound,
+			app::Error::DirectoryNotFound(d) => APIError::DirectoryNotFound(d),
+			app::Error::ArtistNotFound => APIError::ArtistNotFound,
+			app::Error::AlbumNotFound => APIError::AlbumNotFound,
+			app::Error::SongNotFound => APIError::SongNotFound,
+			app::Error::PlaylistNotFound => APIError::PlaylistNotFound,
+			app::Error::EmbeddedArtworkNotFound(_) => APIError::EmbeddedArtworkNotFound,
 
-impl From<db::Error> for APIError {
-	fn from(error: db::Error) -> APIError {
-		match error {
-			db::Error::ConnectionPoolBuild => APIError::Internal,
-			db::Error::ConnectionPool => APIError::Internal,
-			db::Error::Io(p, e) => APIError::Io(p, e),
-			db::Error::Migration(_) => APIError::Internal,
-		}
-	}
-}
+			app::Error::EmptyUsername => APIError::EmptyUsername,
+			app::Error::EmptyPassword => APIError::EmptyPassword,
+			app::Error::IncorrectUsername => APIError::IncorrectCredentials,
+			app::Error::IncorrectPassword => APIError::IncorrectCredentials,
+			app::Error::InvalidAuthToken => APIError::IncorrectCredentials,
+			app::Error::IncorrectAuthorizationScope => APIError::IncorrectCredentials,
+			app::Error::MissingLastFMSessionKey => APIError::IncorrectCredentials,
+			app::Error::PasswordHashing => APIError::PasswordHashing,
+			app::Error::AuthorizationTokenEncoding => APIError::AuthorizationTokenEncoding,
+			app::Error::BrancaTokenEncoding => APIError::BrancaTokenEncoding,
 
-impl From<lastfm::Error> for APIError {
-	fn from(error: lastfm::Error) -> APIError {
-		match error {
-			lastfm::Error::ScrobblerAuthentication(e) => APIError::LastFMScrobblerAuthentication(e),
-			lastfm::Error::Scrobble(e) => APIError::LastFMScrobble(e),
-			lastfm::Error::NowPlaying(e) => APIError::LastFMNowPlaying(e),
-			lastfm::Error::Query(e) => e.into(),
-			lastfm::Error::User(e) => e.into(),
-		}
-	}
-}
-
-impl From<thumbnail::Error> for APIError {
-	fn from(error: thumbnail::Error) -> APIError {
-		match error {
-			thumbnail::Error::EmbeddedArtworkNotFound(_) => APIError::EmbeddedArtworkNotFound,
-			thumbnail::Error::Id3(p, e) => APIError::ThumbnailId3Decoding(p, e),
-			thumbnail::Error::Image(p, e) => APIError::ThumbnailImageDecoding(p, e),
-			thumbnail::Error::Io(p, e) => APIError::Io(p, e),
-			thumbnail::Error::Metaflac(p, e) => APIError::ThumbnailFlacDecoding(p, e),
-			thumbnail::Error::Mp4aMeta(p, e) => APIError::ThumbnailMp4Decoding(p, e),
-			thumbnail::Error::UnsupportedFormat(f) => APIError::UnsupportedThumbnailFormat(f),
+			app::Error::ScrobblerAuthentication(e) => APIError::LastFMScrobblerAuthentication(e),
+			app::Error::Scrobble(e) => APIError::LastFMScrobble(e),
+			app::Error::NowPlaying(e) => APIError::LastFMNowPlaying(e),
 		}
 	}
 }

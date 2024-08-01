@@ -2,24 +2,10 @@ use rustfm_scrobble::{Scrobble, Scrobbler};
 use std::path::Path;
 use user::AuthToken;
 
-use crate::app::{index, user};
+use crate::app::{index, user, Error};
 
 const LASTFM_API_KEY: &str = "02b96c939a2b451c31dfd67add1f696e";
 const LASTFM_API_SECRET: &str = "0f25a80ceef4b470b5cb97d99d4b3420";
-
-#[derive(thiserror::Error, Debug)]
-pub enum Error {
-	#[error("Failed to authenticate with last.fm")]
-	ScrobblerAuthentication(rustfm_scrobble::ScrobblerError),
-	#[error("Failed to emit last.fm scrobble")]
-	Scrobble(rustfm_scrobble::ScrobblerError),
-	#[error("Failed to emit last.fm now playing update")]
-	NowPlaying(rustfm_scrobble::ScrobblerError),
-	#[error(transparent)]
-	Query(#[from] index::Error),
-	#[error(transparent)]
-	User(#[from] user::Error),
-}
 
 #[derive(Clone)]
 pub struct Manager {

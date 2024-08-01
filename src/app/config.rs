@@ -1,24 +1,7 @@
 use serde::Deserialize;
-use std::io::Read;
-use std::path::{Path, PathBuf};
+use std::{io::Read, path::Path};
 
-use crate::app::{ddns, settings, user, vfs};
-
-#[derive(thiserror::Error, Debug)]
-pub enum Error {
-	#[error(transparent)]
-	Ddns(#[from] ddns::Error),
-	#[error("Filesystem error for `{0}`: `{1}`")]
-	Io(PathBuf, std::io::Error),
-	#[error(transparent)]
-	Settings(#[from] settings::Error),
-	#[error(transparent)]
-	Toml(#[from] toml::de::Error),
-	#[error(transparent)]
-	User(#[from] user::Error),
-	#[error(transparent)]
-	Vfs(#[from] vfs::Error),
-}
+use crate::app::{ddns, settings, user, vfs, Error};
 
 #[derive(Default, Deserialize)]
 pub struct Config {

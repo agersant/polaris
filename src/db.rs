@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use sqlx::{
 	migrate::Migrator,
@@ -7,19 +7,9 @@ use sqlx::{
 	Sqlite,
 };
 
-static MIGRATOR: Migrator = sqlx::migrate!("src/db");
+use crate::app::Error;
 
-#[derive(thiserror::Error, Debug)]
-pub enum Error {
-	#[error("Could not initialize database connection pool")]
-	ConnectionPoolBuild,
-	#[error("Could not acquire database connection from pool")]
-	ConnectionPool,
-	#[error("Filesystem error for `{0}`: `{1}`")]
-	Io(PathBuf, std::io::Error),
-	#[error("Could not apply database migrations: {0}")]
-	Migration(sqlx::migrate::MigrateError),
-}
+static MIGRATOR: Migrator = sqlx::migrate!("src/db");
 
 #[derive(Clone)]
 pub struct DB {

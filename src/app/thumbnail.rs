@@ -6,25 +6,8 @@ use std::fs::{self, File};
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 
+use crate::app::Error;
 use crate::utils::{get_audio_format, AudioFormat};
-
-#[derive(thiserror::Error, Debug)]
-pub enum Error {
-	#[error("No embedded artwork was found in `{0}`")]
-	EmbeddedArtworkNotFound(PathBuf),
-	#[error("Could not read thumbnail from ID3 tag in `{0}`:\n\n{1}")]
-	Id3(PathBuf, id3::Error),
-	#[error("Could not read thumbnail image in `{0}`:\n\n{1}")]
-	Image(PathBuf, image::error::ImageError),
-	#[error("Filesystem error for `{0}`: `{1}`")]
-	Io(PathBuf, std::io::Error),
-	#[error("Could not read thumbnail from flac file in `{0}`:\n\n{1}")]
-	Metaflac(PathBuf, metaflac::Error),
-	#[error("Could not read thumbnail from mp4 file in `{0}`:\n\n{1}")]
-	Mp4aMeta(PathBuf, mp4ameta::Error),
-	#[error("This file format is not supported: {0}")]
-	UnsupportedFormat(&'static str),
-}
 
 #[derive(Debug, Hash)]
 pub struct Options {

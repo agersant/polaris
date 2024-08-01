@@ -7,7 +7,7 @@ use std::{
 use serde::{Deserialize, Serialize};
 use trie_rs::{Trie, TrieBuilder};
 
-use crate::app::{index::Error, scanner};
+use crate::app::{scanner, Error};
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub enum File {

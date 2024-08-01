@@ -5,35 +5,8 @@ use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::app::settings::AuthSecret;
-use crate::db::{self, DB};
-
-#[derive(thiserror::Error, Debug)]
-pub enum Error {
-	#[error(transparent)]
-	Database(#[from] sqlx::Error),
-	#[error(transparent)]
-	DatabaseConnection(#[from] db::Error),
-	#[error("Cannot use empty username")]
-	EmptyUsername,
-	#[error("Cannot use empty password")]
-	EmptyPassword,
-	#[error("Username does not exist")]
-	IncorrectUsername,
-	#[error("Password does not match username")]
-	IncorrectPassword,
-	#[error("Invalid auth token")]
-	InvalidAuthToken,
-	#[error("Incorrect authorization scope")]
-	IncorrectAuthorizationScope,
-	#[error("Last.fm session key is missing")]
-	MissingLastFMSessionKey,
-	#[error("Failed to hash password")]
-	PasswordHashing,
-	#[error("Failed to encode authorization token")]
-	AuthorizationTokenEncoding,
-	#[error("Failed to encode Branca token")]
-	BrancaTokenEncoding,
-}
+use crate::app::Error;
+use crate::db::DB;
 
 #[derive(Debug)]
 pub struct User {

@@ -7,9 +7,8 @@ use log::{error, info};
 use serde::{Deserialize, Serialize};
 use tokio::task::spawn_blocking;
 
-use crate::app::scanner;
-use crate::app::vfs;
-use crate::db::{self, DB};
+use crate::app::{scanner, Error};
+use crate::db::DB;
 
 mod browser;
 mod collection;
@@ -17,32 +16,6 @@ mod search;
 
 pub use browser::File;
 pub use collection::{Album, AlbumKey, Artist, ArtistKey, Song, SongKey};
-
-#[derive(thiserror::Error, Debug)]
-pub enum Error {
-	#[error("Directory not found: {0}")]
-	DirectoryNotFound(PathBuf),
-	#[error("Artist not found")]
-	ArtistNotFound,
-	#[error("Album not found")]
-	AlbumNotFound,
-	#[error("Song not found")]
-	SongNotFound,
-	#[error(transparent)]
-	Database(#[from] sqlx::Error),
-	#[error(transparent)]
-	DatabaseConnection(#[from] db::Error),
-	#[error(transparent)]
-	Vfs(#[from] vfs::Error),
-	#[error("Could not deserialize collection")]
-	IndexDeserializationError,
-	#[error("Could not serialize collection")]
-	IndexSerializationError,
-	#[error(transparent)]
-	ThreadPoolBuilder(#[from] rayon::ThreadPoolBuildError),
-	#[error(transparent)]
-	ThreadJoining(#[from] tokio::task::JoinError),
-}
 
 #[derive(Clone)]
 pub struct Manager {

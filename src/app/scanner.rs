@@ -11,7 +11,7 @@ use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use tokio::sync::Notify;
 use tokio::time::Instant;
 
-use crate::app::{formats, index, settings, vfs};
+use crate::app::{formats, index, settings, vfs, Error};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Directory {
@@ -53,7 +53,7 @@ impl Scanner {
 		index_manager: index::Manager,
 		settings_manager: settings::Manager,
 		vfs_manager: vfs::Manager,
-	) -> Result<Self, index::Error> {
+	) -> Result<Self, Error> {
 		let scanner = Self {
 			index_manager,
 			vfs_manager,
@@ -100,7 +100,7 @@ impl Scanner {
 		});
 	}
 
-	pub async fn update(&mut self) -> Result<(), index::Error> {
+	pub async fn update(&mut self) -> Result<(), Error> {
 		let start = Instant::now();
 		info!("Beginning collection scan");
 
@@ -185,7 +185,7 @@ impl Scan {
 		}
 	}
 
-	pub async fn start(self) -> Result<(), index::Error> {
+	pub async fn start(self) -> Result<(), Error> {
 		let vfs = self.vfs_manager.get_vfs().await?;
 		let roots = vfs.mounts().clone();
 

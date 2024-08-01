@@ -4,17 +4,8 @@ use serde::{Deserialize, Serialize};
 use sqlx::{Acquire, QueryBuilder, Sqlite};
 use std::path::{self, Path, PathBuf};
 
-use crate::db::{self, DB};
-
-#[derive(thiserror::Error, Debug)]
-pub enum Error {
-	#[error("The following virtual path could not be mapped to a real path: `{0}`")]
-	CouldNotMapToRealPath(PathBuf),
-	#[error(transparent)]
-	DatabaseConnection(#[from] db::Error),
-	#[error(transparent)]
-	Database(#[from] sqlx::Error),
-}
+use crate::app::Error;
+use crate::db::DB;
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 pub struct MountDir {

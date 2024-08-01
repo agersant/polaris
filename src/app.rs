@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use crate::db::{self, DB};
+use crate::db::DB;
 use crate::paths::Paths;
 
 pub mod config;
@@ -22,15 +22,105 @@ pub mod test;
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
 	#[error(transparent)]
-	Collection(#[from] index::Error),
+	ThreadPoolBuilder(#[from] rayon::ThreadPoolBuildError),
 	#[error(transparent)]
-	Config(#[from] config::Error),
-	#[error(transparent)]
-	Database(#[from] db::Error),
+	ThreadJoining(#[from] tokio::task::JoinError),
+
 	#[error("Filesystem error for `{0}`: `{1}`")]
 	Io(PathBuf, std::io::Error),
 	#[error(transparent)]
-	Settings(#[from] settings::Error),
+	Ape(#[from] ape::Error),
+	#[error("ID3 error in `{0}`: `{1}`")]
+	Id3(PathBuf, id3::Error),
+	#[error("Metaflac error in `{0}`: `{1}`")]
+	Metaflac(PathBuf, metaflac::Error),
+	#[error("Mp4aMeta error in `{0}`: `{1}`")]
+	Mp4aMeta(PathBuf, mp4ameta::Error),
+	#[error(transparent)]
+	Opus(#[from] opus_headers::ParseError),
+	#[error(transparent)]
+	Vorbis(#[from] lewton::VorbisError),
+	#[error("Could not find a Vorbis comment within flac file")]
+	VorbisCommentNotFoundInFlacFile,
+	#[error("Could not read thumbnail image in `{0}`:\n\n{1}")]
+	Image(PathBuf, image::error::ImageError),
+	#[error("This file format is not supported: {0}")]
+	UnsupportedFormat(&'static str),
+
+	#[error(transparent)]
+	Database(#[from] sqlx::Error),
+	#[error("Could not initialize database connection pool")]
+	ConnectionPoolBuild,
+	#[error("Could not acquire database connection from pool")]
+	ConnectionPool,
+	#[error("Could not apply database migrations: {0}")]
+	Migration(sqlx::migrate::MigrateError),
+
+	#[error("DDNS update query failed with HTTP status code `{0}`")]
+	UpdateQueryFailed(u16),
+	#[error("DDNS update query failed due to a transport error")]
+	UpdateQueryTransport,
+
+	#[error("Auth secret does not have the expected format")]
+	AuthenticationSecretInvalid,
+	#[error("Missing auth secret")]
+	AuthenticationSecretNotFound,
+	#[error("Missing settings")]
+	MiscSettingsNotFound,
+	#[error("Index album art pattern is not a valid regex")]
+	IndexAlbumArtPatternInvalid,
+
+	#[error(transparent)]
+	Toml(#[from] toml::de::Error),
+	#[error("Could not deserialize collection")]
+	IndexDeserializationError,
+	#[error("Could not serialize collection")]
+	IndexSerializationError,
+
+	#[error("The following virtual path could not be mapped to a real path: `{0}`")]
+	CouldNotMapToRealPath(PathBuf),
+	#[error("User not found")]
+	UserNotFound,
+	#[error("Directory not found: {0}")]
+	DirectoryNotFound(PathBuf),
+	#[error("Artist not found")]
+	ArtistNotFound,
+	#[error("Album not found")]
+	AlbumNotFound,
+	#[error("Song not found")]
+	SongNotFound,
+	#[error("Playlist not found")]
+	PlaylistNotFound,
+	#[error("No embedded artwork was found in `{0}`")]
+	EmbeddedArtworkNotFound(PathBuf),
+
+	#[error("Cannot use empty username")]
+	EmptyUsername,
+	#[error("Cannot use empty password")]
+	EmptyPassword,
+	#[error("Username does not exist")]
+	IncorrectUsername,
+	#[error("Password does not match username")]
+	IncorrectPassword,
+	#[error("Invalid auth token")]
+	InvalidAuthToken,
+	#[error("Incorrect authorization scope")]
+	IncorrectAuthorizationScope,
+	#[error("Last.fm session key is missing")]
+	MissingLastFMSessionKey,
+	#[error("Failed to hash password")]
+	PasswordHashing,
+	#[error("Failed to encode authorization token")]
+	AuthorizationTokenEncoding,
+	#[error("Failed to encode Branca token")]
+	BrancaTokenEncoding,
+
+	#[error("Failed to authenticate with last.fm")]
+	ScrobblerAuthentication(rustfm_scrobble::ScrobblerError),
+	#[error("Failed to emit last.fm scrobble")]
+	Scrobble(rustfm_scrobble::ScrobblerError),
+	#[error("Failed to emit last.fm now playing update")]
+	NowPlaying(rustfm_scrobble::ScrobblerError),
 }
 
 #[derive(Clone)]

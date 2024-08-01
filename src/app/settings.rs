@@ -2,23 +2,8 @@ use regex::Regex;
 use serde::Deserialize;
 use std::time::Duration;
 
-use crate::db::{self, DB};
-
-#[derive(thiserror::Error, Debug)]
-pub enum Error {
-	#[error("Auth secret does not have the expected format")]
-	AuthenticationSecretInvalid,
-	#[error("Missing auth secret")]
-	AuthenticationSecretNotFound,
-	#[error(transparent)]
-	DatabaseConnection(#[from] db::Error),
-	#[error("Missing settings")]
-	MiscSettingsNotFound,
-	#[error("Index album art pattern is not a valid regex")]
-	IndexAlbumArtPatternInvalid,
-	#[error(transparent)]
-	Database(#[from] sqlx::Error),
-}
+use crate::app::Error;
+use crate::db::DB;
 
 #[derive(Clone, Default)]
 pub struct AuthSecret {

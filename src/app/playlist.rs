@@ -2,22 +2,8 @@ use core::clone::Clone;
 use sqlx::{Acquire, QueryBuilder, Sqlite};
 use std::path::PathBuf;
 
-use crate::app::vfs;
-use crate::db::{self, DB};
-
-#[derive(thiserror::Error, Debug)]
-pub enum Error {
-	#[error(transparent)]
-	Database(#[from] sqlx::Error),
-	#[error(transparent)]
-	DatabaseConnection(#[from] db::Error),
-	#[error("User not found")]
-	UserNotFound,
-	#[error("Playlist not found")]
-	PlaylistNotFound,
-	#[error(transparent)]
-	Vfs(#[from] vfs::Error),
-}
+use crate::app::{vfs, Error};
+use crate::db::DB;
 
 #[derive(Clone)]
 pub struct Manager {
@@ -191,7 +177,7 @@ impl Manager {
 
 #[cfg(test)]
 mod test {
-	use std::path::{Path, PathBuf};
+	use std::path::PathBuf;
 
 	use crate::app::test;
 	use crate::test_name;

@@ -2,30 +2,11 @@ use id3::TagLike;
 use lewton::inside_ogg::OggStreamReader;
 use log::error;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
+use crate::app::Error;
 use crate::utils;
 use crate::utils::AudioFormat;
-
-#[derive(thiserror::Error, Debug)]
-pub enum Error {
-	#[error(transparent)]
-	Ape(#[from] ape::Error),
-	#[error(transparent)]
-	Id3(#[from] id3::Error),
-	#[error("Filesystem error for `{0}`: `{1}`")]
-	Io(PathBuf, std::io::Error),
-	#[error(transparent)]
-	Metaflac(#[from] metaflac::Error),
-	#[error(transparent)]
-	Mp4aMeta(#[from] mp4ameta::Error),
-	#[error(transparent)]
-	Opus(#[from] opus_headers::ParseError),
-	#[error(transparent)]
-	Vorbis(#[from] lewton::VorbisError),
-	#[error("Could not find a Vorbis comment within flac file")]
-	VorbisCommentNotFoundInFlacFile,
-}
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct SongMetadata {
@@ -83,13 +64,15 @@ impl ID3Ext for id3::Tag {
 }
 
 fn read_id3<P: AsRef<Path>>(path: P) -> Result<SongMetadata, Error> {
-	let tag = id3::Tag::read_from_path(path).or_else(|error| {
-		if let Some(tag) = error.partial_tag {
-			Ok(tag)
-		} else {
-			Err(error)
-		}
-	})?;
+	let tag = id3::Tag::read_from_path(&path)
+		.or_else(|error| {
+			if let Some(tag) = error.partial_tag {
+				Ok(tag)
+			} else {
+				Err(error)
+			}
+		})
+		.map_err(|e| Error::Id3(path.as_ref().to_owned(), e))?;
 
 	let artists = tag.get_text_values("TPE1");
 	let album_artists = tag.get_text_values("TPE2");
@@ -255,7 +238,8 @@ fn read_opus<P: AsRef<Path>>(path: P) -> Result<SongMetadata, Error> {
 }
 
 fn read_flac<P: AsRef<Path>>(path: P) -> Result<SongMetadata, Error> {
-	let tag = metaflac::Tag::read_from_path(path)?;
+	let tag = metaflac::Tag::read_from_path(&path)
+		.map_err(|e| Error::Metaflac(path.as_ref().to_owned(), e))?;
 	let vorbis = tag
 		.vorbis_comments()
 		.ok_or(Error::VorbisCommentNotFoundInFlacFile)?;
@@ -290,7 +274,8 @@ fn read_flac<P: AsRef<Path>>(path: P) -> Result<SongMetadata, Error> {
 }
 
 fn read_mp4<P: AsRef<Path>>(path: P) -> Result<SongMetadata, Error> {
-	let mut tag = mp4ameta::Tag::read_from_path(path)?;
+	let mut tag = mp4ameta::Tag::read_from_path(&path)
+		.map_err(|e| Error::Mp4aMeta(path.as_ref().to_owned(), e))?;
 	let label_ident = mp4ameta::FreeformIdent::new("com.apple.iTunes", "Label");
 
 	Ok(SongMetadata {

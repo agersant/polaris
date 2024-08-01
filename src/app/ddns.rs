@@ -3,21 +3,10 @@ use log::{debug, error};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
-use crate::db::{self, DB};
+use crate::app::Error;
+use crate::db::DB;
 
 const DDNS_UPDATE_URL: &str = "https://ydns.io/api/v1/update/";
-
-#[derive(thiserror::Error, Debug)]
-pub enum Error {
-	#[error("DDNS update query failed with HTTP status code `{0}`")]
-	UpdateQueryFailed(u16),
-	#[error("DDNS update query failed due to a transport error")]
-	UpdateQueryTransport,
-	#[error(transparent)]
-	DatabaseConnection(#[from] db::Error),
-	#[error(transparent)]
-	Database(#[from] sqlx::Error),
-}
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 pub struct Config {
