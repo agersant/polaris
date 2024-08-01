@@ -10,6 +10,7 @@ use log::{error, info};
 use rand::{rngs::ThreadRng, seq::IteratorRandom};
 use serde::{Deserialize, Serialize};
 use tokio::task::spawn_blocking;
+use trie_rs::{Trie, TrieBuilder};
 
 use crate::{app::collection, db::DB};
 
@@ -23,7 +24,7 @@ impl IndexManager {
 	pub async fn new(db: DB) -> Self {
 		let mut index_manager = Self {
 			db,
-			index: Arc::default(),
+			index: Arc::new(RwLock::new(Index::new())),
 		};
 		if let Err(e) = index_manager.try_restore_index().await {
 			error!("Failed to restore index: {}", e);
@@ -88,6 +89,19 @@ impl IndexManager {
 		.await
 		.unwrap()
 	}
+
+	pub async fn flatten(&self, virtual_path: PathBuf) -> Result<Vec<SongKey>, collection::Error> {
+		spawn_blocking({
+			let index_manager = self.clone();
+			move || {
+				let index = index_manager.index.read().unwrap();
+				index.flatten(virtual_path)
+			}
+		})
+		.await
+		.unwrap()
+	}
+
 	pub async fn get_artist(
 		&self,
 		artist_key: &ArtistKey,
@@ -169,7 +183,7 @@ impl IndexManager {
 #[derive(Default)]
 pub(super) struct IndexBuilder {
 	directories: HashMap<PathBuf, HashSet<collection::File>>,
-	// filesystem: Trie<>,
+	flattened: TrieBuilder<String>,
 	songs: HashMap<SongID, collection::Song>,
 	artists: HashMap<ArtistID, Artist>,
 	albums: HashMap<AlbumID, Album>,
@@ -190,6 +204,12 @@ impl IndexBuilder {
 
 	pub fn add_song(&mut self, song: collection::Song) {
 		let song_id: SongID = song.song_id();
+		self.flattened.push(
+			song.virtual_path
+				.components()
+				.map(|c| c.as_os_str().to_string_lossy().to_string())
+				.collect::<Vec<_>>(),
+		);
 		self.directories
 			.entry(song.virtual_parent.clone())
 			.or_default()
@@ -272,6 +292,7 @@ impl IndexBuilder {
 
 		Index {
 			directories: self.directories,
+			flattened: self.flattened.build(),
 			songs: self.songs,
 			artists: self.artists,
 			albums: self.albums,
@@ -280,9 +301,10 @@ impl IndexBuilder {
 	}
 }
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub(super) struct Index {
 	directories: HashMap<PathBuf, HashSet<collection::File>>,
+	flattened: Trie<String>,
 	songs: HashMap<SongID, collection::Song>,
 	artists: HashMap<ArtistID, Artist>,
 	albums: HashMap<AlbumID, Album>,
@@ -290,6 +312,17 @@ pub(super) struct Index {
 }
 
 impl Index {
+	pub fn new() -> Self {
+		Self {
+			directories: HashMap::new(),
+			flattened: TrieBuilder::new().build(),
+			songs: HashMap::new(),
+			artists: HashMap::new(),
+			albums: HashMap::new(),
+			recent_albums: Vec::new(),
+		}
+	}
+
 	pub(self) fn browse<P: AsRef<Path>>(
 		&self,
 		virtual_path: P,
@@ -300,6 +333,30 @@ impl Index {
 			));
 		};
 		Ok(files.iter().cloned().collect())
+	}
+
+	pub(self) fn flatten<P: AsRef<Path>>(
+		&self,
+		virtual_path: P,
+	) -> Result<Vec<SongKey>, collection::Error> {
+		let path_components = virtual_path
+			.as_ref()
+			.components()
+			.map(|c| c.as_os_str().to_string_lossy().to_string())
+			.collect::<Vec<String>>();
+
+		if !self.flattened.is_prefix(&path_components) {
+			return Err(collection::Error::DirectoryNotFound(
+				virtual_path.as_ref().to_owned(),
+			));
+		}
+
+		Ok(self
+			.flattened
+			.predictive_search(path_components)
+			.map(|c: Vec<String>| -> PathBuf { c.join(std::path::MAIN_SEPARATOR_STR).into() })
+			.map(|s| SongKey { virtual_path: s })
+			.collect::<Vec<_>>())
 	}
 
 	pub(self) fn get_artist(&self, artist_id: ArtistID) -> Option<collection::Artist> {

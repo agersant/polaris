@@ -14,20 +14,6 @@ impl Browser {
 		Self { db, vfs_manager }
 	}
 
-	pub async fn browse<P>(&self, path: P) -> Result<Vec<collection::File>, collection::Error>
-	where
-		P: AsRef<Path>,
-	{
-		todo!();
-	}
-
-	pub async fn flatten<P>(&self, path: P) -> Result<Vec<collection::Song>, collection::Error>
-	where
-		P: AsRef<Path>,
-	{
-		todo!();
-	}
-
 	pub async fn search(&self, query: &str) -> Result<Vec<collection::File>, collection::Error> {
 		todo!();
 	}

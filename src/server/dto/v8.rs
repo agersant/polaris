@@ -281,6 +281,11 @@ impl From<collection::Song> for Song {
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SongList {
+	pub paths: Vec<PathBuf>,
+}
+
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BrowserEntry {
 	pub path: PathBuf,
 	pub is_directory: bool,

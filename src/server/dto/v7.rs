@@ -299,6 +299,27 @@ pub struct Song {
 	pub label: Option<String>,
 }
 
+impl From<collection::SongKey> for Song {
+	fn from(song_key: collection::SongKey) -> Self {
+		Self {
+			path: song_key.virtual_path,
+			track_number: None,
+			disc_number: None,
+			title: None,
+			artist: None,
+			album_artist: None,
+			year: None,
+			album: None,
+			artwork: None,
+			duration: None,
+			lyricist: None,
+			composer: None,
+			genre: None,
+			label: None,
+		}
+	}
+}
+
 impl From<collection::Song> for Song {
 	fn from(s: collection::Song) -> Self {
 		Self {

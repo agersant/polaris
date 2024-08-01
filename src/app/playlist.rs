@@ -2,7 +2,8 @@ use core::clone::Clone;
 use sqlx::{Acquire, QueryBuilder, Sqlite};
 use std::path::PathBuf;
 
-use crate::app::{collection::Song, vfs};
+use crate::app::collection::SongKey;
+use crate::app::vfs;
 use crate::db::{self, DB};
 
 #[derive(thiserror::Error, Debug)]
@@ -125,7 +126,7 @@ impl Manager {
 		&self,
 		playlist_name: &str,
 		owner: &str,
-	) -> Result<Vec<Song>, Error> {
+	) -> Result<Vec<SongKey>, Error> {
 		let songs = {
 			let mut connection = self.db.connect().await?;
 
@@ -319,7 +320,6 @@ mod test {
 			.unwrap();
 
 		assert_eq!(songs.len(), 13);
-		assert_eq!(songs[0].title, Some("Above The Water".to_owned()));
 
 		let first_song_path: PathBuf = [
 			TEST_MOUNT_NAME,

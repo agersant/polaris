@@ -282,7 +282,7 @@ fn collection_files_to_response(
 	}
 }
 
-fn songs_to_response(files: Vec<collection::Song>, api_version: APIMajorVersion) -> Response {
+fn songs_to_response(files: Vec<collection::SongKey>, api_version: APIMajorVersion) -> Response {
 	match api_version {
 		APIMajorVersion::V7 => Json(
 			files
@@ -291,12 +291,9 @@ fn songs_to_response(files: Vec<collection::Song>, api_version: APIMajorVersion)
 				.collect::<Vec<dto::v7::Song>>(),
 		)
 		.into_response(),
-		APIMajorVersion::V8 => Json(
-			files
-				.into_iter()
-				.map(|f| f.into())
-				.collect::<Vec<dto::Song>>(),
-		)
+		APIMajorVersion::V8 => Json(dto::SongList {
+			paths: files.into_iter().map(|s| s.virtual_path).collect(),
+		})
 		.into_response(),
 	}
 }
@@ -348,9 +345,9 @@ async fn get_browse(
 async fn get_flatten_root(
 	_auth: Auth,
 	api_version: APIMajorVersion,
-	State(browser): State<collection::Browser>,
+	State(index_manager): State<collection::IndexManager>,
 ) -> Response {
-	let songs = match browser.flatten(std::path::Path::new("")).await {
+	let songs = match index_manager.flatten(PathBuf::new()).await {
 		Ok(s) => s,
 		Err(e) => return APIError::from(e).into_response(),
 	};
@@ -360,11 +357,10 @@ async fn get_flatten_root(
 async fn get_flatten(
 	_auth: Auth,
 	api_version: APIMajorVersion,
-	State(browser): State<collection::Browser>,
-	Path(path): Path<String>,
+	State(index_manager): State<collection::IndexManager>,
+	Path(path): Path<PathBuf>,
 ) -> Response {
-	let path = percent_decode_str(&path).decode_utf8_lossy();
-	let songs = match browser.flatten(std::path::Path::new(path.as_ref())).await {
+	let songs = match index_manager.flatten(path).await {
 		Ok(s) => s,
 		Err(e) => return APIError::from(e).into_response(),
 	};
