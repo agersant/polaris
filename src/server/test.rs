@@ -117,22 +117,9 @@ pub trait TestService {
 		assert_eq!(response.status(), StatusCode::OK);
 
 		loop {
-			let browse_request = protocol::browse::<V8>(Path::new(""));
-			let response = self
-				.fetch_json::<(), Vec<dto::BrowserEntry>>(&browse_request)
-				.await;
-			let entries = response.body();
-			if !entries.is_empty() {
-				break;
-			}
-			tokio::time::sleep(Duration::from_millis(100)).await;
-		}
-
-		loop {
 			let flatten_request = protocol::flatten::<V8>(Path::new(""));
-			let response = self.fetch_json::<_, Vec<dto::Song>>(&flatten_request).await;
-			let entries = response.body();
-			if !entries.is_empty() {
+			let response = self.fetch(&flatten_request).await;
+			if response.status() == StatusCode::OK {
 				break;
 			}
 			tokio::time::sleep(Duration::from_millis(100)).await;

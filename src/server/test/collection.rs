@@ -78,7 +78,9 @@ async fn browse_directory_api_v7() {
 	let entries = response.body();
 	assert_eq!(entries.len(), 5);
 	match &entries[0] {
-		dto::v7::CollectionFile::Song(s) => assert_eq!(s.artist.as_deref(), Some("Khemmis")),
+		dto::v7::CollectionFile::Song(s) => {
+			assert_eq!(s.path, path.join("01 - Above The Water.mp3"))
+		}
 		_ => (),
 	}
 }
@@ -100,10 +102,10 @@ async fn flatten_root() {
 	service.login().await;
 
 	let request = protocol::flatten::<V8>(&PathBuf::new());
-	let response = service.fetch_json::<_, Vec<dto::Song>>(&request).await;
+	let response = service.fetch_json::<_, dto::SongList>(&request).await;
 	assert_eq!(response.status(), StatusCode::OK);
-	let entries = response.body();
-	assert_eq!(entries.len(), 13);
+	let song_list = response.body();
+	assert_eq!(song_list.paths.len(), 13);
 }
 
 #[tokio::test]
@@ -115,10 +117,10 @@ async fn flatten_directory() {
 	service.login().await;
 
 	let request = protocol::flatten::<V8>(Path::new(TEST_MOUNT_NAME));
-	let response = service.fetch_json::<_, Vec<dto::Song>>(&request).await;
+	let response = service.fetch_json::<_, dto::SongList>(&request).await;
 	assert_eq!(response.status(), StatusCode::OK);
-	let entries = response.body();
-	assert_eq!(entries.len(), 13);
+	let song_list = response.body();
+	assert_eq!(song_list.paths.len(), 13);
 }
 
 #[tokio::test]
@@ -148,7 +150,7 @@ async fn flatten_directory_api_v7() {
 	let entries = response.body();
 	assert_eq!(entries.len(), 5);
 
-	assert_eq!(entries[0].artist.as_deref(), Some("Khemmis"));
+	assert_eq!(entries[0].path, path.join("01 - Above The Water.mp3"));
 }
 
 #[tokio::test]

@@ -9,7 +9,7 @@ use trie_rs::{Trie, TrieBuilder};
 
 use crate::app::{scanner, Error};
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum File {
 	Directory(PathBuf),
 	Song(PathBuf),
@@ -17,7 +17,7 @@ pub enum File {
 
 #[derive(Serialize, Deserialize)]
 pub struct Browser {
-	directories: HashMap<PathBuf, HashSet<File>>,
+	directories: HashMap<PathBuf, Vec<File>>,
 	flattened: Trie<String>,
 }
 
@@ -33,7 +33,7 @@ impl Browser {
 		let Some(files) = self.directories.get(virtual_path.as_ref()) else {
 			return Err(Error::DirectoryNotFound(virtual_path.as_ref().to_owned()));
 		};
-		Ok(files.iter().cloned().collect())
+		Ok(files.clone())
 	}
 
 	pub fn flatten<P: AsRef<Path>>(&self, virtual_path: P) -> Result<Vec<PathBuf>, Error> {
@@ -56,7 +56,7 @@ impl Browser {
 }
 
 pub struct Builder {
-	directories: HashMap<PathBuf, HashSet<File>>,
+	directories: HashMap<PathBuf, Vec<File>>,
 	flattened: TrieBuilder<String>,
 }
 
@@ -79,7 +79,7 @@ impl Builder {
 			self.directories
 				.entry(parent.clone())
 				.or_default()
-				.insert(File::Directory(directory.virtual_path));
+				.push(File::Directory(directory.virtual_path));
 		}
 	}
 
@@ -87,7 +87,7 @@ impl Builder {
 		self.directories
 			.entry(song.virtual_parent.clone())
 			.or_default()
-			.insert(File::Song(song.virtual_path.clone()));
+			.push(File::Song(song.virtual_path.clone()));
 
 		self.flattened.push(
 			song.virtual_path
@@ -97,7 +97,10 @@ impl Builder {
 		);
 	}
 
-	pub fn build(self) -> Browser {
+	pub fn build(mut self) -> Browser {
+		for directory in self.directories.values_mut() {
+			directory.sort();
+		}
 		Browser {
 			directories: self.directories,
 			flattened: self.flattened.build(),
