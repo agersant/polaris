@@ -36,12 +36,12 @@ regex = "1.10.5"
 rustfm-scrobble = "1.1.1"
 serde = { version = "1.0.147", features = ["derive"] }
 serde_derive = "1.0.147"
-serde_json = "1.0.120"
+serde_json = "1.0.122"
 simplelog = "0.12.2"
 thiserror = "1.0.62"
-tokio = { version = "1.38", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.39", features = ["macros", "rt-multi-thread"] }
 tokio-util = { version = "0.7.11", features = ["io"] }
-toml = "0.8.14"
+toml = "0.8.19"
 tower-http = { version = "0.5.2", features = ["fs"] }
 trie-rs = { version = "0.4.2", features = ["serde"] }
 ureq = "2.10.0"
@@ -53,12 +53,12 @@ default-features = false
 features = ["http1", "json", "tokio", "tower-log", "query"]
 
 [dependencies.image]
-version = "0.25.1"
+version = "0.25.2"
 default-features = false
 features = ["bmp", "gif", "jpeg", "png"]
 
 [dependencies.sqlx]
-version = "0.7.4"
+version = "0.8.0"
 default-features = false
 features = ["macros", "migrate", "runtime-tokio", "sqlite"]
 
@@ -82,7 +82,7 @@ winres = "0.1"
 
 [dev-dependencies]
 axum-test = "15.3"
-bytes = "1.6.1"
+bytes = "1.7.1"
 fs_extra = "1.2.0"
 
 [profile.dev.package.sqlx-macros]

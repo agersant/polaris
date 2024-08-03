@@ -178,7 +178,7 @@ impl Manager {
 		.map(AuthToken)
 	}
 
-	pub async fn count(&self) -> Result<i32, Error> {
+	pub async fn count(&self) -> Result<i64, Error> {
 		let count = sqlx::query_scalar!("SELECT COUNT(*) FROM users")
 			.fetch_one(self.db.connect().await?.as_mut())
 			.await?;
