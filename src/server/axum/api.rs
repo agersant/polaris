@@ -494,12 +494,11 @@ async fn delete_playlist(
 async fn get_audio(
 	_auth: Auth,
 	State(vfs_manager): State<vfs::Manager>,
-	Path(path): Path<String>,
+	Path(path): Path<PathBuf>,
 	range: Option<TypedHeader<Range>>,
 ) -> Result<impl IntoResponse, APIError> {
 	let vfs = vfs_manager.get_vfs().await?;
-	let path = percent_decode_str(&path).decode_utf8_lossy();
-	let audio_path = vfs.virtual_to_real(std::path::Path::new(path.as_ref()))?;
+	let audio_path = vfs.virtual_to_real(&path)?;
 
 	let Ok(file) = tokio::fs::File::open(audio_path).await else {
 		return Err(APIError::AudioFileIOError);
@@ -517,14 +516,13 @@ async fn get_thumbnail(
 	_auth: Auth,
 	State(vfs_manager): State<vfs::Manager>,
 	State(thumbnails_manager): State<thumbnail::Manager>,
-	Path(path): Path<String>,
+	Path(path): Path<PathBuf>,
 	Query(options_input): Query<dto::ThumbnailOptions>,
 	range: Option<TypedHeader<Range>>,
 ) -> Result<impl IntoResponse, APIError> {
 	let options = thumbnail::Options::from(options_input);
 	let vfs = vfs_manager.get_vfs().await?;
-	let path = percent_decode_str(&path).decode_utf8_lossy();
-	let image_path = vfs.virtual_to_real(std::path::Path::new(path.as_ref()))?;
+	let image_path = vfs.virtual_to_real(&path)?;
 	let thumbnail_path = thumbnails_manager.get_thumbnail(&image_path, &options)?;
 
 	let Ok(file) = tokio::fs::File::open(thumbnail_path).await else {
@@ -543,14 +541,13 @@ async fn put_lastfm_now_playing(
 	auth: Auth,
 	State(lastfm_manager): State<lastfm::Manager>,
 	State(user_manager): State<user::Manager>,
-	Path(path): Path<String>,
+	Path(path): Path<PathBuf>,
 ) -> Result<(), APIError> {
 	if !user_manager.is_lastfm_linked(auth.get_username()).await {
 		return Err(APIError::LastFMAccountNotLinked);
 	}
-	let path = percent_decode_str(&path).decode_utf8_lossy();
 	lastfm_manager
-		.now_playing(auth.get_username(), std::path::Path::new(path.as_ref()))
+		.now_playing(auth.get_username(), &path)
 		.await?;
 	Ok(())
 }
@@ -559,15 +556,12 @@ async fn post_lastfm_scrobble(
 	auth: Auth,
 	State(lastfm_manager): State<lastfm::Manager>,
 	State(user_manager): State<user::Manager>,
-	Path(path): Path<String>,
+	Path(path): Path<PathBuf>,
 ) -> Result<(), APIError> {
 	if !user_manager.is_lastfm_linked(auth.get_username()).await {
 		return Err(APIError::LastFMAccountNotLinked);
 	}
-	let path = percent_decode_str(&path).decode_utf8_lossy();
-	lastfm_manager
-		.scrobble(auth.get_username(), std::path::Path::new(path.as_ref()))
-		.await?;
+	lastfm_manager.scrobble(auth.get_username(), &path).await?;
 	Ok(())
 }
 
