@@ -1,8 +1,9 @@
 use std::{
-	path::PathBuf,
+	path::{Path, PathBuf},
 	sync::{Arc, RwLock},
 };
 
+use lasso2::ThreadedRodeo;
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use tokio::task::spawn_blocking;
@@ -188,19 +189,26 @@ pub struct Index {
 impl Default for Index {
 	fn default() -> Self {
 		Self {
-			browser: browser::Browser::new(),
+			browser: browser::Browser::new(Arc::default()),
 			collection: Default::default(),
 		}
 	}
 }
 
-#[derive(Default)]
 pub struct Builder {
 	browser_builder: browser::Builder,
 	collection_builder: collection::Builder,
 }
 
 impl Builder {
+	pub fn new() -> Self {
+		let strings = Arc::new(ThreadedRodeo::new());
+		Self {
+			browser_builder: browser::Builder::new(strings),
+			collection_builder: collection::Builder::default(),
+		}
+	}
+
 	pub fn add_directory(&mut self, directory: scanner::Directory) {
 		self.browser_builder.add_directory(directory);
 	}
@@ -215,5 +223,47 @@ impl Builder {
 			browser: self.browser_builder.build(),
 			collection: self.collection_builder.build(),
 		}
+	}
+}
+
+impl Default for Builder {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+pub(self) struct PathID(lasso2::Spur);
+
+pub(self) trait InternPath {
+	fn get_or_intern(self, strings: &mut Arc<ThreadedRodeo>) -> Option<PathID>;
+	fn get(self, strings: &Arc<ThreadedRodeo>) -> Option<PathID>;
+}
+
+impl<P: AsRef<Path>> InternPath for P {
+	fn get_or_intern(self, strings: &mut Arc<ThreadedRodeo>) -> Option<PathID> {
+		let id = self
+			.as_ref()
+			.as_os_str()
+			.to_str()
+			.map(|s| strings.get_or_intern(s))
+			.map(PathID);
+		if id.is_none() {
+			error!("Unsupported path: `{}`", self.as_ref().to_string_lossy());
+		}
+		id
+	}
+
+	fn get(self, strings: &Arc<ThreadedRodeo>) -> Option<PathID> {
+		let id = self
+			.as_ref()
+			.as_os_str()
+			.to_str()
+			.and_then(|s| strings.get(s))
+			.map(PathID);
+		if id.is_none() {
+			error!("Unsupported path: `{}`", self.as_ref().to_string_lossy());
+		}
+		id
 	}
 }
