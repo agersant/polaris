@@ -23,7 +23,7 @@ pub enum File {
 pub struct Browser {
 	strings: Arc<ThreadedRodeo>,
 	directories: HashMap<PathID, Vec<storage::File>>,
-	flattened: Trie<String>,
+	flattened: Trie<lasso2::Spur>,
 }
 
 impl Browser {
@@ -40,9 +40,11 @@ impl Browser {
 			.as_ref()
 			.get(&self.strings)
 			.ok_or_else(|| Error::DirectoryNotFound(virtual_path.as_ref().to_owned()))?;
+
 		let Some(files) = self.directories.get(&path_id) else {
 			return Err(Error::DirectoryNotFound(virtual_path.as_ref().to_owned()));
 		};
+
 		Ok(files
 			.iter()
 			.map(|f| {
@@ -63,8 +65,9 @@ impl Browser {
 		let path_components = virtual_path
 			.as_ref()
 			.components()
-			.map(|c| c.as_os_str().to_string_lossy().to_string())
-			.collect::<Vec<String>>();
+			.map(|c| c.as_os_str().to_str().unwrap_or_default())
+			.filter_map(|c| self.strings.get(c))
+			.collect::<Vec<_>>();
 
 		if !self.flattened.is_prefix(&path_components) {
 			return Err(Error::DirectoryNotFound(virtual_path.as_ref().to_owned()));
@@ -73,7 +76,13 @@ impl Browser {
 		Ok(self
 			.flattened
 			.predictive_search(path_components)
-			.map(|c: Vec<String>| -> PathBuf { c.join(std::path::MAIN_SEPARATOR_STR).into() })
+			.map(|c: Vec<_>| -> PathBuf {
+				c.into_iter()
+					.map(|s| self.strings.resolve(&s))
+					.collect::<Vec<_>>()
+					.join(std::path::MAIN_SEPARATOR_STR)
+					.into()
+			})
 			.collect::<Vec<_>>())
 	}
 }
@@ -81,7 +90,7 @@ impl Browser {
 pub struct Builder {
 	strings: Arc<ThreadedRodeo>,
 	directories: HashMap<PathID, Vec<storage::File>>,
-	flattened: TrieBuilder<String>,
+	flattened: TrieBuilder<lasso2::Spur>,
 }
 
 impl Builder {
@@ -130,14 +139,17 @@ impl Builder {
 		self.flattened.push(
 			song.virtual_path
 				.components()
-				.map(|c| c.as_os_str().to_string_lossy().to_string())
+				.map(|c| self.strings.get_or_intern(c.as_os_str().to_str().unwrap()))
 				.collect::<Vec<_>>(),
 		);
 	}
 
 	pub fn build(mut self) -> Browser {
 		for directory in self.directories.values_mut() {
-			directory.sort();
+			directory.sort_by_key(|f| match f {
+				storage::File::Directory(p) => self.strings.resolve(&p.0),
+				storage::File::Song(p) => self.strings.resolve(&p.0),
+			});
 		}
 		Browser {
 			strings: self.strings,
