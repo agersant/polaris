@@ -170,13 +170,11 @@ async fn thumbnail_size_small() {
 }
 
 #[tokio::test]
-#[cfg(not(tarpaulin))]
 async fn thumbnail_size_large() {
 	thumbnail_size(&test_name!(), Some(ThumbnailSize::Large), None, 1200).await;
 }
 
 #[tokio::test]
-#[cfg(not(tarpaulin))]
 async fn thumbnail_size_native() {
 	thumbnail_size(&test_name!(), Some(ThumbnailSize::Native), None, 1423).await;
 }
