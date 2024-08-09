@@ -7,6 +7,7 @@ use std::{
 
 use lasso2::ThreadedRodeo;
 use serde::{Deserialize, Serialize};
+use tinyvec::TinyVec;
 use trie_rs::{Trie, TrieBuilder};
 
 use crate::app::index::{InternPath, PathID};
@@ -139,7 +140,7 @@ impl Builder {
 			song.virtual_path
 				.components()
 				.map(|c| strings.get_or_intern(c.as_os_str().to_str().unwrap()))
-				.collect::<Vec<_>>(),
+				.collect::<TinyVec<[lasso2::Spur; 8]>>(),
 		);
 	}
 

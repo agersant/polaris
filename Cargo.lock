@@ -1657,6 +1657,7 @@ dependencies = [
  "simplelog",
  "sqlx",
  "thiserror",
+ "tinyvec",
  "tokio",
  "tokio-util",
  "toml 0.8.19",
