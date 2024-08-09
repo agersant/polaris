@@ -129,7 +129,10 @@ impl Scanner {
 						index_builder.add_song(song);
 						false
 					}
-					Err(TryRecvError::Empty) => false,
+					Err(TryRecvError::Empty) => {
+						std::thread::sleep(Duration::from_millis(1));
+						false
+					}
 					Err(TryRecvError::Disconnected) => true,
 				};
 
