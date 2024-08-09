@@ -296,10 +296,10 @@ pub struct Song {
 	pub label: Option<String>,
 }
 
-impl From<index::SongKey> for Song {
-	fn from(song_key: index::SongKey) -> Self {
+impl From<&PathBuf> for Song {
+	fn from(path: &PathBuf) -> Self {
 		Self {
-			path: song_key.virtual_path,
+			path: path.clone(),
 			track_number: None,
 			disc_number: None,
 			title: None,

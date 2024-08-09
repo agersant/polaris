@@ -103,15 +103,20 @@ impl Manager {
 		.unwrap()
 	}
 
-	pub async fn get_artist(&self, artist_key: &ArtistKey) -> Result<Artist, Error> {
+	pub async fn get_artist(&self, name: String) -> Result<Artist, Error> {
 		spawn_blocking({
 			let index_manager = self.clone();
-			let artist_id = artist_key.into();
 			move || {
 				let index = index_manager.index.read().unwrap();
+				let artist_key = ArtistKey {
+					name: match name.as_str() {
+						"" => None,
+						s => index.strings.get(s),
+					},
+				};
 				index
 					.collection
-					.get_artist(artist_id)
+					.get_artist(&index.strings, artist_key)
 					.ok_or_else(|| Error::ArtistNotFound)
 			}
 		})
@@ -119,15 +124,25 @@ impl Manager {
 		.unwrap()
 	}
 
-	pub async fn get_album(&self, album_key: &AlbumKey) -> Result<Album, Error> {
+	pub async fn get_album(
+		&self,
+		artists: Vec<String>,
+		name: Option<String>,
+	) -> Result<Album, Error> {
 		spawn_blocking({
 			let index_manager = self.clone();
-			let album_id = album_key.into();
 			move || {
 				let index = index_manager.index.read().unwrap();
+				let album_key = AlbumKey {
+					artists: artists
+						.into_iter()
+						.filter_map(|a| index.strings.get(a))
+						.collect(),
+					name: name.and_then(|n| index.strings.get(n)),
+				};
 				index
 					.collection
-					.get_album(album_id)
+					.get_album(&index.strings, album_key)
 					.ok_or_else(|| Error::AlbumNotFound)
 			}
 		})
@@ -140,7 +155,7 @@ impl Manager {
 			let index_manager = self.clone();
 			move || {
 				let index = index_manager.index.read().unwrap();
-				Ok(index.collection.get_random_albums(count))
+				Ok(index.collection.get_random_albums(&index.strings, count))
 			}
 		})
 		.await
@@ -152,22 +167,27 @@ impl Manager {
 			let index_manager = self.clone();
 			move || {
 				let index = index_manager.index.read().unwrap();
-				Ok(index.collection.get_recent_albums(count))
+				Ok(index.collection.get_recent_albums(&index.strings, count))
 			}
 		})
 		.await
 		.unwrap()
 	}
 
-	pub async fn get_song(&self, song_key: &SongKey) -> Result<Song, Error> {
+	pub async fn get_song(&self, virtual_path: PathBuf) -> Result<Song, Error> {
 		spawn_blocking({
 			let index_manager = self.clone();
-			let song_id = song_key.into();
 			move || {
 				let index = index_manager.index.read().unwrap();
+				let Some(path_id) = virtual_path.get(&index.strings) else {
+					return Err(Error::SongNotFound);
+				};
+				let song_key = SongKey {
+					virtual_path: path_id,
+				};
 				index
 					.collection
-					.get_song(song_id)
+					.get_song(&index.strings, song_key)
 					.ok_or_else(|| Error::SongNotFound)
 			}
 		})
@@ -209,7 +229,7 @@ impl Builder {
 
 	pub fn add_song(&mut self, song: scanner::Song) {
 		self.browser_builder.add_song(&mut self.strings, &song);
-		self.collection_builder.add_song(song);
+		self.collection_builder.add_song(&mut self.strings, song);
 	}
 
 	pub fn build(self) -> Index {
@@ -227,7 +247,7 @@ impl Default for Builder {
 	}
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub(self) struct PathID(lasso2::Spur);
 
 pub(self) trait InternPath {

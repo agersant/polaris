@@ -284,7 +284,7 @@ fn songs_to_response(files: Vec<PathBuf>, api_version: APIMajorVersion) -> Respo
 		APIMajorVersion::V7 => Json(
 			files
 				.into_iter()
-				.map(|p| index::SongKey { virtual_path: p }.into())
+				.map(|p| (&p).into())
 				.collect::<Vec<dto::v7::Song>>(),
 		)
 		.into_response(),
@@ -369,10 +369,7 @@ async fn get_artist(
 	State(index_manager): State<index::Manager>,
 	Path(artist): Path<String>,
 ) -> Result<Json<dto::Artist>, APIError> {
-	let artist_key = index::ArtistKey {
-		name: (!artist.is_empty()).then_some(artist),
-	};
-	Ok(Json(index_manager.get_artist(&artist_key).await?.into()))
+	Ok(Json(index_manager.get_artist(artist).await?.into()))
 }
 
 async fn get_album(
@@ -380,14 +377,13 @@ async fn get_album(
 	State(index_manager): State<index::Manager>,
 	Path((artists, name)): Path<(String, String)>,
 ) -> Result<Json<dto::Album>, APIError> {
-	let album_key = index::AlbumKey {
-		artists: artists
-			.split(API_ARRAY_SEPARATOR)
-			.map(str::to_owned)
-			.collect::<Vec<_>>(),
-		name: (!name.is_empty()).then_some(name),
-	};
-	Ok(Json(index_manager.get_album(&album_key).await?.into()))
+	let artists = artists
+		.split(API_ARRAY_SEPARATOR)
+		.map(str::to_owned)
+		.collect::<Vec<_>>();
+	Ok(Json(
+		index_manager.get_album(artists, Some(name)).await?.into(),
+	))
 }
 
 async fn get_random(

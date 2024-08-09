@@ -334,8 +334,6 @@ fn get_date_created<P: AsRef<Path>>(path: P) -> Option<i64> {
 
 #[cfg(test)]
 mod test {
-	use super::*;
-
 	use std::path::PathBuf;
 
 	use crate::{
@@ -375,9 +373,7 @@ mod test {
 
 		let song = ctx
 			.index_manager
-			.get_song(&index::SongKey {
-				virtual_path: song_virtual_path.clone(),
-			})
+			.get_song(song_virtual_path.clone())
 			.await
 			.unwrap();
 		assert_eq!(song.artwork, Some(song_virtual_path));

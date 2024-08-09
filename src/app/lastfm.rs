@@ -67,10 +67,7 @@ impl Manager {
 	}
 
 	async fn scrobble_from_path(&self, track: &Path) -> Result<Scrobble, Error> {
-		let song_key = index::SongKey {
-			virtual_path: track.to_owned(),
-		};
-		let song = self.index_manager.get_song(&song_key).await?;
+		let song = self.index_manager.get_song(track.to_owned()).await?;
 		Ok(Scrobble::new(
 			song.artists.first().map(|s| s.as_str()).unwrap_or(""),
 			song.title.as_deref().unwrap_or(""),
