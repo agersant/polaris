@@ -19,7 +19,7 @@ getopts = "0.2.21"
 headers = "0.4"
 http = "1.1.0"
 id3 = "1.14.0"
-lasso2 = { version = "0.8.2", features = ["multi-threaded", "serialize"] }
+lasso2 = { version = "0.8.2", features = ["serialize"] }
 lewton = "0.10.2"
 log = "0.4.22"
 metaflac = "0.2.7"

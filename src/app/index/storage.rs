@@ -3,7 +3,7 @@ use std::{
 	path::{Path, PathBuf},
 };
 
-use lasso2::{RodeoReader, ThreadedRodeo};
+use lasso2::{RodeoReader, Rodeo};
 use log::error;
 use serde::{Deserialize, Serialize};
 use tinyvec::TinyVec;
@@ -87,7 +87,7 @@ impl Song {
 	}
 }
 
-pub fn store_song(strings: &mut ThreadedRodeo, song: &scanner::Song) -> Option<Song> {
+pub fn store_song(strings: &mut Rodeo, song: &scanner::Song) -> Option<Song> {
 	let Some(path) = (&song.path).get_or_intern(strings) else {
 		return None;
 	};
@@ -196,12 +196,12 @@ pub fn fetch_song(strings: &RodeoReader, song: &Song) -> super::Song {
 }
 
 pub trait InternPath {
-	fn get_or_intern(self, strings: &mut ThreadedRodeo) -> Option<PathKey>;
+	fn get_or_intern(self, strings: &mut Rodeo) -> Option<PathKey>;
 	fn get(self, strings: &RodeoReader) -> Option<PathKey>;
 }
 
 impl<P: AsRef<Path>> InternPath for P {
-	fn get_or_intern(self, strings: &mut ThreadedRodeo) -> Option<PathKey> {
+	fn get_or_intern(self, strings: &mut Rodeo) -> Option<PathKey> {
 		let id = self
 			.as_ref()
 			.as_os_str()

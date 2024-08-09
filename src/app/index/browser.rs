@@ -5,7 +5,7 @@ use std::{
 	path::{Path, PathBuf},
 };
 
-use lasso2::{RodeoReader, ThreadedRodeo};
+use lasso2::{Rodeo, RodeoReader};
 use serde::{Deserialize, Serialize};
 use tinyvec::TinyVec;
 use trie_rs::{Trie, TrieBuilder};
@@ -105,7 +105,7 @@ pub struct Builder {
 }
 
 impl Builder {
-	pub fn add_directory(&mut self, strings: &mut ThreadedRodeo, directory: scanner::Directory) {
+	pub fn add_directory(&mut self, strings: &mut Rodeo, directory: scanner::Directory) {
 		let Some(virtual_path) = directory.virtual_path.get_or_intern(strings) else {
 			return;
 		};
@@ -125,7 +125,7 @@ impl Builder {
 			.insert(storage::File::Directory(virtual_path));
 	}
 
-	pub fn add_song(&mut self, strings: &mut ThreadedRodeo, song: &scanner::Song) {
+	pub fn add_song(&mut self, strings: &mut Rodeo, song: &scanner::Song) {
 		let Some(virtual_path) = (&song.virtual_path).get_or_intern(strings) else {
 			return;
 		};

@@ -4,7 +4,7 @@ use std::{
 	path::PathBuf,
 };
 
-use lasso2::{RodeoReader, ThreadedRodeo};
+use lasso2::{RodeoReader, Rodeo};
 use rand::{rngs::ThreadRng, seq::IteratorRandom};
 use serde::{Deserialize, Serialize};
 
@@ -160,7 +160,7 @@ pub struct Builder {
 }
 
 impl Builder {
-	pub fn add_song(&mut self, strings: &mut ThreadedRodeo, song: &scanner::Song) {
+	pub fn add_song(&mut self, strings: &mut Rodeo, song: &scanner::Song) {
 		let Some(song) = store_song(strings, song) else {
 			return;
 		};

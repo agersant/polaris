@@ -3,7 +3,7 @@ use std::{
 	sync::{Arc, RwLock},
 };
 
-use lasso2::{RodeoReader, ThreadedRodeo};
+use lasso2::{Rodeo, RodeoReader};
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use tokio::task::spawn_blocking;
@@ -210,7 +210,7 @@ pub struct Index {
 impl Default for Index {
 	fn default() -> Self {
 		Self {
-			strings: ThreadedRodeo::new().into_reader(),
+			strings: Rodeo::new().into_reader(),
 			browser: Default::default(),
 			collection: Default::default(),
 		}
@@ -218,7 +218,7 @@ impl Default for Index {
 }
 
 pub struct Builder {
-	strings: ThreadedRodeo,
+	strings: Rodeo,
 	browser_builder: browser::Builder,
 	collection_builder: collection::Builder,
 }
@@ -226,7 +226,7 @@ pub struct Builder {
 impl Builder {
 	pub fn new() -> Self {
 		Self {
-			strings: ThreadedRodeo::new(),
+			strings: Rodeo::new(),
 			browser_builder: browser::Builder::default(),
 			collection_builder: collection::Builder::default(),
 		}
