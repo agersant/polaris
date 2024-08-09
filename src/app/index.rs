@@ -84,7 +84,7 @@ impl Manager {
 			let index_manager = self.clone();
 			move || {
 				let index = index_manager.index.read().unwrap();
-				index.browser.browse(virtual_path)
+				index.browser.browse(&index.strings, virtual_path)
 			}
 		})
 		.await
@@ -96,7 +96,7 @@ impl Manager {
 			let index_manager = self.clone();
 			move || {
 				let index = index_manager.index.read().unwrap();
-				index.browser.flatten(virtual_path)
+				index.browser.flatten(&index.strings, virtual_path)
 			}
 		})
 		.await
@@ -180,48 +180,43 @@ impl Manager {
 	}
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Default, Serialize, Deserialize)]
 pub struct Index {
+	pub strings: ThreadedRodeo,
 	pub browser: browser::Browser,
 	pub collection: collection::Collection,
 }
 
-impl Default for Index {
-	fn default() -> Self {
-		Self {
-			browser: browser::Browser::new(Arc::default()),
-			collection: Default::default(),
-		}
-	}
-}
-
 pub struct Builder {
+	strings: ThreadedRodeo,
 	browser_builder: browser::Builder,
 	collection_builder: collection::Builder,
 }
 
 impl Builder {
 	pub fn new() -> Self {
-		let strings = Arc::new(ThreadedRodeo::new());
 		Self {
-			browser_builder: browser::Builder::new(strings),
+			strings: ThreadedRodeo::new(),
+			browser_builder: browser::Builder::default(),
 			collection_builder: collection::Builder::default(),
 		}
 	}
 
 	pub fn add_directory(&mut self, directory: scanner::Directory) {
-		self.browser_builder.add_directory(directory);
+		self.browser_builder
+			.add_directory(&mut self.strings, directory);
 	}
 
 	pub fn add_song(&mut self, song: scanner::Song) {
-		self.browser_builder.add_song(&song);
+		self.browser_builder.add_song(&mut self.strings, &song);
 		self.collection_builder.add_song(song);
 	}
 
-	pub fn build(self) -> Index {
+	pub fn build(mut self) -> Index {
 		Index {
-			browser: self.browser_builder.build(),
+			browser: self.browser_builder.build(&mut self.strings),
 			collection: self.collection_builder.build(),
+			strings: self.strings,
 		}
 	}
 }
@@ -236,12 +231,12 @@ impl Default for Builder {
 pub(self) struct PathID(lasso2::Spur);
 
 pub(self) trait InternPath {
-	fn get_or_intern(self, strings: &mut Arc<ThreadedRodeo>) -> Option<PathID>;
-	fn get(self, strings: &Arc<ThreadedRodeo>) -> Option<PathID>;
+	fn get_or_intern(self, strings: &mut ThreadedRodeo) -> Option<PathID>;
+	fn get(self, strings: &ThreadedRodeo) -> Option<PathID>;
 }
 
 impl<P: AsRef<Path>> InternPath for P {
-	fn get_or_intern(self, strings: &mut Arc<ThreadedRodeo>) -> Option<PathID> {
+	fn get_or_intern(self, strings: &mut ThreadedRodeo) -> Option<PathID> {
 		let id = self
 			.as_ref()
 			.as_os_str()
@@ -254,7 +249,7 @@ impl<P: AsRef<Path>> InternPath for P {
 		id
 	}
 
-	fn get(self, strings: &Arc<ThreadedRodeo>) -> Option<PathID> {
+	fn get(self, strings: &ThreadedRodeo) -> Option<PathID> {
 		let id = self
 			.as_ref()
 			.as_os_str()

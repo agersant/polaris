@@ -3,7 +3,6 @@ use std::{
 	ffi::OsStr,
 	hash::Hash,
 	path::{Path, PathBuf},
-	sync::Arc,
 };
 
 use lasso2::ThreadedRodeo;
@@ -21,24 +20,28 @@ pub enum File {
 
 #[derive(Serialize, Deserialize)]
 pub struct Browser {
-	strings: Arc<ThreadedRodeo>,
 	directories: HashMap<PathID, Vec<storage::File>>,
 	flattened: Trie<lasso2::Spur>,
 }
 
-impl Browser {
-	pub fn new(strings: Arc<ThreadedRodeo>) -> Self {
+impl Default for Browser {
+	fn default() -> Self {
 		Self {
-			strings,
-			directories: HashMap::new(),
+			directories: HashMap::default(),
 			flattened: TrieBuilder::new().build(),
 		}
 	}
+}
 
-	pub fn browse<P: AsRef<Path>>(&self, virtual_path: P) -> Result<Vec<File>, Error> {
+impl Browser {
+	pub fn browse<P: AsRef<Path>>(
+		&self,
+		strings: &ThreadedRodeo,
+		virtual_path: P,
+	) -> Result<Vec<File>, Error> {
 		let path_id = virtual_path
 			.as_ref()
-			.get(&self.strings)
+			.get(strings)
 			.ok_or_else(|| Error::DirectoryNotFound(virtual_path.as_ref().to_owned()))?;
 
 		let Some(files) = self.directories.get(&path_id) else {
@@ -52,7 +55,7 @@ impl Browser {
 					storage::File::Directory(p) => p,
 					storage::File::Song(p) => p,
 				};
-				let path = Path::new(OsStr::new(self.strings.resolve(&path_id.0))).to_owned();
+				let path = Path::new(OsStr::new(strings.resolve(&path_id.0))).to_owned();
 				match f {
 					storage::File::Directory(_) => File::Directory(path),
 					storage::File::Song(_) => File::Song(path),
@@ -61,12 +64,16 @@ impl Browser {
 			.collect())
 	}
 
-	pub fn flatten<P: AsRef<Path>>(&self, virtual_path: P) -> Result<Vec<PathBuf>, Error> {
+	pub fn flatten<P: AsRef<Path>>(
+		&self,
+		strings: &ThreadedRodeo,
+		virtual_path: P,
+	) -> Result<Vec<PathBuf>, Error> {
 		let path_components = virtual_path
 			.as_ref()
 			.components()
 			.map(|c| c.as_os_str().to_str().unwrap_or_default())
-			.filter_map(|c| self.strings.get(c))
+			.filter_map(|c| strings.get(c))
 			.collect::<Vec<_>>();
 
 		if !self.flattened.is_prefix(&path_components) {
@@ -78,7 +85,7 @@ impl Browser {
 			.predictive_search(path_components)
 			.map(|c: Vec<_>| -> PathBuf {
 				c.into_iter()
-					.map(|s| self.strings.resolve(&s))
+					.map(|s| strings.resolve(&s))
 					.collect::<Vec<_>>()
 					.join(std::path::MAIN_SEPARATOR_STR)
 					.into()
@@ -87,29 +94,21 @@ impl Browser {
 	}
 }
 
+#[derive(Default)]
 pub struct Builder {
-	strings: Arc<ThreadedRodeo>,
 	directories: HashMap<PathID, Vec<storage::File>>,
 	flattened: TrieBuilder<lasso2::Spur>,
 }
 
 impl Builder {
-	pub fn new(strings: Arc<ThreadedRodeo>) -> Self {
-		Self {
-			strings,
-			directories: HashMap::default(),
-			flattened: TrieBuilder::default(),
-		}
-	}
-
-	pub fn add_directory(&mut self, directory: scanner::Directory) {
-		let Some(path_id) = directory.virtual_path.get_or_intern(&mut self.strings) else {
+	pub fn add_directory(&mut self, strings: &mut ThreadedRodeo, directory: scanner::Directory) {
+		let Some(path_id) = directory.virtual_path.get_or_intern(strings) else {
 			return;
 		};
 
 		let Some(parent_id) = directory
 			.virtual_parent
-			.and_then(|p| p.get_or_intern(&mut self.strings))
+			.and_then(|p| p.get_or_intern(strings))
 		else {
 			return;
 		};
@@ -122,12 +121,12 @@ impl Builder {
 			.push(storage::File::Directory(path_id));
 	}
 
-	pub fn add_song(&mut self, song: &scanner::Song) {
-		let Some(path_id) = (&song.virtual_path).get_or_intern(&mut self.strings) else {
+	pub fn add_song(&mut self, strings: &mut ThreadedRodeo, song: &scanner::Song) {
+		let Some(path_id) = (&song.virtual_path).get_or_intern(strings) else {
 			return;
 		};
 
-		let Some(parent_id) = (&song.virtual_parent).get_or_intern(&mut self.strings) else {
+		let Some(parent_id) = (&song.virtual_parent).get_or_intern(strings) else {
 			return;
 		};
 
@@ -139,20 +138,19 @@ impl Builder {
 		self.flattened.push(
 			song.virtual_path
 				.components()
-				.map(|c| self.strings.get_or_intern(c.as_os_str().to_str().unwrap()))
+				.map(|c| strings.get_or_intern(c.as_os_str().to_str().unwrap()))
 				.collect::<Vec<_>>(),
 		);
 	}
 
-	pub fn build(mut self) -> Browser {
+	pub fn build(mut self, strings: &mut ThreadedRodeo) -> Browser {
 		for directory in self.directories.values_mut() {
 			directory.sort_by_key(|f| match f {
-				storage::File::Directory(p) => self.strings.resolve(&p.0),
-				storage::File::Song(p) => self.strings.resolve(&p.0),
+				storage::File::Directory(p) => strings.resolve(&p.0),
+				storage::File::Song(p) => strings.resolve(&p.0),
 			});
 		}
 		Browser {
-			strings: self.strings,
 			directories: self.directories,
 			flattened: self.flattened.build(),
 		}
