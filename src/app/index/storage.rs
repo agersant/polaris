@@ -3,7 +3,7 @@ use std::{
 	path::{Path, PathBuf},
 };
 
-use lasso2::{RodeoReader, Rodeo};
+use lasso2::{Rodeo, RodeoReader};
 use log::error;
 use serde::{Deserialize, Serialize};
 use tinyvec::TinyVec;
@@ -20,7 +20,9 @@ pub enum File {
 pub struct Artist {
 	pub name: Option<lasso2::Spur>,
 	pub albums: HashSet<AlbumKey>,
-	pub album_appearances: HashSet<AlbumKey>,
+	pub song_credits: HashSet<AlbumKey>,
+	pub composer_credits: HashSet<AlbumKey>,
+	pub lyricist_credits: HashSet<AlbumKey>,
 }
 
 #[derive(Clone, Default, Serialize, Deserialize)]

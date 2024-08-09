@@ -310,7 +310,9 @@ impl From<index::File> for BrowserEntry {
 pub struct Artist {
 	pub name: Option<String>,
 	pub albums: Vec<AlbumHeader>,
-	pub album_appearances: Vec<AlbumHeader>,
+	pub song_credits: Vec<AlbumHeader>,
+	pub composer_credits: Vec<AlbumHeader>,
+	pub lyricist_credits: Vec<AlbumHeader>,
 }
 
 impl From<index::Artist> for Artist {
@@ -318,7 +320,9 @@ impl From<index::Artist> for Artist {
 		Self {
 			name: a.name,
 			albums: a.albums.into_iter().map(|a| a.into()).collect(),
-			album_appearances: a.album_appearances.into_iter().map(|a| a.into()).collect(),
+			song_credits: a.song_credits.into_iter().map(|a| a.into()).collect(),
+			composer_credits: a.composer_credits.into_iter().map(|a| a.into()).collect(),
+			lyricist_credits: a.lyricist_credits.into_iter().map(|a| a.into()).collect(),
 		}
 	}
 }

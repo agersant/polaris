@@ -4,7 +4,7 @@ use std::{
 	path::PathBuf,
 };
 
-use lasso2::{RodeoReader, Rodeo};
+use lasso2::{Rodeo, RodeoReader};
 use rand::{rngs::ThreadRng, seq::IteratorRandom};
 use serde::{Deserialize, Serialize};
 
@@ -17,7 +17,9 @@ use super::storage::fetch_song;
 pub struct Artist {
 	pub name: Option<String>,
 	pub albums: Vec<Album>,
-	pub album_appearances: Vec<Album>,
+	pub song_credits: Vec<Album>, // Albums where this artist shows up as `artist` without being `album_artist`
+	pub composer_credits: Vec<Album>, // Albums where this artist shows up as `composer` without being `artist` or `album_artist`
+	pub lyricist_credits: Vec<Album>, // Albums where this artist shows up as `lyricist` without being `artist` or `album_artist`
 }
 
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -72,24 +74,48 @@ impl Collection {
 				albums
 			};
 
-			let album_appearances = {
-				let mut album_appearances = a
-					.album_appearances
+			let sort_albums = |a: &Album, b: &Album| {
+				(&a.artists, a.year, &a.name)
+					.partial_cmp(&(&b.artists, b.year, &b.name))
+					.unwrap()
+			};
+
+			let song_credits = {
+				let mut albums = a
+					.song_credits
 					.iter()
 					.filter_map(|key| self.get_album(strings, key.clone()))
 					.collect::<Vec<_>>();
-				album_appearances.sort_by(|a, b| {
-					(&a.artists, a.year, &a.name)
-						.partial_cmp(&(&b.artists, b.year, &b.name))
-						.unwrap()
-				});
-				album_appearances
+				albums.sort_by(&sort_albums);
+				albums
+			};
+
+			let composer_credits = {
+				let mut albums = a
+					.composer_credits
+					.iter()
+					.filter_map(|key| self.get_album(strings, key.clone()))
+					.collect::<Vec<_>>();
+				albums.sort_by(&sort_albums);
+				albums
+			};
+
+			let lyricist_credits = {
+				let mut albums = a
+					.lyricist_credits
+					.iter()
+					.filter_map(|key| self.get_album(strings, key.clone()))
+					.collect::<Vec<_>>();
+				albums.sort_by(&sort_albums);
+				albums
 			};
 
 			Artist {
 				name: a.name.map(|s| strings.resolve(&s).to_string()),
 				albums,
-				album_appearances,
+				song_credits,
+				composer_credits,
+				lyricist_credits,
 			}
 		})
 	}
@@ -196,17 +222,35 @@ impl Builder {
 	fn add_album_to_artists(&mut self, song: &storage::Song) {
 		let album_key: AlbumKey = song.album_key();
 
-		for artist_name in &song.album_artists {
-			let artist = self.get_or_create_artist(*artist_name);
+		for name in &song.album_artists {
+			let artist = self.get_or_create_artist(*name);
 			artist.albums.insert(album_key.clone());
 		}
 
-		for artist_name in &song.artists {
-			let artist = self.get_or_create_artist(*artist_name);
+		for name in &song.artists {
+			let artist = self.get_or_create_artist(*name);
 			if song.album_artists.is_empty() {
 				artist.albums.insert(album_key.clone());
-			} else if !song.album_artists.contains(artist_name) {
-				artist.album_appearances.insert(album_key.clone());
+			} else if !song.album_artists.contains(name) {
+				artist.song_credits.insert(album_key.clone());
+			}
+		}
+
+		for name in &song.composers {
+			let is_also_artist = song.artists.contains(name);
+			let is_also_album_artist = song.artists.contains(name);
+			if !is_also_artist && !is_also_album_artist {
+				let artist = self.get_or_create_artist(*name);
+				artist.composer_credits.insert(album_key.clone());
+			}
+		}
+
+		for name in &song.lyricists {
+			let is_also_artist = song.artists.contains(name);
+			let is_also_album_artist = song.artists.contains(name);
+			if !is_also_artist && !is_also_album_artist {
+				let artist = self.get_or_create_artist(*name);
+				artist.lyricist_credits.insert(album_key.clone());
 			}
 		}
 	}
@@ -218,7 +262,9 @@ impl Builder {
 			.or_insert_with(|| storage::Artist {
 				name: Some(name),
 				albums: HashSet::new(),
-				album_appearances: HashSet::new(),
+				song_credits: HashSet::new(),
+				composer_credits: HashSet::new(),
+				lyricist_credits: HashSet::new(),
 			})
 			.borrow_mut()
 	}
