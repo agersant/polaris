@@ -263,13 +263,15 @@ impl Builder {
 			date_added: song.date_added,
 		};
 
-		let song_key = SongKey {
-			virtual_path: path_id,
-		};
-
 		self.add_song_to_album(&song);
 		self.add_album_to_artists(&song);
-		self.songs.insert(song_key, song);
+
+		self.songs.insert(
+			SongKey {
+				virtual_path: virtual_path_id,
+			},
+			song,
+		);
 	}
 
 	pub fn build(self) -> Collection {
@@ -416,7 +418,7 @@ pub struct AlbumKey {
 	pub name: Option<lasso2::Spur>,
 }
 
-#[derive(Clone, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct SongKey {
 	pub virtual_path: PathID,
 }
