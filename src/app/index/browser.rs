@@ -52,7 +52,7 @@ impl Browser {
 			return Err(Error::DirectoryNotFound(virtual_path.as_ref().to_owned()));
 		};
 
-		Ok(files
+		let mut files = files
 			.iter()
 			.map(|f| {
 				let path = match f {
@@ -65,7 +65,11 @@ impl Browser {
 					storage::File::Song(_) => File::Song(path),
 				}
 			})
-			.collect())
+			.collect::<Vec<_>>();
+
+		files.sort();
+
+		Ok(files)
 	}
 
 	pub fn flatten<P: AsRef<Path>>(
