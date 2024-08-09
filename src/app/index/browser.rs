@@ -87,7 +87,7 @@ impl Browser {
 			.map(|c: Vec<_>| -> PathBuf {
 				c.into_iter()
 					.map(|s| strings.resolve(&s))
-					.collect::<Vec<_>>()
+					.collect::<TinyVec<[&str; 8]>>()
 					.join(std::path::MAIN_SEPARATOR_STR)
 					.into()
 			})
