@@ -3,7 +3,7 @@ use std::{
 	path::{Path, PathBuf},
 };
 
-use lasso2::ThreadedRodeo;
+use lasso2::{RodeoReader, ThreadedRodeo};
 use log::error;
 use serde::{Deserialize, Serialize};
 use tinyvec::TinyVec;
@@ -149,7 +149,7 @@ pub fn store_song(strings: &mut ThreadedRodeo, song: &scanner::Song) -> Option<S
 	})
 }
 
-pub fn fetch_song(strings: &ThreadedRodeo, song: &Song) -> super::Song {
+pub fn fetch_song(strings: &RodeoReader, song: &Song) -> super::Song {
 	super::Song {
 		path: PathBuf::from(strings.resolve(&song.path.0)),
 		virtual_path: PathBuf::from(strings.resolve(&song.virtual_path.0)),
@@ -197,7 +197,7 @@ pub fn fetch_song(strings: &ThreadedRodeo, song: &Song) -> super::Song {
 
 pub trait InternPath {
 	fn get_or_intern(self, strings: &mut ThreadedRodeo) -> Option<PathKey>;
-	fn get(self, strings: &ThreadedRodeo) -> Option<PathKey>;
+	fn get(self, strings: &RodeoReader) -> Option<PathKey>;
 }
 
 impl<P: AsRef<Path>> InternPath for P {
@@ -214,7 +214,7 @@ impl<P: AsRef<Path>> InternPath for P {
 		id
 	}
 
-	fn get(self, strings: &ThreadedRodeo) -> Option<PathKey> {
+	fn get(self, strings: &RodeoReader) -> Option<PathKey> {
 		let id = self
 			.as_ref()
 			.as_os_str()

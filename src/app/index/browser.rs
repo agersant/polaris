@@ -5,7 +5,7 @@ use std::{
 	path::{Path, PathBuf},
 };
 
-use lasso2::ThreadedRodeo;
+use lasso2::{RodeoReader, ThreadedRodeo};
 use serde::{Deserialize, Serialize};
 use tinyvec::TinyVec;
 use trie_rs::{Trie, TrieBuilder};
@@ -40,7 +40,7 @@ impl Default for Browser {
 impl Browser {
 	pub fn browse<P: AsRef<Path>>(
 		&self,
-		strings: &ThreadedRodeo,
+		strings: &RodeoReader,
 		virtual_path: P,
 	) -> Result<Vec<File>, Error> {
 		let path = virtual_path
@@ -70,7 +70,7 @@ impl Browser {
 
 	pub fn flatten<P: AsRef<Path>>(
 		&self,
-		strings: &ThreadedRodeo,
+		strings: &RodeoReader,
 		virtual_path: P,
 	) -> Result<Vec<PathBuf>, Error> {
 		let path_components = virtual_path
@@ -87,7 +87,7 @@ impl Browser {
 		Ok(self
 			.flattened
 			.predictive_search(path_components)
-			.map(|c: Vec<_>| -> PathBuf {
+			.map(|c: TinyVec<[_; 8]>| -> PathBuf {
 				c.into_iter()
 					.map(|s| strings.resolve(&s))
 					.collect::<TinyVec<[&str; 8]>>()

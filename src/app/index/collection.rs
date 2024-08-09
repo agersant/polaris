@@ -4,7 +4,7 @@ use std::{
 	path::PathBuf,
 };
 
-use lasso2::ThreadedRodeo;
+use lasso2::{RodeoReader, ThreadedRodeo};
 use rand::{rngs::ThreadRng, seq::IteratorRandom};
 use serde::{Deserialize, Serialize};
 
@@ -60,7 +60,7 @@ pub struct Collection {
 }
 
 impl Collection {
-	pub fn get_artist(&self, strings: &ThreadedRodeo, artist_key: ArtistKey) -> Option<Artist> {
+	pub fn get_artist(&self, strings: &RodeoReader, artist_key: ArtistKey) -> Option<Artist> {
 		self.artists.get(&artist_key).map(|a| {
 			let albums = {
 				let mut albums = a
@@ -94,7 +94,7 @@ impl Collection {
 		})
 	}
 
-	pub fn get_album(&self, strings: &ThreadedRodeo, album_key: AlbumKey) -> Option<Album> {
+	pub fn get_album(&self, strings: &RodeoReader, album_key: AlbumKey) -> Option<Album> {
 		self.albums.get(&album_key).map(|a| {
 			let mut songs = a
 				.songs
@@ -130,7 +130,7 @@ impl Collection {
 		})
 	}
 
-	pub fn get_random_albums(&self, strings: &ThreadedRodeo, count: usize) -> Vec<Album> {
+	pub fn get_random_albums(&self, strings: &RodeoReader, count: usize) -> Vec<Album> {
 		self.albums
 			.keys()
 			.choose_multiple(&mut ThreadRng::default(), count)
@@ -139,7 +139,7 @@ impl Collection {
 			.collect()
 	}
 
-	pub fn get_recent_albums(&self, strings: &ThreadedRodeo, count: usize) -> Vec<Album> {
+	pub fn get_recent_albums(&self, strings: &RodeoReader, count: usize) -> Vec<Album> {
 		self.recent_albums
 			.iter()
 			.take(count)
@@ -147,7 +147,7 @@ impl Collection {
 			.collect()
 	}
 
-	pub fn get_song(&self, strings: &ThreadedRodeo, song_key: SongKey) -> Option<Song> {
+	pub fn get_song(&self, strings: &RodeoReader, song_key: SongKey) -> Option<Song> {
 		self.songs.get(&song_key).map(|s| fetch_song(strings, s))
 	}
 }
