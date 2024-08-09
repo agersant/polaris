@@ -212,9 +212,9 @@ impl Builder {
 		self.collection_builder.add_song(song);
 	}
 
-	pub fn build(mut self) -> Index {
+	pub fn build(self) -> Index {
 		Index {
-			browser: self.browser_builder.build(&mut self.strings),
+			browser: self.browser_builder.build(),
 			collection: self.collection_builder.build(),
 			strings: self.strings,
 		}

@@ -1,5 +1,5 @@
 use std::{
-	collections::HashMap,
+	collections::{BTreeSet, HashMap},
 	ffi::OsStr,
 	hash::Hash,
 	path::{Path, PathBuf},
@@ -21,7 +21,7 @@ pub enum File {
 
 #[derive(Serialize, Deserialize)]
 pub struct Browser {
-	directories: HashMap<PathID, Vec<storage::File>>,
+	directories: HashMap<PathID, BTreeSet<storage::File>>,
 	flattened: Trie<lasso2::Spur>,
 }
 
@@ -97,7 +97,7 @@ impl Browser {
 
 #[derive(Default)]
 pub struct Builder {
-	directories: HashMap<PathID, Vec<storage::File>>,
+	directories: HashMap<PathID, BTreeSet<storage::File>>,
 	flattened: TrieBuilder<lasso2::Spur>,
 }
 
@@ -119,7 +119,7 @@ impl Builder {
 		self.directories
 			.entry(parent_id)
 			.or_default()
-			.push(storage::File::Directory(path_id));
+			.insert(storage::File::Directory(path_id));
 	}
 
 	pub fn add_song(&mut self, strings: &mut ThreadedRodeo, song: &scanner::Song) {
@@ -134,7 +134,7 @@ impl Builder {
 		self.directories
 			.entry(parent_id)
 			.or_default()
-			.push(storage::File::Song(path_id));
+			.insert(storage::File::Song(path_id));
 
 		self.flattened.push(
 			song.virtual_path
@@ -144,13 +144,7 @@ impl Builder {
 		);
 	}
 
-	pub fn build(mut self, strings: &mut ThreadedRodeo) -> Browser {
-		for directory in self.directories.values_mut() {
-			directory.sort_by_key(|f| match f {
-				storage::File::Directory(p) => strings.resolve(&p.0),
-				storage::File::Song(p) => strings.resolve(&p.0),
-			});
-		}
+	pub fn build(self) -> Browser {
 		Browser {
 			directories: self.directories,
 			flattened: self.flattened.build(),
