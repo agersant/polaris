@@ -10,7 +10,10 @@ use serde::{Deserialize, Serialize};
 use tinyvec::TinyVec;
 use trie_rs::{Trie, TrieBuilder};
 
-use crate::app::index::{InternPath, PathID};
+use crate::app::index::{
+	storage::{self, PathKey},
+	InternPath,
+};
 use crate::app::{scanner, Error};
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -21,7 +24,7 @@ pub enum File {
 
 #[derive(Serialize, Deserialize)]
 pub struct Browser {
-	directories: HashMap<PathID, BTreeSet<storage::File>>,
+	directories: HashMap<PathKey, BTreeSet<storage::File>>,
 	flattened: Trie<lasso2::Spur>,
 }
 
@@ -40,23 +43,23 @@ impl Browser {
 		strings: &ThreadedRodeo,
 		virtual_path: P,
 	) -> Result<Vec<File>, Error> {
-		let path_id = virtual_path
+		let path = virtual_path
 			.as_ref()
 			.get(strings)
 			.ok_or_else(|| Error::DirectoryNotFound(virtual_path.as_ref().to_owned()))?;
 
-		let Some(files) = self.directories.get(&path_id) else {
+		let Some(files) = self.directories.get(&path) else {
 			return Err(Error::DirectoryNotFound(virtual_path.as_ref().to_owned()));
 		};
 
 		Ok(files
 			.iter()
 			.map(|f| {
-				let path_id = match f {
+				let path = match f {
 					storage::File::Directory(p) => p,
 					storage::File::Song(p) => p,
 				};
-				let path = Path::new(OsStr::new(strings.resolve(&path_id.0))).to_owned();
+				let path = Path::new(OsStr::new(strings.resolve(&path.0))).to_owned();
 				match f {
 					storage::File::Directory(_) => File::Directory(path),
 					storage::File::Song(_) => File::Song(path),
@@ -97,44 +100,44 @@ impl Browser {
 
 #[derive(Default)]
 pub struct Builder {
-	directories: HashMap<PathID, BTreeSet<storage::File>>,
+	directories: HashMap<PathKey, BTreeSet<storage::File>>,
 	flattened: TrieBuilder<lasso2::Spur>,
 }
 
 impl Builder {
 	pub fn add_directory(&mut self, strings: &mut ThreadedRodeo, directory: scanner::Directory) {
-		let Some(path_id) = directory.virtual_path.get_or_intern(strings) else {
+		let Some(virtual_path) = directory.virtual_path.get_or_intern(strings) else {
 			return;
 		};
 
-		let Some(parent_id) = directory
+		let Some(virtual_parent) = directory
 			.virtual_parent
 			.and_then(|p| p.get_or_intern(strings))
 		else {
 			return;
 		};
 
-		self.directories.entry(path_id.clone()).or_default();
+		self.directories.entry(virtual_path).or_default();
 
 		self.directories
-			.entry(parent_id)
+			.entry(virtual_parent)
 			.or_default()
-			.insert(storage::File::Directory(path_id));
+			.insert(storage::File::Directory(virtual_path));
 	}
 
 	pub fn add_song(&mut self, strings: &mut ThreadedRodeo, song: &scanner::Song) {
-		let Some(path_id) = (&song.virtual_path).get_or_intern(strings) else {
+		let Some(virtual_path) = (&song.virtual_path).get_or_intern(strings) else {
 			return;
 		};
 
-		let Some(parent_id) = (&song.virtual_parent).get_or_intern(strings) else {
+		let Some(virtual_parent) = (&song.virtual_parent).get_or_intern(strings) else {
 			return;
 		};
 
 		self.directories
-			.entry(parent_id)
+			.entry(virtual_parent)
 			.or_default()
-			.insert(storage::File::Song(path_id));
+			.insert(storage::File::Song(virtual_path));
 
 		self.flattened.push(
 			song.virtual_path
@@ -149,16 +152,6 @@ impl Builder {
 			directories: self.directories,
 			flattened: self.flattened.build(),
 		}
-	}
-}
-
-mod storage {
-	use super::*;
-
-	#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-	pub enum File {
-		Directory(PathID),
-		Song(PathID),
 	}
 }
 

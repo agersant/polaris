@@ -1,5 +1,5 @@
 use std::{
-	path::{Path, PathBuf},
+	path::PathBuf,
 	sync::{Arc, RwLock},
 };
 
@@ -14,9 +14,11 @@ use crate::db::DB;
 mod browser;
 mod collection;
 mod search;
+mod storage;
 
 pub use browser::File;
-pub use collection::{Album, AlbumKey, Artist, ArtistKey, Song, SongKey};
+pub use collection::{Album, Artist, Song};
+use storage::{AlbumKey, ArtistKey, InternPath, SongKey};
 
 #[derive(Clone)]
 pub struct Manager {
@@ -179,12 +181,10 @@ impl Manager {
 			let index_manager = self.clone();
 			move || {
 				let index = index_manager.index.read().unwrap();
-				let Some(path_id) = virtual_path.get(&index.strings) else {
+				let Some(virtual_path) = virtual_path.get(&index.strings) else {
 					return Err(Error::SongNotFound);
 				};
-				let song_key = SongKey {
-					virtual_path: path_id,
-				};
+				let song_key = SongKey { virtual_path };
 				index
 					.collection
 					.get_song(&index.strings, song_key)
@@ -229,7 +229,7 @@ impl Builder {
 
 	pub fn add_song(&mut self, song: scanner::Song) {
 		self.browser_builder.add_song(&mut self.strings, &song);
-		self.collection_builder.add_song(&mut self.strings, song);
+		self.collection_builder.add_song(&mut self.strings, &song);
 	}
 
 	pub fn build(self) -> Index {
@@ -244,41 +244,5 @@ impl Builder {
 impl Default for Builder {
 	fn default() -> Self {
 		Self::new()
-	}
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
-pub(self) struct PathID(lasso2::Spur);
-
-pub(self) trait InternPath {
-	fn get_or_intern(self, strings: &mut ThreadedRodeo) -> Option<PathID>;
-	fn get(self, strings: &ThreadedRodeo) -> Option<PathID>;
-}
-
-impl<P: AsRef<Path>> InternPath for P {
-	fn get_or_intern(self, strings: &mut ThreadedRodeo) -> Option<PathID> {
-		let id = self
-			.as_ref()
-			.as_os_str()
-			.to_str()
-			.map(|s| strings.get_or_intern(s))
-			.map(PathID);
-		if id.is_none() {
-			error!("Unsupported path: `{}`", self.as_ref().to_string_lossy());
-		}
-		id
-	}
-
-	fn get(self, strings: &ThreadedRodeo) -> Option<PathID> {
-		let id = self
-			.as_ref()
-			.as_os_str()
-			.to_str()
-			.and_then(|s| strings.get(s))
-			.map(PathID);
-		if id.is_none() {
-			error!("Unsupported path: `{}`", self.as_ref().to_string_lossy());
-		}
-		id
 	}
 }

@@ -1,17 +1,17 @@
 use std::{
 	borrow::BorrowMut,
 	collections::{HashMap, HashSet},
-	hash::Hash,
 	path::PathBuf,
 };
 
 use lasso2::ThreadedRodeo;
 use rand::{rngs::ThreadRng, seq::IteratorRandom};
 use serde::{Deserialize, Serialize};
-use tinyvec::TinyVec;
 
-use crate::app::index::{InternPath, PathID};
+use crate::app::index::storage::{self, store_song, AlbumKey, ArtistKey, SongKey};
 use crate::app::scanner;
+
+use super::storage::fetch_song;
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct Artist {
@@ -148,49 +148,7 @@ impl Collection {
 	}
 
 	pub fn get_song(&self, strings: &ThreadedRodeo, song_key: SongKey) -> Option<Song> {
-		self.songs.get(&song_key).map(|s| Song {
-			path: PathBuf::from(strings.resolve(&s.path.0)),
-			virtual_path: PathBuf::from(strings.resolve(&s.virtual_path.0)),
-			virtual_parent: PathBuf::from(strings.resolve(&s.virtual_parent.0)),
-			track_number: s.track_number,
-			disc_number: s.disc_number,
-			title: s.title.map(|s| strings.resolve(&s).to_string()),
-			artists: s
-				.artists
-				.iter()
-				.map(|s| strings.resolve(&s).to_string())
-				.collect(),
-			album_artists: s
-				.album_artists
-				.iter()
-				.map(|s| strings.resolve(&s).to_string())
-				.collect(),
-			year: s.year,
-			album: s.album.map(|s| strings.resolve(&s).to_string()),
-			artwork: s.artwork.map(|a| PathBuf::from(strings.resolve(&a.0))),
-			duration: s.duration,
-			lyricists: s
-				.lyricists
-				.iter()
-				.map(|s| strings.resolve(&s).to_string())
-				.collect(),
-			composers: s
-				.composers
-				.iter()
-				.map(|s| strings.resolve(&s).to_string())
-				.collect(),
-			genres: s
-				.genres
-				.iter()
-				.map(|s| strings.resolve(&s).to_string())
-				.collect(),
-			labels: s
-				.labels
-				.iter()
-				.map(|s| strings.resolve(&s).to_string())
-				.collect(),
-			date_added: s.date_added,
-		})
+		self.songs.get(&song_key).map(|s| fetch_song(strings, s))
 	}
 }
 
@@ -202,65 +160,9 @@ pub struct Builder {
 }
 
 impl Builder {
-	pub fn add_song(&mut self, strings: &mut ThreadedRodeo, song: scanner::Song) {
-		let Some(path_id) = song.path.get_or_intern(strings) else {
+	pub fn add_song(&mut self, strings: &mut ThreadedRodeo, song: &scanner::Song) {
+		let Some(song) = store_song(strings, song) else {
 			return;
-		};
-
-		let Some(virtual_path_id) = song.virtual_path.get_or_intern(strings) else {
-			return;
-		};
-
-		let Some(virtual_parent_id) = song.virtual_parent.get_or_intern(strings) else {
-			return;
-		};
-
-		let Some(artwork_id) = song.artwork.map(|s| s.get_or_intern(strings)) else {
-			return;
-		};
-
-		let song = storage::Song {
-			path: path_id,
-			virtual_path: virtual_path_id,
-			virtual_parent: virtual_parent_id,
-			track_number: song.track_number,
-			disc_number: song.disc_number,
-			title: song.title.map(|s| strings.get_or_intern(s)),
-			artists: song
-				.artists
-				.into_iter()
-				.map(|s| strings.get_or_intern(s))
-				.collect(),
-			album_artists: song
-				.album_artists
-				.into_iter()
-				.map(|s| strings.get_or_intern(s))
-				.collect(),
-			year: song.year,
-			album: song.album.map(|s| strings.get_or_intern(s)),
-			artwork: artwork_id,
-			duration: song.duration,
-			lyricists: song
-				.lyricists
-				.into_iter()
-				.map(|s| strings.get_or_intern(s))
-				.collect(),
-			composers: song
-				.composers
-				.into_iter()
-				.map(|s| strings.get_or_intern(s))
-				.collect(),
-			genres: song
-				.genres
-				.into_iter()
-				.map(|s| strings.get_or_intern(s))
-				.collect(),
-			labels: song
-				.labels
-				.into_iter()
-				.map(|s| strings.get_or_intern(s))
-				.collect(),
-			date_added: song.date_added,
 		};
 
 		self.add_song_to_album(&song);
@@ -268,7 +170,7 @@ impl Builder {
 
 		self.songs.insert(
 			SongKey {
-				virtual_path: virtual_path_id,
+				virtual_path: song.virtual_path,
 			},
 			song,
 		);
@@ -349,78 +251,6 @@ impl Builder {
 			virtual_path: song.virtual_path,
 		});
 	}
-}
-
-mod storage {
-	use super::*;
-
-	#[derive(Serialize, Deserialize)]
-	pub struct Artist {
-		pub name: Option<lasso2::Spur>,
-		pub albums: HashSet<AlbumKey>,
-		pub album_appearances: HashSet<AlbumKey>,
-	}
-
-	#[derive(Clone, Default, Serialize, Deserialize)]
-	pub struct Album {
-		pub name: Option<lasso2::Spur>,
-		pub artwork: Option<PathID>,
-		pub artists: Vec<lasso2::Spur>,
-		pub year: Option<i64>,
-		pub date_added: i64,
-		pub songs: HashSet<SongKey>,
-	}
-
-	#[derive(Clone, Serialize, Deserialize)]
-	pub struct Song {
-		pub path: PathID,
-		pub virtual_path: PathID,
-		pub virtual_parent: PathID,
-		pub track_number: Option<i64>,
-		pub disc_number: Option<i64>,
-		pub title: Option<lasso2::Spur>,
-		pub artists: Vec<lasso2::Spur>,
-		pub album_artists: Vec<lasso2::Spur>,
-		pub year: Option<i64>,
-		pub album: Option<lasso2::Spur>,
-		pub artwork: Option<PathID>,
-		pub duration: Option<i64>,
-		pub lyricists: Vec<lasso2::Spur>,
-		pub composers: Vec<lasso2::Spur>,
-		pub genres: Vec<lasso2::Spur>,
-		pub labels: Vec<lasso2::Spur>,
-		pub date_added: i64,
-	}
-
-	impl Song {
-		pub fn album_key(&self) -> AlbumKey {
-			let album_artists = match self.album_artists.is_empty() {
-				true => &self.artists,
-				false => &self.album_artists,
-			};
-
-			AlbumKey {
-				artists: album_artists.iter().cloned().collect(),
-				name: self.album.clone(),
-			}
-		}
-	}
-}
-
-#[derive(Copy, Clone, Eq, Hash, PartialEq, Serialize, Deserialize)]
-pub struct ArtistKey {
-	pub name: Option<lasso2::Spur>,
-}
-
-#[derive(Clone, Eq, Hash, PartialEq, Serialize, Deserialize)]
-pub struct AlbumKey {
-	pub artists: TinyVec<[lasso2::Spur; 4]>,
-	pub name: Option<lasso2::Spur>,
-}
-
-#[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
-pub struct SongKey {
-	pub virtual_path: PathID,
 }
 
 #[cfg(test)]
