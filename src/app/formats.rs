@@ -121,6 +121,9 @@ fn read_mp3<P: AsRef<Path>>(path: P) -> Result<SongMetadata, Error> {
 }
 
 mod ape_ext {
+	use regex::Regex;
+	use std::sync::LazyLock;
+
 	pub fn read_string(item: &ape::Item) -> Option<String> {
 		match item.value {
 			ape::ItemValue::Text(ref s) => Some(s.clone()),
@@ -139,11 +142,12 @@ mod ape_ext {
 		}
 	}
 
+	static X_OF_Y_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"^\d+"#).unwrap());
+
 	pub fn read_x_of_y(item: &ape::Item) -> Option<u32> {
 		match item.value {
 			ape::ItemValue::Text(ref s) => {
-				let format = regex::Regex::new(r#"^\d+"#).unwrap();
-				if let Some(m) = format.find(s) {
+				if let Some(m) = X_OF_Y_REGEX.find(s) {
 					s[m.start()..m.end()].parse().ok()
 				} else {
 					None
