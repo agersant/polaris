@@ -170,7 +170,7 @@ impl App {
 			vfs_manager.clone(),
 			ddns_manager.clone(),
 		);
-		let playlist_manager = playlist::Manager::new(db.clone(), vfs_manager.clone());
+		let playlist_manager = playlist::Manager::new(db.clone());
 		let thumbnail_manager = thumbnail::Manager::new(thumbnails_dir_path);
 		let lastfm_manager = lastfm::Manager::new(index_manager.clone(), user_manager.clone());
 

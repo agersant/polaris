@@ -2,18 +2,17 @@ use core::clone::Clone;
 use sqlx::{Acquire, QueryBuilder, Sqlite};
 use std::path::PathBuf;
 
-use crate::app::{vfs, Error};
+use crate::app::Error;
 use crate::db::DB;
 
 #[derive(Clone)]
 pub struct Manager {
 	db: DB,
-	vfs_manager: vfs::Manager,
 }
 
 impl Manager {
-	pub fn new(db: DB, vfs_manager: vfs::Manager) -> Self {
-		Self { db, vfs_manager }
+	pub fn new(db: DB) -> Self {
+		Self { db }
 	}
 
 	pub async fn list_playlists(&self, owner: &str) -> Result<Vec<String>, Error> {
@@ -37,25 +36,17 @@ impl Manager {
 		owner: &str,
 		content: &[PathBuf],
 	) -> Result<(), Error> {
-		let vfs = self.vfs_manager.get_vfs().await?;
-
 		struct PlaylistSong {
-			path: String,
+			virtual_path: String,
 			ordering: i64,
 		}
 
 		let mut new_songs: Vec<PlaylistSong> = Vec::with_capacity(content.len());
-		for (i, path) in content.iter().enumerate() {
-			if let Some(real_path) = vfs
-				.virtual_to_real(path)
-				.ok()
-				.and_then(|p| p.to_str().map(|s| s.to_owned()))
-			{
-				new_songs.push(PlaylistSong {
-					path: real_path,
-					ordering: i as i64,
-				});
-			}
+		for (i, virtual_path) in content.iter().enumerate() {
+			new_songs.push(PlaylistSong {
+				virtual_path: virtual_path.to_string_lossy().to_string(),
+				ordering: i as i64,
+			});
 		}
 
 		let mut connection = self.db.connect().await?;
@@ -93,15 +84,17 @@ impl Manager {
 		.await?;
 
 		for chunk in new_songs.chunks(10_000) {
-			QueryBuilder::<Sqlite>::new("INSERT INTO playlist_songs (playlist, path, ordering) ")
-				.push_values(chunk, |mut b, song| {
-					b.push_bind(playlist_id)
-						.push_bind(&song.path)
-						.push_bind(song.ordering);
-				})
-				.build()
-				.execute(connection.as_mut())
-				.await?;
+			QueryBuilder::<Sqlite>::new(
+				"INSERT INTO playlist_songs (playlist, virtual_path, ordering) ",
+			)
+			.push_values(chunk, |mut b, song| {
+				b.push_bind(playlist_id)
+					.push_bind(&song.virtual_path)
+					.push_bind(song.ordering);
+			})
+			.build()
+			.execute(connection.as_mut())
+			.await?;
 		}
 
 		Ok(())
@@ -132,20 +125,20 @@ impl Manager {
 			.ok_or(Error::PlaylistNotFound)?;
 
 			// List songs
-			todo!();
-			// sqlx::query_as!(
-			// 	Song,
-			// 	r#"
-			// 		SELECT s.*
-			// 		FROM playlist_songs ps
-			// 		INNER JOIN songs s ON ps.virtual_path = s.virtual_path
-			// 		WHERE ps.playlist = $1
-			// 		ORDER BY ps.ordering
-			// 	"#,
-			// 	playlist_id
-			// )
-			// .fetch_all(connection.as_mut())
-			// .await?
+			sqlx::query_scalar!(
+				r#"
+					SELECT virtual_path
+					FROM playlist_songs ps
+					WHERE ps.playlist = $1
+					ORDER BY ps.ordering
+				"#,
+				playlist_id
+			)
+			.fetch_all(connection.as_mut())
+			.await?
+			.into_iter()
+			.map(PathBuf::from)
+			.collect()
 		};
 
 		Ok(songs)

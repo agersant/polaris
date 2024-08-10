@@ -73,7 +73,7 @@ impl ContextBuilder {
 		)
 		.await
 		.unwrap();
-		let playlist_manager = playlist::Manager::new(db.clone(), vfs_manager.clone());
+		let playlist_manager = playlist::Manager::new(db.clone());
 
 		config_manager.apply(&self.config).await.unwrap();
 
