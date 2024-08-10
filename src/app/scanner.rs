@@ -20,7 +20,7 @@ pub struct Directory {
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct Song {
-	pub path: PathBuf,
+	pub real_path: PathBuf,
 	pub virtual_path: PathBuf,
 	pub track_number: Option<i64>,
 	pub disc_number: Option<i64>,
@@ -279,7 +279,7 @@ fn process_directory<P: AsRef<Path>, Q: AsRef<Path>>(
 			});
 		} else if let Some(metadata) = formats::read_metadata(&entry_real_path) {
 			songs.push(Song {
-				path: entry_real_path.clone(),
+				real_path: entry_real_path.clone(),
 				virtual_path: entry_virtual_path.clone(),
 				track_number: metadata.track_number.map(|n| n as i64),
 				disc_number: metadata.disc_number.map(|n| n as i64),

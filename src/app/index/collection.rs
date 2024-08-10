@@ -34,7 +34,7 @@ pub struct Album {
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Song {
-	pub path: PathBuf,
+	pub real_path: PathBuf,
 	pub virtual_path: PathBuf,
 	pub track_number: Option<i64>,
 	pub disc_number: Option<i64>,

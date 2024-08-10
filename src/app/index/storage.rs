@@ -37,7 +37,7 @@ pub struct Album {
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Song {
-	pub path: PathKey,
+	pub real_path: PathKey,
 	pub virtual_path: PathKey,
 	pub track_number: Option<i64>,
 	pub disc_number: Option<i64>,
@@ -89,7 +89,7 @@ impl Song {
 }
 
 pub fn store_song(strings: &mut Rodeo, song: &scanner::Song) -> Option<Song> {
-	let Some(path) = (&song.path).get_or_intern(strings) else {
+	let Some(real_path) = (&song.real_path).get_or_intern(strings) else {
 		return None;
 	};
 
@@ -106,7 +106,7 @@ pub fn store_song(strings: &mut Rodeo, song: &scanner::Song) -> Option<Song> {
 	};
 
 	Some(Song {
-		path,
+		real_path,
 		virtual_path,
 		track_number: song.track_number,
 		disc_number: song.disc_number,
@@ -151,7 +151,7 @@ pub fn store_song(strings: &mut Rodeo, song: &scanner::Song) -> Option<Song> {
 
 pub fn fetch_song(strings: &RodeoReader, song: &Song) -> super::Song {
 	super::Song {
-		path: PathBuf::from(strings.resolve(&song.path.0)),
+		real_path: PathBuf::from(strings.resolve(&song.real_path.0)),
 		virtual_path: PathBuf::from(strings.resolve(&song.virtual_path.0)),
 		track_number: song.track_number,
 		disc_number: song.disc_number,
