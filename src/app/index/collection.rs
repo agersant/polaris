@@ -32,7 +32,7 @@ pub struct Album {
 	pub songs: Vec<Song>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Song {
 	pub path: PathBuf,
 	pub virtual_path: PathBuf,
@@ -302,61 +302,101 @@ impl Builder {
 #[cfg(test)]
 mod test {
 
+	use storage::InternPath;
+
 	use super::*;
 
-	use crate::app::test;
-	use crate::test_name;
+	fn setup_test(songs: Vec<scanner::Song>) -> (Collection, RodeoReader) {
+		let mut strings = Rodeo::new();
+		let mut builder = Builder::default();
 
-	const TEST_MOUNT_NAME: &str = "root";
+		for song in songs {
+			builder.add_song(&mut strings, &song);
+		}
+
+		let browser = builder.build();
+		let strings = strings.into_reader();
+
+		(browser, strings)
+	}
 
 	#[tokio::test]
 	async fn can_get_random_albums() {
-		let mut ctx = test::ContextBuilder::new(test_name!())
-			.mount(TEST_MOUNT_NAME, "test-data/small-collection")
-			.build()
-			.await;
-		ctx.scanner.update().await.unwrap();
-		let albums = ctx.index_manager.get_random_albums(1).await.unwrap();
-		assert_eq!(albums.len(), 1);
+		let (collection, strings) = setup_test(Vec::from([
+			scanner::Song {
+				album: Some("ISDN".to_owned()),
+				..Default::default()
+			},
+			scanner::Song {
+				album: Some("Lifeforms".to_owned()),
+				..Default::default()
+			},
+		]));
+
+		let albums = collection.get_random_albums(&strings, 10);
+		assert_eq!(albums.len(), 2);
+
+		assert_eq!(
+			albums
+				.into_iter()
+				.map(|a| a.name.unwrap())
+				.collect::<HashSet<_>>(),
+			HashSet::from_iter(["ISDN".to_owned(), "Lifeforms".to_owned()])
+		);
 	}
 
 	#[tokio::test]
 	async fn can_get_recent_albums() {
-		let mut ctx = test::ContextBuilder::new(test_name!())
-			.mount(TEST_MOUNT_NAME, "test-data/small-collection")
-			.build()
-			.await;
-		ctx.scanner.update().await.unwrap();
-		let albums = ctx.index_manager.get_recent_albums(2).await.unwrap();
+		let (collection, strings) = setup_test(Vec::from([
+			scanner::Song {
+				album: Some("ISDN".to_owned()),
+				date_added: 2000,
+				..Default::default()
+			},
+			scanner::Song {
+				album: Some("Lifeforms".to_owned()),
+				date_added: 400,
+				..Default::default()
+			},
+		]));
+
+		let albums = collection.get_recent_albums(&strings, 10);
 		assert_eq!(albums.len(), 2);
+
+		assert_eq!(
+			albums
+				.into_iter()
+				.map(|a| a.name.unwrap())
+				.collect::<Vec<_>>(),
+			vec!["ISDN".to_owned(), "Lifeforms".to_owned()]
+		);
 	}
 
 	#[tokio::test]
 	async fn can_get_a_song() {
-		let mut ctx = test::ContextBuilder::new(test_name!())
-			.mount(TEST_MOUNT_NAME, "test-data/small-collection")
-			.build()
-			.await;
+		let song_path = PathBuf::from_iter(["FSOL", "ISDN", "Kai.mp3"]);
+		let (collection, strings) = setup_test(Vec::from([scanner::Song {
+			virtual_path: song_path.clone(),
+			title: Some("Kai".to_owned()),
+			album: Some("ISDN".to_owned()),
+			..Default::default()
+		}]));
 
-		ctx.scanner.update().await.unwrap();
+		let song = collection.get_song(
+			&strings,
+			SongKey {
+				virtual_path: song_path.as_path().get(&strings).unwrap(),
+			},
+		);
 
-		let picnic_virtual_dir: PathBuf = [TEST_MOUNT_NAME, "Tobokegao", "Picnic"].iter().collect();
-		let song_virtual_path = picnic_virtual_dir.join("05 - シャーベット (Sherbet).mp3");
-		let artwork_virtual_path = picnic_virtual_dir.join("Folder.png");
-
-		let song = ctx
-			.index_manager
-			.get_song(song_virtual_path.clone())
-			.await
-			.unwrap();
-		assert_eq!(song.virtual_path, song_virtual_path);
-		assert_eq!(song.track_number, Some(5));
-		assert_eq!(song.disc_number, None);
-		assert_eq!(song.title, Some("シャーベット (Sherbet)".to_owned()));
-		assert_eq!(song.artists, vec!["Tobokegao".to_owned()]);
-		assert_eq!(song.album_artists, Vec::<String>::new());
-		assert_eq!(song.album, Some("Picnic".to_owned()));
-		assert_eq!(song.year, Some(2016));
-		assert_eq!(song.artwork, Some(artwork_virtual_path));
+		assert_eq!(
+			song,
+			Some(Song {
+				virtual_path: song_path,
+				title: Some("Kai".to_owned()),
+				album: Some("ISDN".to_owned()),
+				..Default::default()
+			})
+		);
 	}
 }

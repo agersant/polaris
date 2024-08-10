@@ -102,8 +102,12 @@ pub fn store_song(strings: &mut Rodeo, song: &scanner::Song) -> Option<Song> {
 		return None;
 	};
 
-	let Some(artwork) = song.artwork.as_ref().map(|s| s.get_or_intern(strings)) else {
-		return None;
+	let artwork = match &song.artwork {
+		Some(a) => match a.get_or_intern(strings) {
+			Some(a) => Some(a),
+			None => return None,
+		},
+		None => None,
 	};
 
 	Some(Song {
