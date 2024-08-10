@@ -205,8 +205,8 @@ mod test {
 		(browser, strings)
 	}
 
-	#[tokio::test]
-	async fn can_browse_top_level() {
+	#[test]
+	fn can_browse_top_level() {
 		let song_a = PathBuf::from_iter(["Music", "Iron Maiden", "Moonchild.mp3"]);
 		let (browser, strings) = setup_test(HashSet::from([song_a]));
 		let files = browser.browse(&strings, PathBuf::new()).unwrap();
@@ -214,8 +214,8 @@ mod test {
 		assert_eq!(files[0], File::Directory(PathBuf::from_iter(["Music"])));
 	}
 
-	#[tokio::test]
-	async fn can_browse_directory() {
+	#[test]
+	fn can_browse_directory() {
 		let artist_directory = PathBuf::from_iter(["Music", "Iron Maiden"]);
 
 		let (browser, strings) = setup_test(HashSet::from([
@@ -234,8 +234,8 @@ mod test {
 		);
 	}
 
-	#[tokio::test]
-	async fn can_flatten_root() {
+	#[test]
+	fn can_flatten_root() {
 		let song_a = PathBuf::from_iter(["Music", "Electronic", "Papua New Guinea.mp3"]);
 		let song_b = PathBuf::from_iter(["Music", "Metal", "Destiny.mp3"]);
 		let song_c = PathBuf::from_iter(["Music", "Metal", "No Turning Back.mp3"]);
@@ -251,8 +251,8 @@ mod test {
 		assert_eq!(files, [song_a, song_b, song_c]);
 	}
 
-	#[tokio::test]
-	async fn can_flatten_directory() {
+	#[test]
+	fn can_flatten_directory() {
 		let electronic = PathBuf::from_iter(["Music", "Electronic"]);
 		let song_a = electronic.join(PathBuf::from_iter(["FSOL", "Papua New Guinea.mp3"]));
 		let song_b = electronic.join(PathBuf::from_iter(["Kraftwerk", "Autobahn.mp3"]));
@@ -269,8 +269,8 @@ mod test {
 		assert_eq!(files, [song_a, song_b]);
 	}
 
-	#[tokio::test]
-	async fn can_flatten_directory_with_shared_prefix() {
+	#[test]
+	fn can_flatten_directory_with_shared_prefix() {
 		let directory_a = PathBuf::from_iter(["Music", "Therion", "Leviathan II"]);
 		let directory_b = PathBuf::from_iter(["Music", "Therion", "Leviathan III"]);
 		let song_a = directory_a.join("Pazuzu.mp3");

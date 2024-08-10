@@ -303,8 +303,8 @@ mod test {
 		(browser, strings)
 	}
 
-	#[tokio::test]
-	async fn can_list_artists() {
+	#[test]
+	fn can_list_artists() {
 		let (collection, strings) = setup_test(Vec::from([
 			scanner::Song {
 				virtual_path: PathBuf::from("Kai.mp3"),
@@ -329,8 +329,8 @@ mod test {
 		assert_eq!(artists, vec!["FSOL".to_owned(), "Stratovarius".to_owned()]);
 	}
 
-	#[tokio::test]
-	async fn artist_list_is_sorted() {
+	#[test]
+	fn artist_list_is_sorted() {
 		let (collection, strings) = setup_test(Vec::from([
 			scanner::Song {
 				virtual_path: PathBuf::from("Destiny.mp3"),
@@ -358,8 +358,8 @@ mod test {
 		);
 	}
 
-	#[tokio::test]
-	async fn can_get_random_albums() {
+	#[test]
+	fn can_get_random_albums() {
 		let (collection, strings) = setup_test(Vec::from([
 			scanner::Song {
 				album: Some("ISDN".to_owned()),
@@ -383,8 +383,8 @@ mod test {
 		);
 	}
 
-	#[tokio::test]
-	async fn can_get_recent_albums() {
+	#[test]
+	fn can_get_recent_albums() {
 		let (collection, strings) = setup_test(Vec::from([
 			scanner::Song {
 				album: Some("ISDN".to_owned()),
@@ -410,8 +410,8 @@ mod test {
 		);
 	}
 
-	#[tokio::test]
-	async fn albums_are_associated_with_artists() {
+	#[test]
+	fn albums_are_associated_with_artists() {
 		let artist_name = "Bestest Artist";
 		let other_artist_name = "Cool Kidz";
 		let album_name = "Bestest Album";
@@ -517,8 +517,8 @@ mod test {
 		}
 	}
 
-	#[tokio::test]
-	async fn albums_are_sorted_by_year() {
+	#[test]
+	fn albums_are_sorted_by_year() {
 		let (collection, strings) = setup_test(Vec::from([
 			scanner::Song {
 				virtual_path: PathBuf::from("Rebel.mp3"),
@@ -570,8 +570,8 @@ mod test {
 		);
 	}
 
-	#[tokio::test]
-	async fn album_songs_are_sorted() {
+	#[test]
+	fn album_songs_are_sorted() {
 		let album_path = PathBuf::from_iter(["FSOL", "Lifeforms"]);
 		let (collection, strings) = setup_test(Vec::from([
 			scanner::Song {
@@ -634,8 +634,8 @@ mod test {
 		);
 	}
 
-	#[tokio::test]
-	async fn can_get_a_song() {
+	#[test]
+	fn can_get_a_song() {
 		let song_path = PathBuf::from_iter(["FSOL", "ISDN", "Kai.mp3"]);
 		let (collection, strings) = setup_test(Vec::from([scanner::Song {
 			virtual_path: song_path.clone(),
