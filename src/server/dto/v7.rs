@@ -352,7 +352,8 @@ impl From<index::Album> for Directory {
 		let path = album
 			.songs
 			.first()
-			.map(|s| s.virtual_parent.clone())
+			.and_then(|s| s.virtual_path.parent())
+			.map(PathBuf::from)
 			.unwrap_or_default();
 
 		Self {

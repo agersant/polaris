@@ -36,7 +36,6 @@ pub struct Album {
 pub struct Song {
 	pub path: PathBuf,
 	pub virtual_path: PathBuf,
-	pub virtual_parent: PathBuf,
 	pub track_number: Option<i64>,
 	pub disc_number: Option<i64>,
 	pub title: Option<String>,

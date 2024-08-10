@@ -139,7 +139,11 @@ impl Builder {
 			return;
 		};
 
-		let Some(virtual_parent) = (&song.virtual_parent).get_or_intern(strings) else {
+		let Some(virtual_parent) = song
+			.virtual_path
+			.parent()
+			.and_then(|p| p.get_or_intern(strings))
+		else {
 			return;
 		};
 
@@ -192,7 +196,6 @@ mod test {
 		for path in songs {
 			let mut song = scanner::Song::default();
 			song.virtual_path = path.clone();
-			song.virtual_parent = path.parent().unwrap().to_owned();
 			builder.add_song(&mut strings, &song);
 		}
 

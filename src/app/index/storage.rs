@@ -39,7 +39,6 @@ pub struct Album {
 pub struct Song {
 	pub path: PathKey,
 	pub virtual_path: PathKey,
-	pub virtual_parent: PathKey,
 	pub track_number: Option<i64>,
 	pub disc_number: Option<i64>,
 	pub title: Option<lasso2::Spur>,
@@ -98,10 +97,6 @@ pub fn store_song(strings: &mut Rodeo, song: &scanner::Song) -> Option<Song> {
 		return None;
 	};
 
-	let Some(virtual_parent) = (&song.virtual_parent).get_or_intern(strings) else {
-		return None;
-	};
-
 	let artwork = match &song.artwork {
 		Some(a) => match a.get_or_intern(strings) {
 			Some(a) => Some(a),
@@ -113,7 +108,6 @@ pub fn store_song(strings: &mut Rodeo, song: &scanner::Song) -> Option<Song> {
 	Some(Song {
 		path,
 		virtual_path,
-		virtual_parent,
 		track_number: song.track_number,
 		disc_number: song.disc_number,
 		title: song.title.as_ref().map(|s| strings.get_or_intern(s)),
@@ -159,7 +153,6 @@ pub fn fetch_song(strings: &RodeoReader, song: &Song) -> super::Song {
 	super::Song {
 		path: PathBuf::from(strings.resolve(&song.path.0)),
 		virtual_path: PathBuf::from(strings.resolve(&song.virtual_path.0)),
-		virtual_parent: PathBuf::from(strings.resolve(&song.virtual_parent.0)),
 		track_number: song.track_number,
 		disc_number: song.disc_number,
 		title: song.title.map(|s| strings.resolve(&s).to_string()),
