@@ -299,6 +299,7 @@ impl Builder {
 mod test {
 
 	use storage::InternPath;
+	use tinyvec::TinyVec;
 
 	use super::*;
 
@@ -365,6 +366,235 @@ mod test {
 				.map(|a| a.name.unwrap())
 				.collect::<Vec<_>>(),
 			vec!["ISDN".to_owned(), "Lifeforms".to_owned()]
+		);
+	}
+
+	#[tokio::test]
+	async fn albums_are_associated_with_artists() {
+		let artist_name = "Bestest Artist";
+		let other_artist_name = "Cool Kidz";
+		let album_name = "Bestest Album";
+
+		#[derive(Debug, Default)]
+		struct TestCase {
+			album_artists: Vec<String>,
+			artists: Vec<String>,
+			composers: Vec<String>,
+			lyricists: Vec<String>,
+			expect_albums: bool,
+			expect_song_credits: bool,
+			expect_composer_credits: bool,
+			expect_lyricist_credits: bool,
+		}
+
+		let test_cases = vec![
+			// Tagged as everything
+			TestCase {
+				album_artists: vec![artist_name.to_string()],
+				artists: vec![artist_name.to_string()],
+				composers: vec![artist_name.to_string()],
+				lyricists: vec![artist_name.to_string()],
+				expect_albums: true,
+				..Default::default()
+			},
+			// Only tagged as artist
+			TestCase {
+				artists: vec![artist_name.to_string()],
+				expect_albums: true,
+				..Default::default()
+			},
+			// Only tagged as artist w/ distinct album artist
+			TestCase {
+				album_artists: vec![other_artist_name.to_string()],
+				artists: vec![artist_name.to_string()],
+				expect_song_credits: true,
+				..Default::default()
+			},
+			// Tagged as artist and within album artists
+			TestCase {
+				album_artists: vec![artist_name.to_string(), other_artist_name.to_string()],
+				artists: vec![artist_name.to_string()],
+				expect_albums: true,
+				..Default::default()
+			},
+			// Only tagged as composer
+			TestCase {
+				artists: vec![other_artist_name.to_string()],
+				composers: vec![artist_name.to_string()],
+				expect_composer_credits: true,
+				..Default::default()
+			},
+			// Only tagged as lyricist
+			TestCase {
+				artists: vec![other_artist_name.to_string()],
+				lyricists: vec![artist_name.to_string()],
+				expect_lyricist_credits: true,
+				..Default::default()
+			},
+		];
+
+		for test in test_cases {
+			let (collection, strings) = setup_test(Vec::from([scanner::Song {
+				virtual_path: PathBuf::from_iter(["Some Directory", "Cool Song.mp3"]),
+				album: Some(album_name.to_owned()),
+				album_artists: test.album_artists.clone(),
+				artists: test.artists.clone(),
+				composers: test.composers.clone(),
+				lyricists: test.lyricists.clone(),
+				..Default::default()
+			}]));
+
+			let artist_key = ArtistKey {
+				name: strings.get(artist_name),
+			};
+			let artist = collection.get_artist(&strings, artist_key).unwrap();
+
+			let names = |a: &Vec<Album>| {
+				a.iter()
+					.map(|a| a.name.to_owned().unwrap())
+					.collect::<Vec<_>>()
+			};
+
+			if test.expect_albums {
+				assert_eq!(names(&artist.albums), vec![album_name]);
+			} else {
+				assert!(names(&artist.albums).is_empty());
+			}
+
+			if test.expect_song_credits {
+				assert_eq!(names(&artist.song_credits), vec![album_name]);
+			} else {
+				assert!(names(&artist.song_credits).is_empty());
+			}
+
+			if test.expect_composer_credits {
+				assert_eq!(names(&artist.composer_credits), vec![album_name]);
+			} else {
+				assert!(names(&artist.composer_credits).is_empty());
+			}
+
+			if test.expect_lyricist_credits {
+				assert_eq!(names(&artist.lyricist_credits), vec![album_name]);
+			} else {
+				assert!(names(&artist.lyricist_credits).is_empty());
+			}
+		}
+	}
+
+	#[tokio::test]
+	async fn albums_are_sorted_by_year() {
+		let (collection, strings) = setup_test(Vec::from([
+			scanner::Song {
+				virtual_path: PathBuf::from("Rebel.mp3"),
+				title: Some("Rebel".to_owned()),
+				album: Some("Destiny".to_owned()),
+				artists: vec!["Stratovarius".to_owned()],
+				year: Some(1998),
+				..Default::default()
+			},
+			scanner::Song {
+				virtual_path: PathBuf::from("Eternity.mp3"),
+				title: Some("Eternity".to_owned()),
+				album: Some("Episode".to_owned()),
+				artists: vec!["Stratovarius".to_owned()],
+				year: Some(1996),
+				..Default::default()
+			},
+			scanner::Song {
+				virtual_path: PathBuf::from("Broken.mp3"),
+				title: Some("Broken".to_owned()),
+				album: Some("Survive".to_owned()),
+				artists: vec!["Stratovarius".to_owned()],
+				year: Some(2022),
+				..Default::default()
+			},
+		]));
+
+		let artist = collection.get_artist(
+			&strings,
+			ArtistKey {
+				name: strings.get("Stratovarius"),
+			},
+		);
+
+		let names = artist
+			.unwrap()
+			.albums
+			.into_iter()
+			.map(|a| a.name.unwrap())
+			.collect::<Vec<_>>();
+
+		assert_eq!(
+			names,
+			vec![
+				"Episode".to_owned(),
+				"Destiny".to_owned(),
+				"Survive".to_owned(),
+			]
+		);
+	}
+
+	#[tokio::test]
+	async fn album_songs_are_sorted() {
+		let album_path = PathBuf::from_iter(["FSOL", "Lifeforms"]);
+		let (collection, strings) = setup_test(Vec::from([
+			scanner::Song {
+				virtual_path: album_path.join("Flak.mp3"),
+				title: Some("Flak".to_owned()),
+				album: Some("Lifeforms".to_owned()),
+				disc_number: Some(1),
+				track_number: Some(3),
+				..Default::default()
+			},
+			scanner::Song {
+				virtual_path: album_path.join("Cascade.mp3"),
+				title: Some("Cascade".to_owned()),
+				album: Some("Lifeforms".to_owned()),
+				disc_number: Some(1),
+				track_number: Some(1),
+				..Default::default()
+			},
+			scanner::Song {
+				virtual_path: album_path.join("Domain.mp3"),
+				title: Some("Domain".to_owned()),
+				album: Some("Lifeforms".to_owned()),
+				disc_number: Some(2),
+				track_number: Some(1),
+				..Default::default()
+			},
+			scanner::Song {
+				virtual_path: album_path.join("Interstat.mp3"),
+				title: Some("Interstat".to_owned()),
+				album: Some("Lifeforms".to_owned()),
+				disc_number: Some(2),
+				track_number: Some(3),
+				..Default::default()
+			},
+		]));
+
+		let album = collection.get_album(
+			&strings,
+			AlbumKey {
+				artists: TinyVec::new(),
+				name: strings.get("Lifeforms"),
+			},
+		);
+
+		let titles = album
+			.unwrap()
+			.songs
+			.into_iter()
+			.map(|s| s.title.unwrap())
+			.collect::<Vec<_>>();
+
+		assert_eq!(
+			titles,
+			vec![
+				"Cascade".to_owned(),
+				"Flak".to_owned(),
+				"Domain".to_owned(),
+				"Interstat".to_owned(),
+			]
 		);
 	}
 
