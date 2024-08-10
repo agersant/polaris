@@ -17,7 +17,7 @@ mod search;
 mod storage;
 
 pub use browser::File;
-pub use collection::{Album, Artist, Song};
+pub use collection::{Album, Artist, ArtistHeader, Song};
 use storage::{AlbumKey, ArtistKey, InternPath, SongKey};
 
 #[derive(Clone)]
@@ -99,6 +99,18 @@ impl Manager {
 			move || {
 				let index = index_manager.index.read().unwrap();
 				index.browser.flatten(&index.strings, virtual_path)
+			}
+		})
+		.await
+		.unwrap()
+	}
+
+	pub async fn get_artists(&self) -> Vec<ArtistHeader> {
+		spawn_blocking({
+			let index_manager = self.clone();
+			move || {
+				let index = index_manager.index.read().unwrap();
+				index.collection.get_artists(&index.strings)
 			}
 		})
 		.await

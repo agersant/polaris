@@ -307,22 +307,34 @@ impl From<index::File> for BrowserEntry {
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Artist {
+pub struct ArtistHeader {
 	pub name: Option<String>,
+	pub num_albums: u32,
+}
+
+impl From<index::ArtistHeader> for ArtistHeader {
+	fn from(a: index::ArtistHeader) -> Self {
+		Self {
+			name: a.name,
+			num_albums: a.num_albums,
+		}
+	}
+}
+
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Artist {
+	#[serde(flatten)]
+	pub header: ArtistHeader,
 	pub albums: Vec<AlbumHeader>,
-	pub song_credits: Vec<AlbumHeader>,
-	pub composer_credits: Vec<AlbumHeader>,
-	pub lyricist_credits: Vec<AlbumHeader>,
+	pub featured_on: Vec<AlbumHeader>,
 }
 
 impl From<index::Artist> for Artist {
 	fn from(a: index::Artist) -> Self {
 		Self {
-			name: a.name,
+			header: a.header.into(),
 			albums: a.albums.into_iter().map(|a| a.into()).collect(),
-			song_credits: a.song_credits.into_iter().map(|a| a.into()).collect(),
-			composer_credits: a.composer_credits.into_iter().map(|a| a.into()).collect(),
-			lyricist_credits: a.lyricist_credits.into_iter().map(|a| a.into()).collect(),
+			featured_on: a.featured_on.into_iter().map(|a| a.into()).collect(),
 		}
 	}
 }

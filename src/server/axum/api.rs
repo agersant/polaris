@@ -45,6 +45,7 @@ pub fn router() -> Router<App> {
 		.route("/browse/*path", get(get_browse))
 		.route("/flatten", get(get_flatten_root))
 		.route("/flatten/*path", get(get_flatten))
+		.route("/artists", get(get_artists))
 		.route("/artists/:artist", get(get_artist))
 		.route("/artists/:artists/albums/:name", get(get_album))
 		.route("/random", get(get_random))
@@ -362,6 +363,21 @@ async fn get_flatten(
 		Err(e) => return APIError::from(e).into_response(),
 	};
 	songs_to_response(songs, api_version)
+}
+
+async fn get_artists(
+	_auth: Auth,
+	State(index_manager): State<index::Manager>,
+) -> Result<Json<Vec<dto::ArtistHeader>>, APIError> {
+	Ok(Json(
+		index_manager
+			.get_artists()
+			.await
+			.into_iter()
+			.map(|a| a.into())
+			.collect::<Vec<_>>()
+			.into(),
+	))
 }
 
 async fn get_artist(

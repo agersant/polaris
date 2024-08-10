@@ -20,9 +20,7 @@ pub enum File {
 pub struct Artist {
 	pub name: Option<lasso2::Spur>,
 	pub albums: HashSet<AlbumKey>,
-	pub song_credits: HashSet<AlbumKey>,
-	pub composer_credits: HashSet<AlbumKey>,
-	pub lyricist_credits: HashSet<AlbumKey>,
+	pub featured_on: HashSet<AlbumKey>,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]

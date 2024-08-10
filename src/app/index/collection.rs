@@ -1,5 +1,6 @@
 use std::{
 	borrow::BorrowMut,
+	cmp::Ordering,
 	collections::{HashMap, HashSet},
 	path::PathBuf,
 };
@@ -7,6 +8,7 @@ use std::{
 use lasso2::{Rodeo, RodeoReader};
 use rand::{rngs::ThreadRng, seq::IteratorRandom};
 use serde::{Deserialize, Serialize};
+use unicase::UniCase;
 
 use crate::app::index::storage::{self, store_song, AlbumKey, ArtistKey, SongKey};
 use crate::app::scanner;
@@ -14,12 +16,16 @@ use crate::app::scanner;
 use super::storage::fetch_song;
 
 #[derive(Debug, Default, PartialEq, Eq)]
-pub struct Artist {
+pub struct ArtistHeader {
 	pub name: Option<String>,
+	pub num_albums: u32,
+}
+
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct Artist {
+	pub header: ArtistHeader,
 	pub albums: Vec<Album>,
-	pub song_credits: Vec<Album>, // Albums where this artist shows up as `artist` without being `album_artist`
-	pub composer_credits: Vec<Album>, // Albums where this artist shows up as `composer` without being `artist` or `album_artist`
-	pub lyricist_credits: Vec<Album>, // Albums where this artist shows up as `lyricist` without being `artist` or `album_artist`
+	pub featured_on: Vec<Album>, // Albums where this artist shows up as `artist` without being `album_artist`
 }
 
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -61,44 +67,39 @@ pub struct Collection {
 }
 
 impl Collection {
+	pub fn get_artists(&self, strings: &RodeoReader) -> Vec<ArtistHeader> {
+		let mut artists = self
+			.artists
+			.values()
+			.filter(|a| a.albums.len() > 0 || a.featured_on.len() > 1)
+			.map(|a| make_artist_header(a, strings))
+			.collect::<Vec<_>>();
+		artists.sort_by(|a, b| match (&a.name, &b.name) {
+			(Some(a), Some(b)) => UniCase::new(a).cmp(&UniCase::new(b)),
+			(None, None) => Ordering::Equal,
+			(None, Some(_)) => Ordering::Less,
+			(Some(_), None) => Ordering::Greater,
+		});
+		artists
+	}
+
 	pub fn get_artist(&self, strings: &RodeoReader, artist_key: ArtistKey) -> Option<Artist> {
 		self.artists.get(&artist_key).map(|a| {
+			let sort_albums = |a: &Album, b: &Album| (&a.year, &a.name).cmp(&(&b.year, &b.name));
+
 			let albums = {
 				let mut albums = a
 					.albums
 					.iter()
 					.filter_map(|key| self.get_album(strings, key.clone()))
 					.collect::<Vec<_>>();
-				albums.sort_by(|a, b| (a.year, &a.name).partial_cmp(&(b.year, &b.name)).unwrap());
+				albums.sort_by(sort_albums);
 				albums
 			};
 
-			let sort_albums =
-				|a: &Album, b: &Album| (&a.year, &a.name).partial_cmp(&(&b.year, &b.name)).unwrap();
-
-			let song_credits = {
+			let featured_on = {
 				let mut albums = a
-					.song_credits
-					.iter()
-					.filter_map(|key| self.get_album(strings, key.clone()))
-					.collect::<Vec<_>>();
-				albums.sort_by(&sort_albums);
-				albums
-			};
-
-			let composer_credits = {
-				let mut albums = a
-					.composer_credits
-					.iter()
-					.filter_map(|key| self.get_album(strings, key.clone()))
-					.collect::<Vec<_>>();
-				albums.sort_by(&sort_albums);
-				albums
-			};
-
-			let lyricist_credits = {
-				let mut albums = a
-					.lyricist_credits
+					.featured_on
 					.iter()
 					.filter_map(|key| self.get_album(strings, key.clone()))
 					.collect::<Vec<_>>();
@@ -107,11 +108,9 @@ impl Collection {
 			};
 
 			Artist {
-				name: a.name.map(|s| strings.resolve(&s).to_string()),
+				header: make_artist_header(a, strings),
 				albums,
-				song_credits,
-				composer_credits,
-				lyricist_credits,
+				featured_on,
 			}
 		})
 	}
@@ -174,6 +173,13 @@ impl Collection {
 	}
 }
 
+fn make_artist_header(artist: &storage::Artist, strings: &RodeoReader) -> ArtistHeader {
+	ArtistHeader {
+		name: artist.name.map(|n| strings.resolve(&n).to_owned()),
+		num_albums: artist.albums.len() as u32 + artist.featured_on.len() as u32,
+	}
+}
+
 #[derive(Default)]
 pub struct Builder {
 	artists: HashMap<ArtistKey, storage::Artist>,
@@ -228,25 +234,7 @@ impl Builder {
 			if song.album_artists.is_empty() {
 				artist.albums.insert(album_key.clone());
 			} else if !song.album_artists.contains(name) {
-				artist.song_credits.insert(album_key.clone());
-			}
-		}
-
-		for name in &song.composers {
-			let is_also_artist = song.artists.contains(name);
-			let is_also_album_artist = song.artists.contains(name);
-			if !is_also_artist && !is_also_album_artist {
-				let artist = self.get_or_create_artist(*name);
-				artist.composer_credits.insert(album_key.clone());
-			}
-		}
-
-		for name in &song.lyricists {
-			let is_also_artist = song.artists.contains(name);
-			let is_also_album_artist = song.artists.contains(name);
-			if !is_also_artist && !is_also_album_artist {
-				let artist = self.get_or_create_artist(*name);
-				artist.lyricist_credits.insert(album_key.clone());
+				artist.featured_on.insert(album_key.clone());
 			}
 		}
 	}
@@ -258,9 +246,7 @@ impl Builder {
 			.or_insert_with(|| storage::Artist {
 				name: Some(name),
 				albums: HashSet::new(),
-				song_credits: HashSet::new(),
-				composer_credits: HashSet::new(),
-				lyricist_credits: HashSet::new(),
+				featured_on: HashSet::new(),
 			})
 			.borrow_mut()
 	}
@@ -315,6 +301,61 @@ mod test {
 		let strings = strings.into_reader();
 
 		(browser, strings)
+	}
+
+	#[tokio::test]
+	async fn can_list_artists() {
+		let (collection, strings) = setup_test(Vec::from([
+			scanner::Song {
+				virtual_path: PathBuf::from("Kai.mp3"),
+				title: Some("Kai".to_owned()),
+				artists: vec!["FSOL".to_owned()],
+				..Default::default()
+			},
+			scanner::Song {
+				virtual_path: PathBuf::from("Fantasy.mp3"),
+				title: Some("Fantasy".to_owned()),
+				artists: vec!["Stratovarius".to_owned()],
+				..Default::default()
+			},
+		]));
+
+		let artists = collection
+			.get_artists(&strings)
+			.into_iter()
+			.map(|a| a.name.unwrap())
+			.collect::<Vec<_>>();
+
+		assert_eq!(artists, vec!["FSOL".to_owned(), "Stratovarius".to_owned()]);
+	}
+
+	#[tokio::test]
+	async fn artist_list_is_sorted() {
+		let (collection, strings) = setup_test(Vec::from([
+			scanner::Song {
+				virtual_path: PathBuf::from("Destiny.mp3"),
+				title: Some("Destiny".to_owned()),
+				artists: vec!["Heavenly".to_owned()],
+				..Default::default()
+			},
+			scanner::Song {
+				virtual_path: PathBuf::from("Renegade.mp3"),
+				title: Some("Renegade".to_owned()),
+				artists: vec!["hammerfall".to_owned()], // Lower-case `h` to validate sorting is case-insensitive
+				..Default::default()
+			},
+		]));
+
+		let artists = collection
+			.get_artists(&strings)
+			.into_iter()
+			.map(|a| a.name.unwrap())
+			.collect::<Vec<_>>();
+
+		assert_eq!(
+			artists,
+			vec!["hammerfall".to_owned(), "Heavenly".to_owned()]
+		);
 	}
 
 	#[tokio::test]
@@ -381,10 +422,9 @@ mod test {
 			artists: Vec<String>,
 			composers: Vec<String>,
 			lyricists: Vec<String>,
+			expect_unlisted: bool,
 			expect_albums: bool,
-			expect_song_credits: bool,
-			expect_composer_credits: bool,
-			expect_lyricist_credits: bool,
+			expect_featured_on: bool,
 		}
 
 		let test_cases = vec![
@@ -407,7 +447,7 @@ mod test {
 			TestCase {
 				album_artists: vec![other_artist_name.to_string()],
 				artists: vec![artist_name.to_string()],
-				expect_song_credits: true,
+				expect_featured_on: true,
 				..Default::default()
 			},
 			// Tagged as artist and within album artists
@@ -421,14 +461,14 @@ mod test {
 			TestCase {
 				artists: vec![other_artist_name.to_string()],
 				composers: vec![artist_name.to_string()],
-				expect_composer_credits: true,
+				expect_unlisted: true,
 				..Default::default()
 			},
 			// Only tagged as lyricist
 			TestCase {
 				artists: vec![other_artist_name.to_string()],
 				lyricists: vec![artist_name.to_string()],
-				expect_lyricist_credits: true,
+				expect_unlisted: true,
 				..Default::default()
 			},
 		];
@@ -447,7 +487,15 @@ mod test {
 			let artist_key = ArtistKey {
 				name: strings.get(artist_name),
 			};
-			let artist = collection.get_artist(&strings, artist_key).unwrap();
+			let artist = collection.get_artist(&strings, artist_key);
+
+			let artist = match test.expect_unlisted {
+				true => {
+					assert!(artist.is_none());
+					continue;
+				}
+				false => artist.unwrap(),
+			};
 
 			let names = |a: &Vec<Album>| {
 				a.iter()
@@ -461,22 +509,10 @@ mod test {
 				assert!(names(&artist.albums).is_empty());
 			}
 
-			if test.expect_song_credits {
-				assert_eq!(names(&artist.song_credits), vec![album_name]);
+			if test.expect_featured_on {
+				assert_eq!(names(&artist.featured_on), vec![album_name]);
 			} else {
-				assert!(names(&artist.song_credits).is_empty());
-			}
-
-			if test.expect_composer_credits {
-				assert_eq!(names(&artist.composer_credits), vec![album_name]);
-			} else {
-				assert!(names(&artist.composer_credits).is_empty());
-			}
-
-			if test.expect_lyricist_credits {
-				assert_eq!(names(&artist.lyricist_credits), vec![album_name]);
-			} else {
-				assert!(names(&artist.lyricist_credits).is_empty());
+				assert!(names(&artist.featured_on).is_empty());
 			}
 		}
 	}

@@ -1649,6 +1649,7 @@ dependencies = [
  "toml 0.8.19",
  "tower-http",
  "trie-rs",
+ "unicase",
  "ureq 2.10.0",
  "winres",
 ]
