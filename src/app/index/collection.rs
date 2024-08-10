@@ -73,11 +73,8 @@ impl Collection {
 				albums
 			};
 
-			let sort_albums = |a: &Album, b: &Album| {
-				(&a.artists, a.year, &a.name)
-					.partial_cmp(&(&b.artists, b.year, &b.name))
-					.unwrap()
-			};
+			let sort_albums =
+				|a: &Album, b: &Album| (&a.year, &a.name).partial_cmp(&(&b.year, &b.name)).unwrap();
 
 			let song_credits = {
 				let mut albums = a
