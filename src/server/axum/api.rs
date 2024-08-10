@@ -11,6 +11,7 @@ use axum_extra::TypedHeader;
 use axum_range::{KnownSize, Ranged};
 use base64::{prelude::BASE64_STANDARD_NO_PAD, Engine};
 use percent_encoding::percent_decode_str;
+use tower_http::{compression::CompressionLayer, CompressionLevel};
 
 use crate::{
 	app::{config, ddns, index, lastfm, playlist, scanner, settings, thumbnail, user, vfs, App},
@@ -56,7 +57,6 @@ pub fn router() -> Router<App> {
 		.route("/playlist/:name", put(put_playlist))
 		.route("/playlist/:name", get(get_playlist))
 		.route("/playlist/:name", delete(delete_playlist))
-		.route("/audio/*path", get(get_audio))
 		.route("/thumbnail/*path", get(get_thumbnail))
 		.route("/lastfm/now_playing/*path", put(put_lastfm_now_playing))
 		.route("/lastfm/scrobble/*path", post(post_lastfm_scrobble))
@@ -70,7 +70,9 @@ pub fn router() -> Router<App> {
 		.route("/random/", get(get_random))
 		.route("/recent/", get(get_recent))
 		.route("/search/", get(get_search_root))
+		.layer(CompressionLayer::new().quality(CompressionLevel::Fastest))
 		.layer(DefaultBodyLimit::max(10 * 1024 * 1024)) // 10MB
+		.route("/audio/*path", get(get_audio))
 }
 
 async fn get_version() -> Json<dto::Version> {

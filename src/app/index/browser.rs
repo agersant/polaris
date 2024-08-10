@@ -7,6 +7,7 @@ use std::{
 };
 
 use lasso2::{Rodeo, RodeoReader};
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use tinyvec::TinyVec;
 use trie_rs::{Trie, TrieBuilder};
@@ -112,7 +113,7 @@ impl Browser {
 			})
 			.collect::<Vec<_>>();
 
-		files.sort_by(|a, b| {
+		files.par_sort_by(|a, b| {
 			let a = UniCase::new(a.as_os_str().to_string_lossy());
 			let b = UniCase::new(b.as_os_str().to_string_lossy());
 			a.cmp(&b)

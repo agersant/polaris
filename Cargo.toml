@@ -42,7 +42,7 @@ thiserror = "1.0.62"
 tokio = { version = "1.39", features = ["macros", "rt-multi-thread"] }
 tokio-util = { version = "0.7.11", features = ["io"] }
 toml = "0.8.19"
-tower-http = { version = "0.5.2", features = ["fs"] }
+tower-http = { version = "0.5.2", features = ["compression-gzip", "fs"] }
 trie-rs = { version = "0.4.2", features = ["serde"] }
 unicase = "2.7.0"
 ureq = { version = "2.10.0", default-features = false, features = ["tls"] }
