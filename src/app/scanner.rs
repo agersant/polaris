@@ -112,10 +112,12 @@ impl Scanner {
 		let (scan_directories_output, mut collection_directories_input) = unbounded_channel();
 		let (scan_songs_output, mut collection_songs_input) = unbounded_channel();
 
+		let vfs = self.vfs_manager.get_vfs().await?;
+
 		let scan = Scan::new(
 			scan_directories_output,
 			scan_songs_output,
-			self.vfs_manager.clone(),
+			vfs.mounts().clone(),
 			album_art_pattern,
 		);
 
@@ -168,7 +170,7 @@ impl Scanner {
 struct Scan {
 	directories_output: UnboundedSender<Directory>,
 	songs_output: UnboundedSender<Song>,
-	vfs_manager: vfs::Manager,
+	mounts: Vec<vfs::Mount>,
 	artwork_regex: Option<Regex>,
 }
 
@@ -176,21 +178,18 @@ impl Scan {
 	pub fn new(
 		directories_output: UnboundedSender<Directory>,
 		songs_output: UnboundedSender<Song>,
-		vfs_manager: vfs::Manager,
+		mounts: Vec<vfs::Mount>,
 		artwork_regex: Option<Regex>,
 	) -> Self {
 		Self {
 			directories_output,
 			songs_output,
-			vfs_manager,
+			mounts,
 			artwork_regex,
 		}
 	}
 
 	pub async fn start(self) -> Result<(), Error> {
-		let vfs = self.vfs_manager.get_vfs().await?;
-		let roots = vfs.mounts().clone();
-
 		let key = "POLARIS_NUM_TRAVERSER_THREADS";
 		let num_threads = std::env::var_os(key)
 			.map(|v| v.to_string_lossy().to_string())
@@ -205,12 +204,12 @@ impl Scan {
 		let thread_pool = ThreadPoolBuilder::new().num_threads(num_threads).build()?;
 		thread_pool.scope({
 			|scope| {
-				for root in roots {
+				for mount in self.mounts {
 					scope.spawn(|scope| {
 						process_directory(
 							scope,
-							root.source,
-							root.name,
+							mount.source,
+							mount.name,
 							directories_output.clone(),
 							songs_output.clone(),
 							artwork_regex.clone(),
@@ -332,76 +331,77 @@ fn get_date_created<P: AsRef<Path>>(path: P) -> Option<i64> {
 
 #[cfg(test)]
 mod test {
-	use std::path::PathBuf;
+	use std::{path::PathBuf, usize};
 
-	use crate::{
-		app::{settings, test},
-		test_name,
-	};
-
-	const TEST_MOUNT_NAME: &str = "root";
+	use super::*;
 
 	#[tokio::test]
-	async fn scan_adds_new_content() {
-		let mut ctx = test::ContextBuilder::new(test_name!())
-			.mount(TEST_MOUNT_NAME, "test-data/small-collection")
-			.build()
+	async fn scan_finds_songs_and_directories() {
+		let (directories_sender, mut directories_receiver) = unbounded_channel();
+		let (songs_sender, mut songs_receiver) = unbounded_channel();
+		let mounts = vec![vfs::Mount {
+			source: PathBuf::from_iter(["test-data", "small-collection"]),
+			name: "root".to_string(),
+		}];
+		let artwork_regex = None;
+
+		let scan = Scan::new(directories_sender, songs_sender, mounts, artwork_regex);
+		scan.start().await.unwrap();
+
+		let mut directories = vec![];
+		directories_receiver
+			.recv_many(&mut directories, usize::MAX)
 			.await;
+		assert_eq!(directories.len(), 6);
 
-		ctx.scanner.update().await.unwrap();
-		ctx.scanner.update().await.unwrap(); // Validates that subsequent updates don't run into conflicts
-
-		todo!();
-
-		// assert_eq!(all_directories.len(), 6);
-		// assert_eq!(all_songs.len(), 13);
+		let mut songs = vec![];
+		songs_receiver.recv_many(&mut songs, usize::MAX).await;
+		assert_eq!(songs.len(), 13);
 	}
 
 	#[tokio::test]
-	async fn finds_embedded_artwork() {
-		let mut ctx = test::ContextBuilder::new(test_name!())
-			.mount(TEST_MOUNT_NAME, "test-data/small-collection")
-			.build()
-			.await;
+	async fn scan_finds_embedded_artwork() {
+		let (directories_sender, _) = unbounded_channel();
+		let (songs_sender, mut songs_receiver) = unbounded_channel();
+		let mounts = vec![vfs::Mount {
+			source: PathBuf::from_iter(["test-data", "small-collection"]),
+			name: "root".to_string(),
+		}];
+		let artwork_regex = None;
 
-		ctx.scanner.update().await.unwrap();
+		let scan = Scan::new(directories_sender, songs_sender, mounts, artwork_regex);
+		scan.start().await.unwrap();
 
-		let picnic_virtual_dir: PathBuf = [TEST_MOUNT_NAME, "Tobokegao", "Picnic"].iter().collect();
-		let song_virtual_path = picnic_virtual_dir.join("07 - なぜ (Why).mp3");
+		let mut songs = vec![];
+		songs_receiver.recv_many(&mut songs, usize::MAX).await;
 
-		let song = ctx
-			.index_manager
-			.get_song(song_virtual_path.clone())
-			.await
-			.unwrap();
-		assert_eq!(song.artwork, Some(song_virtual_path));
+		songs
+			.iter()
+			.any(|s| s.artwork.as_ref() == Some(&s.virtual_path));
 	}
 
 	#[tokio::test]
 	async fn album_art_pattern_is_case_insensitive() {
-		let mut ctx = test::ContextBuilder::new(test_name!())
-			.mount(TEST_MOUNT_NAME, "test-data/small-collection")
-			.build()
-			.await;
-
+		let artwork_path = PathBuf::from_iter(["root", "Khemmis", "Hunted", "Folder.jpg"]);
 		let patterns = vec!["folder", "FOLDER"];
-
 		for pattern in patterns.into_iter() {
-			ctx.settings_manager
-				.amend(&settings::NewSettings {
-					album_art_pattern: Some(pattern.to_owned()),
-					..Default::default()
-				})
-				.await
-				.unwrap();
-			ctx.scanner.update().await.unwrap();
+			let (directories_sender, _) = unbounded_channel();
+			let (songs_sender, mut songs_receiver) = unbounded_channel();
+			let mounts = vec![vfs::Mount {
+				source: PathBuf::from_iter(["test-data", "small-collection"]),
+				name: "root".to_string(),
+			}];
+			let artwork_regex = Some(Regex::new(pattern).unwrap());
 
-			let hunted_virtual_dir: PathBuf =
-				[TEST_MOUNT_NAME, "Khemmis", "Hunted"].iter().collect();
-			let artwork_virtual_path = hunted_virtual_dir.join("Folder.jpg");
-			let song = &ctx.index_manager.flatten(hunted_virtual_dir).await.unwrap()[0];
-			todo!();
-			// assert_eq!(song.artwork, Some(artwork_virtual_path));
+			let scan = Scan::new(directories_sender, songs_sender, mounts, artwork_regex);
+			scan.start().await.unwrap();
+
+			let mut songs = vec![];
+			songs_receiver.recv_many(&mut songs, usize::MAX).await;
+
+			songs
+				.iter()
+				.any(|s| s.artwork.as_ref() == Some(&artwork_path));
 		}
 	}
 }
