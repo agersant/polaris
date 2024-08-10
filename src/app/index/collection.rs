@@ -1,6 +1,5 @@
 use std::{
 	borrow::BorrowMut,
-	cmp::Ordering,
 	collections::{HashMap, HashSet},
 	path::PathBuf,
 };
@@ -17,7 +16,7 @@ use super::storage::fetch_song;
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ArtistHeader {
-	pub name: Option<String>,
+	pub name: Option<UniCase<String>>,
 	pub num_albums: u32,
 }
 
@@ -74,12 +73,7 @@ impl Collection {
 			.filter(|a| a.albums.len() > 0 || a.featured_on.len() > 1)
 			.map(|a| make_artist_header(a, strings))
 			.collect::<Vec<_>>();
-		artists.sort_by(|a, b| match (&a.name, &b.name) {
-			(Some(a), Some(b)) => UniCase::new(a).cmp(&UniCase::new(b)),
-			(None, None) => Ordering::Equal,
-			(None, Some(_)) => Ordering::Less,
-			(Some(_), None) => Ordering::Greater,
-		});
+		artists.sort_by(|a, b| a.name.cmp(&b.name));
 		artists
 	}
 
@@ -175,7 +169,9 @@ impl Collection {
 
 fn make_artist_header(artist: &storage::Artist, strings: &RodeoReader) -> ArtistHeader {
 	ArtistHeader {
-		name: artist.name.map(|n| strings.resolve(&n).to_owned()),
+		name: artist
+			.name
+			.map(|n| UniCase::new(strings.resolve(&n).to_owned())),
 		num_albums: artist.albums.len() as u32 + artist.featured_on.len() as u32,
 	}
 }
@@ -326,7 +322,13 @@ mod test {
 			.map(|a| a.name.unwrap())
 			.collect::<Vec<_>>();
 
-		assert_eq!(artists, vec!["FSOL".to_owned(), "Stratovarius".to_owned()]);
+		assert_eq!(
+			artists,
+			vec![
+				UniCase::new("FSOL".to_owned()),
+				UniCase::new("Stratovarius".to_owned())
+			]
+		);
 	}
 
 	#[test]
@@ -354,7 +356,10 @@ mod test {
 
 		assert_eq!(
 			artists,
-			vec!["hammerfall".to_owned(), "Heavenly".to_owned()]
+			vec![
+				UniCase::new("hammerfall".to_owned()),
+				UniCase::new("Heavenly".to_owned())
+			]
 		);
 	}
 

@@ -315,7 +315,7 @@ pub struct ArtistHeader {
 impl From<index::ArtistHeader> for ArtistHeader {
 	fn from(a: index::ArtistHeader) -> Self {
 		Self {
-			name: a.name,
+			name: a.name.map(|s| s.into_inner()),
 			num_albums: a.num_albums,
 		}
 	}

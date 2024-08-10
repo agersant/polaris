@@ -1,4 +1,5 @@
 use std::{
+	cmp::Ordering,
 	collections::{BTreeSet, HashMap},
 	ffi::OsStr,
 	hash::Hash,
@@ -9,6 +10,7 @@ use lasso2::{Rodeo, RodeoReader};
 use serde::{Deserialize, Serialize};
 use tinyvec::TinyVec;
 use trie_rs::{Trie, TrieBuilder};
+use unicase::UniCase;
 
 use crate::app::index::{
 	storage::{self, PathKey},
@@ -67,7 +69,17 @@ impl Browser {
 			})
 			.collect::<Vec<_>>();
 
-		files.sort();
+		files.sort_by(|a, b| {
+			let (a, b) = match (a, b) {
+				(File::Directory(_), File::Song(_)) => return Ordering::Less,
+				(File::Song(_), File::Directory(_)) => return Ordering::Greater,
+				(File::Directory(a), File::Directory(b)) => (a, b),
+				(File::Song(a), File::Song(b)) => (a, b),
+			};
+			let a = UniCase::new(a.as_os_str().to_string_lossy());
+			let b = UniCase::new(b.as_os_str().to_string_lossy());
+			a.cmp(&b)
+		});
 
 		Ok(files)
 	}
@@ -100,7 +112,11 @@ impl Browser {
 			})
 			.collect::<Vec<_>>();
 
-		files.sort();
+		files.sort_by(|a, b| {
+			let a = UniCase::new(a.as_os_str().to_string_lossy());
+			let b = UniCase::new(b.as_os_str().to_string_lossy());
+			a.cmp(&b)
+		});
 
 		Ok(files)
 	}
@@ -235,6 +251,26 @@ mod test {
 	}
 
 	#[test]
+	fn browse_entries_are_sorted() {
+		let (browser, strings) = setup_test(HashSet::from([
+			PathBuf::from_iter(["Ott", "Mir.mp3"]),
+			PathBuf::from("Helios.mp3"),
+			PathBuf::from("asura.mp3"),
+		]));
+
+		let files = browser.browse(&strings, PathBuf::new()).unwrap();
+
+		assert_eq!(
+			files,
+			[
+				File::Directory(PathBuf::from("Ott")),
+				File::Song(PathBuf::from("asura.mp3")),
+				File::Song(PathBuf::from("Helios.mp3")),
+			]
+		);
+	}
+
+	#[test]
 	fn can_flatten_root() {
 		let song_a = PathBuf::from_iter(["Music", "Electronic", "Papua New Guinea.mp3"]);
 		let song_b = PathBuf::from_iter(["Music", "Metal", "Destiny.mp3"]);
@@ -267,6 +303,26 @@ mod test {
 		let files = browser.flatten(&strings, electronic).unwrap();
 
 		assert_eq!(files, [song_a, song_b]);
+	}
+
+	#[test]
+	fn flatten_entries_are_sorted() {
+		let (browser, strings) = setup_test(HashSet::from([
+			PathBuf::from_iter(["Ott", "Mir.mp3"]),
+			PathBuf::from("Helios.mp3"),
+			PathBuf::from("asura.mp3"),
+		]));
+
+		let files = browser.flatten(&strings, PathBuf::new()).unwrap();
+
+		assert_eq!(
+			files,
+			[
+				PathBuf::from("asura.mp3"),
+				PathBuf::from("Helios.mp3"),
+				PathBuf::from_iter(["Ott", "Mir.mp3"]),
+			]
+		);
 	}
 
 	#[test]
