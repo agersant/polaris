@@ -285,7 +285,7 @@ impl Builder {
 			album.year = song.year;
 		}
 
-		album.date_added = album.date_added.min(song.date_added);
+		album.date_added = album.date_added.max(song.date_added);
 
 		if !song.album_artists.is_empty() {
 			album.artists = song.album_artists.clone();

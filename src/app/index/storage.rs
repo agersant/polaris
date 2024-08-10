@@ -25,7 +25,7 @@ pub struct Artist {
 	pub lyricist_credits: HashSet<AlbumKey>,
 }
 
-#[derive(Clone, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Album {
 	pub name: Option<lasso2::Spur>,
 	pub artwork: Option<PathKey>,
