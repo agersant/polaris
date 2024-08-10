@@ -88,7 +88,7 @@ impl Browser {
 			return Err(Error::DirectoryNotFound(virtual_path.as_ref().to_owned()));
 		}
 
-		Ok(self
+		let mut files = self
 			.flattened
 			.predictive_search(path_components)
 			.map(|c: TinyVec<[_; 8]>| -> PathBuf {
@@ -98,7 +98,11 @@ impl Browser {
 					.join(std::path::MAIN_SEPARATOR_STR)
 					.into()
 			})
-			.collect::<Vec<_>>())
+			.collect::<Vec<_>>();
+
+		files.sort();
+
+		Ok(files)
 	}
 }
 
@@ -110,12 +114,13 @@ pub struct Builder {
 
 impl Builder {
 	pub fn add_directory(&mut self, strings: &mut Rodeo, directory: scanner::Directory) {
-		let Some(virtual_path) = directory.virtual_path.get_or_intern(strings) else {
+		let Some(virtual_path) = (&directory.virtual_path).get_or_intern(strings) else {
 			return;
 		};
 
 		let Some(virtual_parent) = directory
-			.virtual_parent
+			.virtual_path
+			.parent()
 			.and_then(|p| p.get_or_intern(strings))
 		else {
 			return;
@@ -161,103 +166,117 @@ impl Builder {
 
 #[cfg(test)]
 mod test {
-	use std::path::{Path, PathBuf};
+	use std::collections::HashSet;
+	use std::path::PathBuf;
 
 	use super::*;
-	use crate::app::test;
-	use crate::test_name;
 
-	const TEST_MOUNT_NAME: &str = "root";
+	fn setup_test(songs: HashSet<PathBuf>) -> (Browser, RodeoReader) {
+		let mut strings = Rodeo::new();
+		let mut builder = Builder::default();
+
+		let directories = songs
+			.iter()
+			.flat_map(|k| k.parent().unwrap().ancestors())
+			.collect::<HashSet<_>>();
+
+		for directory in directories {
+			builder.add_directory(
+				&mut strings,
+				scanner::Directory {
+					virtual_path: directory.to_owned(),
+				},
+			);
+		}
+
+		for path in songs {
+			let mut song = scanner::Song::default();
+			song.virtual_path = path.clone();
+			song.virtual_parent = path.parent().unwrap().to_owned();
+			builder.add_song(&mut strings, &song);
+		}
+
+		let browser = builder.build();
+		let strings = strings.into_reader();
+
+		(browser, strings)
+	}
 
 	#[tokio::test]
 	async fn can_browse_top_level() {
-		let mut ctx = test::ContextBuilder::new(test_name!())
-			.mount(TEST_MOUNT_NAME, "test-data/small-collection")
-			.build()
-			.await;
-		ctx.scanner.update().await.unwrap();
-
-		let root_path = Path::new(TEST_MOUNT_NAME);
-		let files = ctx.index_manager.browse(PathBuf::new()).await.unwrap();
+		let song_a = PathBuf::from_iter(["Music", "Iron Maiden", "Moonchild.mp3"]);
+		let (browser, strings) = setup_test(HashSet::from([song_a]));
+		let files = browser.browse(&strings, PathBuf::new()).unwrap();
 		assert_eq!(files.len(), 1);
-		match files[0] {
-			File::Directory(ref d) => {
-				assert_eq!(d, &root_path)
-			}
-			_ => panic!("Expected directory"),
-		}
+		assert_eq!(files[0], File::Directory(PathBuf::from_iter(["Music"])));
 	}
 
 	#[tokio::test]
 	async fn can_browse_directory() {
-		let khemmis_path: PathBuf = [TEST_MOUNT_NAME, "Khemmis"].iter().collect();
-		let tobokegao_path: PathBuf = [TEST_MOUNT_NAME, "Tobokegao"].iter().collect();
+		let artist_directory = PathBuf::from_iter(["Music", "Iron Maiden"]);
 
-		let mut ctx = test::ContextBuilder::new(test_name!())
-			.mount(TEST_MOUNT_NAME, "test-data/small-collection")
-			.build()
-			.await;
-		ctx.scanner.update().await.unwrap();
+		let (browser, strings) = setup_test(HashSet::from([
+			artist_directory.join("Infinite Dreams.mp3"),
+			artist_directory.join("Moonchild.mp3"),
+		]));
 
-		let files = ctx
-			.index_manager
-			.browse(PathBuf::from(TEST_MOUNT_NAME))
-			.await
-			.unwrap();
+		let files = browser.browse(&strings, artist_directory.clone()).unwrap();
 
-		assert_eq!(files.len(), 2);
-		match files[0] {
-			File::Directory(ref d) => {
-				assert_eq!(d, &khemmis_path)
-			}
-			_ => panic!("Expected directory"),
-		}
-
-		match files[1] {
-			File::Directory(ref d) => {
-				assert_eq!(d, &tobokegao_path)
-			}
-			_ => panic!("Expected directory"),
-		}
+		assert_eq!(
+			files,
+			[
+				File::Song(artist_directory.join("Infinite Dreams.mp3")),
+				File::Song(artist_directory.join("Moonchild.mp3"))
+			]
+		);
 	}
 
 	#[tokio::test]
 	async fn can_flatten_root() {
-		let mut ctx = test::ContextBuilder::new(test_name!())
-			.mount(TEST_MOUNT_NAME, "test-data/small-collection")
-			.build()
-			.await;
-		ctx.scanner.update().await.unwrap();
-		let songs = ctx
-			.index_manager
-			.flatten(PathBuf::from(TEST_MOUNT_NAME))
-			.await
-			.unwrap();
-		assert_eq!(songs.len(), 13);
-		assert_eq!(songs[0], Path::new("FIX ME"));
+		let song_a = PathBuf::from_iter(["Music", "Electronic", "Papua New Guinea.mp3"]);
+		let song_b = PathBuf::from_iter(["Music", "Metal", "Destiny.mp3"]);
+		let song_c = PathBuf::from_iter(["Music", "Metal", "No Turning Back.mp3"]);
+
+		let (browser, strings) = setup_test(HashSet::from([
+			song_a.clone(),
+			song_b.clone(),
+			song_c.clone(),
+		]));
+
+		let files = browser.flatten(&strings, PathBuf::new()).unwrap();
+
+		assert_eq!(files, [song_a, song_b, song_c]);
 	}
 
 	#[tokio::test]
 	async fn can_flatten_directory() {
-		let mut ctx = test::ContextBuilder::new(test_name!())
-			.mount(TEST_MOUNT_NAME, "test-data/small-collection")
-			.build()
-			.await;
-		ctx.scanner.update().await.unwrap();
-		let path: PathBuf = [TEST_MOUNT_NAME, "Tobokegao"].iter().collect();
-		let songs = ctx.index_manager.flatten(path).await.unwrap();
-		assert_eq!(songs.len(), 8);
+		let electronic = PathBuf::from_iter(["Music", "Electronic"]);
+		let song_a = electronic.join(PathBuf::from_iter(["FSOL", "Papua New Guinea.mp3"]));
+		let song_b = electronic.join(PathBuf::from_iter(["Kraftwerk", "Autobahn.mp3"]));
+		let song_c = PathBuf::from_iter(["Music", "Metal", "Destiny.mp3"]);
+
+		let (browser, strings) = setup_test(HashSet::from([
+			song_a.clone(),
+			song_b.clone(),
+			song_c.clone(),
+		]));
+
+		let files = browser.flatten(&strings, electronic).unwrap();
+
+		assert_eq!(files, [song_a, song_b]);
 	}
 
 	#[tokio::test]
 	async fn can_flatten_directory_with_shared_prefix() {
-		let mut ctx = test::ContextBuilder::new(test_name!())
-			.mount(TEST_MOUNT_NAME, "test-data/small-collection")
-			.build()
-			.await;
-		ctx.scanner.update().await.unwrap();
-		let path: PathBuf = [TEST_MOUNT_NAME, "Tobokegao", "Picnic"].iter().collect(); // Prefix of '(Picnic Remixes)'
-		let songs = ctx.index_manager.flatten(path).await.unwrap();
-		assert_eq!(songs.len(), 7);
+		let directory_a = PathBuf::from_iter(["Music", "Therion", "Leviathan II"]);
+		let directory_b = PathBuf::from_iter(["Music", "Therion", "Leviathan III"]);
+		let song_a = directory_a.join("Pazuzu.mp3");
+		let song_b = directory_b.join("Ninkigal.mp3");
+
+		let (browser, strings) = setup_test(HashSet::from([song_a.clone(), song_b.clone()]));
+
+		let files = browser.flatten(&strings, directory_a).unwrap();
+
+		assert_eq!(files, [song_a]);
 	}
 }

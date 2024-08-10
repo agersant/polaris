@@ -16,10 +16,9 @@ use crate::app::{formats, index, settings, vfs, Error};
 #[derive(Debug, PartialEq, Eq)]
 pub struct Directory {
 	pub virtual_path: PathBuf,
-	pub virtual_parent: Option<PathBuf>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Default, PartialEq, Eq)]
 pub struct Song {
 	pub path: PathBuf,
 	pub virtual_path: PathBuf,
@@ -317,7 +316,6 @@ fn process_directory<P: AsRef<Path>, Q: AsRef<Path>>(
 	directories_output
 		.send(Directory {
 			virtual_path: virtual_path.as_ref().to_owned(),
-			virtual_parent: virtual_path.as_ref().parent().map(Path::to_owned),
 		})
 		.ok();
 }
