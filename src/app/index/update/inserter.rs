@@ -5,7 +5,7 @@ use log::error;
 use crate::app::index::metadata::SongTags;
 use crate::app::index::QueryError;
 use crate::db::{
-	artists, directories, directory_artists, song_album_artists, song_artists, songs, DB,
+	albums, artists, directories, directory_artists, song_album_artists, song_artists, songs, DB,
 };
 
 const INDEX_BUILDING_INSERT_BUFFER_SIZE: usize = 1000; // Insertions in each transaction
@@ -13,6 +13,12 @@ const INDEX_BUILDING_INSERT_BUFFER_SIZE: usize = 1000; // Insertions in each tra
 #[derive(Debug, Insertable, AsChangeset)]
 #[diesel(table_name = artists)]
 pub struct Artist {
+	pub name: String,
+}
+
+#[derive(Debug, Insertable, AsChangeset)]
+#[diesel(table_name = albums)]
+pub struct Album {
 	pub name: String,
 }
 
@@ -32,7 +38,7 @@ pub struct Song {
 	pub disc_number: Option<i32>,
 	pub title: Option<String>,
 	pub year: Option<i32>,
-	pub album: Option<String>,
+	pub album: Option<i32>,
 	pub artwork: Option<String>,
 	pub duration: Option<i32>,
 	pub lyricist: Option<String>,
@@ -191,6 +197,21 @@ impl Inserter {
 			.and_then(|mut connection| {
 				connection.transaction(|connection| {
 					for s in self.new_songs.drain(..) {
+						let album_id = match s.tags.album {
+							Some(album) => {
+								let album = Album { name: album };
+								let id: i32 = diesel::insert_into(albums::table)
+									.values(&album)
+									.on_conflict(albums::name)
+									.do_update()
+									.set(&album)
+									.returning(albums::id)
+									.get_result(connection)?;
+								Some(id)
+							}
+							None => None,
+						};
+
 						let song = Song {
 							path: s.path,
 							parent: s.parent,
@@ -198,7 +219,7 @@ impl Inserter {
 							track_number: s.tags.track_number.map(|n| n as i32),
 							title: s.tags.title,
 							duration: s.tags.duration.map(|n| n as i32),
-							album: s.tags.album,
+							album: album_id,
 							year: s.tags.year,
 							artwork: s.artwork,
 							lyricist: s.tags.lyricist,

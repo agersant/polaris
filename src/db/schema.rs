@@ -101,6 +101,27 @@ table! {
 }
 
 table! {
+	artist_albums(artist, album) {
+		artist -> Integer,
+		album -> Integer,
+	}
+}
+
+table! {
+	album_songs(album, song) {
+		album -> Integer,
+		song -> Integer,
+	}
+}
+
+table! {
+	albums(id) {
+		id -> Integer,
+		name -> Text,
+	}
+}
+
+table! {
 	users (id) {
 		id -> Integer,
 		name -> Text,

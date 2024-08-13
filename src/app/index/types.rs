@@ -17,7 +17,6 @@ pub struct Song {
 	pub disc_number: Option<i32>,
 	pub title: Option<String>,
 	pub year: Option<i32>,
-	pub album: Option<String>,
 	pub artwork: Option<String>,
 	pub duration: Option<i32>,
 	pub lyricist: Option<String>,
