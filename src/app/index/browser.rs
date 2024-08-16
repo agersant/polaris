@@ -70,6 +70,12 @@ impl Browser {
 			})
 			.collect::<Vec<_>>();
 
+		if virtual_path.as_ref().parent().is_none() {
+			if let [File::Directory(ref p)] = files[..] {
+				return self.browse(strings, p);
+			}
+		}
+
 		files.sort_by(|a, b| {
 			let (a, b) = match (a, b) {
 				(File::Directory(_), File::Song(_)) => return Ordering::Less,
@@ -224,11 +230,35 @@ mod test {
 
 	#[test]
 	fn can_browse_top_level() {
-		let song_a = PathBuf::from_iter(["Music", "Iron Maiden", "Moonchild.mp3"]);
-		let (browser, strings) = setup_test(HashSet::from([song_a]));
+		let (browser, strings) = setup_test(HashSet::from([
+			PathBuf::from_iter(["Music", "Iron Maiden", "Moonchild.mp3"]),
+			PathBuf::from_iter(["Also Music", "Iron Maiden", "The Prisoner.mp3"]),
+		]));
 		let files = browser.browse(&strings, PathBuf::new()).unwrap();
-		assert_eq!(files.len(), 1);
-		assert_eq!(files[0], File::Directory(PathBuf::from_iter(["Music"])));
+		assert_eq!(
+			files[..],
+			[
+				File::Directory(PathBuf::from_iter(["Also Music"])),
+				File::Directory(PathBuf::from_iter(["Music"])),
+			]
+		);
+	}
+
+	#[test]
+	fn browse_skips_redundant_top_level() {
+		let (browser, strings) = setup_test(HashSet::from([PathBuf::from_iter([
+			"Music",
+			"Iron Maiden",
+			"Moonchild.mp3",
+		])]));
+		let files = browser.browse(&strings, PathBuf::new()).unwrap();
+		assert_eq!(
+			files[..],
+			[File::Directory(PathBuf::from_iter([
+				"Music",
+				"Iron Maiden"
+			])),]
+		);
 	}
 
 	#[test]

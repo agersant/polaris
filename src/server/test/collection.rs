@@ -28,7 +28,7 @@ async fn browse_root() {
 		.await;
 	assert_eq!(response.status(), StatusCode::OK);
 	let entries = response.body();
-	assert_eq!(entries.len(), 1);
+	assert!(entries.len() > 0);
 }
 
 #[tokio::test]
