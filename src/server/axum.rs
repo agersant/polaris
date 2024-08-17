@@ -1,5 +1,5 @@
 use axum::{extract::FromRef, Router};
-use tower_http::services::ServeDir;
+use tower_http::{compression::CompressionLayer, services::ServeDir};
 
 use crate::app::{self, App};
 
@@ -12,11 +12,17 @@ mod version;
 pub mod test;
 
 pub fn make_router(app: App) -> Router {
+	let swagger = ServeDir::new(&app.swagger_dir_path);
+
+	let static_files = Router::new()
+		.nest_service("/", ServeDir::new(&app.web_dir_path))
+		.layer(CompressionLayer::new());
+
 	Router::new()
 		.nest("/api", api::router())
 		.with_state(app.clone())
-		.nest_service("/swagger", ServeDir::new(app.swagger_dir_path))
-		.nest_service("/", ServeDir::new(app.web_dir_path))
+		.nest_service("/swagger", swagger)
+		.nest("/", static_files)
 }
 
 pub async fn launch(app: App) -> Result<(), std::io::Error> {
