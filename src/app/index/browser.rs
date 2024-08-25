@@ -83,6 +83,7 @@ impl Browser {
 				(File::Directory(a), File::Directory(b)) => (a, b),
 				(File::Song(a), File::Song(b)) => (a, b),
 			};
+			// TODO replace unicase with icu_collator to handle accented characters too
 			let a = UniCase::new(a.as_os_str().to_string_lossy());
 			let b = UniCase::new(b.as_os_str().to_string_lossy());
 			a.cmp(&b)
