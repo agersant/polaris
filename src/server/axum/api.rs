@@ -491,7 +491,7 @@ async fn get_search(
 	_auth: Auth,
 	api_version: APIMajorVersion,
 	State(index_manager): State<index::Manager>,
-	Path(query): Path<String>,
+	Path(query): Path<String>, // TODO return dto::SongList
 ) -> Response {
 	let paths = match index_manager.search(&query).await {
 		Ok(f) => f,
