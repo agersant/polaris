@@ -283,6 +283,7 @@ impl From<index::Song> for Song {
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SongList {
 	pub paths: Vec<PathBuf>,
+	pub first_songs: Vec<Song>,
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]

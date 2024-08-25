@@ -10,6 +10,7 @@ use axum_extra::headers::Range;
 use axum_extra::TypedHeader;
 use axum_range::{KnownSize, Ranged};
 use base64::{prelude::BASE64_STANDARD_NO_PAD, Engine};
+use futures_util::future::join_all;
 use percent_encoding::percent_decode_str;
 use tower_http::{compression::CompressionLayer, CompressionLevel};
 
@@ -282,19 +283,35 @@ fn index_files_to_response(files: Vec<index::File>, api_version: APIMajorVersion
 	}
 }
 
-fn songs_to_response(files: Vec<PathBuf>, api_version: APIMajorVersion) -> Response {
+async fn make_song_list(paths: Vec<PathBuf>, index_manager: &index::Manager) -> dto::SongList {
+	let songs: Vec<index::Song> = join_all(
+		paths
+			.iter()
+			.take(200)
+			.map(|f| index_manager.get_song(f.clone())),
+	)
+	.await
+	.into_iter()
+	.filter_map(|r| r.ok())
+	.collect();
+
+	dto::SongList {
+		paths,
+		first_songs: songs.into_iter().map(|s| s.into()).collect(),
+	}
+}
+
+fn song_list_to_response(song_list: dto::SongList, api_version: APIMajorVersion) -> Response {
 	match api_version {
 		APIMajorVersion::V7 => Json(
-			files
+			song_list
+				.paths
 				.into_iter()
 				.map(|p| (&p).into())
 				.collect::<Vec<dto::v7::Song>>(),
 		)
 		.into_response(),
-		APIMajorVersion::V8 => Json(dto::SongList {
-			paths: files.into_iter().collect(),
-		})
-		.into_response(),
+		APIMajorVersion::V8 => Json(song_list).into_response(),
 	}
 }
 
@@ -347,11 +364,12 @@ async fn get_flatten_root(
 	api_version: APIMajorVersion,
 	State(index_manager): State<index::Manager>,
 ) -> Response {
-	let songs = match index_manager.flatten(PathBuf::new()).await {
+	let paths = match index_manager.flatten(PathBuf::new()).await {
 		Ok(s) => s,
 		Err(e) => return APIError::from(e).into_response(),
 	};
-	songs_to_response(songs, api_version)
+	let song_list = make_song_list(paths, &index_manager).await;
+	song_list_to_response(song_list, api_version)
 }
 
 async fn get_flatten(
@@ -360,11 +378,12 @@ async fn get_flatten(
 	State(index_manager): State<index::Manager>,
 	Path(path): Path<PathBuf>,
 ) -> Response {
-	let songs = match index_manager.flatten(path).await {
+	let paths = match index_manager.flatten(path).await {
 		Ok(s) => s,
 		Err(e) => return APIError::from(e).into_response(),
 	};
-	songs_to_response(songs, api_version)
+	let song_list = make_song_list(paths, &index_manager).await;
+	song_list_to_response(song_list, api_version)
 }
 
 async fn get_artists(
@@ -433,11 +452,12 @@ async fn get_search_root(
 	api_version: APIMajorVersion,
 	State(index_manager): State<index::Manager>,
 ) -> Response {
-	let files = match index_manager.search("").await {
+	let paths = match index_manager.search("").await {
 		Ok(f) => f,
 		Err(e) => return APIError::from(e).into_response(),
 	};
-	songs_to_response(files, api_version)
+	let song_list = make_song_list(paths, &index_manager).await;
+	song_list_to_response(song_list, api_version)
 }
 
 async fn get_search(
@@ -446,11 +466,12 @@ async fn get_search(
 	State(index_manager): State<index::Manager>,
 	Path(query): Path<String>,
 ) -> Response {
-	let files = match index_manager.search(&query).await {
+	let paths = match index_manager.search(&query).await {
 		Ok(f) => f,
 		Err(e) => return APIError::from(e).into_response(),
 	};
-	songs_to_response(files, api_version)
+	let song_list = make_song_list(paths, &index_manager).await;
+	song_list_to_response(song_list, api_version)
 }
 
 async fn get_playlists(
@@ -481,17 +502,19 @@ async fn put_playlist(
 async fn get_playlist(
 	auth: Auth,
 	api_version: APIMajorVersion,
+	State(index_manager): State<index::Manager>,
 	State(playlist_manager): State<playlist::Manager>,
 	Path(name): Path<String>,
 ) -> Response {
-	let songs = match playlist_manager
+	let paths = match playlist_manager
 		.read_playlist(&name, auth.get_username())
 		.await
 	{
 		Ok(s) => s,
 		Err(e) => return APIError::from(e).into_response(),
 	};
-	songs_to_response(songs, api_version)
+	let song_list = make_song_list(paths, &index_manager).await;
+	song_list_to_response(song_list, api_version)
 }
 
 async fn delete_playlist(
