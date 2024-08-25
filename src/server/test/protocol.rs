@@ -214,6 +214,14 @@ pub fn search<VERSION: ProtocolVersion>(query: &str) -> Request<()> {
 		.unwrap()
 }
 
+pub fn songs(songs: dto::GetSongsBulkInput) -> Request<dto::GetSongsBulkInput> {
+	Request::builder()
+		.method(Method::POST)
+		.uri("/api/songs")
+		.body(songs)
+		.unwrap()
+}
+
 pub fn audio(path: &Path) -> Request<()> {
 	let path = path.to_string_lossy();
 	let endpoint = format!("/api/audio/{}", url_encode(path.as_ref()));

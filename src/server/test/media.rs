@@ -1,9 +1,43 @@
 use http::{header, HeaderValue, StatusCode};
 use std::path::PathBuf;
 
-use crate::server::dto::ThumbnailSize;
+use crate::server::dto::{self, ThumbnailSize};
 use crate::server::test::{constants::*, protocol, ServiceType, TestService};
 use crate::test_name;
+
+#[tokio::test]
+async fn songs_requires_auth() {
+	let mut service = ServiceType::new(&test_name!()).await;
+	let request = protocol::songs(dto::GetSongsBulkInput::default());
+	let response = service.fetch(&request).await;
+	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn songs_golden_path() {
+	let mut service = ServiceType::new(&test_name!()).await;
+	service.complete_initial_setup().await;
+	service.login_admin().await;
+	service.index().await;
+	service.login().await;
+
+	let valid_path =
+		PathBuf::from_iter([TEST_MOUNT_NAME, "Khemmis", "Hunted", "02 - Candlelight.mp3"]);
+	let invalid_path = PathBuf::from_iter(["oink.mp3"]);
+
+	let request = protocol::songs(dto::GetSongsBulkInput {
+		paths: vec![valid_path.clone(), invalid_path.clone()],
+	});
+
+	let response = service
+		.fetch_json::<_, dto::GetSongsBulkOutput>(&request)
+		.await;
+	assert_eq!(response.status(), StatusCode::OK);
+
+	let payload = response.body();
+	assert_eq!(payload.songs[0].path, valid_path);
+	assert_eq!(payload.not_found, vec![invalid_path]);
+}
 
 #[tokio::test]
 async fn audio_requires_auth() {

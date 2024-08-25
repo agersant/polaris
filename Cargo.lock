@@ -1628,7 +1628,6 @@ dependencies = [
  "bytes",
  "daemonize",
  "embed-resource",
- "futures-util",
  "getopts",
  "headers",
  "http 1.1.0",

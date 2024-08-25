@@ -73,7 +73,7 @@ pub struct ListPlaylistsEntry {
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SavePlaylistInput {
-	pub tracks: Vec<std::path::PathBuf>,
+	pub tracks: Vec<PathBuf>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -378,6 +378,17 @@ impl From<index::Album> for Album {
 			songs: songs,
 		}
 	}
+}
+
+#[derive(Clone, Default, Serialize, Deserialize)]
+pub struct GetSongsBulkInput {
+	pub paths: Vec<PathBuf>,
+}
+
+#[derive(Default, Serialize, Deserialize)]
+pub struct GetSongsBulkOutput {
+	pub songs: Vec<Song>,
+	pub not_found: Vec<PathBuf>,
 }
 
 // TODO: Preferences should have dto types

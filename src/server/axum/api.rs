@@ -10,7 +10,6 @@ use axum_extra::headers::Range;
 use axum_extra::TypedHeader;
 use axum_range::{KnownSize, Ranged};
 use base64::{prelude::BASE64_STANDARD_NO_PAD, Engine};
-use futures_util::future::join_all;
 use percent_encoding::percent_decode_str;
 use tower_http::{compression::CompressionLayer, CompressionLevel};
 
@@ -26,8 +25,11 @@ use super::auth::{AdminRights, Auth};
 
 pub fn router() -> Router<App> {
 	Router::new()
+		// Basic
 		.route("/version", get(get_version))
 		.route("/initial_setup", get(get_initial_setup))
+		.route("/auth", post(post_auth))
+		// Configuration
 		.route("/config", put(put_config))
 		.route("/settings", get(get_settings))
 		.route("/settings", put(put_settings))
@@ -35,35 +37,43 @@ pub fn router() -> Router<App> {
 		.route("/mount_dirs", put(put_mount_dirs))
 		.route("/ddns", get(get_ddns))
 		.route("/ddns", put(put_ddns))
-		.route("/auth", post(post_auth))
+		.route("/trigger_index", post(post_trigger_index))
+		// User management
 		.route("/user", post(post_user))
 		.route("/user/:name", delete(delete_user))
 		.route("/user/:name", put(put_user))
 		.route("/users", get(get_users))
 		.route("/preferences", get(get_preferences))
 		.route("/preferences", put(put_preferences))
-		.route("/trigger_index", post(post_trigger_index))
+		// File browser
 		.route("/browse", get(get_browse_root))
 		.route("/browse/*path", get(get_browse))
 		.route("/flatten", get(get_flatten_root))
 		.route("/flatten/*path", get(get_flatten))
+		// Semantic
 		.route("/artists", get(get_artists))
 		.route("/artists/:artist", get(get_artist))
 		.route("/artists/:artists/albums/:name", get(get_album))
 		.route("/random", get(get_random))
 		.route("/recent", get(get_recent))
+		// Search
 		.route("/search", get(get_search_root))
 		.route("/search/*query", get(get_search))
+		// Playlist management
 		.route("/playlists", get(get_playlists))
 		.route("/playlist/:name", put(put_playlist))
 		.route("/playlist/:name", get(get_playlist))
 		.route("/playlist/:name", delete(delete_playlist))
-		.route("/thumbnail/*path", get(get_thumbnail))
+		// LastFM
 		.route("/lastfm/now_playing/*path", put(put_lastfm_now_playing))
 		.route("/lastfm/scrobble/*path", post(post_lastfm_scrobble))
 		.route("/lastfm/link_token", get(get_lastfm_link_token))
 		.route("/lastfm/link", get(get_lastfm_link))
 		.route("/lastfm/link", delete(delete_lastfm_link))
+		// Media
+		.route("/songs", post(get_songs)) // post because of https://github.com/whatwg/fetch/issues/551
+		.route("/thumbnail/*path", get(get_thumbnail))
+		// Workarounds
 		// TODO figure out NormalizePathLayer and remove this
 		// See https://github.com/tokio-rs/axum/discussions/2833
 		.route("/browse/", get(get_browse_root))
@@ -73,6 +83,7 @@ pub fn router() -> Router<App> {
 		.route("/search/", get(get_search_root))
 		.layer(CompressionLayer::new().quality(CompressionLevel::Fastest))
 		.layer(DefaultBodyLimit::max(10 * 1024 * 1024)) // 10MB
+		// Uncompressed
 		.route("/audio/*path", get(get_audio))
 }
 
@@ -284,21 +295,15 @@ fn index_files_to_response(files: Vec<index::File>, api_version: APIMajorVersion
 }
 
 async fn make_song_list(paths: Vec<PathBuf>, index_manager: &index::Manager) -> dto::SongList {
-	let songs: Vec<index::Song> = join_all(
-		paths
-			.iter()
-			.take(200)
-			.map(|f| index_manager.get_song(f.clone())),
-	)
-	.await
-	.into_iter()
-	.filter_map(|r| r.ok())
-	.collect();
-
-	dto::SongList {
-		paths,
-		first_songs: songs.into_iter().map(|s| s.into()).collect(),
-	}
+	let first_paths = paths.iter().take(200).cloned().collect();
+	let first_songs = index_manager
+		.get_songs(first_paths)
+		.await
+		.into_iter()
+		.filter_map(Result::ok)
+		.map(dto::Song::from)
+		.collect();
+	dto::SongList { paths, first_songs }
 }
 
 fn song_list_to_response(song_list: dto::SongList, api_version: APIMajorVersion) -> Response {
@@ -421,6 +426,28 @@ async fn get_album(
 	Ok(Json(
 		index_manager.get_album(artists, Some(name)).await?.into(),
 	))
+}
+
+async fn get_songs(
+	_auth: Auth,
+	State(index_manager): State<index::Manager>,
+	songs: Json<dto::GetSongsBulkInput>,
+) -> Result<Json<dto::GetSongsBulkOutput>, APIError> {
+	let results = index_manager
+		.get_songs(songs.0.paths.clone())
+		.await
+		.into_iter()
+		.collect::<Vec<_>>();
+
+	let mut output = dto::GetSongsBulkOutput::default();
+	for (i, r) in results.into_iter().enumerate() {
+		match r {
+			Ok(s) => output.songs.push(s.into()),
+			Err(_) => output.not_found.push(songs.0.paths[i].clone()),
+		}
+	}
+
+	Ok(Json(output))
 }
 
 async fn get_random(
