@@ -783,10 +783,11 @@
                     {
                         "name": "size",
                         "in": "query",
-                        "description": "The maximum size of the thumbnail, either small (400x400), large (1200x1200) or native",
+                        "description": "The maximum size of the thumbnail: tiny (40x40), small (400x400), large (1200x1200) or native",
                         "schema": {
                             "type": "string",
                             "enum": [
+                                "tiny",
                                 "small",
                                 "large",
                                 "native"

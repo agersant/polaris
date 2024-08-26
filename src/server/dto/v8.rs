@@ -50,6 +50,7 @@ impl From<ThumbnailOptions> for thumbnail::Options {
 #[derive(Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ThumbnailSize {
+	Tiny,
 	Small,
 	Large,
 	Native,
@@ -59,6 +60,7 @@ pub enum ThumbnailSize {
 impl Into<Option<u32>> for ThumbnailSize {
 	fn into(self) -> Option<u32> {
 		match self {
+			Self::Tiny => Some(40),
 			Self::Small => Some(400),
 			Self::Large => Some(1200),
 			Self::Native => None,
