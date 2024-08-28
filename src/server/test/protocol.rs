@@ -238,6 +238,7 @@ pub fn thumbnail(path: &Path, size: Option<ThumbnailSize>, pad: Option<bool>) ->
 	if let Some(s) = size {
 		params.push('?');
 		match s {
+			ThumbnailSize::Tiny => params.push_str("size=tiny"),
 			ThumbnailSize::Small => params.push_str("size=small"),
 			ThumbnailSize::Large => params.push_str("size=large"),
 			ThumbnailSize::Native => params.push_str("size=native"),
