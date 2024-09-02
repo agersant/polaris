@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::app::{config, ddns, index, settings, thumbnail, user, vfs};
+use crate::app::{config, ddns, index, peaks, settings, thumbnail, user, vfs};
 use std::{convert::From, path::PathBuf};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
@@ -65,6 +65,14 @@ impl Into<Option<u32>> for ThumbnailSize {
 			Self::Large => Some(1200),
 			Self::Native => None,
 		}
+	}
+}
+
+pub type Peaks = Vec<u8>;
+
+impl From<peaks::Peaks> for Peaks {
+	fn from(p: peaks::Peaks) -> Self {
+		p.interleaved
 	}
 }
 

@@ -9,6 +9,7 @@ pub mod ddns;
 pub mod formats;
 pub mod index;
 pub mod lastfm;
+pub mod peaks;
 pub mod playlist;
 pub mod scanner;
 pub mod settings;
@@ -46,6 +47,22 @@ pub enum Error {
 	Image(PathBuf, image::error::ImageError),
 	#[error("This file format is not supported: {0}")]
 	UnsupportedFormat(&'static str),
+
+	#[error("No tracks found in audio file: {0}")]
+	MediaEmpty(PathBuf),
+	#[error(transparent)]
+	MediaDecodeError(symphonia::core::errors::Error),
+	#[error(transparent)]
+	MediaDecoderError(symphonia::core::errors::Error),
+	#[error(transparent)]
+	MediaPacketError(symphonia::core::errors::Error),
+	#[error(transparent)]
+	MediaProbeError(symphonia::core::errors::Error),
+
+	#[error(transparent)]
+	PeaksSerialization(bitcode::Error),
+	#[error(transparent)]
+	PeaksDeserialization(bitcode::Error),
 
 	#[error(transparent)]
 	Database(#[from] sqlx::Error),
@@ -133,6 +150,7 @@ pub struct App {
 	pub config_manager: config::Manager,
 	pub ddns_manager: ddns::Manager,
 	pub lastfm_manager: lastfm::Manager,
+	pub peaks_manager: peaks::Manager,
 	pub playlist_manager: playlist::Manager,
 	pub settings_manager: settings::Manager,
 	pub thumbnail_manager: thumbnail::Manager,
@@ -143,10 +161,15 @@ pub struct App {
 impl App {
 	pub async fn new(port: u16, paths: Paths) -> Result<Self, Error> {
 		let db = DB::new(&paths.db_file_path).await?;
+
 		fs::create_dir_all(&paths.web_dir_path)
 			.map_err(|e| Error::Io(paths.web_dir_path.clone(), e))?;
+
 		fs::create_dir_all(&paths.swagger_dir_path)
 			.map_err(|e| Error::Io(paths.swagger_dir_path.clone(), e))?;
+
+		let peaks_dir_path = paths.cache_dir_path.join("peaks");
+		fs::create_dir_all(&peaks_dir_path).map_err(|e| Error::Io(peaks_dir_path.clone(), e))?;
 
 		let thumbnails_dir_path = paths.cache_dir_path.join("thumbnails");
 		fs::create_dir_all(&thumbnails_dir_path)
@@ -170,6 +193,7 @@ impl App {
 			vfs_manager.clone(),
 			ddns_manager.clone(),
 		);
+		let peaks_manager = peaks::Manager::new(peaks_dir_path);
 		let playlist_manager = playlist::Manager::new(db.clone());
 		let thumbnail_manager = thumbnail::Manager::new(thumbnails_dir_path);
 		let lastfm_manager = lastfm::Manager::new(index_manager.clone(), user_manager.clone());
@@ -188,6 +212,7 @@ impl App {
 			config_manager,
 			ddns_manager,
 			lastfm_manager,
+			peaks_manager,
 			playlist_manager,
 			settings_manager,
 			thumbnail_manager,

@@ -11,10 +11,13 @@ use axum_extra::TypedHeader;
 use axum_range::{KnownSize, Ranged};
 use base64::{prelude::BASE64_STANDARD_NO_PAD, Engine};
 use percent_encoding::percent_decode_str;
+use tokio::task::spawn_blocking;
 use tower_http::{compression::CompressionLayer, CompressionLevel};
 
 use crate::{
-	app::{config, ddns, index, lastfm, playlist, scanner, settings, thumbnail, user, vfs, App},
+	app::{
+		config, ddns, index, lastfm, peaks, playlist, scanner, settings, thumbnail, user, vfs, App,
+	},
 	server::{
 		dto, error::APIError, APIMajorVersion, API_ARRAY_SEPARATOR, API_MAJOR_VERSION,
 		API_MINOR_VERSION,
@@ -72,6 +75,7 @@ pub fn router() -> Router<App> {
 		.route("/lastfm/link", delete(delete_lastfm_link))
 		// Media
 		.route("/songs", post(get_songs)) // post because of https://github.com/whatwg/fetch/issues/551
+		.route("/peaks/*path", get(get_peaks))
 		.route("/thumbnail/*path", get(get_thumbnail))
 		// Workarounds
 		// TODO figure out NormalizePathLayer and remove this
@@ -448,6 +452,20 @@ async fn get_songs(
 	}
 
 	Ok(Json(output))
+}
+
+async fn get_peaks(
+	_auth: Auth,
+	State(vfs_manager): State<vfs::Manager>,
+	State(peaks_manager): State<peaks::Manager>,
+	Path(path): Path<PathBuf>,
+) -> Result<dto::Peaks, APIError> {
+	let vfs = vfs_manager.get_vfs().await?;
+	let audio_path = vfs.virtual_to_real(&path)?;
+	let peaks = spawn_blocking(move || peaks_manager.get_peaks(&audio_path))
+		.await
+		.or(Err(APIError::Internal))?;
+	Ok(peaks?.interleaved)
 }
 
 async fn get_random(

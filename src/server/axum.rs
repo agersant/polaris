@@ -63,6 +63,12 @@ impl FromRef<App> for app::lastfm::Manager {
 	}
 }
 
+impl FromRef<App> for app::peaks::Manager {
+	fn from_ref(app: &App) -> Self {
+		app.peaks_manager.clone()
+	}
+}
+
 impl FromRef<App> for app::playlist::Manager {
 	fn from_ref(app: &App) -> Self {
 		app.playlist_manager.clone()

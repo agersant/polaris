@@ -77,6 +77,10 @@ pub enum APIError {
 	ThumbnailMp4Decoding(PathBuf, mp4ameta::Error),
 	#[error("Unsupported thumbnail format: `{0}`")]
 	UnsupportedThumbnailFormat(&'static str),
+	#[error("Audio decoding error: `{0}`")]
+	AudioDecoding(symphonia::core::errors::Error),
+	#[error("Empty audio file: `{0}`")]
+	AudioEmpty(PathBuf),
 	#[error("User not found")]
 	UserNotFound,
 	#[error("Path not found in virtual filesystem")]
@@ -99,6 +103,15 @@ impl From<app::Error> for APIError {
 			app::Error::VorbisCommentNotFoundInFlacFile => APIError::Internal,
 			app::Error::Image(p, e) => APIError::ThumbnailImageDecoding(p, e),
 			app::Error::UnsupportedFormat(f) => APIError::UnsupportedThumbnailFormat(f),
+
+			app::Error::MediaEmpty(p) => APIError::AudioEmpty(p),
+			app::Error::MediaDecodeError(e) => APIError::AudioDecoding(e),
+			app::Error::MediaDecoderError(e) => APIError::AudioDecoding(e),
+			app::Error::MediaPacketError(e) => APIError::AudioDecoding(e),
+			app::Error::MediaProbeError(e) => APIError::AudioDecoding(e),
+
+			app::Error::PeaksSerialization(_) => APIError::Internal,
+			app::Error::PeaksDeserialization(_) => APIError::Internal,
 
 			app::Error::Database(e) => APIError::Database(e),
 			app::Error::ConnectionPoolBuild => APIError::Internal,

@@ -232,6 +232,16 @@ pub fn audio(path: &Path) -> Request<()> {
 		.unwrap()
 }
 
+pub fn peaks(path: &Path) -> Request<()> {
+	let path = path.to_string_lossy();
+	let endpoint = format!("/api/peaks/{}", url_encode(path.as_ref()));
+	Request::builder()
+		.method(Method::GET)
+		.uri(&endpoint)
+		.body(())
+		.unwrap()
+}
+
 pub fn thumbnail(path: &Path, size: Option<ThumbnailSize>, pad: Option<bool>) -> Request<()> {
 	let path = path.to_string_lossy();
 	let mut params = String::new();

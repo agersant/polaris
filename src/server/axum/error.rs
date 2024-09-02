@@ -45,6 +45,8 @@ impl IntoResponse for APIError {
 			APIError::ThumbnailImageDecoding(_, _) => StatusCode::INTERNAL_SERVER_ERROR,
 			APIError::ThumbnailMp4Decoding(_, _) => StatusCode::INTERNAL_SERVER_ERROR,
 			APIError::UnsupportedThumbnailFormat(_) => StatusCode::INTERNAL_SERVER_ERROR,
+			APIError::AudioEmpty(_) => StatusCode::INTERNAL_SERVER_ERROR,
+			APIError::AudioDecoding(_) => StatusCode::INTERNAL_SERVER_ERROR,
 			APIError::UserNotFound => StatusCode::NOT_FOUND,
 			APIError::VFSPathNotFound => StatusCode::NOT_FOUND,
 		};

@@ -145,6 +145,51 @@ async fn audio_bad_path_returns_not_found() {
 }
 
 #[tokio::test]
+async fn peaks_requires_auth() {
+	let mut service = ServiceType::new(&test_name!()).await;
+
+	let path: PathBuf = [TEST_MOUNT_NAME, "Khemmis", "Hunted", "02 - Candlelight.mp3"]
+		.iter()
+		.collect();
+
+	let request = protocol::peaks(&path);
+	let response = service.fetch(&request).await;
+	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn peaks_golden_path() {
+	let mut service = ServiceType::new(&test_name!()).await;
+	service.complete_initial_setup().await;
+	service.login_admin().await;
+	service.index().await;
+	service.login().await;
+
+	let path: PathBuf = [TEST_MOUNT_NAME, "Khemmis", "Hunted", "02 - Candlelight.mp3"]
+		.iter()
+		.collect();
+
+	let request = protocol::peaks(&path);
+	let response = service.fetch_bytes(&request).await;
+	assert_eq!(response.status(), StatusCode::OK);
+	assert!(response.body().len() % 2 == 0);
+	assert!(response.body().len() > 0);
+}
+
+#[tokio::test]
+async fn peaks_bad_path_returns_not_found() {
+	let mut service = ServiceType::new(&test_name!()).await;
+	service.complete_initial_setup().await;
+	service.login().await;
+
+	let path: PathBuf = ["not_my_collection"].iter().collect();
+
+	let request = protocol::peaks(&path);
+	let response = service.fetch(&request).await;
+	assert_eq!(response.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
 async fn thumbnail_requires_auth() {
 	let mut service = ServiceType::new(&test_name!()).await;
 

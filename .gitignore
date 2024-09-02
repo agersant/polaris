@@ -17,6 +17,7 @@ TestConfig.toml
 polaris.log
 polaris.pid
 profile.json
+/peaks
 /thumbnails
 
 # Release process artifacts (usually runs on CI)
