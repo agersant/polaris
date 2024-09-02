@@ -1,15 +1,16 @@
-use image::codecs::jpeg::JpegEncoder;
-use image::{DynamicImage, GenericImage, GenericImageView, ImageBuffer};
 use std::cmp;
 use std::collections::hash_map::DefaultHasher;
-use std::fs::{self, File};
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
+
+use image::codecs::jpeg::JpegEncoder;
+use image::{DynamicImage, GenericImage, GenericImageView, ImageBuffer};
+use tokio::task::spawn_blocking;
 
 use crate::app::Error;
 use crate::utils::{get_audio_format, AudioFormat};
 
-#[derive(Debug, Hash)]
+#[derive(Clone, Debug, Hash)]
 pub struct Options {
 	pub max_dimension: Option<u32>,
 	pub resize_if_almost_square: bool,
@@ -38,56 +39,70 @@ impl Manager {
 		}
 	}
 
-	pub fn get_thumbnail(
+	pub async fn get_thumbnail(
 		&self,
 		image_path: &Path,
-		thumbnailoptions: &Options,
+		options: &Options,
 	) -> Result<PathBuf, Error> {
-		match self.retrieve_thumbnail(image_path, thumbnailoptions) {
+		match self.read_from_cache(image_path, options).await {
 			Some(path) => Ok(path),
-			None => self.create_thumbnail(image_path, thumbnailoptions),
+			None => self.read_from_source(image_path, options).await,
 		}
 	}
 
-	fn get_thumbnail_path(&self, image_path: &Path, thumbnailoptions: &Options) -> PathBuf {
-		let hash = Manager::hash(image_path, thumbnailoptions);
+	fn get_thumbnail_path(&self, image_path: &Path, options: &Options) -> PathBuf {
+		let hash = Manager::hash(image_path, options);
 		let mut thumbnail_path = self.thumbnails_dir_path.clone();
 		thumbnail_path.push(format!("{}.jpg", hash));
 		thumbnail_path
 	}
 
-	fn retrieve_thumbnail(&self, image_path: &Path, thumbnailoptions: &Options) -> Option<PathBuf> {
-		let path = self.get_thumbnail_path(image_path, thumbnailoptions);
-		if path.exists() {
-			Some(path)
-		} else {
-			None
+	async fn read_from_cache(&self, image_path: &Path, options: &Options) -> Option<PathBuf> {
+		let path = self.get_thumbnail_path(image_path, options);
+		match tokio::fs::try_exists(&path).await.ok() {
+			Some(true) => Some(path),
+			_ => None,
 		}
 	}
 
-	fn create_thumbnail(
+	async fn read_from_source(
 		&self,
 		image_path: &Path,
-		thumbnailoptions: &Options,
+		options: &Options,
 	) -> Result<PathBuf, Error> {
-		let thumbnail = generate_thumbnail(image_path, thumbnailoptions)?;
-		let quality = 80;
+		let thumbnail = spawn_blocking({
+			let image_path = image_path.to_owned();
+			let options = options.clone();
+			move || generate_thumbnail(&image_path, &options)
+		})
+		.await??;
 
-		fs::create_dir_all(&self.thumbnails_dir_path)
+		tokio::fs::create_dir_all(&self.thumbnails_dir_path)
+			.await
 			.map_err(|e| Error::Io(self.thumbnails_dir_path.clone(), e))?;
-		let path = self.get_thumbnail_path(image_path, thumbnailoptions);
-		let mut out_file =
-			File::create(&path).map_err(|e| Error::Io(self.thumbnails_dir_path.clone(), e))?;
-		thumbnail
-			.write_with_encoder(JpegEncoder::new_with_quality(&mut out_file, quality))
-			.map_err(|e| Error::Image(image_path.to_owned(), e))?;
+
+		let path = self.get_thumbnail_path(image_path, options);
+		let out_file = tokio::fs::File::create(&path)
+			.await
+			.map_err(|e| Error::Io(self.thumbnails_dir_path.clone(), e))?;
+
+		spawn_blocking({
+			let mut out_file = out_file.into_std().await;
+			move || {
+				let quality = 80;
+				thumbnail.write_with_encoder(JpegEncoder::new_with_quality(&mut out_file, quality))
+			}
+		})
+		.await?
+		.map_err(|e| Error::Image(image_path.to_owned(), e))?;
+
 		Ok(path)
 	}
 
-	fn hash(path: &Path, thumbnailoptions: &Options) -> u64 {
+	fn hash(path: &Path, options: &Options) -> u64 {
 		let mut hasher = DefaultHasher::new();
 		path.hash(&mut hasher);
-		thumbnailoptions.hash(&mut hasher);
+		options.hash(&mut hasher);
 		hasher.finish()
 	}
 }

@@ -11,7 +11,6 @@ use axum_extra::TypedHeader;
 use axum_range::{KnownSize, Ranged};
 use base64::{prelude::BASE64_STANDARD_NO_PAD, Engine};
 use percent_encoding::percent_decode_str;
-use tokio::task::spawn_blocking;
 use tower_http::{compression::CompressionLayer, CompressionLevel};
 
 use crate::{
@@ -462,10 +461,8 @@ async fn get_peaks(
 ) -> Result<dto::Peaks, APIError> {
 	let vfs = vfs_manager.get_vfs().await?;
 	let audio_path = vfs.virtual_to_real(&path)?;
-	let peaks = spawn_blocking(move || peaks_manager.get_peaks(&audio_path))
-		.await
-		.or(Err(APIError::Internal))?;
-	Ok(peaks?.interleaved)
+	let peaks = peaks_manager.get_peaks(&audio_path).await?;
+	Ok(peaks.interleaved)
 }
 
 async fn get_random(
@@ -605,7 +602,10 @@ async fn get_thumbnail(
 	let options = thumbnail::Options::from(options_input);
 	let vfs = vfs_manager.get_vfs().await?;
 	let image_path = vfs.virtual_to_real(&path)?;
-	let thumbnail_path = thumbnails_manager.get_thumbnail(&image_path, &options)?;
+
+	let thumbnail_path = thumbnails_manager
+		.get_thumbnail(&image_path, &options)
+		.await?;
 
 	let Ok(file) = tokio::fs::File::open(thumbnail_path).await else {
 		return Err(APIError::ThumbnailFileIOError);

@@ -1,7 +1,5 @@
 use std::{
-	fs::{self, File},
 	hash::{DefaultHasher, Hash, Hasher},
-	io::{self, Write},
 	path::{Path, PathBuf},
 };
 
@@ -14,6 +12,7 @@ use symphonia::core::{
 	meta::MetadataOptions,
 	probe::Hint,
 };
+use tokio::{io::AsyncWriteExt, task::spawn_blocking};
 
 use crate::app::Error;
 
@@ -32,10 +31,10 @@ impl Manager {
 		Self { peaks_dir_path }
 	}
 
-	pub fn get_peaks(&self, audio_path: &Path) -> Result<Peaks, Error> {
-		match self.read_from_cache(audio_path) {
+	pub async fn get_peaks(&self, audio_path: &Path) -> Result<Peaks, Error> {
+		match self.read_from_cache(audio_path).await {
 			Ok(Some(peaks)) => Ok(peaks),
-			_ => self.read_from_audio_file(audio_path),
+			_ => self.read_from_source(audio_path).await,
 		}
 	}
 
@@ -46,10 +45,12 @@ impl Manager {
 		peaks_path
 	}
 
-	fn read_from_cache(&self, audio_path: &Path) -> Result<Option<Peaks>, Error> {
+	async fn read_from_cache(&self, audio_path: &Path) -> Result<Option<Peaks>, Error> {
 		let peaks_path = self.get_peaks_path(audio_path);
 		if peaks_path.exists() {
-			let serialized = fs::read(&peaks_path).map_err(|e| Error::Io(peaks_path.clone(), e))?;
+			let serialized = tokio::fs::read(&peaks_path)
+				.await
+				.map_err(|e| Error::Io(peaks_path.clone(), e))?;
 			let peaks =
 				bitcode::deserialize::<Peaks>(&serialized).map_err(Error::PeaksDeserialization)?;
 			Ok(Some(peaks))
@@ -58,16 +59,27 @@ impl Manager {
 		}
 	}
 
-	fn read_from_audio_file(&self, audio_path: &Path) -> Result<Peaks, Error> {
-		let peaks = compute_peaks(audio_path)?;
+	async fn read_from_source(&self, audio_path: &Path) -> Result<Peaks, Error> {
+		let peaks = spawn_blocking({
+			let audio_path = audio_path.to_owned();
+			move || compute_peaks(&audio_path)
+		})
+		.await??;
+
 		let serialized = bitcode::serialize(&peaks).map_err(Error::PeaksSerialization)?;
 
-		fs::create_dir_all(&self.peaks_dir_path)
+		tokio::fs::create_dir_all(&self.peaks_dir_path)
+			.await
 			.map_err(|e| Error::Io(self.peaks_dir_path.clone(), e))?;
+
 		let path = self.get_peaks_path(audio_path);
-		let mut out_file = File::create(&path).map_err(|e| Error::Io(path.clone(), e))?;
+		let mut out_file = tokio::fs::File::create(&path)
+			.await
+			.map_err(|e| Error::Io(path.clone(), e))?;
+
 		out_file
 			.write_all(&serialized)
+			.await
 			.map_err(|e| Error::Io(path.clone(), e))?;
 
 		Ok(peaks)
@@ -83,7 +95,8 @@ impl Manager {
 fn compute_peaks(audio_path: &Path) -> Result<Peaks, Error> {
 	let peaks_per_minute = 4000;
 
-	let file = File::open(&audio_path).or_else(|e| Err(Error::Io(audio_path.to_owned(), e)))?;
+	let file =
+		std::fs::File::open(&audio_path).or_else(|e| Err(Error::Io(audio_path.to_owned(), e)))?;
 	let media_source = MediaSourceStream::new(Box::new(file), MediaSourceStreamOptions::default());
 
 	let mut peaks = Peaks::default();
@@ -118,7 +131,7 @@ fn compute_peaks(audio_path: &Path) -> Result<Peaks, Error> {
 		let packet = match format.next_packet() {
 			Ok(packet) => packet,
 			Err(symphonia::core::errors::Error::IoError(e))
-				if e.kind() == io::ErrorKind::UnexpectedEof =>
+				if e.kind() == std::io::ErrorKind::UnexpectedEof =>
 			{
 				break;
 			}
