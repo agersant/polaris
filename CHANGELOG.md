@@ -8,18 +8,19 @@
 - Clients are now expected to send their preferred API major version in a `Accept-Version` header. Omitting this defaults to `7`, but will become an error in future Polaris releases.
 - Most API responses now support gzip compression.
 - Added support for multi-value metadata for the following fields: `artist`, `album artist`, `genre`, `label`, `lyricist` and `composer`.
-- The response format of the `browse`, `flatten` and `get_playlist` endpoints has been modified.
-- Added a new `get_songs` endpoint which returns song metadata in bulk.
-- Added a new `peaks` endpoint which returns audio signal peaks that can be used to draw waveform visualizations.
+- The response format of the `/browse`, `/flatten` and `/get_playlist` endpoints has been modified.
+- The `/thumbnail` endpoint supports a new size labeled `tiny` which returns 40x40px images.
+- Added a new `/get_songs` endpoint which returns song metadata in bulk.
+- Added a new `/peaks` endpoint which returns audio signal peaks that can be used to draw waveform visualizations.
 
 ### Web client
 
-- Overhauled visual style.
+- Overhauled visual style of every page.
 - The file browser is now displayed as an interactive tree on a single page.
 - The file browser now supports common navigation keyboard shortcuts.
-- The file browser now supports jumping to a visible file or folder by typing its name.
-- The file browser now skips the top-level directory when only one music folder has been configured.
-- Songs in the current playlist can now be selected and re-ordered.
+- The file browser now supports jumping to a visible file or folder by typing the start of its name.
+- The file browser now omits the top-level directory when only one music folder has been configured.
+- Songs in the current playlist can now be selected and re-ordered with the mouse.
 - The current playlist now supports common navigation keyboard shortcuts.
 - The seekbar for the current song has been replaced with a waveform visualization.
 - Improved responsiveness when queuing large amount of songs at once.
