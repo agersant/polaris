@@ -1,10 +1,11 @@
 use std::{
 	borrow::Borrow,
+	collections::HashMap,
 	path::PathBuf,
 	sync::{Arc, RwLock},
 };
 
-use lasso2::{Rodeo, RodeoReader};
+use lasso2::{Rodeo, RodeoReader, Spur};
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use tokio::task::spawn_blocking;
@@ -251,6 +252,7 @@ impl Default for Index {
 
 pub struct Builder {
 	strings: Rodeo,
+	minuscules: HashMap<String, Spur>,
 	browser_builder: browser::Builder,
 	collection_builder: collection::Builder,
 }
@@ -259,6 +261,7 @@ impl Builder {
 	pub fn new() -> Self {
 		Self {
 			strings: Rodeo::new(),
+			minuscules: HashMap::default(),
 			browser_builder: browser::Builder::default(),
 			collection_builder: collection::Builder::default(),
 		}
@@ -271,7 +274,8 @@ impl Builder {
 
 	pub fn add_song(&mut self, song: scanner::Song) {
 		self.browser_builder.add_song(&mut self.strings, &song);
-		self.collection_builder.add_song(&mut self.strings, &song);
+		self.collection_builder
+			.add_song(&mut self.strings, &mut self.minuscules, &song);
 	}
 
 	pub fn build(self) -> Index {

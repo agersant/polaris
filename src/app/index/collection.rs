@@ -4,7 +4,7 @@ use std::{
 	path::PathBuf,
 };
 
-use lasso2::{Rodeo, RodeoReader};
+use lasso2::{Rodeo, RodeoReader, Spur};
 use rand::{rngs::ThreadRng, seq::IteratorRandom};
 use serde::{Deserialize, Serialize};
 use unicase::UniCase;
@@ -16,8 +16,9 @@ use super::storage::fetch_song;
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ArtistHeader {
-	pub name: Option<UniCase<String>>,
-	pub num_albums: u32,
+	pub name: UniCase<String>,
+	pub num_own_albums: u32,
+	pub num_appearances: u32,
 }
 
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -67,10 +68,11 @@ pub struct Collection {
 
 impl Collection {
 	pub fn get_artists(&self, strings: &RodeoReader) -> Vec<ArtistHeader> {
+		let exceptions = vec![strings.get("Various Artists"), strings.get("VA")];
 		let mut artists = self
 			.artists
 			.values()
-			.filter(|a| a.albums.len() > 0 || a.featured_on.len() > 1)
+			.filter(|a| !exceptions.contains(&Some(a.name)))
 			.map(|a| make_artist_header(a, strings))
 			.collect::<Vec<_>>();
 		artists.sort_by(|a, b| a.name.cmp(&b.name));
@@ -169,10 +171,9 @@ impl Collection {
 
 fn make_artist_header(artist: &storage::Artist, strings: &RodeoReader) -> ArtistHeader {
 	ArtistHeader {
-		name: artist
-			.name
-			.map(|n| UniCase::new(strings.resolve(&n).to_owned())),
-		num_albums: artist.albums.len() as u32 + artist.featured_on.len() as u32,
+		name: UniCase::new(strings.resolve(&artist.name).to_owned()),
+		num_own_albums: artist.albums.len() as u32,
+		num_appearances: artist.featured_on.len() as u32,
 	}
 }
 
@@ -184,8 +185,13 @@ pub struct Builder {
 }
 
 impl Builder {
-	pub fn add_song(&mut self, strings: &mut Rodeo, song: &scanner::Song) {
-		let Some(song) = store_song(strings, song) else {
+	pub fn add_song(
+		&mut self,
+		strings: &mut Rodeo,
+		minuscules: &mut HashMap<String, Spur>,
+		song: &scanner::Song,
+	) {
+		let Some(song) = store_song(strings, minuscules, song) else {
 			return;
 		};
 
@@ -240,7 +246,7 @@ impl Builder {
 		self.artists
 			.entry(artist_key)
 			.or_insert_with(|| storage::Artist {
-				name: Some(name),
+				name,
 				albums: HashSet::new(),
 				featured_on: HashSet::new(),
 			})
@@ -287,10 +293,11 @@ mod test {
 
 	fn setup_test(songs: Vec<scanner::Song>) -> (Collection, RodeoReader) {
 		let mut strings = Rodeo::new();
+		let mut minuscules = HashMap::new();
 		let mut builder = Builder::default();
 
 		for song in songs {
-			builder.add_song(&mut strings, &song);
+			builder.add_song(&mut strings, &mut minuscules, &song);
 		}
 
 		let browser = builder.build();
@@ -319,7 +326,7 @@ mod test {
 		let artists = collection
 			.get_artists(&strings)
 			.into_iter()
-			.map(|a| a.name.unwrap())
+			.map(|a| a.name)
 			.collect::<Vec<_>>();
 
 		assert_eq!(
@@ -351,7 +358,7 @@ mod test {
 		let artists = collection
 			.get_artists(&strings)
 			.into_iter()
-			.map(|a| a.name.unwrap())
+			.map(|a| a.name)
 			.collect::<Vec<_>>();
 
 		assert_eq!(
@@ -359,6 +366,66 @@ mod test {
 			vec![
 				UniCase::new("hammerfall".to_owned()),
 				UniCase::new("Heavenly".to_owned())
+			]
+		);
+	}
+
+	#[test]
+	fn artists_with_diverging_case_are_merged() {
+		let (collection, strings) = setup_test(Vec::from([
+			scanner::Song {
+				virtual_path: PathBuf::from("Rain of Fury.mp3"),
+				title: Some("Rain of Fury".to_owned()),
+				artists: vec!["Rhapsody Of Fire".to_owned()],
+				..Default::default()
+			},
+			scanner::Song {
+				virtual_path: PathBuf::from("Emerald Sword.mp3"),
+				title: Some("Chains of Destiny".to_owned()),
+				artists: vec!["Rhapsody of Fire".to_owned()],
+				..Default::default()
+			},
+		]));
+
+		let artists = collection
+			.get_artists(&strings)
+			.into_iter()
+			.map(|a| a.name)
+			.collect::<Vec<_>>();
+
+		assert_eq!(artists, vec![UniCase::new("Rhapsody of Fire".to_owned()),]);
+	}
+
+	#[test]
+	fn artists_list_excludes_various_artists() {
+		let (collection, strings) = setup_test(Vec::from([
+			scanner::Song {
+				virtual_path: PathBuf::from("Rain of Fury.mp3"),
+				title: Some("Rain of Fury".to_owned()),
+				artists: vec!["Rhapsody Of Fire".to_owned()],
+				album_artists: vec!["Various Artists".to_owned()],
+				..Default::default()
+			},
+			scanner::Song {
+				virtual_path: PathBuf::from("Paradise.mp3"),
+				title: Some("Paradise".to_owned()),
+				artists: vec!["Stratovarius".to_owned()],
+				album_artists: vec!["Various Artists".to_owned()],
+				..Default::default()
+			},
+		]));
+
+		let artists = collection
+			.get_artists(&strings)
+			.into_iter()
+			.map(|a| a.name)
+			.collect::<Vec<_>>();
+
+		assert_eq!(
+			artists,
+			vec![
+				UniCase::new("Rhapsody of Fire".to_owned()),
+				UniCase::new("Stratovarius".to_owned()),
 			]
 		);
 	}

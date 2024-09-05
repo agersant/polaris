@@ -1,9 +1,9 @@
 use std::{
-	collections::HashSet,
+	collections::{HashMap, HashSet},
 	path::{Path, PathBuf},
 };
 
-use lasso2::{Rodeo, RodeoReader};
+use lasso2::{Rodeo, RodeoReader, Spur};
 use log::error;
 use serde::{Deserialize, Serialize};
 use tinyvec::TinyVec;
@@ -18,7 +18,7 @@ pub enum File {
 
 #[derive(Serialize, Deserialize)]
 pub struct Artist {
-	pub name: Option<lasso2::Spur>,
+	pub name: lasso2::Spur,
 	pub albums: HashSet<AlbumKey>,
 	pub featured_on: HashSet<AlbumKey>,
 }
@@ -86,7 +86,11 @@ impl Song {
 	}
 }
 
-pub fn store_song(strings: &mut Rodeo, song: &scanner::Song) -> Option<Song> {
+pub fn store_song(
+	strings: &mut Rodeo,
+	minuscules: &mut HashMap<String, Spur>,
+	song: &scanner::Song,
+) -> Option<Song> {
 	let Some(real_path) = (&song.real_path).get_or_intern(strings) else {
 		return None;
 	};
@@ -103,45 +107,58 @@ pub fn store_song(strings: &mut Rodeo, song: &scanner::Song) -> Option<Song> {
 		None => None,
 	};
 
+	let mut canonicalize = |s: &String| {
+		minuscules
+			.entry(s.to_lowercase())
+			.or_insert_with(|| strings.get_or_intern(s))
+			.to_owned()
+	};
+
 	Some(Song {
 		real_path,
 		virtual_path,
 		track_number: song.track_number,
 		disc_number: song.disc_number,
-		title: song.title.as_ref().map(|s| strings.get_or_intern(s)),
+		title: song.title.as_ref().map(&mut canonicalize),
 		artists: song
 			.artists
 			.iter()
-			.map(|s| strings.get_or_intern(s))
+			.filter(|s| s.len() > 0)
+			.map(&mut canonicalize)
 			.collect(),
 		album_artists: song
 			.album_artists
 			.iter()
-			.map(|s| strings.get_or_intern(s))
+			.filter(|s| s.len() > 0)
+			.map(&mut canonicalize)
 			.collect(),
 		year: song.year,
-		album: song.album.as_ref().map(|s| strings.get_or_intern(s)),
+		album: song.album.as_ref().map(&mut canonicalize),
 		artwork: artwork,
 		duration: song.duration,
 		lyricists: song
 			.lyricists
 			.iter()
-			.map(|s| strings.get_or_intern(s))
+			.filter(|s| s.len() > 0)
+			.map(&mut canonicalize)
 			.collect(),
 		composers: song
 			.composers
 			.iter()
-			.map(|s| strings.get_or_intern(s))
+			.filter(|s| s.len() > 0)
+			.map(&mut canonicalize)
 			.collect(),
 		genres: song
 			.genres
 			.iter()
-			.map(|s| strings.get_or_intern(s))
+			.filter(|s| s.len() > 0)
+			.map(&mut canonicalize)
 			.collect(),
 		labels: song
 			.labels
 			.iter()
-			.map(|s| strings.get_or_intern(s))
+			.filter(|s| s.len() > 0)
+			.map(&mut canonicalize)
 			.collect(),
 		date_added: song.date_added,
 	})

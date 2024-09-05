@@ -319,15 +319,17 @@ impl From<index::File> for BrowserEntry {
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ArtistHeader {
-	pub name: Option<String>,
-	pub num_albums: u32,
+	pub name: String,
+	pub num_own_albums: u32,
+	pub num_appearances: u32,
 }
 
 impl From<index::ArtistHeader> for ArtistHeader {
 	fn from(a: index::ArtistHeader) -> Self {
 		Self {
-			name: a.name.map(|s| s.into_inner()),
-			num_albums: a.num_albums,
+			name: a.name.to_string(),
+			num_own_albums: a.num_own_albums,
+			num_appearances: a.num_appearances,
 		}
 	}
 }
