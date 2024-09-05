@@ -20,6 +20,7 @@
 - The file browser now supports common navigation keyboard shortcuts.
 - The file browser now supports jumping to a visible file or folder by typing the start of its name.
 - The file browser now omits the top-level directory when only one music folder has been configured.
+- The current playlist now has two display modes: compact or with album art.
 - Songs in the current playlist can now be selected and re-ordered with the mouse.
 - The current playlist now supports common navigation keyboard shortcuts.
 - The seekbar for the current song has been replaced with a waveform visualization.
