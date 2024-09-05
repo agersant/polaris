@@ -1,5 +1,10 @@
-use axum::{extract::FromRef, Router};
-use tower_http::{compression::CompressionLayer, services::ServeDir};
+use axum::{extract::FromRef, Router, ServiceExt};
+use tower::Layer;
+use tower_http::{
+	compression::CompressionLayer,
+	normalize_path::{NormalizePath, NormalizePathLayer},
+	services::ServeDir,
+};
 
 use crate::app::{self, App};
 
@@ -11,25 +16,28 @@ mod version;
 #[cfg(test)]
 pub mod test;
 
-pub fn make_router(app: App) -> Router {
+pub fn make_router(app: App) -> NormalizePath<Router> {
 	let swagger = ServeDir::new(&app.swagger_dir_path);
 
 	let static_files = Router::new()
 		.nest_service("/", ServeDir::new(&app.web_dir_path))
 		.layer(CompressionLayer::new());
 
-	Router::new()
+	let router = Router::new()
 		.nest("/api", api::router())
 		.with_state(app.clone())
 		.nest_service("/swagger", swagger)
-		.nest("/", static_files)
+		.nest("/", static_files);
+
+	NormalizePathLayer::trim_trailing_slash().layer(router)
 }
 
 pub async fn launch(app: App) -> Result<(), std::io::Error> {
 	let port = app.port;
 	let router = make_router(app);
+	let make_service = ServiceExt::<axum::extract::Request>::into_make_service(router);
 	let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}")).await?;
-	axum::serve(listener, router).await?;
+	axum::serve(listener, make_service).await?;
 	Ok(())
 }
 

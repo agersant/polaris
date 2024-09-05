@@ -76,14 +76,7 @@ pub fn router() -> Router<App> {
 		.route("/songs", post(get_songs)) // post because of https://github.com/whatwg/fetch/issues/551
 		.route("/peaks/*path", get(get_peaks))
 		.route("/thumbnail/*path", get(get_thumbnail))
-		// Workarounds
-		// TODO figure out NormalizePathLayer and remove this
-		// See https://github.com/tokio-rs/axum/discussions/2833
-		.route("/browse/", get(get_browse_root))
-		.route("/flatten/", get(get_flatten_root))
-		.route("/random/", get(get_random))
-		.route("/recent/", get(get_recent))
-		.route("/search/", get(get_search_root))
+		// Layers
 		.layer(CompressionLayer::new().quality(CompressionLevel::Fastest))
 		.layer(DefaultBodyLimit::max(10 * 1024 * 1024)) // 10MB
 		// Uncompressed
