@@ -17,15 +17,19 @@ use super::storage::fetch_song;
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ArtistHeader {
 	pub name: UniCase<String>,
-	pub num_own_albums: u32,
-	pub num_appearances: u32,
+	pub num_albums_as_performer: u32,
+	pub num_albums_as_additional_performer: u32,
+	pub num_albums_as_composer: u32,
+	pub num_albums_as_lyricist: u32,
 }
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct Artist {
 	pub header: ArtistHeader,
-	pub albums: Vec<Album>,
-	pub featured_on: Vec<Album>, // Albums where this artist shows up as `artist` without being `album_artist`
+	pub albums_as_performer: Vec<Album>,
+	pub albums_as_additional_performer: Vec<Album>, // Albums where this artist shows up as `artist` without being `album_artist`
+	pub albums_as_composer: Vec<Album>,
+	pub albums_as_lyricist: Vec<Album>,
 }
 
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -83,9 +87,8 @@ impl Collection {
 		self.artists.get(&artist_key).map(|a| {
 			let sort_albums = |a: &Album, b: &Album| (&a.year, &a.name).cmp(&(&b.year, &b.name));
 
-			let albums = {
-				let mut albums = a
-					.albums
+			let list_albums = |keys: &HashSet<AlbumKey>| {
+				let mut albums = keys
 					.iter()
 					.filter_map(|key| self.get_album(strings, key.clone()))
 					.collect::<Vec<_>>();
@@ -93,20 +96,17 @@ impl Collection {
 				albums
 			};
 
-			let featured_on = {
-				let mut albums = a
-					.featured_on
-					.iter()
-					.filter_map(|key| self.get_album(strings, key.clone()))
-					.collect::<Vec<_>>();
-				albums.sort_by(&sort_albums);
-				albums
-			};
+			let albums_as_performer = list_albums(&a.albums_as_performer);
+			let albums_as_additional_performer = list_albums(&a.albums_as_additional_performer);
+			let albums_as_composer = list_albums(&a.albums_as_composer);
+			let albums_as_lyricist = list_albums(&a.albums_as_lyricist);
 
 			Artist {
 				header: make_artist_header(a, strings),
-				albums,
-				featured_on,
+				albums_as_performer,
+				albums_as_additional_performer,
+				albums_as_composer,
+				albums_as_lyricist,
 			}
 		})
 	}
@@ -172,8 +172,10 @@ impl Collection {
 fn make_artist_header(artist: &storage::Artist, strings: &RodeoReader) -> ArtistHeader {
 	ArtistHeader {
 		name: UniCase::new(strings.resolve(&artist.name).to_owned()),
-		num_own_albums: artist.albums.len() as u32,
-		num_appearances: artist.featured_on.len() as u32,
+		num_albums_as_performer: artist.albums_as_performer.len() as u32,
+		num_albums_as_additional_performer: artist.albums_as_additional_performer.len() as u32,
+		num_albums_as_composer: artist.albums_as_composer.len() as u32,
+		num_albums_as_lyricist: artist.albums_as_lyricist.len() as u32,
 	}
 }
 
@@ -228,15 +230,27 @@ impl Builder {
 
 		for name in &song.album_artists {
 			let artist = self.get_or_create_artist(*name);
-			artist.albums.insert(album_key.clone());
+			artist.albums_as_performer.insert(album_key.clone());
+		}
+
+		for name in &song.composers {
+			let artist = self.get_or_create_artist(*name);
+			artist.albums_as_composer.insert(album_key.clone());
+		}
+
+		for name in &song.lyricists {
+			let artist = self.get_or_create_artist(*name);
+			artist.albums_as_lyricist.insert(album_key.clone());
 		}
 
 		for name in &song.artists {
 			let artist = self.get_or_create_artist(*name);
 			if song.album_artists.is_empty() {
-				artist.albums.insert(album_key.clone());
+				artist.albums_as_performer.insert(album_key.clone());
 			} else if !song.album_artists.contains(name) {
-				artist.featured_on.insert(album_key.clone());
+				artist
+					.albums_as_additional_performer
+					.insert(album_key.clone());
 			}
 		}
 	}
@@ -247,8 +261,10 @@ impl Builder {
 			.entry(artist_key)
 			.or_insert_with(|| storage::Artist {
 				name,
-				albums: HashSet::new(),
-				featured_on: HashSet::new(),
+				albums_as_performer: HashSet::new(),
+				albums_as_additional_performer: HashSet::new(),
+				albums_as_composer: HashSet::new(),
+				albums_as_lyricist: HashSet::new(),
 			})
 			.borrow_mut()
 	}
@@ -576,15 +592,18 @@ mod test {
 			};
 
 			if test.expect_albums {
-				assert_eq!(names(&artist.albums), vec![album_name]);
+				assert_eq!(names(&artist.albums_as_performer), vec![album_name]);
 			} else {
-				assert!(names(&artist.albums).is_empty());
+				assert!(names(&artist.albums_as_performer).is_empty());
 			}
 
 			if test.expect_featured_on {
-				assert_eq!(names(&artist.featured_on), vec![album_name]);
+				assert_eq!(
+					names(&artist.albums_as_additional_performer),
+					vec![album_name]
+				);
 			} else {
-				assert!(names(&artist.featured_on).is_empty());
+				assert!(names(&artist.albums_as_additional_performer).is_empty());
 			}
 		}
 	}
@@ -627,7 +646,7 @@ mod test {
 
 		let names = artist
 			.unwrap()
-			.albums
+			.albums_as_performer
 			.into_iter()
 			.map(|a| a.name.unwrap())
 			.collect::<Vec<_>>();

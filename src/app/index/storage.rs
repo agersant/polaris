@@ -19,8 +19,10 @@ pub enum File {
 #[derive(Serialize, Deserialize)]
 pub struct Artist {
 	pub name: lasso2::Spur,
-	pub albums: HashSet<AlbumKey>,
-	pub featured_on: HashSet<AlbumKey>,
+	pub albums_as_performer: HashSet<AlbumKey>,
+	pub albums_as_additional_performer: HashSet<AlbumKey>,
+	pub albums_as_composer: HashSet<AlbumKey>,
+	pub albums_as_lyricist: HashSet<AlbumKey>,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]

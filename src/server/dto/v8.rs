@@ -320,16 +320,20 @@ impl From<index::File> for BrowserEntry {
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ArtistHeader {
 	pub name: String,
-	pub num_own_albums: u32,
-	pub num_appearances: u32,
+	pub num_albums_as_performer: u32,
+	pub num_albums_as_additional_performer: u32,
+	pub num_albums_as_composer: u32,
+	pub num_albums_as_lyricist: u32,
 }
 
 impl From<index::ArtistHeader> for ArtistHeader {
 	fn from(a: index::ArtistHeader) -> Self {
 		Self {
 			name: a.name.to_string(),
-			num_own_albums: a.num_own_albums,
-			num_appearances: a.num_appearances,
+			num_albums_as_performer: a.num_albums_as_performer,
+			num_albums_as_additional_performer: a.num_albums_as_additional_performer,
+			num_albums_as_composer: a.num_albums_as_composer,
+			num_albums_as_lyricist: a.num_albums_as_lyricist,
 		}
 	}
 }
@@ -338,16 +342,21 @@ impl From<index::ArtistHeader> for ArtistHeader {
 pub struct Artist {
 	#[serde(flatten)]
 	pub header: ArtistHeader,
-	pub albums: Vec<AlbumHeader>,
-	pub featured_on: Vec<AlbumHeader>,
+	pub albums_as_performer: Vec<AlbumHeader>,
+	pub albums_as_additional_performer: Vec<AlbumHeader>,
+	pub albums_as_composer: Vec<AlbumHeader>,
+	pub albums_as_lyricist: Vec<AlbumHeader>,
 }
 
 impl From<index::Artist> for Artist {
 	fn from(a: index::Artist) -> Self {
+		let convert_albums = |a: Vec<index::Album>| a.into_iter().map(|a| a.into()).collect();
 		Self {
 			header: a.header.into(),
-			albums: a.albums.into_iter().map(|a| a.into()).collect(),
-			featured_on: a.featured_on.into_iter().map(|a| a.into()).collect(),
+			albums_as_performer: convert_albums(a.albums_as_performer),
+			albums_as_additional_performer: convert_albums(a.albums_as_additional_performer),
+			albums_as_composer: convert_albums(a.albums_as_composer),
+			albums_as_lyricist: convert_albums(a.albums_as_lyricist),
 		}
 	}
 }
