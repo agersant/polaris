@@ -7,6 +7,7 @@ use std::{
 use lasso2::{Rodeo, RodeoReader, Spur};
 use rand::{rngs::ThreadRng, seq::IteratorRandom};
 use serde::{Deserialize, Serialize};
+use tinyvec::TinyVec;
 use unicase::UniCase;
 
 use crate::app::index::storage::{self, store_song, AlbumKey, ArtistKey, SongKey};
@@ -21,6 +22,7 @@ pub struct ArtistHeader {
 	pub num_albums_as_additional_performer: u32,
 	pub num_albums_as_composer: u32,
 	pub num_albums_as_lyricist: u32,
+	pub num_songs_by_genre: HashMap<String, u32>,
 }
 
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -176,6 +178,11 @@ fn make_artist_header(artist: &storage::Artist, strings: &RodeoReader) -> Artist
 		num_albums_as_additional_performer: artist.albums_as_additional_performer.len() as u32,
 		num_albums_as_composer: artist.albums_as_composer.len() as u32,
 		num_albums_as_lyricist: artist.albums_as_lyricist.len() as u32,
+		num_songs_by_genre: artist
+			.num_songs_by_genre
+			.iter()
+			.map(|(genre, num)| (strings.resolve(genre).to_string(), *num))
+			.collect(),
 	}
 }
 
@@ -198,7 +205,7 @@ impl Builder {
 		};
 
 		self.add_song_to_album(&song);
-		self.add_album_to_artists(&song);
+		self.add_song_to_artists(&song);
 
 		self.songs.insert(
 			SongKey {
@@ -225,32 +232,49 @@ impl Builder {
 		}
 	}
 
-	fn add_album_to_artists(&mut self, song: &storage::Song) {
+	fn add_song_to_artists(&mut self, song: &storage::Song) {
 		let album_key: AlbumKey = song.album_key();
+
+		let mut all_artists = TinyVec::<[Spur; 8]>::new();
 
 		for name in &song.album_artists {
 			let artist = self.get_or_create_artist(*name);
 			artist.albums_as_performer.insert(album_key.clone());
+			all_artists.push(*name);
 		}
 
 		for name in &song.composers {
 			let artist = self.get_or_create_artist(*name);
 			artist.albums_as_composer.insert(album_key.clone());
+			all_artists.push(*name);
 		}
 
 		for name in &song.lyricists {
 			let artist = self.get_or_create_artist(*name);
 			artist.albums_as_lyricist.insert(album_key.clone());
+			all_artists.push(*name);
 		}
 
 		for name in &song.artists {
 			let artist = self.get_or_create_artist(*name);
+			all_artists.push(*name);
 			if song.album_artists.is_empty() {
 				artist.albums_as_performer.insert(album_key.clone());
 			} else if !song.album_artists.contains(name) {
 				artist
 					.albums_as_additional_performer
 					.insert(album_key.clone());
+			}
+		}
+
+		for name in all_artists {
+			let artist = self.get_or_create_artist(name);
+			for genre in &song.genres {
+				*artist
+					.num_songs_by_genre
+					.entry(*genre)
+					.or_default()
+					.borrow_mut() += 1;
 			}
 		}
 	}
@@ -265,6 +289,7 @@ impl Builder {
 				albums_as_additional_performer: HashSet::new(),
 				albums_as_composer: HashSet::new(),
 				albums_as_lyricist: HashSet::new(),
+				num_songs_by_genre: HashMap::new(),
 			})
 			.borrow_mut()
 	}

@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::app::{config, ddns, index, peaks, settings, thumbnail, user, vfs};
-use std::{convert::From, path::PathBuf};
+use std::{collections::HashMap, convert::From, path::PathBuf};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct Version {
@@ -324,6 +324,7 @@ pub struct ArtistHeader {
 	pub num_albums_as_additional_performer: u32,
 	pub num_albums_as_composer: u32,
 	pub num_albums_as_lyricist: u32,
+	pub num_songs_by_genre: HashMap<String, u32>,
 }
 
 impl From<index::ArtistHeader> for ArtistHeader {
@@ -334,6 +335,7 @@ impl From<index::ArtistHeader> for ArtistHeader {
 			num_albums_as_additional_performer: a.num_albums_as_additional_performer,
 			num_albums_as_composer: a.num_albums_as_composer,
 			num_albums_as_lyricist: a.num_albums_as_lyricist,
+			num_songs_by_genre: a.num_songs_by_genre,
 		}
 	}
 }

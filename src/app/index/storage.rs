@@ -18,18 +18,19 @@ pub enum File {
 
 #[derive(Serialize, Deserialize)]
 pub struct Artist {
-	pub name: lasso2::Spur,
+	pub name: Spur,
 	pub albums_as_performer: HashSet<AlbumKey>,
 	pub albums_as_additional_performer: HashSet<AlbumKey>,
 	pub albums_as_composer: HashSet<AlbumKey>,
 	pub albums_as_lyricist: HashSet<AlbumKey>,
+	pub num_songs_by_genre: HashMap<Spur, u32>,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Album {
-	pub name: Option<lasso2::Spur>,
+	pub name: Option<Spur>,
 	pub artwork: Option<PathKey>,
-	pub artists: Vec<lasso2::Spur>,
+	pub artists: TinyVec<[Spur; 1]>,
 	pub year: Option<i64>,
 	pub date_added: i64,
 	pub songs: HashSet<SongKey>,
@@ -41,35 +42,37 @@ pub struct Song {
 	pub virtual_path: PathKey,
 	pub track_number: Option<i64>,
 	pub disc_number: Option<i64>,
-	pub title: Option<lasso2::Spur>,
-	pub artists: Vec<lasso2::Spur>,
-	pub album_artists: Vec<lasso2::Spur>,
+	pub title: Option<Spur>,
+	pub artists: TinyVec<[Spur; 1]>,
+	pub album_artists: TinyVec<[Spur; 1]>,
 	pub year: Option<i64>,
-	pub album: Option<lasso2::Spur>,
+	pub album: Option<Spur>,
 	pub artwork: Option<PathKey>,
 	pub duration: Option<i64>,
-	pub lyricists: Vec<lasso2::Spur>,
-	pub composers: Vec<lasso2::Spur>,
-	pub genres: Vec<lasso2::Spur>,
-	pub labels: Vec<lasso2::Spur>,
+	pub lyricists: TinyVec<[Spur; 0]>,
+	pub composers: TinyVec<[Spur; 0]>,
+	pub genres: TinyVec<[Spur; 1]>,
+	pub labels: TinyVec<[Spur; 0]>,
 	pub date_added: i64,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
-pub struct PathKey(pub lasso2::Spur);
+#[derive(
+	Copy, Clone, Debug, Default, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize,
+)]
+pub struct PathKey(pub Spur);
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct ArtistKey {
-	pub name: Option<lasso2::Spur>,
+	pub name: Option<Spur>,
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct AlbumKey {
-	pub artists: TinyVec<[lasso2::Spur; 4]>,
-	pub name: Option<lasso2::Spur>,
+	pub artists: TinyVec<[Spur; 4]>,
+	pub name: Option<Spur>,
 }
 
-#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Default, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct SongKey {
 	pub virtual_path: PathKey,
 }
