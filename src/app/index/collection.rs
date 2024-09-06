@@ -510,9 +510,10 @@ mod test {
 			artists: Vec<String>,
 			composers: Vec<String>,
 			lyricists: Vec<String>,
-			expect_unlisted: bool,
-			expect_albums: bool,
-			expect_featured_on: bool,
+			expect_performer: bool,
+			expect_additional_performer: bool,
+			expect_composer: bool,
+			expect_lyricist: bool,
 		}
 
 		let test_cases = vec![
@@ -522,41 +523,43 @@ mod test {
 				artists: vec![artist_name.to_string()],
 				composers: vec![artist_name.to_string()],
 				lyricists: vec![artist_name.to_string()],
-				expect_albums: true,
+				expect_performer: true,
+				expect_composer: true,
+				expect_lyricist: true,
 				..Default::default()
 			},
 			// Only tagged as artist
 			TestCase {
 				artists: vec![artist_name.to_string()],
-				expect_albums: true,
+				expect_performer: true,
 				..Default::default()
 			},
 			// Only tagged as artist w/ distinct album artist
 			TestCase {
 				album_artists: vec![other_artist_name.to_string()],
 				artists: vec![artist_name.to_string()],
-				expect_featured_on: true,
+				expect_additional_performer: true,
 				..Default::default()
 			},
 			// Tagged as artist and within album artists
 			TestCase {
 				album_artists: vec![artist_name.to_string(), other_artist_name.to_string()],
 				artists: vec![artist_name.to_string()],
-				expect_albums: true,
+				expect_performer: true,
 				..Default::default()
 			},
 			// Only tagged as composer
 			TestCase {
 				artists: vec![other_artist_name.to_string()],
 				composers: vec![artist_name.to_string()],
-				expect_unlisted: true,
+				expect_composer: true,
 				..Default::default()
 			},
 			// Only tagged as lyricist
 			TestCase {
 				artists: vec![other_artist_name.to_string()],
 				lyricists: vec![artist_name.to_string()],
-				expect_unlisted: true,
+				expect_lyricist: true,
 				..Default::default()
 			},
 		];
@@ -575,15 +578,7 @@ mod test {
 			let artist_key = ArtistKey {
 				name: strings.get(artist_name),
 			};
-			let artist = collection.get_artist(&strings, artist_key);
-
-			let artist = match test.expect_unlisted {
-				true => {
-					assert!(artist.is_none());
-					continue;
-				}
-				false => artist.unwrap(),
-			};
+			let artist = collection.get_artist(&strings, artist_key).unwrap();
 
 			let names = |a: &Vec<Album>| {
 				a.iter()
@@ -591,19 +586,31 @@ mod test {
 					.collect::<Vec<_>>()
 			};
 
-			if test.expect_albums {
+			if test.expect_performer {
 				assert_eq!(names(&artist.albums_as_performer), vec![album_name]);
 			} else {
 				assert!(names(&artist.albums_as_performer).is_empty());
 			}
 
-			if test.expect_featured_on {
+			if test.expect_additional_performer {
 				assert_eq!(
 					names(&artist.albums_as_additional_performer),
 					vec![album_name]
 				);
 			} else {
 				assert!(names(&artist.albums_as_additional_performer).is_empty());
+			}
+
+			if test.expect_composer {
+				assert_eq!(names(&artist.albums_as_composer), vec![album_name]);
+			} else {
+				assert!(names(&artist.albums_as_composer).is_empty());
+			}
+
+			if test.expect_lyricist {
+				assert_eq!(names(&artist.albums_as_lyricist), vec![album_name]);
+			} else {
+				assert!(names(&artist.albums_as_lyricist).is_empty());
 			}
 		}
 	}
