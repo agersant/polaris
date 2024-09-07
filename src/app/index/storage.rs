@@ -114,8 +114,13 @@ pub fn store_song(
 	};
 
 	let mut canonicalize = |s: &String| {
+		let mut cleaned = s.clone();
+		cleaned.retain(|c| match c {
+			' ' | '_' | '-' | '\'' => false,
+			_ => true,
+		});
 		minuscules
-			.entry(s.trim().to_lowercase())
+			.entry(cleaned.to_lowercase())
 			.or_insert_with(|| strings.get_or_intern(s))
 			.to_owned()
 	};
