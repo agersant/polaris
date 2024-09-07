@@ -325,6 +325,7 @@ pub struct ArtistHeader {
 	pub num_albums_as_composer: u32,
 	pub num_albums_as_lyricist: u32,
 	pub num_songs_by_genre: HashMap<String, u32>,
+	pub num_songs: u32,
 }
 
 impl From<index::ArtistHeader> for ArtistHeader {
@@ -336,14 +337,14 @@ impl From<index::ArtistHeader> for ArtistHeader {
 			num_albums_as_composer: a.num_albums_as_composer,
 			num_albums_as_lyricist: a.num_albums_as_lyricist,
 			num_songs_by_genre: a.num_songs_by_genre,
+			num_songs: a.num_songs,
 		}
 	}
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Artist {
-	#[serde(flatten)]
-	pub header: ArtistHeader,
+	pub name: String,
 	pub albums_as_performer: Vec<AlbumHeader>,
 	pub albums_as_additional_performer: Vec<AlbumHeader>,
 	pub albums_as_composer: Vec<AlbumHeader>,
@@ -354,7 +355,7 @@ impl From<index::Artist> for Artist {
 	fn from(a: index::Artist) -> Self {
 		let convert_albums = |a: Vec<index::Album>| a.into_iter().map(|a| a.into()).collect();
 		Self {
-			header: a.header.into(),
+			name: a.name,
 			albums_as_performer: convert_albums(a.albums_as_performer),
 			albums_as_additional_performer: convert_albums(a.albums_as_additional_performer),
 			albums_as_composer: convert_albums(a.albums_as_composer),

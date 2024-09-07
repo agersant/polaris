@@ -24,6 +24,7 @@ pub struct Artist {
 	pub albums_as_composer: HashSet<AlbumKey>,
 	pub albums_as_lyricist: HashSet<AlbumKey>,
 	pub num_songs_by_genre: HashMap<Spur, u32>,
+	pub num_songs: u32,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -114,7 +115,7 @@ pub fn store_song(
 
 	let mut canonicalize = |s: &String| {
 		minuscules
-			.entry(s.to_lowercase())
+			.entry(s.trim().to_lowercase())
 			.or_insert_with(|| strings.get_or_intern(s))
 			.to_owned()
 	};

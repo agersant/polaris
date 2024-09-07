@@ -23,11 +23,12 @@ pub struct ArtistHeader {
 	pub num_albums_as_composer: u32,
 	pub num_albums_as_lyricist: u32,
 	pub num_songs_by_genre: HashMap<String, u32>,
+	pub num_songs: u32,
 }
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct Artist {
-	pub header: ArtistHeader,
+	pub name: String,
 	pub albums_as_performer: Vec<Album>,
 	pub albums_as_additional_performer: Vec<Album>, // Albums where this artist shows up as `artist` without being `album_artist`
 	pub albums_as_composer: Vec<Album>,
@@ -104,7 +105,7 @@ impl Collection {
 			let albums_as_lyricist = list_albums(&a.albums_as_lyricist);
 
 			Artist {
-				header: make_artist_header(a, strings),
+				name: strings.resolve(&a.name).to_owned(),
 				albums_as_performer,
 				albums_as_additional_performer,
 				albums_as_composer,
@@ -183,6 +184,7 @@ fn make_artist_header(artist: &storage::Artist, strings: &RodeoReader) -> Artist
 			.iter()
 			.map(|(genre, num)| (strings.resolve(genre).to_string(), *num))
 			.collect(),
+		num_songs: artist.num_songs,
 	}
 }
 
@@ -269,6 +271,7 @@ impl Builder {
 
 		for name in all_artists {
 			let artist = self.get_or_create_artist(name);
+			artist.num_songs += 1;
 			for genre in &song.genres {
 				*artist
 					.num_songs_by_genre
@@ -290,6 +293,7 @@ impl Builder {
 				albums_as_composer: HashSet::new(),
 				albums_as_lyricist: HashSet::new(),
 				num_songs_by_genre: HashMap::new(),
+				num_songs: 0,
 			})
 			.borrow_mut()
 	}
