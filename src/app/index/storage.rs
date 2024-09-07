@@ -29,7 +29,7 @@ pub struct Artist {
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Album {
-	pub name: Option<Spur>,
+	pub name: Spur,
 	pub artwork: Option<PathKey>,
 	pub artists: TinyVec<[Spur; 1]>,
 	pub year: Option<i64>,
@@ -70,7 +70,7 @@ pub struct ArtistKey {
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct AlbumKey {
 	pub artists: TinyVec<[Spur; 4]>,
-	pub name: Option<Spur>,
+	pub name: Spur,
 }
 
 #[derive(Copy, Clone, Debug, Default, Eq, Hash, PartialEq, Serialize, Deserialize)]
@@ -79,15 +79,18 @@ pub struct SongKey {
 }
 
 impl Song {
-	pub fn album_key(&self) -> AlbumKey {
+	pub fn album_key(&self) -> Option<AlbumKey> {
 		let album_artists = match self.album_artists.is_empty() {
 			true => &self.artists,
 			false => &self.album_artists,
 		};
 
-		AlbumKey {
-			artists: album_artists.iter().cloned().collect(),
-			name: self.album.clone(),
+		match self.album {
+			None => None,
+			Some(name) => Some(AlbumKey {
+				artists: album_artists.iter().cloned().collect(),
+				name,
+			}),
 		}
 	}
 }
@@ -119,10 +122,15 @@ pub fn store_song(
 			' ' | '_' | '-' | '\'' => false,
 			_ => true,
 		});
-		minuscules
-			.entry(cleaned.to_lowercase())
-			.or_insert_with(|| strings.get_or_intern(s))
-			.to_owned()
+		match cleaned.is_empty() {
+			true => None,
+			false => Some(
+				minuscules
+					.entry(cleaned.to_lowercase())
+					.or_insert_with(|| strings.get_or_intern(s))
+					.to_owned(),
+			),
+		}
 	};
 
 	Some(Song {
@@ -130,47 +138,29 @@ pub fn store_song(
 		virtual_path,
 		track_number: song.track_number,
 		disc_number: song.disc_number,
-		title: song.title.as_ref().map(&mut canonicalize),
-		artists: song
-			.artists
-			.iter()
-			.filter(|s| s.len() > 0)
-			.map(&mut canonicalize)
-			.collect(),
+		title: song.title.as_ref().and_then(&mut canonicalize),
+		artists: song.artists.iter().filter_map(&mut canonicalize).collect(),
 		album_artists: song
 			.album_artists
 			.iter()
-			.filter(|s| s.len() > 0)
-			.map(&mut canonicalize)
+			.filter_map(&mut canonicalize)
 			.collect(),
 		year: song.year,
-		album: song.album.as_ref().map(&mut canonicalize),
+		album: song.album.as_ref().and_then(&mut canonicalize),
 		artwork: artwork,
 		duration: song.duration,
 		lyricists: song
 			.lyricists
 			.iter()
-			.filter(|s| s.len() > 0)
-			.map(&mut canonicalize)
+			.filter_map(&mut canonicalize)
 			.collect(),
 		composers: song
 			.composers
 			.iter()
-			.filter(|s| s.len() > 0)
-			.map(&mut canonicalize)
+			.filter_map(&mut canonicalize)
 			.collect(),
-		genres: song
-			.genres
-			.iter()
-			.filter(|s| s.len() > 0)
-			.map(&mut canonicalize)
-			.collect(),
-		labels: song
-			.labels
-			.iter()
-			.filter(|s| s.len() > 0)
-			.map(&mut canonicalize)
-			.collect(),
+		genres: song.genres.iter().filter_map(&mut canonicalize).collect(),
+		labels: song.labels.iter().filter_map(&mut canonicalize).collect(),
 		date_added: song.date_added,
 	})
 }

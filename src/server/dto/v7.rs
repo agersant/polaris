@@ -363,7 +363,7 @@ impl From<index::Album> for Directory {
 				false => Some(album.artists.join("")),
 			},
 			year: album.year,
-			album: album.name,
+			album: Some(album.name),
 			artwork: album.artwork,
 		}
 	}

@@ -38,7 +38,7 @@ pub struct Artist {
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct Album {
-	pub name: Option<String>,
+	pub name: String,
 	pub artwork: Option<PathBuf>,
 	pub artists: Vec<String>,
 	pub year: Option<i64>,
@@ -140,7 +140,7 @@ impl Collection {
 			songs.sort_by_key(|s| (s.disc_number.unwrap_or(-1), s.track_number.unwrap_or(-1)));
 
 			Album {
-				name: a.name.map(|s| strings.resolve(&s).to_string()),
+				name: strings.resolve(&a.name).to_string(),
 				artwork: a
 					.artwork
 					.as_ref()
@@ -243,37 +243,45 @@ impl Builder {
 	}
 
 	fn add_song_to_artists(&mut self, song: &storage::Song) {
-		let album_key: AlbumKey = song.album_key();
+		let album_key = song.album_key();
 
 		let mut all_artists = TinyVec::<[Spur; 8]>::new();
 
 		for name in &song.album_artists {
-			let artist = self.get_or_create_artist(*name);
-			artist.albums_as_performer.insert(album_key.clone());
 			all_artists.push(*name);
+			if let Some(album_key) = &album_key {
+				let artist = self.get_or_create_artist(*name);
+				artist.albums_as_performer.insert(album_key.clone());
+			}
 		}
 
 		for name in &song.composers {
-			let artist = self.get_or_create_artist(*name);
-			artist.albums_as_composer.insert(album_key.clone());
 			all_artists.push(*name);
+			if let Some(album_key) = &album_key {
+				let artist = self.get_or_create_artist(*name);
+				artist.albums_as_composer.insert(album_key.clone());
+			}
 		}
 
 		for name in &song.lyricists {
-			let artist = self.get_or_create_artist(*name);
-			artist.albums_as_lyricist.insert(album_key.clone());
 			all_artists.push(*name);
+			if let Some(album_key) = &album_key {
+				let artist = self.get_or_create_artist(*name);
+				artist.albums_as_lyricist.insert(album_key.clone());
+			}
 		}
 
 		for name in &song.artists {
-			let artist = self.get_or_create_artist(*name);
 			all_artists.push(*name);
-			if song.album_artists.is_empty() {
-				artist.albums_as_performer.insert(album_key.clone());
-			} else if !song.album_artists.contains(name) {
-				artist
-					.albums_as_additional_performer
-					.insert(album_key.clone());
+			if let Some(album_key) = &album_key {
+				let artist = self.get_or_create_artist(*name);
+				if song.album_artists.is_empty() {
+					artist.albums_as_performer.insert(album_key.clone());
+				} else if !song.album_artists.contains(name) {
+					artist
+						.albums_as_additional_performer
+						.insert(album_key.clone());
+				}
 			}
 		}
 
@@ -307,12 +315,13 @@ impl Builder {
 	}
 
 	fn add_song_to_album(&mut self, song: &storage::Song) {
-		let album_key = song.album_key();
-		let album = self.albums.entry(album_key).or_default().borrow_mut();
+		let Some(album_key) = song.album_key() else {
+			return;
+		};
 
-		if album.name.is_none() {
-			album.name = song.album;
-		}
+		let name = album_key.name;
+		let album = self.albums.entry(album_key).or_default().borrow_mut();
+		album.name = name;
 
 		if album.artwork.is_none() {
 			album.artwork = song.artwork;
@@ -500,10 +509,7 @@ mod test {
 		assert_eq!(albums.len(), 2);
 
 		assert_eq!(
-			albums
-				.into_iter()
-				.map(|a| a.name.unwrap())
-				.collect::<HashSet<_>>(),
+			albums.into_iter().map(|a| a.name).collect::<HashSet<_>>(),
 			HashSet::from_iter(["ISDN".to_owned(), "Lifeforms".to_owned()])
 		);
 	}
@@ -527,10 +533,7 @@ mod test {
 		assert_eq!(albums.len(), 2);
 
 		assert_eq!(
-			albums
-				.into_iter()
-				.map(|a| a.name.unwrap())
-				.collect::<Vec<_>>(),
+			albums.into_iter().map(|a| a.name).collect::<Vec<_>>(),
 			vec!["ISDN".to_owned(), "Lifeforms".to_owned()]
 		);
 	}
@@ -617,11 +620,7 @@ mod test {
 			};
 			let artist = collection.get_artist(&strings, artist_key).unwrap();
 
-			let names = |a: &Vec<Album>| {
-				a.iter()
-					.map(|a| a.name.to_owned().unwrap())
-					.collect::<Vec<_>>()
-			};
+			let names = |a: &Vec<Album>| a.iter().map(|a| a.name.to_owned()).collect::<Vec<_>>();
 
 			if test.expect_performer {
 				assert_eq!(names(&artist.albums_as_performer), vec![album_name]);
@@ -692,7 +691,7 @@ mod test {
 			.unwrap()
 			.albums_as_performer
 			.into_iter()
-			.map(|a| a.name.unwrap())
+			.map(|a| a.name)
 			.collect::<Vec<_>>();
 
 		assert_eq!(
@@ -747,7 +746,7 @@ mod test {
 			&strings,
 			AlbumKey {
 				artists: TinyVec::new(),
-				name: strings.get("Lifeforms"),
+				name: strings.get("Lifeforms").unwrap(),
 			},
 		);
 

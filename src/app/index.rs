@@ -140,21 +140,21 @@ impl Manager {
 		.unwrap()
 	}
 
-	pub async fn get_album(
-		&self,
-		artists: Vec<String>,
-		name: Option<String>,
-	) -> Result<Album, Error> {
+	pub async fn get_album(&self, artists: Vec<String>, name: String) -> Result<Album, Error> {
 		spawn_blocking({
 			let index_manager = self.clone();
 			move || {
 				let index = index_manager.index.read().unwrap();
+				let name = index
+					.strings
+					.get(&name)
+					.ok_or_else(|| Error::AlbumNotFound)?;
 				let album_key = AlbumKey {
 					artists: artists
 						.into_iter()
 						.filter_map(|a| index.strings.get(a))
 						.collect(),
-					name: name.and_then(|n| index.strings.get(n)),
+					name,
 				};
 				index
 					.collection

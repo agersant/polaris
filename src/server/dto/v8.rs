@@ -368,8 +368,7 @@ impl From<index::Artist> for Artist {
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AlbumHeader {
-	#[serde(default, skip_serializing_if = "Option::is_none")]
-	pub name: Option<String>,
+	pub name: String,
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub artwork: Option<String>,
 	#[serde(default, skip_serializing_if = "Vec::is_empty")]

@@ -419,9 +419,7 @@ async fn get_album(
 		.split(API_ARRAY_SEPARATOR)
 		.map(str::to_owned)
 		.collect::<Vec<_>>();
-	Ok(Json(
-		index_manager.get_album(artists, Some(name)).await?.into(),
-	))
+	Ok(Json(index_manager.get_album(artists, name).await?.into()))
 }
 
 async fn get_songs(
