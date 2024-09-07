@@ -349,6 +349,7 @@ pub struct Artist {
 	pub albums_as_additional_performer: Vec<AlbumHeader>,
 	pub albums_as_composer: Vec<AlbumHeader>,
 	pub albums_as_lyricist: Vec<AlbumHeader>,
+	pub num_songs_by_genre: HashMap<String, u32>,
 }
 
 impl From<index::Artist> for Artist {
@@ -360,6 +361,7 @@ impl From<index::Artist> for Artist {
 			albums_as_additional_performer: convert_albums(a.albums_as_additional_performer),
 			albums_as_composer: convert_albums(a.albums_as_composer),
 			albums_as_lyricist: convert_albums(a.albums_as_lyricist),
+			num_songs_by_genre: a.num_songs_by_genre,
 		}
 	}
 }

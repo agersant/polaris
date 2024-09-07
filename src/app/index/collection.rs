@@ -33,6 +33,7 @@ pub struct Artist {
 	pub albums_as_additional_performer: Vec<Album>, // Albums where this artist shows up as `artist` without being `album_artist`
 	pub albums_as_composer: Vec<Album>,
 	pub albums_as_lyricist: Vec<Album>,
+	pub num_songs_by_genre: HashMap<String, u32>,
 }
 
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -99,17 +100,24 @@ impl Collection {
 				albums
 			};
 
+			let name = strings.resolve(&a.name).to_owned();
 			let albums_as_performer = list_albums(&a.albums_as_performer);
 			let albums_as_additional_performer = list_albums(&a.albums_as_additional_performer);
 			let albums_as_composer = list_albums(&a.albums_as_composer);
 			let albums_as_lyricist = list_albums(&a.albums_as_lyricist);
+			let num_songs_by_genre = a
+				.num_songs_by_genre
+				.iter()
+				.map(|(genre, num)| (strings.resolve(genre).to_string(), *num))
+				.collect();
 
 			Artist {
-				name: strings.resolve(&a.name).to_owned(),
+				name,
 				albums_as_performer,
 				albums_as_additional_performer,
 				albums_as_composer,
 				albums_as_lyricist,
+				num_songs_by_genre,
 			}
 		})
 	}
