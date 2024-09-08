@@ -344,24 +344,44 @@ impl From<index::ArtistHeader> for ArtistHeader {
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Artist {
-	pub name: String,
-	pub albums_as_performer: Vec<AlbumHeader>,
-	pub albums_as_additional_performer: Vec<AlbumHeader>,
-	pub albums_as_composer: Vec<AlbumHeader>,
-	pub albums_as_lyricist: Vec<AlbumHeader>,
-	pub num_songs_by_genre: HashMap<String, u32>,
+	#[serde(flatten)]
+	pub header: ArtistHeader,
+	pub albums: Vec<ArtistAlbum>,
+}
+
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ArtistAlbum {
+	#[serde(flatten)]
+	pub album: AlbumHeader,
+	pub contributions: Vec<Contribution>,
+}
+
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Contribution {
+	pub performer: bool,
+	pub composer: bool,
+	pub lyricist: bool,
 }
 
 impl From<index::Artist> for Artist {
-	fn from(a: index::Artist) -> Self {
-		let convert_albums = |a: Vec<index::Album>| a.into_iter().map(|a| a.into()).collect();
+	fn from(artist: index::Artist) -> Self {
+		let artist_name = artist.header.name.clone();
+		let convert_album = |album: index::Album| ArtistAlbum {
+			contributions: album
+				.songs
+				.iter()
+				.map(|song| Contribution {
+					performer: song.artists.contains(&artist_name)
+						|| song.album_artists.contains(&artist_name),
+					composer: song.composers.contains(&artist_name),
+					lyricist: song.lyricists.contains(&artist_name),
+				})
+				.collect(),
+			album: AlbumHeader::from(album),
+		};
 		Self {
-			name: a.name,
-			albums_as_performer: convert_albums(a.albums_as_performer),
-			albums_as_additional_performer: convert_albums(a.albums_as_additional_performer),
-			albums_as_composer: convert_albums(a.albums_as_composer),
-			albums_as_lyricist: convert_albums(a.albums_as_lyricist),
-			num_songs_by_genre: a.num_songs_by_genre,
+			header: ArtistHeader::from(artist.header),
+			albums: artist.albums.into_iter().map(convert_album).collect(),
 		}
 	}
 }
@@ -372,7 +392,7 @@ pub struct AlbumHeader {
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub artwork: Option<String>,
 	#[serde(default, skip_serializing_if = "Vec::is_empty")]
-	pub artists: Vec<String>,
+	pub main_artists: Vec<String>,
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub year: Option<i64>,
 }
@@ -382,7 +402,7 @@ impl From<index::Album> for AlbumHeader {
 		Self {
 			name: a.name,
 			artwork: a.artwork.map(|a| a.to_string_lossy().to_string()),
-			artists: a.artists,
+			main_artists: a.artists,
 			year: a.year,
 		}
 	}

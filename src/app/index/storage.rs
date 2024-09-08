@@ -19,6 +19,7 @@ pub enum File {
 #[derive(Serialize, Deserialize)]
 pub struct Artist {
 	pub name: Spur,
+	pub all_albums: HashSet<AlbumKey>,
 	pub albums_as_performer: HashSet<AlbumKey>,
 	pub albums_as_additional_performer: HashSet<AlbumKey>,
 	pub albums_as_composer: HashSet<AlbumKey>,

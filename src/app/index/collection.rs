@@ -28,12 +28,8 @@ pub struct ArtistHeader {
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct Artist {
-	pub name: String,
-	pub albums_as_performer: Vec<Album>,
-	pub albums_as_additional_performer: Vec<Album>, // Albums where this artist shows up as `artist` without being `album_artist`
-	pub albums_as_composer: Vec<Album>,
-	pub albums_as_lyricist: Vec<Album>,
-	pub num_songs_by_genre: HashMap<String, u32>,
+	pub header: ArtistHeader,
+	pub albums: Vec<Album>,
 }
 
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -88,37 +84,18 @@ impl Collection {
 	}
 
 	pub fn get_artist(&self, strings: &RodeoReader, artist_key: ArtistKey) -> Option<Artist> {
-		self.artists.get(&artist_key).map(|a| {
-			let sort_albums = |a: &Album, b: &Album| (&a.year, &a.name).cmp(&(&b.year, &b.name));
-
-			let list_albums = |keys: &HashSet<AlbumKey>| {
-				let mut albums = keys
+		self.artists.get(&artist_key).map(|artist| {
+			let header = make_artist_header(artist, strings);
+			let albums = {
+				let mut albums = artist
+					.all_albums
 					.iter()
 					.filter_map(|key| self.get_album(strings, key.clone()))
 					.collect::<Vec<_>>();
-				albums.sort_by(sort_albums);
+				albums.sort_by(|a, b| (&a.year, &a.name).cmp(&(&b.year, &b.name)));
 				albums
 			};
-
-			let name = strings.resolve(&a.name).to_owned();
-			let albums_as_performer = list_albums(&a.albums_as_performer);
-			let albums_as_additional_performer = list_albums(&a.albums_as_additional_performer);
-			let albums_as_composer = list_albums(&a.albums_as_composer);
-			let albums_as_lyricist = list_albums(&a.albums_as_lyricist);
-			let num_songs_by_genre = a
-				.num_songs_by_genre
-				.iter()
-				.map(|(genre, num)| (strings.resolve(genre).to_string(), *num))
-				.collect();
-
-			Artist {
-				name,
-				albums_as_performer,
-				albums_as_additional_performer,
-				albums_as_composer,
-				albums_as_lyricist,
-				num_songs_by_genre,
-			}
+			Artist { header, albums }
 		})
 	}
 
@@ -288,6 +265,9 @@ impl Builder {
 		for name in all_artists {
 			let artist = self.get_or_create_artist(name);
 			artist.num_songs += 1;
+			if let Some(album_key) = &album_key {
+				artist.all_albums.insert(album_key.clone());
+			}
 			for genre in &song.genres {
 				*artist
 					.num_songs_by_genre
@@ -304,6 +284,7 @@ impl Builder {
 			.entry(artist_key)
 			.or_insert_with(|| storage::Artist {
 				name,
+				all_albums: HashSet::new(),
 				albums_as_performer: HashSet::new(),
 				albums_as_additional_performer: HashSet::new(),
 				albums_as_composer: HashSet::new(),
@@ -550,10 +531,7 @@ mod test {
 			artists: Vec<String>,
 			composers: Vec<String>,
 			lyricists: Vec<String>,
-			expect_performer: bool,
-			expect_additional_performer: bool,
-			expect_composer: bool,
-			expect_lyricist: bool,
+			expect_listed: bool,
 		}
 
 		let test_cases = vec![
@@ -563,43 +541,47 @@ mod test {
 				artists: vec![artist_name.to_string()],
 				composers: vec![artist_name.to_string()],
 				lyricists: vec![artist_name.to_string()],
-				expect_performer: true,
-				expect_composer: true,
-				expect_lyricist: true,
+				expect_listed: true,
 				..Default::default()
 			},
 			// Only tagged as artist
 			TestCase {
 				artists: vec![artist_name.to_string()],
-				expect_performer: true,
+				expect_listed: true,
 				..Default::default()
 			},
 			// Only tagged as artist w/ distinct album artist
 			TestCase {
 				album_artists: vec![other_artist_name.to_string()],
 				artists: vec![artist_name.to_string()],
-				expect_additional_performer: true,
+				expect_listed: true,
 				..Default::default()
 			},
 			// Tagged as artist and within album artists
 			TestCase {
 				album_artists: vec![artist_name.to_string(), other_artist_name.to_string()],
 				artists: vec![artist_name.to_string()],
-				expect_performer: true,
+				expect_listed: true,
 				..Default::default()
 			},
 			// Only tagged as composer
 			TestCase {
 				artists: vec![other_artist_name.to_string()],
 				composers: vec![artist_name.to_string()],
-				expect_composer: true,
+				expect_listed: true,
 				..Default::default()
 			},
 			// Only tagged as lyricist
 			TestCase {
 				artists: vec![other_artist_name.to_string()],
 				lyricists: vec![artist_name.to_string()],
-				expect_lyricist: true,
+				expect_listed: true,
+				..Default::default()
+			},
+			// Not tagged as lyricist
+			TestCase {
+				artists: vec![other_artist_name.to_string()],
+				expect_listed: false,
 				..Default::default()
 			},
 		];
@@ -615,38 +597,12 @@ mod test {
 				..Default::default()
 			}]));
 
-			let artist_key = ArtistKey {
-				name: strings.get(artist_name),
-			};
-			let artist = collection.get_artist(&strings, artist_key).unwrap();
+			let artists = collection.get_artists(&strings);
 
-			let names = |a: &Vec<Album>| a.iter().map(|a| a.name.to_owned()).collect::<Vec<_>>();
-
-			if test.expect_performer {
-				assert_eq!(names(&artist.albums_as_performer), vec![album_name]);
+			if test.expect_listed {
+				assert!(artists.iter().any(|a| a.name == UniCase::new(artist_name)));
 			} else {
-				assert!(names(&artist.albums_as_performer).is_empty());
-			}
-
-			if test.expect_additional_performer {
-				assert_eq!(
-					names(&artist.albums_as_additional_performer),
-					vec![album_name]
-				);
-			} else {
-				assert!(names(&artist.albums_as_additional_performer).is_empty());
-			}
-
-			if test.expect_composer {
-				assert_eq!(names(&artist.albums_as_composer), vec![album_name]);
-			} else {
-				assert!(names(&artist.albums_as_composer).is_empty());
-			}
-
-			if test.expect_lyricist {
-				assert_eq!(names(&artist.albums_as_lyricist), vec![album_name]);
-			} else {
-				assert!(names(&artist.albums_as_lyricist).is_empty());
+				assert!(artists.iter().all(|a| a.name != UniCase::new(artist_name)));
 			}
 		}
 	}
@@ -689,7 +645,7 @@ mod test {
 
 		let names = artist
 			.unwrap()
-			.albums_as_performer
+			.albums
 			.into_iter()
 			.map(|a| a.name)
 			.collect::<Vec<_>>();
