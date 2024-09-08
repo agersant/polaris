@@ -122,6 +122,7 @@ pub fn store_song(
 			' ' | '_' | '-' | '\'' => false,
 			_ => true,
 		});
+		// TODO merge inconsistent diacritic usage
 		match cleaned.is_empty() {
 			true => None,
 			false => Some(
