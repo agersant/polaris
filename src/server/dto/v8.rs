@@ -377,7 +377,7 @@ impl From<index::Artist> for Artist {
 					lyricist: song.lyricists.contains(&artist_name),
 				})
 				.collect(),
-			album: AlbumHeader::from(album),
+			album: AlbumHeader::from(album.header),
 		};
 		Self {
 			header: ArtistHeader::from(artist.header),
@@ -397,8 +397,8 @@ pub struct AlbumHeader {
 	pub year: Option<i64>,
 }
 
-impl From<index::Album> for AlbumHeader {
-	fn from(a: index::Album) -> Self {
+impl From<index::AlbumHeader> for AlbumHeader {
+	fn from(a: index::AlbumHeader) -> Self {
 		Self {
 			name: a.name,
 			artwork: a.artwork.map(|a| a.to_string_lossy().to_string()),
@@ -419,7 +419,7 @@ impl From<index::Album> for Album {
 	fn from(mut a: index::Album) -> Self {
 		let songs = a.songs.drain(..).map(|s| s.into()).collect();
 		Self {
-			header: a.into(),
+			header: a.header.into(),
 			songs: songs,
 		}
 	}

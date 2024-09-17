@@ -33,12 +33,17 @@ pub struct Artist {
 }
 
 #[derive(Debug, Default, PartialEq, Eq)]
-pub struct Album {
+pub struct AlbumHeader {
 	pub name: String,
 	pub artwork: Option<PathBuf>,
 	pub artists: Vec<String>,
 	pub year: Option<i64>,
 	pub date_added: i64,
+}
+
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct Album {
+	pub header: AlbumHeader,
 	pub songs: Vec<Song>,
 }
 
@@ -71,6 +76,16 @@ pub struct Collection {
 }
 
 impl Collection {
+	pub fn get_albums(&self, strings: &RodeoReader) -> Vec<AlbumHeader> {
+		let mut albums = self
+			.albums
+			.values()
+			.map(|a| make_album_header(a, strings))
+			.collect::<Vec<_>>();
+		albums.sort_by(|a, b| a.name.cmp(&b.name));
+		albums
+	}
+
 	pub fn get_artists(&self, strings: &RodeoReader) -> Vec<ArtistHeader> {
 		let exceptions = vec![strings.get("Various Artists"), strings.get("VA")];
 		let mut artists = self
@@ -92,7 +107,9 @@ impl Collection {
 					.iter()
 					.filter_map(|key| self.get_album(strings, key.clone()))
 					.collect::<Vec<_>>();
-				albums.sort_by(|a, b| (&a.year, &a.name).cmp(&(&b.year, &b.name)));
+				albums.sort_by(|a, b| {
+					(&a.header.year, &a.header.name).cmp(&(&b.header.year, &b.header.name))
+				});
 				albums
 			};
 			Artist { header, albums }
@@ -117,19 +134,7 @@ impl Collection {
 			songs.sort_by_key(|s| (s.disc_number.unwrap_or(-1), s.track_number.unwrap_or(-1)));
 
 			Album {
-				name: strings.resolve(&a.name).to_string(),
-				artwork: a
-					.artwork
-					.as_ref()
-					.map(|a| strings.resolve(&a.0))
-					.map(PathBuf::from),
-				artists: a
-					.artists
-					.iter()
-					.map(|a| strings.resolve(a).to_string())
-					.collect(),
-				year: a.year,
-				date_added: a.date_added,
+				header: make_album_header(a, strings),
 				songs,
 			}
 		})
@@ -154,6 +159,24 @@ impl Collection {
 
 	pub fn get_song(&self, strings: &RodeoReader, song_key: SongKey) -> Option<Song> {
 		self.songs.get(&song_key).map(|s| fetch_song(strings, s))
+	}
+}
+
+fn make_album_header(album: &storage::Album, strings: &RodeoReader) -> AlbumHeader {
+	AlbumHeader {
+		name: strings.resolve(&album.name).to_string(),
+		artwork: album
+			.artwork
+			.as_ref()
+			.map(|a| strings.resolve(&a.0))
+			.map(PathBuf::from),
+		artists: album
+			.artists
+			.iter()
+			.map(|a| strings.resolve(a).to_string())
+			.collect(),
+		year: album.year,
+		date_added: album.date_added,
 	}
 }
 
@@ -474,6 +497,36 @@ mod test {
 	}
 
 	#[test]
+	fn can_get_all_albums() {
+		let (collection, strings) = setup_test(Vec::from([
+			scanner::Song {
+				album: Some("ISDN".to_owned()),
+				..Default::default()
+			},
+			scanner::Song {
+				album: Some("Elysium".to_owned()),
+				..Default::default()
+			},
+			scanner::Song {
+				album: Some("Lifeforms".to_owned()),
+				..Default::default()
+			},
+		]));
+
+		let albums = collection.get_albums(&strings);
+		assert_eq!(albums.len(), 3);
+
+		assert_eq!(
+			albums.into_iter().map(|a| a.name).collect::<Vec<_>>(),
+			vec![
+				"Elysium".to_owned(),
+				"ISDN".to_owned(),
+				"Lifeforms".to_owned()
+			]
+		);
+	}
+
+	#[test]
 	fn can_get_random_albums() {
 		let (collection, strings) = setup_test(Vec::from([
 			scanner::Song {
@@ -490,7 +543,10 @@ mod test {
 		assert_eq!(albums.len(), 2);
 
 		assert_eq!(
-			albums.into_iter().map(|a| a.name).collect::<HashSet<_>>(),
+			albums
+				.into_iter()
+				.map(|a| a.header.name)
+				.collect::<HashSet<_>>(),
 			HashSet::from_iter(["ISDN".to_owned(), "Lifeforms".to_owned()])
 		);
 	}
@@ -514,7 +570,10 @@ mod test {
 		assert_eq!(albums.len(), 2);
 
 		assert_eq!(
-			albums.into_iter().map(|a| a.name).collect::<Vec<_>>(),
+			albums
+				.into_iter()
+				.map(|a| a.header.name)
+				.collect::<Vec<_>>(),
 			vec!["ISDN".to_owned(), "Lifeforms".to_owned()]
 		);
 	}
@@ -647,7 +706,7 @@ mod test {
 			.unwrap()
 			.albums
 			.into_iter()
-			.map(|a| a.name)
+			.map(|a| a.header.name)
 			.collect::<Vec<_>>();
 
 		assert_eq!(

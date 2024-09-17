@@ -358,13 +358,13 @@ impl From<index::Album> for Directory {
 
 		Self {
 			path,
-			artist: match album.artists.is_empty() {
+			artist: match album.header.artists.is_empty() {
 				true => None,
-				false => Some(album.artists.join("")),
+				false => Some(album.header.artists.join("")),
 			},
-			year: album.year,
-			album: Some(album.name),
-			artwork: album.artwork,
+			year: album.header.year,
+			album: Some(album.header.name),
+			artwork: album.header.artwork,
 		}
 	}
 }

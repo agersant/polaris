@@ -53,11 +53,14 @@ pub fn router() -> Router<App> {
 		.route("/flatten", get(get_flatten_root))
 		.route("/flatten/*path", get(get_flatten))
 		// Semantic
+		.route("/albums", get(get_albums))
+		.route("/albums/recent", get(get_recent))
+		.route("/albums/random", get(get_random))
 		.route("/artists", get(get_artists))
 		.route("/artists/:artist", get(get_artist))
 		.route("/artists/:artists/albums/:name", get(get_album))
-		.route("/random", get(get_random))
-		.route("/recent", get(get_recent))
+		.route("/random", get(get_random)) // Deprecated
+		.route("/recent", get(get_recent)) // Deprecated
 		// Search
 		.route("/search", get(get_search_root))
 		.route("/search/*query", get(get_search))
@@ -328,7 +331,7 @@ fn albums_to_response(albums: Vec<index::Album>, api_version: APIMajorVersion) -
 		APIMajorVersion::V8 => Json(
 			albums
 				.into_iter()
-				.map(|f| f.into())
+				.map(|f| f.header.into())
 				.collect::<Vec<dto::AlbumHeader>>(),
 		)
 		.into_response(),
@@ -385,6 +388,21 @@ async fn get_flatten(
 	};
 	let song_list = make_song_list(paths, &index_manager).await;
 	song_list_to_response(song_list, api_version)
+}
+
+async fn get_albums(
+	_auth: Auth,
+	State(index_manager): State<index::Manager>,
+) -> Result<Json<Vec<dto::AlbumHeader>>, APIError> {
+	Ok(Json(
+		index_manager
+			.get_albums()
+			.await
+			.into_iter()
+			.map(|a| a.into())
+			.collect::<Vec<_>>()
+			.into(),
+	))
 }
 
 async fn get_artists(
