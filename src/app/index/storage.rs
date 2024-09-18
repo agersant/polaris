@@ -81,15 +81,19 @@ pub struct SongKey {
 
 impl Song {
 	pub fn album_key(&self) -> Option<AlbumKey> {
-		let album_artists = match self.album_artists.is_empty() {
+		let main_artists = match self.album_artists.is_empty() {
 			true => &self.artists,
 			false => &self.album_artists,
 		};
 
+		if main_artists.is_empty() {
+			return None;
+		}
+
 		match self.album {
 			None => None,
 			Some(name) => Some(AlbumKey {
-				artists: album_artists.iter().cloned().collect(),
+				artists: main_artists.iter().cloned().collect(),
 				name,
 			}),
 		}
