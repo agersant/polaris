@@ -190,12 +190,18 @@ impl Manager {
 		.unwrap()
 	}
 
-	pub async fn get_recent_albums(&self, count: usize) -> Result<Vec<Album>, Error> {
+	pub async fn get_recent_albums(
+		&self,
+		offset: usize,
+		count: usize,
+	) -> Result<Vec<Album>, Error> {
 		spawn_blocking({
 			let index_manager = self.clone();
 			move || {
 				let index = index_manager.index.read().unwrap();
-				Ok(index.collection.get_recent_albums(&index.strings, count))
+				Ok(index
+					.collection
+					.get_recent_albums(&index.strings, offset, count))
 			}
 		})
 		.await

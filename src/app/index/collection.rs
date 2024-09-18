@@ -149,9 +149,15 @@ impl Collection {
 			.collect()
 	}
 
-	pub fn get_recent_albums(&self, strings: &RodeoReader, count: usize) -> Vec<Album> {
+	pub fn get_recent_albums(
+		&self,
+		strings: &RodeoReader,
+		offset: usize,
+		count: usize,
+	) -> Vec<Album> {
 		self.recent_albums
 			.iter()
+			.skip(offset)
 			.take(count)
 			.filter_map(|k| self.get_album(strings, k.clone()))
 			.collect()
@@ -566,7 +572,7 @@ mod test {
 			},
 		]));
 
-		let albums = collection.get_recent_albums(&strings, 10);
+		let albums = collection.get_recent_albums(&strings, 0, 10);
 		assert_eq!(albums.len(), 2);
 
 		assert_eq!(

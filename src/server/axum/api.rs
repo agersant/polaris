@@ -54,13 +54,13 @@ pub fn router() -> Router<App> {
 		.route("/flatten/*path", get(get_flatten))
 		// Semantic
 		.route("/albums", get(get_albums))
-		.route("/albums/recent", get(get_recent))
-		.route("/albums/random", get(get_random))
+		.route("/albums/recent", get(get_recent_albums))
+		.route("/albums/random", get(get_random_albums))
 		.route("/artists", get(get_artists))
 		.route("/artists/:artist", get(get_artist))
 		.route("/artists/:artists/albums/:name", get(get_album))
-		.route("/random", get(get_random)) // Deprecated
-		.route("/recent", get(get_recent)) // Deprecated
+		.route("/random", get(get_random_albums)) // Deprecated
+		.route("/recent", get(get_recent_albums)) // Deprecated
 		// Search
 		.route("/search", get(get_search_root))
 		.route("/search/*query", get(get_search))
@@ -474,7 +474,7 @@ async fn get_peaks(
 	Ok(peaks.interleaved)
 }
 
-async fn get_random(
+async fn get_random_albums(
 	_auth: Auth,
 	api_version: APIMajorVersion,
 	State(index_manager): State<index::Manager>,
@@ -486,12 +486,15 @@ async fn get_random(
 	albums_to_response(albums, api_version)
 }
 
-async fn get_recent(
+async fn get_recent_albums(
 	_auth: Auth,
 	api_version: APIMajorVersion,
 	State(index_manager): State<index::Manager>,
+	Query(option): Query<dto::GetRecentAlbumsParameters>,
 ) -> Response {
-	let albums = match index_manager.get_recent_albums(20).await {
+	let offset = option.offset.unwrap_or(0);
+	let count = option.count.unwrap_or(20);
+	let albums = match index_manager.get_recent_albums(offset, count).await {
 		Ok(d) => d,
 		Err(e) => return APIError::from(e).into_response(),
 	};

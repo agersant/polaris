@@ -436,4 +436,10 @@ pub struct GetSongsBulkOutput {
 	pub not_found: Vec<PathBuf>,
 }
 
+#[derive(Clone, Serialize, Deserialize)]
+pub struct GetRecentAlbumsParameters {
+	pub offset: Option<usize>,
+	pub count: Option<usize>,
+}
+
 // TODO: Preferences should have dto types
