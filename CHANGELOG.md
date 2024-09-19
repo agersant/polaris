@@ -9,9 +9,11 @@
 - Most API responses now support gzip compression.
 - Added support for multi-value metadata for the following fields: `artist`, `album artist`, `genre`, `label`, `lyricist` and `composer`.
 - The response format of the `/browse`, `/flatten` and `/get_playlist` endpoints has been modified.
-- The `/thumbnail` endpoint supports a new size labeled `tiny` which returns 40x40px images.
+- Added new endpoints to query albums and artists
+- The `/random` and `/recent` albums are deprecated in favor of `/albums/random` and `/albums/recent`. These endpoints now have optional parameters for RNG seeding and pagination.
 - Added a new `/get_songs` endpoint which returns song metadata in bulk.
 - Added a new `/peaks` endpoint which returns audio signal peaks that can be used to draw waveform visualizations.
+- The `/thumbnail` endpoint supports a new size labeled `tiny` which returns 40x40px images.
 
 ### Web client
 
@@ -22,8 +24,12 @@
 - The file browser now omits the top-level directory when only one music folder has been configured.
 - The current playlist now has two display modes: compact or with album art.
 - Songs in the current playlist can now be selected and re-ordered with the mouse.
+- Added new pages to browse the music collection by artist.
+- Added a new page to browse the music collection by album.
+- The Recently Added Albums and Random Albums pages now distinguish albums by file metadata instead of file path.
+- When navigating back to the Random Albums page, the shuffled order is now preserved.
 - The current playlist now supports common navigation keyboard shortcuts.
-- The seekbar for the current song has been replaced with a waveform visualization.
+- The seekbar for the current song being played has been replaced with a waveform visualization.
 - Improved responsiveness when queuing large amount of songs at once.
 
 ## Polaris 0.14.2
