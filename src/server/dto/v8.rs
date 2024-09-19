@@ -437,6 +437,13 @@ pub struct GetSongsBulkOutput {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
+pub struct GetRandomAlbumsParameters {
+	pub seed: Option<u64>,
+	pub offset: Option<usize>,
+	pub count: Option<usize>,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
 pub struct GetRecentAlbumsParameters {
 	pub offset: Option<usize>,
 	pub count: Option<usize>,

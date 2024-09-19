@@ -5,7 +5,7 @@ use std::{
 };
 
 use lasso2::{Rodeo, RodeoReader, Spur};
-use rand::{rngs::ThreadRng, seq::IteratorRandom};
+use rand::{rngs::StdRng, seq::SliceRandom, SeedableRng};
 use serde::{Deserialize, Serialize};
 use tinyvec::TinyVec;
 use unicase::UniCase;
@@ -140,11 +140,27 @@ impl Collection {
 		})
 	}
 
-	pub fn get_random_albums(&self, strings: &RodeoReader, count: usize) -> Vec<Album> {
-		self.albums
-			.keys()
-			.choose_multiple(&mut ThreadRng::default(), count)
+	pub fn get_random_albums(
+		&self,
+		strings: &RodeoReader,
+		seed: Option<u64>,
+		offset: usize,
+		count: usize,
+	) -> Vec<Album> {
+		let shuffled = {
+			let mut rng = match seed {
+				Some(seed) => StdRng::seed_from_u64(seed),
+				None => StdRng::from_entropy(),
+			};
+			let mut s = self.albums.keys().collect::<Vec<_>>();
+			s.shuffle(&mut rng);
+			s
+		};
+
+		shuffled
 			.into_iter()
+			.skip(offset)
+			.take(count)
 			.filter_map(|k| self.get_album(strings, k.clone()))
 			.collect()
 	}
@@ -545,7 +561,7 @@ mod test {
 			},
 		]));
 
-		let albums = collection.get_random_albums(&strings, 10);
+		let albums = collection.get_random_albums(&strings, None, 0, 10);
 		assert_eq!(albums.len(), 2);
 
 		assert_eq!(

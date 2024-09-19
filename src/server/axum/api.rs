@@ -478,8 +478,14 @@ async fn get_random_albums(
 	_auth: Auth,
 	api_version: APIMajorVersion,
 	State(index_manager): State<index::Manager>,
+	Query(options): Query<dto::GetRandomAlbumsParameters>,
 ) -> Response {
-	let albums = match index_manager.get_random_albums(20).await {
+	let offset = options.offset.unwrap_or(0);
+	let count = options.count.unwrap_or(20);
+	let albums = match index_manager
+		.get_random_albums(options.seed, offset, count)
+		.await
+	{
 		Ok(d) => d,
 		Err(e) => return APIError::from(e).into_response(),
 	};
@@ -490,10 +496,10 @@ async fn get_recent_albums(
 	_auth: Auth,
 	api_version: APIMajorVersion,
 	State(index_manager): State<index::Manager>,
-	Query(option): Query<dto::GetRecentAlbumsParameters>,
+	Query(options): Query<dto::GetRecentAlbumsParameters>,
 ) -> Response {
-	let offset = option.offset.unwrap_or(0);
-	let count = option.count.unwrap_or(20);
+	let offset = options.offset.unwrap_or(0);
+	let count = options.count.unwrap_or(20);
 	let albums = match index_manager.get_recent_albums(offset, count).await {
 		Ok(d) => d,
 		Err(e) => return APIError::from(e).into_response(),
