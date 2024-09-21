@@ -64,12 +64,12 @@ pub enum Expr {
 }
 
 pub fn make_parser() -> impl Parser<char, Expr, Error = Simple<char>> {
-	let combined = recursive(|expr| {
+	recursive(|expr| {
 		let quoted_str = just('"')
 			.ignore_then(none_of('"').repeated().collect::<String>())
 			.then_ignore(just('"'));
 
-		let raw_str = filter(|c: &char| !c.is_whitespace() && *c != '"')
+		let raw_str = filter(|c: &char| !c.is_whitespace() && *c != '"' && *c != '(' && *c != ')')
 			.repeated()
 			.at_least(1)
 			.collect::<String>();
@@ -130,7 +130,7 @@ pub fn make_parser() -> impl Parser<char, Expr, Error = Simple<char>> {
 		let fuzzy = literal.map(Expr::Fuzzy);
 
 		let filter = text_cmp.or(number_cmp).or(fuzzy);
-		let atom = filter;
+		let atom = choice((filter, expr.delimited_by(just('('), just(')'))));
 
 		let bool_op = choice((just("&&").to(BoolOp::And), just("||").to(BoolOp::Or))).padded();
 
@@ -139,14 +139,14 @@ pub fn make_parser() -> impl Parser<char, Expr, Error = Simple<char>> {
 			.then(bool_op.then(atom).repeated())
 			.foldl(|a, (b, c)| Expr::Combined(Box::new(a), b, Box::new(c)));
 
-		combined
-	});
+		let implicit_and = combined
+			.clone()
+			.then(whitespace().ignore_then(combined).repeated())
+			.foldl(|a: Expr, b: Expr| Expr::Combined(Box::new(a), BoolOp::And, Box::new(b)));
 
-	combined
-		.clone()
-		.then(whitespace().ignore_then(combined).repeated())
-		.foldl(|a: Expr, b: Expr| Expr::Combined(Box::new(a), BoolOp::And, Box::new(b)))
-		.then_ignore(end())
+		implicit_and
+	})
+	.then_ignore(end())
 }
 
 #[test]
@@ -159,6 +159,36 @@ fn can_parse_fuzzy_query() {
 	assert_eq!(
 		parser.parse(r#"2005"#).unwrap(),
 		Expr::Fuzzy(Literal::Number(2005)),
+	);
+}
+
+#[test]
+fn can_repeat_fuzzy_queries() {
+	let parser = make_parser();
+	assert_eq!(
+		parser.parse(r#"rhapsody "of victory""#).unwrap(),
+		Expr::Combined(
+			Box::new(Expr::Fuzzy(Literal::Text("rhapsody".to_owned()))),
+			BoolOp::And,
+			Box::new(Expr::Fuzzy(Literal::Text("of victory".to_owned()))),
+		),
+	);
+}
+
+#[test]
+fn can_mix_fuzzy_and_structured() {
+	let parser = make_parser();
+	assert_eq!(
+		parser.parse(r#"rhapsody album % dragonflame"#).unwrap(),
+		Expr::Combined(
+			Box::new(Expr::Fuzzy(Literal::Text("rhapsody".to_owned()))),
+			BoolOp::And,
+			Box::new(Expr::TextCmp(
+				TextField::Album,
+				TextOp::Like,
+				"dragonflame".to_owned()
+			)),
+		),
 	);
 }
 
@@ -363,6 +393,64 @@ fn boolean_operators_share_precedence() {
 				))
 			)),
 			BoolOp::Or,
+			Box::new(Expr::TextCmp(
+				TextField::Title,
+				TextOp::Like,
+				"sword".to_owned()
+			))
+		),
+	);
+}
+
+#[test]
+fn can_use_parenthesis_for_precedence() {
+	let parser = make_parser();
+	assert_eq!(
+		parser
+			.parse(r#"album % lands || (album % tales && title % sword)"#)
+			.unwrap(),
+		Expr::Combined(
+			Box::new(Expr::TextCmp(
+				TextField::Album,
+				TextOp::Like,
+				"lands".to_owned()
+			)),
+			BoolOp::Or,
+			Box::new(Expr::Combined(
+				Box::new(Expr::TextCmp(
+					TextField::Album,
+					TextOp::Like,
+					"tales".to_owned()
+				)),
+				BoolOp::And,
+				Box::new(Expr::TextCmp(
+					TextField::Title,
+					TextOp::Like,
+					"sword".to_owned()
+				)),
+			))
+		),
+	);
+
+	assert_eq!(
+		parser
+			.parse(r#"(album % lands || album % tales) && title % "sword""#)
+			.unwrap(),
+		Expr::Combined(
+			Box::new(Expr::Combined(
+				Box::new(Expr::TextCmp(
+					TextField::Album,
+					TextOp::Like,
+					"lands".to_owned()
+				)),
+				BoolOp::Or,
+				Box::new(Expr::TextCmp(
+					TextField::Album,
+					TextOp::Like,
+					"tales".to_owned()
+				))
+			)),
+			BoolOp::And,
 			Box::new(Expr::TextCmp(
 				TextField::Title,
 				TextOp::Like,
