@@ -375,7 +375,7 @@ impl Builder {
 mod test {
 
 	use storage::InternPath;
-	use tinyvec::TinyVec;
+	use tinyvec::tiny_vec;
 
 	use super::*;
 
@@ -523,14 +523,17 @@ mod test {
 		let (collection, strings) = setup_test(Vec::from([
 			scanner::Song {
 				album: Some("ISDN".to_owned()),
+				artists: vec!["FSOL".to_owned()],
 				..Default::default()
 			},
 			scanner::Song {
 				album: Some("Elysium".to_owned()),
+				artists: vec!["Stratovarius".to_owned()],
 				..Default::default()
 			},
 			scanner::Song {
 				album: Some("Lifeforms".to_owned()),
+				artists: vec!["FSOL".to_owned()],
 				..Default::default()
 			},
 		]));
@@ -553,10 +556,12 @@ mod test {
 		let (collection, strings) = setup_test(Vec::from([
 			scanner::Song {
 				album: Some("ISDN".to_owned()),
+				artists: vec!["FSOL".to_owned()],
 				..Default::default()
 			},
 			scanner::Song {
 				album: Some("Lifeforms".to_owned()),
+				artists: vec!["FSOL".to_owned()],
 				..Default::default()
 			},
 		]));
@@ -578,11 +583,13 @@ mod test {
 		let (collection, strings) = setup_test(Vec::from([
 			scanner::Song {
 				album: Some("ISDN".to_owned()),
+				artists: vec!["FSOL".to_owned()],
 				date_added: 2000,
 				..Default::default()
 			},
 			scanner::Song {
 				album: Some("Lifeforms".to_owned()),
+				artists: vec!["FSOL".to_owned()],
 				date_added: 400,
 				..Default::default()
 			},
@@ -748,6 +755,7 @@ mod test {
 			scanner::Song {
 				virtual_path: album_path.join("Flak.mp3"),
 				title: Some("Flak".to_owned()),
+				artists: vec!["FSOL".to_owned()],
 				album: Some("Lifeforms".to_owned()),
 				disc_number: Some(1),
 				track_number: Some(3),
@@ -756,6 +764,7 @@ mod test {
 			scanner::Song {
 				virtual_path: album_path.join("Cascade.mp3"),
 				title: Some("Cascade".to_owned()),
+				artists: vec!["FSOL".to_owned()],
 				album: Some("Lifeforms".to_owned()),
 				disc_number: Some(1),
 				track_number: Some(1),
@@ -764,6 +773,7 @@ mod test {
 			scanner::Song {
 				virtual_path: album_path.join("Domain.mp3"),
 				title: Some("Domain".to_owned()),
+				artists: vec!["FSOL".to_owned()],
 				album: Some("Lifeforms".to_owned()),
 				disc_number: Some(2),
 				track_number: Some(1),
@@ -772,6 +782,7 @@ mod test {
 			scanner::Song {
 				virtual_path: album_path.join("Interstat.mp3"),
 				title: Some("Interstat".to_owned()),
+				artists: vec!["FSOL".to_owned()],
 				album: Some("Lifeforms".to_owned()),
 				disc_number: Some(2),
 				track_number: Some(3),
@@ -782,7 +793,7 @@ mod test {
 		let album = collection.get_album(
 			&strings,
 			AlbumKey {
-				artists: TinyVec::new(),
+				artists: tiny_vec![strings.get("FSOL").unwrap()],
 				name: strings.get("Lifeforms").unwrap(),
 			},
 		);
