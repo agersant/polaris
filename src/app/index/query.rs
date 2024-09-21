@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use chumsky::{
 	error::Simple,
 	prelude::{choice, end, filter, just, none_of, recursive},
@@ -69,7 +71,9 @@ pub fn make_parser() -> impl Parser<char, Expr, Error = Simple<char>> {
 			.ignore_then(none_of('"').repeated().collect::<String>())
 			.then_ignore(just('"'));
 
-		let raw_str = filter(|c: &char| !c.is_whitespace() && *c != '"' && *c != '(' && *c != ')')
+		let symbols = r#"()<>"|&="#.chars().collect::<HashSet<_>>();
+
+		let raw_str = filter(move |c: &char| !c.is_whitespace() && !symbols.contains(c))
 			.repeated()
 			.at_least(1)
 			.collect::<String>();
