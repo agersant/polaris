@@ -15,6 +15,7 @@ use crate::db::DB;
 
 mod browser;
 mod collection;
+mod query;
 mod search;
 mod storage;
 

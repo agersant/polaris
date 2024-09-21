@@ -15,6 +15,7 @@ axum-range = "0.4.0"
 base64 = "0.22.1"
 bitcode = { version = "0.6.3", features = ["serde"] }
 branca = "0.10.1"
+chumsky = "0.9.3"
 getopts = "0.2.21"
 headers = "0.4"
 http = "1.1.0"

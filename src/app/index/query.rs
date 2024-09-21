@@ -1,0 +1,252 @@
+use chumsky::{
+	error::Simple,
+	prelude::{choice, filter, just, none_of},
+	text::{int, keyword, TextParser},
+	Parser,
+};
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum TextField {
+	Album,
+	AlbumArtist,
+	Artist,
+	Composer,
+	Genre,
+	Label,
+	Lyricist,
+	Path,
+	Title,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum TextOp {
+	Eq,
+	NotEq,
+	Like,
+	NotLike,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum NumberField {
+	DiscNumber,
+	TrackNumber,
+	Year,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum NumberOp {
+	Eq,
+	NotEq,
+	Greater,
+	GreaterOrEq,
+	Less,
+	LessOrEq,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum Literal {
+	Text(String),
+	Number(i32),
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum Expr {
+	Fuzzy(Literal),
+	TextCmp(TextField, TextOp, String),
+	NumberCmp(NumberField, NumberOp, i32),
+	And(Box<Expr>, Box<Expr>),
+	Or(Box<Expr>, Box<Expr>),
+}
+
+pub fn make_parser() -> impl Parser<char, Expr, Error = Simple<char>> {
+	let quoted_str = just('"')
+		.ignore_then(none_of('"').repeated().collect::<String>())
+		.then_ignore(just('"'));
+
+	let raw_str = filter(|c: &char| !c.is_whitespace() && *c != '"')
+		.repeated()
+		.at_least(1)
+		.collect::<String>();
+
+	let str_ = choice((quoted_str, raw_str)).padded();
+
+	let number = int(10).map(|n: String| n.parse::<i32>().unwrap()).padded();
+
+	let text_field = choice((
+		keyword("album").to(TextField::Album),
+		keyword("albumartist").to(TextField::AlbumArtist),
+		keyword("artist").to(TextField::Artist),
+		keyword("composer").to(TextField::Composer),
+		keyword("genre").to(TextField::Genre),
+		keyword("label").to(TextField::Label),
+		keyword("lyricist").to(TextField::Lyricist),
+		keyword("path").to(TextField::Path),
+		keyword("title").to(TextField::Title),
+	))
+	.padded();
+
+	let text_op = choice((
+		just("=").to(TextOp::Eq),
+		just("!=").to(TextOp::NotEq),
+		just("%").to(TextOp::Like),
+		just("!%").to(TextOp::NotLike),
+	))
+	.padded();
+
+	let text_cmp = text_field
+		.then(text_op)
+		.then(str_.clone())
+		.map(|((a, b), c)| Expr::TextCmp(a, b, c));
+
+	let number_field = choice((
+		keyword("discnumber").to(NumberField::DiscNumber),
+		keyword("tracknumber").to(NumberField::TrackNumber),
+		keyword("year").to(NumberField::Year),
+	))
+	.padded();
+
+	let number_op = choice((
+		just("=").to(NumberOp::Eq),
+		just("!=").to(NumberOp::NotEq),
+		just(">=").to(NumberOp::GreaterOrEq),
+		just(">").to(NumberOp::Greater),
+		just("<=").to(NumberOp::LessOrEq),
+		just("<").to(NumberOp::Less),
+	))
+	.padded();
+
+	let number_cmp = number_field
+		.then(number_op)
+		.then(number)
+		.map(|((a, b), c)| Expr::NumberCmp(a, b, c));
+
+	let literal = number.map(Literal::Number).or(str_.map(Literal::Text));
+	let fuzzy = literal.map(Expr::Fuzzy);
+
+	text_cmp.or(number_cmp).or(fuzzy)
+}
+
+#[test]
+fn can_parse_fuzzy_query() {
+	let parser = make_parser();
+	assert_eq!(
+		parser.parse(r#"rhapsody"#).unwrap(),
+		Expr::Fuzzy(Literal::Text("rhapsody".to_owned())),
+	);
+	assert_eq!(
+		parser.parse(r#"2005"#).unwrap(),
+		Expr::Fuzzy(Literal::Number(2005)),
+	);
+}
+
+#[test]
+fn can_parse_text_fields() {
+	let parser = make_parser();
+	assert_eq!(
+		parser.parse(r#"album = "legendary tales""#).unwrap(),
+		Expr::TextCmp(TextField::Album, TextOp::Eq, "legendary tales".to_owned()),
+	);
+	assert_eq!(
+		parser.parse(r#"albumartist = "rhapsody""#).unwrap(),
+		Expr::TextCmp(TextField::AlbumArtist, TextOp::Eq, "rhapsody".to_owned()),
+	);
+	assert_eq!(
+		parser.parse(r#"artist = "rhapsody""#).unwrap(),
+		Expr::TextCmp(TextField::Artist, TextOp::Eq, "rhapsody".to_owned()),
+	);
+	assert_eq!(
+		parser.parse(r#"composer = "yoko kanno""#).unwrap(),
+		Expr::TextCmp(TextField::Composer, TextOp::Eq, "yoko kanno".to_owned()),
+	);
+	assert_eq!(
+		parser.parse(r#"genre = "jazz""#).unwrap(),
+		Expr::TextCmp(TextField::Genre, TextOp::Eq, "jazz".to_owned()),
+	);
+	assert_eq!(
+		parser.parse(r#"label = "diverse system""#).unwrap(),
+		Expr::TextCmp(TextField::Label, TextOp::Eq, "diverse system".to_owned()),
+	);
+	assert_eq!(
+		parser.parse(r#"lyricist = "dalida""#).unwrap(),
+		Expr::TextCmp(TextField::Lyricist, TextOp::Eq, "dalida".to_owned()),
+	);
+	assert_eq!(
+		parser.parse(r#"path = "electronic/big beat""#).unwrap(),
+		Expr::TextCmp(
+			TextField::Path,
+			TextOp::Eq,
+			"electronic/big beat".to_owned()
+		),
+	);
+	assert_eq!(
+		parser.parse(r#"title = "emerald sword""#).unwrap(),
+		Expr::TextCmp(TextField::Title, TextOp::Eq, "emerald sword".to_owned()),
+	);
+}
+
+#[test]
+fn can_parse_text_operators() {
+	let parser = make_parser();
+	assert_eq!(
+		parser.parse(r#"album = "legendary tales""#).unwrap(),
+		Expr::TextCmp(TextField::Album, TextOp::Eq, "legendary tales".to_owned()),
+	);
+	assert_eq!(
+		parser.parse(r#"album != legendary"#).unwrap(),
+		Expr::TextCmp(TextField::Album, TextOp::NotEq, "legendary".to_owned()),
+	);
+	assert_eq!(
+		parser.parse(r#"album % "legendary tales""#).unwrap(),
+		Expr::TextCmp(TextField::Album, TextOp::Like, "legendary tales".to_owned()),
+	);
+	assert_eq!(
+		parser.parse(r#"album !% "legendary""#).unwrap(),
+		Expr::TextCmp(TextField::Album, TextOp::NotLike, "legendary".to_owned()),
+	);
+}
+
+#[test]
+fn can_parse_number_fields() {
+	let parser = make_parser();
+	assert_eq!(
+		parser.parse(r#"discnumber = 6"#).unwrap(),
+		Expr::NumberCmp(NumberField::DiscNumber, NumberOp::Eq, 6),
+	);
+	assert_eq!(
+		parser.parse(r#"tracknumber = 12"#).unwrap(),
+		Expr::NumberCmp(NumberField::TrackNumber, NumberOp::Eq, 12),
+	);
+	assert_eq!(
+		parser.parse(r#"year = 1999"#).unwrap(),
+		Expr::NumberCmp(NumberField::Year, NumberOp::Eq, 1999),
+	);
+}
+
+#[test]
+fn can_parse_number_operators() {
+	let parser = make_parser();
+	assert_eq!(
+		parser.parse(r#"discnumber = 6"#).unwrap(),
+		Expr::NumberCmp(NumberField::DiscNumber, NumberOp::Eq, 6),
+	);
+	assert_eq!(
+		parser.parse(r#"discnumber != 6"#).unwrap(),
+		Expr::NumberCmp(NumberField::DiscNumber, NumberOp::NotEq, 6),
+	);
+	assert_eq!(
+		parser.parse(r#"discnumber > 6"#).unwrap(),
+		Expr::NumberCmp(NumberField::DiscNumber, NumberOp::Greater, 6),
+	);
+	assert_eq!(
+		parser.parse(r#"discnumber >= 6"#).unwrap(),
+		Expr::NumberCmp(NumberField::DiscNumber, NumberOp::GreaterOrEq, 6),
+	);
+	assert_eq!(
+		parser.parse(r#"discnumber < 6"#).unwrap(),
+		Expr::NumberCmp(NumberField::DiscNumber, NumberOp::Less, 6),
+	);
+	assert_eq!(
+		parser.parse(r#"discnumber <= 6"#).unwrap(),
+		Expr::NumberCmp(NumberField::DiscNumber, NumberOp::LessOrEq, 6),
+	);
+}
