@@ -1,7 +1,7 @@
 use chumsky::{
 	error::Simple,
-	prelude::{choice, filter, just, none_of},
-	text::{int, keyword, TextParser},
+	prelude::{choice, end, filter, just, none_of, recursive},
+	text::{int, keyword, whitespace, TextParser},
 	Parser,
 };
 
@@ -49,81 +49,104 @@ pub enum Literal {
 	Number(i32),
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum BoolOp {
+	And,
+	Or,
+}
+
 #[derive(Debug, Eq, PartialEq)]
 pub enum Expr {
 	Fuzzy(Literal),
 	TextCmp(TextField, TextOp, String),
 	NumberCmp(NumberField, NumberOp, i32),
-	And(Box<Expr>, Box<Expr>),
-	Or(Box<Expr>, Box<Expr>),
+	Combined(Box<Expr>, BoolOp, Box<Expr>),
 }
 
 pub fn make_parser() -> impl Parser<char, Expr, Error = Simple<char>> {
-	let quoted_str = just('"')
-		.ignore_then(none_of('"').repeated().collect::<String>())
-		.then_ignore(just('"'));
+	let combined = recursive(|expr| {
+		let quoted_str = just('"')
+			.ignore_then(none_of('"').repeated().collect::<String>())
+			.then_ignore(just('"'));
 
-	let raw_str = filter(|c: &char| !c.is_whitespace() && *c != '"')
-		.repeated()
-		.at_least(1)
-		.collect::<String>();
+		let raw_str = filter(|c: &char| !c.is_whitespace() && *c != '"')
+			.repeated()
+			.at_least(1)
+			.collect::<String>();
 
-	let str_ = choice((quoted_str, raw_str)).padded();
+		let str_ = choice((quoted_str, raw_str)).padded();
 
-	let number = int(10).map(|n: String| n.parse::<i32>().unwrap()).padded();
+		let number = int(10).from_str().unwrapped().padded();
 
-	let text_field = choice((
-		keyword("album").to(TextField::Album),
-		keyword("albumartist").to(TextField::AlbumArtist),
-		keyword("artist").to(TextField::Artist),
-		keyword("composer").to(TextField::Composer),
-		keyword("genre").to(TextField::Genre),
-		keyword("label").to(TextField::Label),
-		keyword("lyricist").to(TextField::Lyricist),
-		keyword("path").to(TextField::Path),
-		keyword("title").to(TextField::Title),
-	))
-	.padded();
+		let text_field = choice((
+			keyword("album").to(TextField::Album),
+			keyword("albumartist").to(TextField::AlbumArtist),
+			keyword("artist").to(TextField::Artist),
+			keyword("composer").to(TextField::Composer),
+			keyword("genre").to(TextField::Genre),
+			keyword("label").to(TextField::Label),
+			keyword("lyricist").to(TextField::Lyricist),
+			keyword("path").to(TextField::Path),
+			keyword("title").to(TextField::Title),
+		))
+		.padded();
 
-	let text_op = choice((
-		just("=").to(TextOp::Eq),
-		just("!=").to(TextOp::NotEq),
-		just("%").to(TextOp::Like),
-		just("!%").to(TextOp::NotLike),
-	))
-	.padded();
+		let text_op = choice((
+			just("=").to(TextOp::Eq),
+			just("!=").to(TextOp::NotEq),
+			just("%").to(TextOp::Like),
+			just("!%").to(TextOp::NotLike),
+		))
+		.padded();
 
-	let text_cmp = text_field
-		.then(text_op)
-		.then(str_.clone())
-		.map(|((a, b), c)| Expr::TextCmp(a, b, c));
+		let text_cmp = text_field
+			.then(text_op)
+			.then(str_.clone())
+			.map(|((a, b), c)| Expr::TextCmp(a, b, c));
 
-	let number_field = choice((
-		keyword("discnumber").to(NumberField::DiscNumber),
-		keyword("tracknumber").to(NumberField::TrackNumber),
-		keyword("year").to(NumberField::Year),
-	))
-	.padded();
+		let number_field = choice((
+			keyword("discnumber").to(NumberField::DiscNumber),
+			keyword("tracknumber").to(NumberField::TrackNumber),
+			keyword("year").to(NumberField::Year),
+		))
+		.padded();
 
-	let number_op = choice((
-		just("=").to(NumberOp::Eq),
-		just("!=").to(NumberOp::NotEq),
-		just(">=").to(NumberOp::GreaterOrEq),
-		just(">").to(NumberOp::Greater),
-		just("<=").to(NumberOp::LessOrEq),
-		just("<").to(NumberOp::Less),
-	))
-	.padded();
+		let number_op = choice((
+			just("=").to(NumberOp::Eq),
+			just("!=").to(NumberOp::NotEq),
+			just(">=").to(NumberOp::GreaterOrEq),
+			just(">").to(NumberOp::Greater),
+			just("<=").to(NumberOp::LessOrEq),
+			just("<").to(NumberOp::Less),
+		))
+		.padded();
 
-	let number_cmp = number_field
-		.then(number_op)
-		.then(number)
-		.map(|((a, b), c)| Expr::NumberCmp(a, b, c));
+		let number_cmp = number_field
+			.then(number_op)
+			.then(number)
+			.map(|((a, b), c)| Expr::NumberCmp(a, b, c));
 
-	let literal = number.map(Literal::Number).or(str_.map(Literal::Text));
-	let fuzzy = literal.map(Expr::Fuzzy);
+		let literal = number.map(Literal::Number).or(str_.map(Literal::Text));
+		let fuzzy = literal.map(Expr::Fuzzy);
 
-	text_cmp.or(number_cmp).or(fuzzy)
+		let filter = text_cmp.or(number_cmp).or(fuzzy);
+		let atom = filter;
+
+		let bool_op = choice((just("&&").to(BoolOp::And), just("||").to(BoolOp::Or))).padded();
+
+		let combined = atom
+			.clone()
+			.then(bool_op.then(atom).repeated())
+			.foldl(|a, (b, c)| Expr::Combined(Box::new(a), b, Box::new(c)));
+
+		combined
+	});
+
+	combined
+		.clone()
+		.then(whitespace().ignore_then(combined).repeated())
+		.foldl(|a: Expr, b: Expr| Expr::Combined(Box::new(a), BoolOp::And, Box::new(b)))
+		.then_ignore(end())
 }
 
 #[test]
@@ -248,5 +271,103 @@ fn can_parse_number_operators() {
 	assert_eq!(
 		parser.parse(r#"discnumber <= 6"#).unwrap(),
 		Expr::NumberCmp(NumberField::DiscNumber, NumberOp::LessOrEq, 6),
+	);
+}
+
+#[test]
+fn can_use_boolean_operators() {
+	let parser = make_parser();
+
+	assert_eq!(
+		parser.parse(r#"album % lands && title % "sword""#).unwrap(),
+		Expr::Combined(
+			Box::new(Expr::TextCmp(
+				TextField::Album,
+				TextOp::Like,
+				"lands".to_owned()
+			)),
+			BoolOp::And,
+			Box::new(Expr::TextCmp(
+				TextField::Title,
+				TextOp::Like,
+				"sword".to_owned()
+			))
+		),
+	);
+
+	assert_eq!(
+		parser.parse(r#"album % lands || title % "sword""#).unwrap(),
+		Expr::Combined(
+			Box::new(Expr::TextCmp(
+				TextField::Album,
+				TextOp::Like,
+				"lands".to_owned()
+			)),
+			BoolOp::Or,
+			Box::new(Expr::TextCmp(
+				TextField::Title,
+				TextOp::Like,
+				"sword".to_owned()
+			))
+		),
+	);
+}
+
+#[test]
+fn boolean_operators_share_precedence() {
+	let parser = make_parser();
+
+	assert_eq!(
+		parser
+			.parse(r#"album % lands || album % tales && title % "sword""#)
+			.unwrap(),
+		Expr::Combined(
+			Box::new(Expr::Combined(
+				Box::new(Expr::TextCmp(
+					TextField::Album,
+					TextOp::Like,
+					"lands".to_owned()
+				)),
+				BoolOp::Or,
+				Box::new(Expr::TextCmp(
+					TextField::Album,
+					TextOp::Like,
+					"tales".to_owned()
+				))
+			)),
+			BoolOp::And,
+			Box::new(Expr::TextCmp(
+				TextField::Title,
+				TextOp::Like,
+				"sword".to_owned()
+			))
+		),
+	);
+
+	assert_eq!(
+		parser
+			.parse(r#"album % lands && album % tales || title % "sword""#)
+			.unwrap(),
+		Expr::Combined(
+			Box::new(Expr::Combined(
+				Box::new(Expr::TextCmp(
+					TextField::Album,
+					TextOp::Like,
+					"lands".to_owned()
+				)),
+				BoolOp::And,
+				Box::new(Expr::TextCmp(
+					TextField::Album,
+					TextOp::Like,
+					"tales".to_owned()
+				))
+			)),
+			BoolOp::Or,
+			Box::new(Expr::TextCmp(
+				TextField::Title,
+				TextOp::Like,
+				"sword".to_owned()
+			))
+		),
 	);
 }

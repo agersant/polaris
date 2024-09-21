@@ -5,6 +5,8 @@ use crate::app::index::{
 	storage::SongKey,
 };
 
+use super::query::BoolOp;
+
 struct SearchIndex {}
 
 impl SearchIndex {
@@ -13,12 +15,18 @@ impl SearchIndex {
 			Expr::Fuzzy(s) => self.eval_fuzzy(s),
 			Expr::TextCmp(field, op, s) => self.eval_text_operator(*field, *op, &s),
 			Expr::NumberCmp(field, op, n) => self.eval_number_operator(*field, *op, *n),
-			Expr::And(e, f) => self
+			Expr::Combined(e, op, f) => self.combine(e, *op, f),
+		}
+	}
+
+	fn combine(&self, e: &Box<Expr>, op: BoolOp, f: &Box<Expr>) -> HashSet<SongKey> {
+		match op {
+			BoolOp::And => self
 				.eval_expr(e)
 				.intersection(&self.eval_expr(f))
 				.cloned()
 				.collect(),
-			Expr::Or(e, f) => self
+			BoolOp::Or => self
 				.eval_expr(e)
 				.union(&self.eval_expr(f))
 				.cloned()
