@@ -126,10 +126,10 @@ pub fn make_parser() -> impl Parser<char, Expr, Error = Simple<char>> {
 			.then(number)
 			.map(|((a, b), c)| Expr::NumberCmp(a, b, c));
 
-		let literal = number.map(Literal::Number).or(str_.map(Literal::Text));
+		let literal = choice((number.map(Literal::Number), str_.map(Literal::Text)));
 		let fuzzy = literal.map(Expr::Fuzzy);
 
-		let filter = text_cmp.or(number_cmp).or(fuzzy);
+		let filter = choice((text_cmp, number_cmp, fuzzy));
 		let atom = choice((filter, expr.delimited_by(just('('), just(')'))));
 
 		let bool_op = choice((just("&&").to(BoolOp::And), just("||").to(BoolOp::Or))).padded();
