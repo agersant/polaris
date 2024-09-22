@@ -1,6 +1,6 @@
 use chumsky::Parser;
 use lasso2::{RodeoReader, Spur};
-use nohash_hasher::IntSet;
+use nohash_hasher::{IntMap, IntSet};
 use serde::{Deserialize, Serialize};
 use std::{
 	collections::{HashMap, HashSet},
@@ -64,7 +64,7 @@ impl Search {
 	) -> IntSet<SongKey> {
 		match expr {
 			Expr::Fuzzy(s) => self.eval_fuzzy(strings, s),
-			Expr::TextCmp(field, op, s) => self.eval_text_operator(canon, *field, *op, &s),
+			Expr::TextCmp(field, op, s) => self.eval_text_operator(strings, canon, *field, *op, &s),
 			Expr::NumberCmp(field, op, n) => self.eval_number_operator(*field, *op, *n),
 			Expr::Combined(e, op, f) => self.combine(strings, canon, e, *op, f),
 		}
@@ -97,7 +97,7 @@ impl Search {
 			Literal::Text(s) => {
 				let mut songs = IntSet::default();
 				for field in self.text_fields.values() {
-					songs.extend(field.find_like(s));
+					songs.extend(field.find_like(strings, s));
 				}
 				songs
 			}
@@ -116,6 +116,7 @@ impl Search {
 
 	fn eval_text_operator(
 		&self,
+		strings: &RodeoReader,
 		canon: &HashMap<String, Spur>,
 		field: TextField,
 		operator: TextOp,
@@ -127,7 +128,7 @@ impl Search {
 
 		match operator {
 			TextOp::Eq => field_index.find_exact(canon, value),
-			TextOp::Like => field_index.find_like(value),
+			TextOp::Like => field_index.find_like(strings, value),
 		}
 	}
 
@@ -146,34 +147,33 @@ const NGRAM_SIZE: usize = 2;
 #[derive(Default, Deserialize, Serialize)]
 struct TextFieldIndex {
 	exact: HashMap<Spur, IntSet<SongKey>>,
-	ngrams: HashMap<[char; NGRAM_SIZE], IntSet<SongKey>>,
+	ngrams: HashMap<[char; NGRAM_SIZE], IntMap<SongKey, Spur>>,
 }
 
 impl TextFieldIndex {
 	pub fn insert(&mut self, raw_value: &str, value: Spur, key: SongKey) {
-		// TODO sanitize ngrams to be case insensitive, free from diacritics and punctuation
-		// And do the same thing to query fragments!
 		let characters = sanitize(raw_value).chars().collect::<TinyVec<[char; 32]>>();
 		for substring in characters[..].windows(NGRAM_SIZE) {
 			self.ngrams
 				.entry(substring.try_into().unwrap())
 				.or_default()
-				.insert(key);
+				.insert(key, value);
 		}
 
 		self.exact.entry(value).or_default().insert(key);
 	}
 
-	pub fn find_like(&self, value: &str) -> IntSet<SongKey> {
-		let characters = sanitize(value).chars().collect::<Vec<_>>();
-		let empty_set = IntSet::default();
+	pub fn find_like(&self, strings: &RodeoReader, value: &str) -> IntSet<SongKey> {
+		let sanitized = sanitize(value);
+		let characters = sanitized.chars().collect::<Vec<_>>();
+		let empty = IntMap::default();
 
 		let mut candidates = characters[..]
 			.windows(NGRAM_SIZE)
 			.map(|s| {
 				self.ngrams
 					.get::<[char; NGRAM_SIZE]>(s.try_into().unwrap())
-					.unwrap_or(&empty_set)
+					.unwrap_or(&empty)
 			})
 			.collect::<Vec<_>>();
 
@@ -185,10 +185,16 @@ impl TextFieldIndex {
 
 		candidates[0]
 			.iter()
-			.filter(move |c| candidates[1..].iter().all(|s| s.contains(c)))
-			// Note: matching all the n-grams doesn't actually guarantee a substring match
-			// We should theoretically resolve the underlying field value and compare with the query string
-			// Unlikely to cause issues for realistic use cases.
+			// [broad phase] Only keep songs that match all bigrams from the search term
+			.filter(move |(song_key, _indexed_value)| {
+				candidates[1..].iter().all(|c| c.contains_key(&song_key))
+			})
+			// [narrow phase] Only keep songs that actually contain the search term in full
+			.filter(|(_song_key, indexed_value)| {
+				let resolved = strings.resolve(indexed_value);
+				sanitize(resolved).contains(&sanitized)
+			})
+			.map(|(k, _v)| k)
 			.copied()
 			.collect()
 	}
@@ -489,5 +495,16 @@ mod test {
 		assert!(songs.contains(&PathBuf::from("whale.mp3")));
 		assert!(songs.contains(&PathBuf::from("space.mp3")));
 		assert!(songs.contains(&PathBuf::from("whales in space.mp3")));
+	}
+
+	#[test]
+	fn avoids_bigram_false_positives() {
+		let (search, strings, canon) = setup_test(vec![scanner::Song {
+			virtual_path: PathBuf::from("lorry bovine vehicle.mp3"),
+			..Default::default()
+		}]);
+
+		let songs = search.find_songs(&strings, &canon, "love").unwrap();
+		assert!(songs.is_empty());
 	}
 }
