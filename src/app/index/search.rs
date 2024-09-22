@@ -6,6 +6,7 @@ use std::{
 	ffi::OsStr,
 	path::{Path, PathBuf},
 };
+use tinyvec::TinyVec;
 
 use crate::app::{
 	index::{
@@ -136,7 +137,7 @@ struct TextFieldIndex {
 impl TextFieldIndex {
 	pub fn insert(&mut self, raw_value: &str, value: Spur, key: SongKey) {
 		// TODO sanitize ngrams
-		let characters = raw_value.chars().collect::<Vec<_>>();
+		let characters = raw_value.chars().collect::<TinyVec<[char; 32]>>();
 		for substring in characters[..].windows(NGRAM_SIZE) {
 			self.ngrams
 				.entry(substring.try_into().unwrap())
