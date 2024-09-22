@@ -259,7 +259,9 @@ impl Manager {
 			let index_manager = self.clone();
 			move || {
 				let index = index_manager.index.read().unwrap();
-				index.search.find_songs(&index.strings, &query)
+				index
+					.search
+					.find_songs(&index.strings, &index.canon, &query)
 			}
 		})
 		.await
@@ -270,6 +272,7 @@ impl Manager {
 #[derive(Serialize, Deserialize)]
 pub struct Index {
 	pub strings: RodeoReader,
+	pub canon: HashMap<String, Spur>,
 	pub browser: browser::Browser,
 	pub collection: collection::Collection,
 	pub search: search::Search,
@@ -279,6 +282,7 @@ impl Default for Index {
 	fn default() -> Self {
 		Self {
 			strings: Rodeo::new().into_reader(),
+			canon: Default::default(),
 			browser: Default::default(),
 			collection: Default::default(),
 			search: Default::default(),
@@ -288,7 +292,7 @@ impl Default for Index {
 
 pub struct Builder {
 	strings: Rodeo,
-	minuscules: HashMap<String, Spur>,
+	canon: HashMap<String, Spur>,
 	browser_builder: browser::Builder,
 	collection_builder: collection::Builder,
 	search_builder: search::Builder,
@@ -298,7 +302,7 @@ impl Builder {
 	pub fn new() -> Self {
 		Self {
 			strings: Rodeo::new(),
-			minuscules: HashMap::default(),
+			canon: HashMap::default(),
 			browser_builder: browser::Builder::default(),
 			collection_builder: collection::Builder::default(),
 			search_builder: search::Builder::default(),
@@ -311,9 +315,7 @@ impl Builder {
 	}
 
 	pub fn add_song(&mut self, scanner_song: scanner::Song) {
-		if let Some(storage_song) =
-			store_song(&mut self.strings, &mut self.minuscules, &scanner_song)
-		{
+		if let Some(storage_song) = store_song(&mut self.strings, &mut self.canon, &scanner_song) {
 			self.browser_builder
 				.add_song(&mut self.strings, &scanner_song);
 			self.collection_builder.add_song(&storage_song);
@@ -327,6 +329,7 @@ impl Builder {
 			collection: self.collection_builder.build(),
 			search: self.search_builder.build(),
 			strings: self.strings.into_reader(),
+			canon: self.canon,
 		}
 	}
 }

@@ -17,7 +17,10 @@ use crate::app::{
 	scanner, Error,
 };
 
-use super::{query::make_parser, storage};
+use super::{
+	query::make_parser,
+	storage::{self, sanitize},
+};
 
 #[derive(Serialize, Deserialize)]
 pub struct Search {
@@ -35,44 +38,55 @@ impl Default for Search {
 }
 
 impl Search {
-	pub fn find_songs(&self, strings: &RodeoReader, query: &str) -> Result<Vec<PathBuf>, Error> {
+	pub fn find_songs(
+		&self,
+		strings: &RodeoReader,
+		canon: &HashMap<String, Spur>,
+		query: &str,
+	) -> Result<Vec<PathBuf>, Error> {
 		let parser = make_parser();
 		let parsed_query = parser
 			.parse(query)
 			.map_err(|_| Error::SearchQueryParseError)?;
 
-		let keys = self.eval(strings, &parsed_query);
+		let keys = self.eval(strings, canon, &parsed_query);
 		Ok(keys
 			.into_iter()
 			.map(|k| Path::new(OsStr::new(strings.resolve(&k.virtual_path.0))).to_owned())
 			.collect::<Vec<_>>())
 	}
 
-	fn eval(&self, strings: &RodeoReader, expr: &Expr) -> IntSet<SongKey> {
+	fn eval(
+		&self,
+		strings: &RodeoReader,
+		canon: &HashMap<String, Spur>,
+		expr: &Expr,
+	) -> IntSet<SongKey> {
 		match expr {
 			Expr::Fuzzy(s) => self.eval_fuzzy(strings, s),
-			Expr::TextCmp(field, op, s) => self.eval_text_operator(strings, *field, *op, &s),
+			Expr::TextCmp(field, op, s) => self.eval_text_operator(canon, *field, *op, &s),
 			Expr::NumberCmp(field, op, n) => self.eval_number_operator(*field, *op, *n),
-			Expr::Combined(e, op, f) => self.combine(strings, e, *op, f),
+			Expr::Combined(e, op, f) => self.combine(strings, canon, e, *op, f),
 		}
 	}
 
 	fn combine(
 		&self,
 		strings: &RodeoReader,
+		canon: &HashMap<String, Spur>,
 		e: &Box<Expr>,
 		op: BoolOp,
 		f: &Box<Expr>,
 	) -> IntSet<SongKey> {
 		match op {
 			BoolOp::And => self
-				.eval(strings, e)
-				.intersection(&self.eval(strings, f))
+				.eval(strings, canon, e)
+				.intersection(&self.eval(strings, canon, f))
 				.cloned()
 				.collect(),
 			BoolOp::Or => self
-				.eval(strings, e)
-				.union(&self.eval(strings, f))
+				.eval(strings, canon, e)
+				.union(&self.eval(strings, canon, f))
 				.cloned()
 				.collect(),
 		}
@@ -102,7 +116,7 @@ impl Search {
 
 	fn eval_text_operator(
 		&self,
-		strings: &RodeoReader,
+		canon: &HashMap<String, Spur>,
 		field: TextField,
 		operator: TextOp,
 		value: &str,
@@ -112,7 +126,7 @@ impl Search {
 		};
 
 		match operator {
-			TextOp::Eq => field_index.find_exact(strings, value),
+			TextOp::Eq => field_index.find_exact(canon, value),
 			TextOp::Like => field_index.find_like(value),
 		}
 	}
@@ -139,7 +153,7 @@ impl TextFieldIndex {
 	pub fn insert(&mut self, raw_value: &str, value: Spur, key: SongKey) {
 		// TODO sanitize ngrams to be case insensitive, free from diacritics and punctuation
 		// And do the same thing to query fragments!
-		let characters = raw_value.chars().collect::<TinyVec<[char; 32]>>();
+		let characters = sanitize(raw_value).chars().collect::<TinyVec<[char; 32]>>();
 		for substring in characters[..].windows(NGRAM_SIZE) {
 			self.ngrams
 				.entry(substring.try_into().unwrap())
@@ -151,7 +165,7 @@ impl TextFieldIndex {
 	}
 
 	pub fn find_like(&self, value: &str) -> IntSet<SongKey> {
-		let characters = value.chars().collect::<Vec<_>>();
+		let characters = sanitize(value).chars().collect::<Vec<_>>();
 		let empty_set = IntSet::default();
 
 		let mut candidates = characters[..]
@@ -179,10 +193,10 @@ impl TextFieldIndex {
 			.collect()
 	}
 
-	pub fn find_exact(&self, strings: &RodeoReader, value: &str) -> IntSet<SongKey> {
-		strings
-			.get(value)
-			.and_then(|k| self.exact.get(&k))
+	pub fn find_exact(&self, canon: &HashMap<String, Spur>, value: &str) -> IntSet<SongKey> {
+		canon
+			.get(&sanitize(value))
+			.and_then(|s| self.exact.get(&s))
 			.cloned()
 			.unwrap_or_default()
 	}
@@ -305,7 +319,7 @@ mod test {
 
 	use super::*;
 
-	fn setup_test(songs: Vec<scanner::Song>) -> (Search, RodeoReader) {
+	fn setup_test(songs: Vec<scanner::Song>) -> (Search, RodeoReader, HashMap<String, Spur>) {
 		let mut strings = Rodeo::new();
 		let mut canon = HashMap::new();
 
@@ -317,12 +331,12 @@ mod test {
 
 		let search = builder.build();
 		let strings = strings.into_reader();
-		(search, strings)
+		(search, strings, canon)
 	}
 
 	#[test]
 	fn can_find_fuzzy() {
-		let (search, strings) = setup_test(vec![
+		let (search, strings, canon) = setup_test(vec![
 			scanner::Song {
 				virtual_path: PathBuf::from("seasons.mp3"),
 				title: Some("Seasons".to_owned()),
@@ -343,7 +357,7 @@ mod test {
 			},
 		]);
 
-		let songs = search.find_songs(&strings, "agon").unwrap();
+		let songs = search.find_songs(&strings, &canon, "agon").unwrap();
 
 		assert_eq!(songs.len(), 2);
 		assert!(songs.contains(&PathBuf::from("seasons.mp3")));
@@ -352,7 +366,7 @@ mod test {
 
 	#[test]
 	fn can_find_field_like() {
-		let (search, strings) = setup_test(vec![
+		let (search, strings, canon) = setup_test(vec![
 			scanner::Song {
 				virtual_path: PathBuf::from("seasons.mp3"),
 				title: Some("Seasons".to_owned()),
@@ -367,15 +381,36 @@ mod test {
 			},
 		]);
 
-		let songs = search.find_songs(&strings, "artist % agon").unwrap();
+		let songs = search
+			.find_songs(&strings, &canon, "artist % agon")
+			.unwrap();
 
+		assert_eq!(songs.len(), 1);
+		assert!(songs.contains(&PathBuf::from("seasons.mp3")));
+	}
+
+	#[test]
+	fn text_is_case_insensitive() {
+		let (search, strings, canon) = setup_test(vec![scanner::Song {
+			virtual_path: PathBuf::from("seasons.mp3"),
+			artists: vec!["Dragonforce".to_owned()],
+			..Default::default()
+		}]);
+
+		let songs = search.find_songs(&strings, &canon, "dragonforce").unwrap();
+		assert_eq!(songs.len(), 1);
+		assert!(songs.contains(&PathBuf::from("seasons.mp3")));
+
+		let songs = search
+			.find_songs(&strings, &canon, "artist = dragonforce")
+			.unwrap();
 		assert_eq!(songs.len(), 1);
 		assert!(songs.contains(&PathBuf::from("seasons.mp3")));
 	}
 
 	#[test]
 	fn can_find_field_exact() {
-		let (search, strings) = setup_test(vec![
+		let (search, strings, canon) = setup_test(vec![
 			scanner::Song {
 				virtual_path: PathBuf::from("seasons.mp3"),
 				title: Some("Seasons".to_owned()),
@@ -390,17 +425,21 @@ mod test {
 			},
 		]);
 
-		let songs = search.find_songs(&strings, "artist = Dragon").unwrap();
+		let songs = search
+			.find_songs(&strings, &canon, "artist = Dragon")
+			.unwrap();
 		assert!(songs.is_empty());
 
-		let songs = search.find_songs(&strings, "artist = Dragonforce").unwrap();
+		let songs = search
+			.find_songs(&strings, &canon, "artist = Dragonforce")
+			.unwrap();
 		assert_eq!(songs.len(), 1);
 		assert!(songs.contains(&PathBuf::from("seasons.mp3")));
 	}
 
 	#[test]
 	fn can_use_and_operator() {
-		let (search, strings) = setup_test(vec![
+		let (search, strings, canon) = setup_test(vec![
 			scanner::Song {
 				virtual_path: PathBuf::from("whale.mp3"),
 				..Default::default()
@@ -415,18 +454,20 @@ mod test {
 			},
 		]);
 
-		let songs = search.find_songs(&strings, "space && whale").unwrap();
+		let songs = search
+			.find_songs(&strings, &canon, "space && whale")
+			.unwrap();
 		assert_eq!(songs.len(), 1);
 		assert!(songs.contains(&PathBuf::from("whales in space.mp3")));
 
-		let songs = search.find_songs(&strings, "space whale").unwrap();
+		let songs = search.find_songs(&strings, &canon, "space whale").unwrap();
 		assert_eq!(songs.len(), 1);
 		assert!(songs.contains(&PathBuf::from("whales in space.mp3")));
 	}
 
 	#[test]
 	fn can_use_or_operator() {
-		let (search, strings) = setup_test(vec![
+		let (search, strings, canon) = setup_test(vec![
 			scanner::Song {
 				virtual_path: PathBuf::from("whale.mp3"),
 				..Default::default()
@@ -441,7 +482,9 @@ mod test {
 			},
 		]);
 
-		let songs = search.find_songs(&strings, "space || whale").unwrap();
+		let songs = search
+			.find_songs(&strings, &canon, "space || whale")
+			.unwrap();
 		assert_eq!(songs.len(), 3);
 		assert!(songs.contains(&PathBuf::from("whale.mp3")));
 		assert!(songs.contains(&PathBuf::from("space.mp3")));

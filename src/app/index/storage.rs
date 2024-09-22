@@ -101,9 +101,19 @@ impl Song {
 	}
 }
 
+pub fn sanitize(s: &str) -> String {
+	// TODO merge inconsistent diacritic usage
+	let mut cleaned = s.to_owned();
+	cleaned.retain(|c| match c {
+		' ' | '_' | '-' | '\'' => false,
+		_ => true,
+	});
+	cleaned.to_lowercase()
+}
+
 pub fn store_song(
 	strings: &mut Rodeo,
-	minuscules: &mut HashMap<String, Spur>,
+	canon: &mut HashMap<String, Spur>,
 	song: &scanner::Song,
 ) -> Option<Song> {
 	let Some(real_path) = (&song.real_path).get_or_intern(strings) else {
@@ -123,17 +133,12 @@ pub fn store_song(
 	};
 
 	let mut canonicalize = |s: &String| {
-		let mut cleaned = s.clone();
-		cleaned.retain(|c| match c {
-			' ' | '_' | '-' | '\'' => false,
-			_ => true,
-		});
-		// TODO merge inconsistent diacritic usage
+		let cleaned = sanitize(s);
 		match cleaned.is_empty() {
 			true => None,
 			false => Some(
-				minuscules
-					.entry(cleaned.to_lowercase())
+				canon
+					.entry(cleaned)
 					.or_insert_with(|| strings.get_or_intern(s))
 					.to_owned(),
 			),

@@ -374,11 +374,11 @@ mod test {
 
 	fn setup_test(songs: Vec<scanner::Song>) -> (Collection, RodeoReader) {
 		let mut strings = Rodeo::new();
-		let mut minuscules = HashMap::new();
+		let mut canon = HashMap::new();
 		let mut builder = Builder::default();
 
 		for song in songs {
-			let song = store_song(&mut strings, &mut minuscules, &song).unwrap();
+			let song = store_song(&mut strings, &mut canon, &song).unwrap();
 			builder.add_song(&song);
 		}
 
