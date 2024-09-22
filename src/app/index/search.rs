@@ -49,7 +49,7 @@ impl Search {
 
 	fn eval(&self, strings: &RodeoReader, expr: &Expr) -> HashSet<SongKey> {
 		match expr {
-			Expr::Fuzzy(s) => self.eval_fuzzy(s),
+			Expr::Fuzzy(s) => self.eval_fuzzy(strings, s),
 			Expr::TextCmp(field, op, s) => self.eval_text_operator(strings, *field, *op, &s),
 			Expr::NumberCmp(field, op, n) => self.eval_number_operator(*field, *op, *n),
 			Expr::Combined(e, op, f) => self.combine(strings, e, *op, f),
@@ -77,12 +77,12 @@ impl Search {
 		}
 	}
 
-	fn eval_fuzzy(&self, value: &Literal) -> HashSet<SongKey> {
+	fn eval_fuzzy(&self, strings: &RodeoReader, value: &Literal) -> HashSet<SongKey> {
 		match value {
 			Literal::Text(s) => {
 				let mut songs = HashSet::new();
 				for field in self.text_fields.values() {
-					songs.extend(field.find_like(s));
+					songs.extend(field.find_like(strings, s));
 				}
 				songs
 			}
@@ -92,7 +92,7 @@ impl Search {
 					songs.extend(field.find_equal(*n));
 				}
 				songs
-					.union(&self.eval_fuzzy(&Literal::Text(n.to_string())))
+					.union(&self.eval_fuzzy(strings, &Literal::Text(n.to_string())))
 					.copied()
 					.collect()
 			}
@@ -112,7 +112,7 @@ impl Search {
 
 		match operator {
 			TextOp::Eq => field_index.find_exact(strings, value),
-			TextOp::Like => field_index.find_like(value),
+			TextOp::Like => field_index.find_like(strings, value),
 		}
 	}
 
@@ -148,11 +148,17 @@ impl TextFieldIndex {
 		self.exact.entry(value).or_default().insert(key);
 	}
 
-	pub fn find_like(&self, value: &str) -> HashSet<SongKey> {
+	pub fn find_like(&self, strings: &RodeoReader, value: &str) -> HashSet<SongKey> {
 		let characters = value.chars().collect::<Vec<_>>();
+		let empty_set = HashSet::new();
+
 		let mut candidates = characters[..]
 			.windows(NGRAM_SIZE)
-			.filter_map(|s| self.ngrams.get::<[char; NGRAM_SIZE]>(s.try_into().unwrap()))
+			.map(|s| {
+				self.ngrams
+					.get::<[char; NGRAM_SIZE]>(s.try_into().unwrap())
+					.unwrap_or(&empty_set)
+			})
 			.collect::<Vec<_>>();
 
 		if candidates.is_empty() {
@@ -164,6 +170,7 @@ impl TextFieldIndex {
 		candidates[0]
 			.iter()
 			.filter(move |c| candidates[1..].iter().all(|s| s.contains(c)))
+			.filter(|s| strings.resolve(&s.virtual_path.0).contains(value))
 			.copied()
 			.collect()
 	}
