@@ -136,7 +136,8 @@ struct TextFieldIndex {
 
 impl TextFieldIndex {
 	pub fn insert(&mut self, raw_value: &str, value: Spur, key: SongKey) {
-		// TODO sanitize ngrams
+		// TODO sanitize ngrams to be case insensitive, free from diacritics and punctuation
+		// And do the same thing to query fragments!
 		let characters = raw_value.chars().collect::<TinyVec<[char; 32]>>();
 		for substring in characters[..].windows(NGRAM_SIZE) {
 			self.ngrams
