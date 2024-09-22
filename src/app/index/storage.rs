@@ -78,6 +78,7 @@ pub struct AlbumKey {
 pub struct SongKey {
 	pub virtual_path: PathKey,
 }
+impl nohash_hasher::IsEnabled for SongKey {}
 
 impl Song {
 	pub fn album_key(&self) -> Option<AlbumKey> {

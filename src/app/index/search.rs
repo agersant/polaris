@@ -1,5 +1,6 @@
 use chumsky::Parser;
 use lasso2::{RodeoReader, Spur};
+use nohash_hasher::IntSet;
 use serde::{Deserialize, Serialize};
 use std::{
 	collections::{HashMap, HashSet},
@@ -47,7 +48,7 @@ impl Search {
 			.collect::<Vec<_>>())
 	}
 
-	fn eval(&self, strings: &RodeoReader, expr: &Expr) -> HashSet<SongKey> {
+	fn eval(&self, strings: &RodeoReader, expr: &Expr) -> IntSet<SongKey> {
 		match expr {
 			Expr::Fuzzy(s) => self.eval_fuzzy(strings, s),
 			Expr::TextCmp(field, op, s) => self.eval_text_operator(strings, *field, *op, &s),
@@ -62,7 +63,7 @@ impl Search {
 		e: &Box<Expr>,
 		op: BoolOp,
 		f: &Box<Expr>,
-	) -> HashSet<SongKey> {
+	) -> IntSet<SongKey> {
 		match op {
 			BoolOp::And => self
 				.eval(strings, e)
@@ -77,17 +78,17 @@ impl Search {
 		}
 	}
 
-	fn eval_fuzzy(&self, strings: &RodeoReader, value: &Literal) -> HashSet<SongKey> {
+	fn eval_fuzzy(&self, strings: &RodeoReader, value: &Literal) -> IntSet<SongKey> {
 		match value {
 			Literal::Text(s) => {
-				let mut songs = HashSet::new();
+				let mut songs = IntSet::default();
 				for field in self.text_fields.values() {
 					songs.extend(field.find_like(strings, s));
 				}
 				songs
 			}
 			Literal::Number(n) => {
-				let mut songs = HashSet::new();
+				let mut songs = IntSet::default();
 				for field in self.number_fields.values() {
 					songs.extend(field.find_equal(*n));
 				}
@@ -105,9 +106,9 @@ impl Search {
 		field: TextField,
 		operator: TextOp,
 		value: &str,
-	) -> HashSet<SongKey> {
+	) -> IntSet<SongKey> {
 		let Some(field_index) = self.text_fields.get(&field) else {
-			return HashSet::new();
+			return IntSet::default();
 		};
 
 		match operator {
@@ -121,7 +122,7 @@ impl Search {
 		field: NumberField,
 		operator: NumberOp,
 		value: i32,
-	) -> HashSet<SongKey> {
+	) -> IntSet<SongKey> {
 		todo!()
 	}
 }
@@ -130,8 +131,8 @@ const NGRAM_SIZE: usize = 2;
 
 #[derive(Default, Deserialize, Serialize)]
 struct TextFieldIndex {
-	exact: HashMap<Spur, HashSet<SongKey>>,
-	ngrams: HashMap<[char; NGRAM_SIZE], HashSet<SongKey>>,
+	exact: HashMap<Spur, IntSet<SongKey>>,
+	ngrams: HashMap<[char; NGRAM_SIZE], IntSet<SongKey>>,
 }
 
 impl TextFieldIndex {
@@ -149,9 +150,9 @@ impl TextFieldIndex {
 		self.exact.entry(value).or_default().insert(key);
 	}
 
-	pub fn find_like(&self, strings: &RodeoReader, value: &str) -> HashSet<SongKey> {
+	pub fn find_like(&self, strings: &RodeoReader, value: &str) -> IntSet<SongKey> {
 		let characters = value.chars().collect::<Vec<_>>();
-		let empty_set = HashSet::new();
+		let empty_set = IntSet::default();
 
 		let mut candidates = characters[..]
 			.windows(NGRAM_SIZE)
@@ -163,7 +164,7 @@ impl TextFieldIndex {
 			.collect::<Vec<_>>();
 
 		if candidates.is_empty() {
-			return HashSet::new();
+			return IntSet::default();
 		}
 
 		candidates.sort_by_key(|h| h.len());
@@ -176,7 +177,7 @@ impl TextFieldIndex {
 			.collect()
 	}
 
-	pub fn find_exact(&self, strings: &RodeoReader, value: &str) -> HashSet<SongKey> {
+	pub fn find_exact(&self, strings: &RodeoReader, value: &str) -> IntSet<SongKey> {
 		strings
 			.get(value)
 			.and_then(|k| self.exact.get(&k))
