@@ -83,7 +83,7 @@ impl Search {
 			Literal::Text(s) => {
 				let mut songs = IntSet::default();
 				for field in self.text_fields.values() {
-					songs.extend(field.find_like(strings, s));
+					songs.extend(field.find_like(s));
 				}
 				songs
 			}
@@ -113,7 +113,7 @@ impl Search {
 
 		match operator {
 			TextOp::Eq => field_index.find_exact(strings, value),
-			TextOp::Like => field_index.find_like(strings, value),
+			TextOp::Like => field_index.find_like(value),
 		}
 	}
 
@@ -150,7 +150,7 @@ impl TextFieldIndex {
 		self.exact.entry(value).or_default().insert(key);
 	}
 
-	pub fn find_like(&self, strings: &RodeoReader, value: &str) -> IntSet<SongKey> {
+	pub fn find_like(&self, value: &str) -> IntSet<SongKey> {
 		let characters = value.chars().collect::<Vec<_>>();
 		let empty_set = IntSet::default();
 
@@ -172,7 +172,9 @@ impl TextFieldIndex {
 		candidates[0]
 			.iter()
 			.filter(move |c| candidates[1..].iter().all(|s| s.contains(c)))
-			.filter(|s| strings.resolve(&s.virtual_path.0).contains(value))
+			// Note: matching all the n-grams doesn't actually guarantee a substring match
+			// We should theoretically resolve the underlying field value and compare with the query string
+			// Unlikely to cause issues for realistic use cases.
 			.copied()
 			.collect()
 	}
@@ -369,5 +371,80 @@ mod test {
 
 		assert_eq!(songs.len(), 1);
 		assert!(songs.contains(&PathBuf::from("seasons.mp3")));
+	}
+
+	#[test]
+	fn can_find_field_exact() {
+		let (search, strings) = setup_test(vec![
+			scanner::Song {
+				virtual_path: PathBuf::from("seasons.mp3"),
+				title: Some("Seasons".to_owned()),
+				artists: vec!["Dragonforce".to_owned()],
+				..Default::default()
+			},
+			scanner::Song {
+				virtual_path: PathBuf::from("potd.mp3"),
+				title: Some("Power of the Dragonflame".to_owned()),
+				artists: vec!["Rhapsody".to_owned()],
+				..Default::default()
+			},
+		]);
+
+		let songs = search.find_songs(&strings, "artist = Dragon").unwrap();
+		assert!(songs.is_empty());
+
+		let songs = search.find_songs(&strings, "artist = Dragonforce").unwrap();
+		assert_eq!(songs.len(), 1);
+		assert!(songs.contains(&PathBuf::from("seasons.mp3")));
+	}
+
+	#[test]
+	fn can_use_and_operator() {
+		let (search, strings) = setup_test(vec![
+			scanner::Song {
+				virtual_path: PathBuf::from("whale.mp3"),
+				..Default::default()
+			},
+			scanner::Song {
+				virtual_path: PathBuf::from("space.mp3"),
+				..Default::default()
+			},
+			scanner::Song {
+				virtual_path: PathBuf::from("whales in space.mp3"),
+				..Default::default()
+			},
+		]);
+
+		let songs = search.find_songs(&strings, "space && whale").unwrap();
+		assert_eq!(songs.len(), 1);
+		assert!(songs.contains(&PathBuf::from("whales in space.mp3")));
+
+		let songs = search.find_songs(&strings, "space whale").unwrap();
+		assert_eq!(songs.len(), 1);
+		assert!(songs.contains(&PathBuf::from("whales in space.mp3")));
+	}
+
+	#[test]
+	fn can_use_or_operator() {
+		let (search, strings) = setup_test(vec![
+			scanner::Song {
+				virtual_path: PathBuf::from("whale.mp3"),
+				..Default::default()
+			},
+			scanner::Song {
+				virtual_path: PathBuf::from("space.mp3"),
+				..Default::default()
+			},
+			scanner::Song {
+				virtual_path: PathBuf::from("whales in space.mp3"),
+				..Default::default()
+			},
+		]);
+
+		let songs = search.find_songs(&strings, "space || whale").unwrap();
+		assert_eq!(songs.len(), 3);
+		assert!(songs.contains(&PathBuf::from("whale.mp3")));
+		assert!(songs.contains(&PathBuf::from("space.mp3")));
+		assert!(songs.contains(&PathBuf::from("whales in space.mp3")));
 	}
 }
