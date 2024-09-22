@@ -21,7 +21,7 @@ mod storage;
 
 pub use browser::File;
 pub use collection::{Album, AlbumHeader, Artist, ArtistHeader, Song};
-use storage::{AlbumKey, ArtistKey, InternPath, SongKey};
+use storage::{store_song, AlbumKey, ArtistKey, InternPath, SongKey};
 
 #[derive(Clone)]
 pub struct Manager {
@@ -254,8 +254,16 @@ impl Manager {
 		.unwrap()
 	}
 
-	pub async fn search(&self, _query: &str) -> Result<Vec<PathBuf>, Error> {
-		todo!();
+	pub async fn search(&self, query: String) -> Result<Vec<PathBuf>, Error> {
+		spawn_blocking({
+			let index_manager = self.clone();
+			move || {
+				let index = index_manager.index.read().unwrap();
+				index.search.find_songs(&index.strings, &query)
+			}
+		})
+		.await
+		.unwrap()
 	}
 }
 
@@ -264,6 +272,7 @@ pub struct Index {
 	pub strings: RodeoReader,
 	pub browser: browser::Browser,
 	pub collection: collection::Collection,
+	pub search: search::Search,
 }
 
 impl Default for Index {
@@ -272,6 +281,7 @@ impl Default for Index {
 			strings: Rodeo::new().into_reader(),
 			browser: Default::default(),
 			collection: Default::default(),
+			search: Default::default(),
 		}
 	}
 }
@@ -281,6 +291,7 @@ pub struct Builder {
 	minuscules: HashMap<String, Spur>,
 	browser_builder: browser::Builder,
 	collection_builder: collection::Builder,
+	search_builder: search::Builder,
 }
 
 impl Builder {
@@ -290,6 +301,7 @@ impl Builder {
 			minuscules: HashMap::default(),
 			browser_builder: browser::Builder::default(),
 			collection_builder: collection::Builder::default(),
+			search_builder: search::Builder::default(),
 		}
 	}
 
@@ -298,16 +310,22 @@ impl Builder {
 			.add_directory(&mut self.strings, directory);
 	}
 
-	pub fn add_song(&mut self, song: scanner::Song) {
-		self.browser_builder.add_song(&mut self.strings, &song);
-		self.collection_builder
-			.add_song(&mut self.strings, &mut self.minuscules, &song);
+	pub fn add_song(&mut self, scanner_song: scanner::Song) {
+		if let Some(storage_song) =
+			store_song(&mut self.strings, &mut self.minuscules, &scanner_song)
+		{
+			self.browser_builder
+				.add_song(&mut self.strings, &scanner_song);
+			self.collection_builder.add_song(&storage_song);
+			self.search_builder.add_song(&scanner_song, &storage_song);
+		}
 	}
 
 	pub fn build(self) -> Index {
 		Index {
 			browser: self.browser_builder.build(),
 			collection: self.collection_builder.build(),
+			search: self.search_builder.build(),
 			strings: self.strings.into_reader(),
 		}
 	}

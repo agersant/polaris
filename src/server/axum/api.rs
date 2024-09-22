@@ -62,7 +62,6 @@ pub fn router() -> Router<App> {
 		.route("/random", get(get_random_albums)) // Deprecated
 		.route("/recent", get(get_recent_albums)) // Deprecated
 		// Search
-		.route("/search", get(get_search_root))
 		.route("/search/*query", get(get_search))
 		// Playlist management
 		.route("/playlists", get(get_playlists))
@@ -507,26 +506,13 @@ async fn get_recent_albums(
 	albums_to_response(albums, api_version)
 }
 
-async fn get_search_root(
-	_auth: Auth,
-	api_version: APIMajorVersion,
-	State(index_manager): State<index::Manager>,
-) -> Response {
-	let paths = match index_manager.search("").await {
-		Ok(f) => f,
-		Err(e) => return APIError::from(e).into_response(),
-	};
-	let song_list = make_song_list(paths, &index_manager).await;
-	song_list_to_response(song_list, api_version)
-}
-
 async fn get_search(
 	_auth: Auth,
 	api_version: APIMajorVersion,
 	State(index_manager): State<index::Manager>,
 	Path(query): Path<String>, // TODO return dto::SongList
 ) -> Response {
-	let paths = match index_manager.search(&query).await {
+	let paths = match index_manager.search(query).await {
 		Ok(f) => f,
 		Err(e) => return APIError::from(e).into_response(),
 	};

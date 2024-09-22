@@ -6,8 +6,9 @@ use chumsky::{
 	text::{int, keyword, whitespace, TextParser},
 	Parser,
 };
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub enum TextField {
 	Album,
 	AlbumArtist,
@@ -23,12 +24,10 @@ pub enum TextField {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum TextOp {
 	Eq,
-	NotEq,
 	Like,
-	NotLike,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub enum NumberField {
 	DiscNumber,
 	TrackNumber,
@@ -95,13 +94,7 @@ pub fn make_parser() -> impl Parser<char, Expr, Error = Simple<char>> {
 		))
 		.padded();
 
-		let text_op = choice((
-			just("=").to(TextOp::Eq),
-			just("!=").to(TextOp::NotEq),
-			just("%").to(TextOp::Like),
-			just("!%").to(TextOp::NotLike),
-		))
-		.padded();
+		let text_op = choice((just("=").to(TextOp::Eq), just("%").to(TextOp::Like))).padded();
 
 		let text_cmp = text_field
 			.then(text_op)
@@ -249,16 +242,8 @@ fn can_parse_text_operators() {
 		Expr::TextCmp(TextField::Album, TextOp::Eq, "legendary tales".to_owned()),
 	);
 	assert_eq!(
-		parser.parse(r#"album != legendary"#).unwrap(),
-		Expr::TextCmp(TextField::Album, TextOp::NotEq, "legendary".to_owned()),
-	);
-	assert_eq!(
 		parser.parse(r#"album % "legendary tales""#).unwrap(),
 		Expr::TextCmp(TextField::Album, TextOp::Like, "legendary tales".to_owned()),
-	);
-	assert_eq!(
-		parser.parse(r#"album !% "legendary""#).unwrap(),
-		Expr::TextCmp(TextField::Album, TextOp::NotLike, "legendary".to_owned()),
 	);
 }
 

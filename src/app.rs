@@ -106,6 +106,8 @@ pub enum Error {
 	AlbumNotFound,
 	#[error("Song not found")]
 	SongNotFound,
+	#[error("Invalid search query syntax")]
+	SearchQueryParseError,
 	#[error("Playlist not found")]
 	PlaylistNotFound,
 	#[error("No embedded artwork was found in `{0}`")]

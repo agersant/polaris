@@ -4,14 +4,13 @@ use std::{
 	path::PathBuf,
 };
 
-use lasso2::{Rodeo, RodeoReader, Spur};
+use lasso2::{RodeoReader, Spur};
 use rand::{rngs::StdRng, seq::SliceRandom, SeedableRng};
 use serde::{Deserialize, Serialize};
 use tinyvec::TinyVec;
 use unicase::UniCase;
 
-use crate::app::index::storage::{self, store_song, AlbumKey, ArtistKey, SongKey};
-use crate::app::scanner;
+use crate::app::index::storage::{self, AlbumKey, ArtistKey, SongKey};
 
 use super::storage::fetch_song;
 
@@ -226,16 +225,7 @@ pub struct Builder {
 }
 
 impl Builder {
-	pub fn add_song(
-		&mut self,
-		strings: &mut Rodeo,
-		minuscules: &mut HashMap<String, Spur>,
-		song: &scanner::Song,
-	) {
-		let Some(song) = store_song(strings, minuscules, song) else {
-			return;
-		};
-
+	pub fn add_song(&mut self, song: &storage::Song) {
 		self.add_song_to_album(&song);
 		self.add_song_to_artists(&song);
 
@@ -243,7 +233,7 @@ impl Builder {
 			SongKey {
 				virtual_path: song.virtual_path,
 			},
-			song,
+			song.clone(),
 		);
 	}
 
@@ -374,8 +364,11 @@ impl Builder {
 #[cfg(test)]
 mod test {
 
-	use storage::InternPath;
+	use lasso2::Rodeo;
 	use tinyvec::tiny_vec;
+
+	use crate::app::scanner;
+	use storage::{store_song, InternPath};
 
 	use super::*;
 
@@ -385,7 +378,8 @@ mod test {
 		let mut builder = Builder::default();
 
 		for song in songs {
-			builder.add_song(&mut strings, &mut minuscules, &song);
+			let song = store_song(&mut strings, &mut minuscules, &song).unwrap();
+			builder.add_song(&song);
 		}
 
 		let browser = builder.build();
