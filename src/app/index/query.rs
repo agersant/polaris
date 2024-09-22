@@ -37,7 +37,6 @@ pub enum NumberField {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum NumberOp {
 	Eq,
-	NotEq,
 	Greater,
 	GreaterOrEq,
 	Less,
@@ -110,7 +109,6 @@ pub fn make_parser() -> impl Parser<char, Expr, Error = Simple<char>> {
 
 		let number_op = choice((
 			just("=").to(NumberOp::Eq),
-			just("!=").to(NumberOp::NotEq),
 			just(">=").to(NumberOp::GreaterOrEq),
 			just(">").to(NumberOp::Greater),
 			just("<=").to(NumberOp::LessOrEq),
@@ -270,10 +268,6 @@ fn can_parse_number_operators() {
 	assert_eq!(
 		parser.parse(r#"discnumber = 6"#).unwrap(),
 		Expr::NumberCmp(NumberField::DiscNumber, NumberOp::Eq, 6),
-	);
-	assert_eq!(
-		parser.parse(r#"discnumber != 6"#).unwrap(),
-		Expr::NumberCmp(NumberField::DiscNumber, NumberOp::NotEq, 6),
 	);
 	assert_eq!(
 		parser.parse(r#"discnumber > 6"#).unwrap(),

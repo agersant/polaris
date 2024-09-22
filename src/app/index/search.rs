@@ -3,7 +3,7 @@ use lasso2::{RodeoReader, Spur};
 use nohash_hasher::{IntMap, IntSet};
 use serde::{Deserialize, Serialize};
 use std::{
-	collections::{HashMap, HashSet},
+	collections::{BTreeMap, HashMap},
 	ffi::OsStr,
 	path::{Path, PathBuf},
 };
@@ -104,7 +104,7 @@ impl Search {
 			Literal::Number(n) => {
 				let mut songs = IntSet::default();
 				for field in self.number_fields.values() {
-					songs.extend(field.find_equal(*n));
+					songs.extend(field.find(*n as i64, NumberOp::Eq));
 				}
 				songs
 					.union(&self.eval_fuzzy(strings, &Literal::Text(n.to_string())))
@@ -138,7 +138,10 @@ impl Search {
 		operator: NumberOp,
 		value: i32,
 	) -> IntSet<SongKey> {
-		todo!()
+		let Some(field_index) = self.number_fields.get(&field) else {
+			return IntSet::default();
+		};
+		field_index.find(value as i64, operator)
 	}
 }
 
@@ -210,14 +213,28 @@ impl TextFieldIndex {
 
 #[derive(Default, Deserialize, Serialize)]
 struct NumberFieldIndex {
-	values: HashMap<i32, HashSet<SongKey>>,
+	values: BTreeMap<i64, IntSet<SongKey>>,
 }
 
 impl NumberFieldIndex {
-	pub fn insert(&mut self, raw_value: &str, value: Spur, key: SongKey) {}
+	pub fn insert(&mut self, value: i64, key: SongKey) {
+		self.values.entry(value).or_default().insert(key);
+	}
 
-	pub fn find_equal(&self, value: i32) -> HashSet<SongKey> {
-		todo!()
+	pub fn find(&self, value: i64, operator: NumberOp) -> IntSet<SongKey> {
+		let range = match operator {
+			NumberOp::Eq => self.values.range(value..=value),
+			NumberOp::Greater => self.values.range((value + 1)..),
+			NumberOp::GreaterOrEq => self.values.range(value..),
+			NumberOp::Less => self.values.range(..value),
+			NumberOp::LessOrEq => self.values.range(..=value),
+		};
+		let candidates = range.map(|(_n, songs)| songs).collect::<Vec<_>>();
+		let mut results = Vec::with_capacity(candidates.iter().map(|c| c.len()).sum());
+		candidates
+			.into_iter()
+			.for_each(|songs| results.extend(songs.iter()));
+		IntSet::from_iter(results)
 	}
 }
 
@@ -269,6 +286,13 @@ impl Builder {
 				.insert(str, *spur, song_key);
 		}
 
+		if let Some(disc_number) = &scanner_song.disc_number {
+			self.number_fields
+				.entry(NumberField::DiscNumber)
+				.or_default()
+				.insert(*disc_number, song_key);
+		}
+
 		for (str, spur) in scanner_song.genres.iter().zip(storage_song.genres.iter()) {
 			self.text_fields
 				.entry(TextField::Genre)
@@ -305,6 +329,20 @@ impl Builder {
 				.entry(TextField::Title)
 				.or_default()
 				.insert(str, spur, song_key);
+		}
+
+		if let Some(track_number) = &scanner_song.track_number {
+			self.number_fields
+				.entry(NumberField::TrackNumber)
+				.or_default()
+				.insert(*track_number, song_key);
+		}
+
+		if let Some(year) = &scanner_song.year {
+			self.number_fields
+				.entry(NumberField::Year)
+				.or_default()
+				.insert(*year, song_key);
 		}
 	}
 
@@ -441,6 +479,73 @@ mod test {
 			.unwrap();
 		assert_eq!(songs.len(), 1);
 		assert!(songs.contains(&PathBuf::from("seasons.mp3")));
+	}
+
+	#[test]
+	fn can_query_number_fields() {
+		let (search, strings, canon) = setup_test(vec![
+			scanner::Song {
+				virtual_path: PathBuf::from("1999.mp3"),
+				year: Some(1999),
+				..Default::default()
+			},
+			scanner::Song {
+				virtual_path: PathBuf::from("2000.mp3"),
+				year: Some(2000),
+				..Default::default()
+			},
+			scanner::Song {
+				virtual_path: PathBuf::from("2001.mp3"),
+				year: Some(2001),
+				..Default::default()
+			},
+		]);
+
+		let songs = search.find_songs(&strings, &canon, "year=2000").unwrap();
+		assert_eq!(songs.len(), 1);
+		assert!(songs.contains(&PathBuf::from("2000.mp3")));
+
+		let songs = search.find_songs(&strings, &canon, "year>2000").unwrap();
+		assert_eq!(songs.len(), 1);
+		assert!(songs.contains(&PathBuf::from("2001.mp3")));
+
+		let songs = search.find_songs(&strings, &canon, "year<2000").unwrap();
+		assert_eq!(songs.len(), 1);
+		assert!(songs.contains(&PathBuf::from("1999.mp3")));
+
+		let songs = search.find_songs(&strings, &canon, "year>=2000").unwrap();
+		assert_eq!(songs.len(), 2);
+		assert!(songs.contains(&PathBuf::from("2000.mp3")));
+		assert!(songs.contains(&PathBuf::from("2001.mp3")));
+
+		let songs = search.find_songs(&strings, &canon, "year<=2000").unwrap();
+		assert_eq!(songs.len(), 2);
+		assert!(songs.contains(&PathBuf::from("1999.mp3")));
+		assert!(songs.contains(&PathBuf::from("2000.mp3")));
+	}
+
+	#[test]
+	fn fuzzy_numbers_query_all_fields() {
+		let (search, strings, canon) = setup_test(vec![
+			scanner::Song {
+				virtual_path: PathBuf::from("music.mp3"),
+				year: Some(2000),
+				..Default::default()
+			},
+			scanner::Song {
+				virtual_path: PathBuf::from("fireworks 2000.mp3"),
+				..Default::default()
+			},
+			scanner::Song {
+				virtual_path: PathBuf::from("calcium.mp3"),
+				..Default::default()
+			},
+		]);
+
+		let songs = search.find_songs(&strings, &canon, "2000").unwrap();
+		assert_eq!(songs.len(), 2);
+		assert!(songs.contains(&PathBuf::from("music.mp3")));
+		assert!(songs.contains(&PathBuf::from("fireworks 2000.mp3")));
 	}
 
 	#[test]
