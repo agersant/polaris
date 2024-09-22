@@ -278,7 +278,7 @@ impl VecExt for Vec<String> {
 	}
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Song {
 	pub path: PathBuf,
 	pub track_number: Option<i64>,
@@ -300,19 +300,7 @@ impl From<&PathBuf> for Song {
 	fn from(path: &PathBuf) -> Self {
 		Self {
 			path: path.clone(),
-			track_number: None,
-			disc_number: None,
-			title: None,
-			artist: None,
-			album_artist: None,
-			year: None,
-			album: None,
-			artwork: None,
-			duration: None,
-			lyricist: None,
-			composer: None,
-			genre: None,
-			label: None,
+			..Default::default()
 		}
 	}
 }

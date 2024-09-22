@@ -5,12 +5,14 @@
 ### Server
 
 - API version is now 8.0
-- Clients are now expected to send their preferred API major version in a `Accept-Version` header. Omitting this defaults to `7`, but will become an error in future Polaris releases.
+- Clients are now expected to send their preferred API major version in a `Accept-Version` header. Omitting this currently defaults to `7`, but will become an error in future Polaris releases. Support for API version 7 will be removed in a future release.
 - Most API responses now support gzip compression.
-- Added support for multi-value metadata for the following fields: `artist`, `album artist`, `genre`, `label`, `lyricist` and `composer`.
+- Added support for multi-value metadata for the following fields: `artist`, `album artist`, `composer`, `genre`, `label` and `lyricist`.
 - The response format of the `/browse`, `/flatten` and `/get_playlist` endpoints has been modified.
-- Added new endpoints to query albums and artists
+- Added new endpoints to query albums and artists.
 - The `/random` and `/recent` albums are deprecated in favor of `/albums/random` and `/albums/recent`. These endpoints now have optional parameters for RNG seeding and pagination.
+- The `/search/<query>` endpoint now requires a non-empty query (`/search/` now returns HTTP status code 404, regardless of API version).
+- The response format of the `/search/<query>` endpoint has changed.
 - Added a new `/get_songs` endpoint which returns song metadata in bulk.
 - Added a new `/peaks` endpoint which returns audio signal peaks that can be used to draw waveform visualizations.
 - The `/thumbnail` endpoint supports a new size labeled `tiny` which returns 40x40px images.

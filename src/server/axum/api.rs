@@ -510,14 +510,24 @@ async fn get_search(
 	_auth: Auth,
 	api_version: APIMajorVersion,
 	State(index_manager): State<index::Manager>,
-	Path(query): Path<String>, // TODO return dto::SongList
+	Path(query): Path<String>,
 ) -> Response {
 	let paths = match index_manager.search(query).await {
 		Ok(f) => f,
 		Err(e) => return APIError::from(e).into_response(),
 	};
 	let song_list = make_song_list(paths, &index_manager).await;
-	song_list_to_response(song_list, api_version)
+	match api_version {
+		APIMajorVersion::V7 => Json(
+			song_list
+				.paths
+				.iter()
+				.map(|p| dto::v7::CollectionFile::Song(p.into()))
+				.collect::<Vec<_>>(),
+		)
+		.into_response(),
+		APIMajorVersion::V8 => Json(song_list).into_response(),
+	}
 }
 
 async fn get_playlists(

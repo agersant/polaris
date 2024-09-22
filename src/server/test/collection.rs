@@ -278,22 +278,9 @@ async fn recent_golden_path_api_v7() {
 #[tokio::test]
 async fn search_requires_auth() {
 	let mut service = ServiceType::new(&test_name!()).await;
-	let request = protocol::search::<V8>("");
+	let request = protocol::search::<V8>("rhapsody");
 	let response = service.fetch(&request).await;
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
-}
-
-#[tokio::test]
-async fn search_without_query() {
-	let mut service = ServiceType::new(&test_name!()).await;
-	service.complete_initial_setup().await;
-	service.login().await;
-
-	let request = protocol::search::<V8>("");
-	let response = service
-		.fetch_json::<_, Vec<dto::BrowserEntry>>(&request)
-		.await;
-	assert_eq!(response.status(), StatusCode::OK);
 }
 
 #[tokio::test]
@@ -305,11 +292,8 @@ async fn search_with_query() {
 	service.login().await;
 
 	let request = protocol::search::<V8>("door");
-	let response = service
-		.fetch_json::<_, Vec<dto::BrowserEntry>>(&request)
-		.await;
-	let results = response.body();
-	assert_eq!(results.len(), 1);
+	let response = service.fetch_json::<_, dto::SongList>(&request).await;
+	let songs = response.body();
 
 	let path: PathBuf = [
 		TEST_MOUNT_NAME,
@@ -319,5 +303,37 @@ async fn search_with_query() {
 	]
 	.iter()
 	.collect();
-	assert_eq!(results[0].path, path);
+	assert_eq!(songs.paths, vec![path]);
+}
+
+#[tokio::test]
+async fn search_with_query_v7() {
+	let mut service = ServiceType::new(&test_name!()).await;
+	service.complete_initial_setup().await;
+	service.login_admin().await;
+	service.index().await;
+	service.login().await;
+
+	let request = protocol::search::<V7>("door");
+	let response = service
+		.fetch_json::<_, Vec<dto::v7::CollectionFile>>(&request)
+		.await;
+	let songs = response.body();
+
+	let path: PathBuf = [
+		TEST_MOUNT_NAME,
+		"Khemmis",
+		"Hunted",
+		"04 - Beyond The Door.mp3",
+	]
+	.iter()
+	.collect();
+
+	assert_eq!(
+		*songs,
+		vec![dto::v7::CollectionFile::Song(dto::v7::Song {
+			path,
+			..Default::default()
+		})]
+	);
 }
