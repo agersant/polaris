@@ -44,7 +44,7 @@ fn compare_songs(a: &collection::Song, b: &collection::Song) -> Ordering {
 		} else {
 			&a.album_artists
 		};
-		(artists, a.year, &a.album, a.track_number)
+		(artists, a.year, &a.album, a.disc_number, a.track_number)
 	};
 
 	let b_key = {
@@ -53,7 +53,7 @@ fn compare_songs(a: &collection::Song, b: &collection::Song) -> Ordering {
 		} else {
 			&b.album_artists
 		};
-		(artists, b.year, &b.album, b.track_number)
+		(artists, b.year, &b.album, b.disc_number, b.track_number)
 	};
 
 	a_key.cmp(&b_key)
