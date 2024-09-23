@@ -292,8 +292,10 @@ fn index_files_to_response(files: Vec<index::File>, api_version: APIMajorVersion
 	}
 }
 
+const SONG_LIST_CAPACITY: usize = 200;
+
 async fn make_song_list(paths: Vec<PathBuf>, index_manager: &index::Manager) -> dto::SongList {
-	let first_paths = paths.iter().take(200).cloned().collect();
+	let first_paths = paths.iter().take(SONG_LIST_CAPACITY).cloned().collect();
 	let first_songs = index_manager
 		.get_songs(first_paths)
 		.await
@@ -512,11 +514,26 @@ async fn get_search(
 	State(index_manager): State<index::Manager>,
 	Path(query): Path<String>,
 ) -> Response {
-	let paths = match index_manager.search(query).await {
+	let songs = match index_manager.search(query).await {
 		Ok(f) => f,
 		Err(e) => return APIError::from(e).into_response(),
 	};
-	let song_list = make_song_list(paths, &index_manager).await;
+
+	let paths = songs
+		.iter()
+		.take(SONG_LIST_CAPACITY)
+		.map(|s| s.virtual_path.clone())
+		.collect();
+
+	let song_list = dto::SongList {
+		paths,
+		first_songs: songs
+			.into_iter()
+			.take(SONG_LIST_CAPACITY)
+			.map(|s| s.into())
+			.collect(),
+	};
+
 	match api_version {
 		APIMajorVersion::V7 => Json(
 			song_list

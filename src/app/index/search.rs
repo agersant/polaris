@@ -3,9 +3,8 @@ use lasso2::{RodeoReader, Spur};
 use nohash_hasher::{IntMap, IntSet};
 use serde::{Deserialize, Serialize};
 use std::{
+	cmp::Ordering,
 	collections::{BTreeMap, HashMap},
-	ffi::OsStr,
-	path::{Path, PathBuf},
 };
 use tinyvec::TinyVec;
 
@@ -18,6 +17,7 @@ use crate::app::{
 };
 
 use super::{
+	collection,
 	query::make_parser,
 	storage::{self, sanitize},
 };
@@ -37,23 +37,50 @@ impl Default for Search {
 	}
 }
 
+fn compare_songs(a: &collection::Song, b: &collection::Song) -> Ordering {
+	let a_key = {
+		let artists = if a.album_artists.is_empty() {
+			&a.artists
+		} else {
+			&a.album_artists
+		};
+		(artists, a.year, &a.album, a.track_number)
+	};
+
+	let b_key = {
+		let artists = if b.album_artists.is_empty() {
+			&b.artists
+		} else {
+			&b.album_artists
+		};
+		(artists, b.year, &b.album, b.track_number)
+	};
+
+	a_key.cmp(&b_key)
+}
+
 impl Search {
 	pub fn find_songs(
 		&self,
+		collection: &collection::Collection,
 		strings: &RodeoReader,
 		canon: &HashMap<String, Spur>,
 		query: &str,
-	) -> Result<Vec<PathBuf>, Error> {
+	) -> Result<Vec<collection::Song>, Error> {
 		let parser = make_parser();
 		let parsed_query = parser
 			.parse(query)
 			.map_err(|_| Error::SearchQueryParseError)?;
 
-		let keys = self.eval(strings, canon, &parsed_query);
-		Ok(keys
+		let mut songs = self
+			.eval(strings, canon, &parsed_query)
 			.into_iter()
-			.map(|k| Path::new(OsStr::new(strings.resolve(&k.virtual_path.0))).to_owned())
-			.collect::<Vec<_>>())
+			.filter_map(|song_key| collection.get_song(strings, song_key))
+			.collect::<Vec<_>>();
+
+		songs.sort_by(compare_songs);
+
+		Ok(songs)
 	}
 
 	fn eval(
@@ -362,25 +389,49 @@ mod test {
 	use storage::store_song;
 
 	use super::*;
+	use collection::Collection;
 
-	fn setup_test(songs: Vec<scanner::Song>) -> (Search, RodeoReader, HashMap<String, Spur>) {
+	struct Context {
+		canon: HashMap<String, Spur>,
+		collection: Collection,
+		search: Search,
+		strings: RodeoReader,
+	}
+
+	impl Context {
+		pub fn search(&self, query: &str) -> Vec<PathBuf> {
+			self.search
+				.find_songs(&self.collection, &self.strings, &self.canon, query)
+				.unwrap()
+				.into_iter()
+				.map(|s| s.virtual_path)
+				.collect()
+		}
+	}
+
+	fn setup_test(songs: Vec<scanner::Song>) -> Context {
 		let mut strings = Rodeo::new();
 		let mut canon = HashMap::new();
 
-		let mut builder = Builder::default();
+		let mut collection_builder = collection::Builder::default();
+		let mut search_builder = Builder::default();
 		for song in songs {
 			let storage_song = store_song(&mut strings, &mut canon, &song).unwrap();
-			builder.add_song(&song, &storage_song);
+			collection_builder.add_song(&storage_song);
+			search_builder.add_song(&song, &storage_song);
 		}
 
-		let search = builder.build();
-		let strings = strings.into_reader();
-		(search, strings, canon)
+		Context {
+			canon,
+			collection: collection_builder.build(),
+			search: search_builder.build(),
+			strings: strings.into_reader(),
+		}
 	}
 
 	#[test]
 	fn can_find_fuzzy() {
-		let (search, strings, canon) = setup_test(vec![
+		let ctx = setup_test(vec![
 			scanner::Song {
 				virtual_path: PathBuf::from("seasons.mp3"),
 				title: Some("Seasons".to_owned()),
@@ -401,8 +452,7 @@ mod test {
 			},
 		]);
 
-		let songs = search.find_songs(&strings, &canon, "agon").unwrap();
-
+		let songs = ctx.search("agon");
 		assert_eq!(songs.len(), 2);
 		assert!(songs.contains(&PathBuf::from("seasons.mp3")));
 		assert!(songs.contains(&PathBuf::from("potd.mp3")));
@@ -410,7 +460,7 @@ mod test {
 
 	#[test]
 	fn can_find_field_like() {
-		let (search, strings, canon) = setup_test(vec![
+		let ctx = setup_test(vec![
 			scanner::Song {
 				virtual_path: PathBuf::from("seasons.mp3"),
 				title: Some("Seasons".to_owned()),
@@ -425,36 +475,31 @@ mod test {
 			},
 		]);
 
-		let songs = search
-			.find_songs(&strings, &canon, "artist % agon")
-			.unwrap();
-
+		let songs = ctx.search("artist % agon");
 		assert_eq!(songs.len(), 1);
 		assert!(songs.contains(&PathBuf::from("seasons.mp3")));
 	}
 
 	#[test]
 	fn text_is_case_insensitive() {
-		let (search, strings, canon) = setup_test(vec![scanner::Song {
+		let ctx = setup_test(vec![scanner::Song {
 			virtual_path: PathBuf::from("seasons.mp3"),
 			artists: vec!["Dragonforce".to_owned()],
 			..Default::default()
 		}]);
 
-		let songs = search.find_songs(&strings, &canon, "dragonforce").unwrap();
+		let songs = ctx.search("dragonforce");
 		assert_eq!(songs.len(), 1);
 		assert!(songs.contains(&PathBuf::from("seasons.mp3")));
 
-		let songs = search
-			.find_songs(&strings, &canon, "artist = dragonforce")
-			.unwrap();
+		let songs = ctx.search("artist = dragonforce");
 		assert_eq!(songs.len(), 1);
 		assert!(songs.contains(&PathBuf::from("seasons.mp3")));
 	}
 
 	#[test]
 	fn can_find_field_exact() {
-		let (search, strings, canon) = setup_test(vec![
+		let ctx = setup_test(vec![
 			scanner::Song {
 				virtual_path: PathBuf::from("seasons.mp3"),
 				title: Some("Seasons".to_owned()),
@@ -469,21 +514,17 @@ mod test {
 			},
 		]);
 
-		let songs = search
-			.find_songs(&strings, &canon, "artist = Dragon")
-			.unwrap();
+		let songs = ctx.search("artist = Dragon");
 		assert!(songs.is_empty());
 
-		let songs = search
-			.find_songs(&strings, &canon, "artist = Dragonforce")
-			.unwrap();
+		let songs = ctx.search("artist = Dragonforce");
 		assert_eq!(songs.len(), 1);
 		assert!(songs.contains(&PathBuf::from("seasons.mp3")));
 	}
 
 	#[test]
 	fn can_query_number_fields() {
-		let (search, strings, canon) = setup_test(vec![
+		let ctx = setup_test(vec![
 			scanner::Song {
 				virtual_path: PathBuf::from("1999.mp3"),
 				year: Some(1999),
@@ -501,24 +542,24 @@ mod test {
 			},
 		]);
 
-		let songs = search.find_songs(&strings, &canon, "year=2000").unwrap();
+		let songs = ctx.search("year=2000");
 		assert_eq!(songs.len(), 1);
 		assert!(songs.contains(&PathBuf::from("2000.mp3")));
 
-		let songs = search.find_songs(&strings, &canon, "year>2000").unwrap();
+		let songs = ctx.search("year>2000");
 		assert_eq!(songs.len(), 1);
 		assert!(songs.contains(&PathBuf::from("2001.mp3")));
 
-		let songs = search.find_songs(&strings, &canon, "year<2000").unwrap();
+		let songs = ctx.search("year<2000");
 		assert_eq!(songs.len(), 1);
 		assert!(songs.contains(&PathBuf::from("1999.mp3")));
 
-		let songs = search.find_songs(&strings, &canon, "year>=2000").unwrap();
+		let songs = ctx.search("year>=2000");
 		assert_eq!(songs.len(), 2);
 		assert!(songs.contains(&PathBuf::from("2000.mp3")));
 		assert!(songs.contains(&PathBuf::from("2001.mp3")));
 
-		let songs = search.find_songs(&strings, &canon, "year<=2000").unwrap();
+		let songs = ctx.search("year<=2000");
 		assert_eq!(songs.len(), 2);
 		assert!(songs.contains(&PathBuf::from("1999.mp3")));
 		assert!(songs.contains(&PathBuf::from("2000.mp3")));
@@ -526,7 +567,7 @@ mod test {
 
 	#[test]
 	fn fuzzy_numbers_query_all_fields() {
-		let (search, strings, canon) = setup_test(vec![
+		let ctx = setup_test(vec![
 			scanner::Song {
 				virtual_path: PathBuf::from("music.mp3"),
 				year: Some(2000),
@@ -542,7 +583,7 @@ mod test {
 			},
 		]);
 
-		let songs = search.find_songs(&strings, &canon, "2000").unwrap();
+		let songs = ctx.search("2000");
 		assert_eq!(songs.len(), 2);
 		assert!(songs.contains(&PathBuf::from("music.mp3")));
 		assert!(songs.contains(&PathBuf::from("fireworks 2000.mp3")));
@@ -550,7 +591,7 @@ mod test {
 
 	#[test]
 	fn can_use_and_operator() {
-		let (search, strings, canon) = setup_test(vec![
+		let ctx = setup_test(vec![
 			scanner::Song {
 				virtual_path: PathBuf::from("whale.mp3"),
 				..Default::default()
@@ -565,20 +606,18 @@ mod test {
 			},
 		]);
 
-		let songs = search
-			.find_songs(&strings, &canon, "space && whale")
-			.unwrap();
+		let songs = ctx.search("space && whale");
 		assert_eq!(songs.len(), 1);
 		assert!(songs.contains(&PathBuf::from("whales in space.mp3")));
 
-		let songs = search.find_songs(&strings, &canon, "space whale").unwrap();
+		let songs = ctx.search("space whale");
 		assert_eq!(songs.len(), 1);
 		assert!(songs.contains(&PathBuf::from("whales in space.mp3")));
 	}
 
 	#[test]
 	fn can_use_or_operator() {
-		let (search, strings, canon) = setup_test(vec![
+		let ctx = setup_test(vec![
 			scanner::Song {
 				virtual_path: PathBuf::from("whale.mp3"),
 				..Default::default()
@@ -593,9 +632,7 @@ mod test {
 			},
 		]);
 
-		let songs = search
-			.find_songs(&strings, &canon, "space || whale")
-			.unwrap();
+		let songs = ctx.search("space || whale");
 		assert_eq!(songs.len(), 3);
 		assert!(songs.contains(&PathBuf::from("whale.mp3")));
 		assert!(songs.contains(&PathBuf::from("space.mp3")));
@@ -603,13 +640,70 @@ mod test {
 	}
 
 	#[test]
+	fn results_are_sorted() {
+		let ctx = setup_test(vec![
+			scanner::Song {
+				virtual_path: PathBuf::from("cry thunder.mp3"),
+				artists: vec!["Dragonforce".to_owned()],
+				album: Some("The Power Within".to_owned()),
+				year: Some(2012),
+				genres: vec!["Metal".to_owned()],
+				..Default::default()
+			},
+			scanner::Song {
+				virtual_path: PathBuf::from("revelations.mp3"),
+				artists: vec!["Dragonforce".to_owned()],
+				album: Some("Valley of the Damned".to_owned()),
+				year: Some(2003),
+				track_number: Some(7),
+				genres: vec!["Metal".to_owned()],
+				..Default::default()
+			},
+			scanner::Song {
+				virtual_path: PathBuf::from("starfire.mp3"),
+				artists: vec!["Dragonforce".to_owned()],
+				album: Some("Valley of the Damned".to_owned()),
+				year: Some(2003),
+				track_number: Some(5),
+				genres: vec!["Metal".to_owned()],
+				..Default::default()
+			},
+			scanner::Song {
+				virtual_path: PathBuf::from("eternal snow.mp3"),
+				artists: vec!["Rhapsody".to_owned()],
+				genres: vec!["Metal".to_owned()],
+				..Default::default()
+			},
+			scanner::Song {
+				virtual_path: PathBuf::from("alchemy.mp3"),
+				artists: vec!["Avantasia".to_owned()],
+				genres: vec!["Metal".to_owned()],
+				..Default::default()
+			},
+		]);
+
+		let songs = ctx.search("metal");
+		assert_eq!(songs.len(), 5);
+		assert_eq!(
+			songs,
+			vec![
+				PathBuf::from("alchemy.mp3"),
+				PathBuf::from("starfire.mp3"),
+				PathBuf::from("revelations.mp3"),
+				PathBuf::from("cry thunder.mp3"),
+				PathBuf::from("eternal snow.mp3"),
+			]
+		);
+	}
+
+	#[test]
 	fn avoids_bigram_false_positives() {
-		let (search, strings, canon) = setup_test(vec![scanner::Song {
+		let ctx = setup_test(vec![scanner::Song {
 			virtual_path: PathBuf::from("lorry bovine vehicle.mp3"),
 			..Default::default()
 		}]);
 
-		let songs = search.find_songs(&strings, &canon, "love").unwrap();
+		let songs = ctx.search("love");
 		assert!(songs.is_empty());
 	}
 }

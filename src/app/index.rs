@@ -254,14 +254,14 @@ impl Manager {
 		.unwrap()
 	}
 
-	pub async fn search(&self, query: String) -> Result<Vec<PathBuf>, Error> {
+	pub async fn search(&self, query: String) -> Result<Vec<Song>, Error> {
 		spawn_blocking({
 			let index_manager = self.clone();
 			move || {
 				let index = index_manager.index.read().unwrap();
 				index
 					.search
-					.find_songs(&index.strings, &index.canon, &query)
+					.find_songs(&index.collection, &index.strings, &index.canon, &query)
 			}
 		})
 		.await
