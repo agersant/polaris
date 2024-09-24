@@ -1,4 +1,5 @@
 use chumsky::Parser;
+use enum_map::EnumMap;
 use lasso2::{RodeoReader, Spur};
 use nohash_hasher::{IntMap, IntSet};
 use serde::{Deserialize, Serialize};
@@ -24,8 +25,8 @@ use super::{
 
 #[derive(Serialize, Deserialize)]
 pub struct Search {
-	text_fields: HashMap<TextField, TextFieldIndex>,
-	number_fields: HashMap<NumberField, NumberFieldIndex>,
+	text_fields: EnumMap<TextField, TextFieldIndex>,
+	number_fields: EnumMap<NumberField, NumberFieldIndex>,
 }
 
 impl Default for Search {
@@ -149,13 +150,9 @@ impl Search {
 		operator: TextOp,
 		value: &str,
 	) -> IntSet<SongKey> {
-		let Some(field_index) = self.text_fields.get(&field) else {
-			return IntSet::default();
-		};
-
 		match operator {
-			TextOp::Eq => field_index.find_exact(canon, value),
-			TextOp::Like => field_index.find_like(strings, value),
+			TextOp::Eq => self.text_fields[field].find_exact(canon, value),
+			TextOp::Like => self.text_fields[field].find_like(strings, value),
 		}
 	}
 
@@ -165,10 +162,7 @@ impl Search {
 		operator: NumberOp,
 		value: i32,
 	) -> IntSet<SongKey> {
-		let Some(field_index) = self.number_fields.get(&field) else {
-			return IntSet::default();
-		};
-		field_index.find(value as i64, operator)
+		self.number_fields[field].find(value as i64, operator)
 	}
 }
 
@@ -267,8 +261,8 @@ impl NumberFieldIndex {
 
 #[derive(Default)]
 pub struct Builder {
-	text_fields: HashMap<TextField, TextFieldIndex>,
-	number_fields: HashMap<NumberField, NumberFieldIndex>,
+	text_fields: EnumMap<TextField, TextFieldIndex>,
+	number_fields: EnumMap<NumberField, NumberFieldIndex>,
 }
 
 impl Builder {
@@ -278,10 +272,7 @@ impl Builder {
 		};
 
 		if let (Some(str), Some(spur)) = (&scanner_song.album, storage_song.album) {
-			self.text_fields
-				.entry(TextField::Album)
-				.or_default()
-				.insert(str, spur, song_key);
+			self.text_fields[TextField::Album].insert(str, spur, song_key);
 		}
 
 		for (str, spur) in scanner_song
@@ -289,17 +280,11 @@ impl Builder {
 			.iter()
 			.zip(storage_song.album_artists.iter())
 		{
-			self.text_fields
-				.entry(TextField::AlbumArtist)
-				.or_default()
-				.insert(str, *spur, song_key);
+			self.text_fields[TextField::AlbumArtist].insert(str, *spur, song_key);
 		}
 
 		for (str, spur) in scanner_song.artists.iter().zip(storage_song.artists.iter()) {
-			self.text_fields
-				.entry(TextField::Artist)
-				.or_default()
-				.insert(str, *spur, song_key);
+			self.text_fields[TextField::Artist].insert(str, *spur, song_key);
 		}
 
 		for (str, spur) in scanner_song
@@ -307,31 +292,19 @@ impl Builder {
 			.iter()
 			.zip(storage_song.composers.iter())
 		{
-			self.text_fields
-				.entry(TextField::Composer)
-				.or_default()
-				.insert(str, *spur, song_key);
+			self.text_fields[TextField::Composer].insert(str, *spur, song_key);
 		}
 
 		if let Some(disc_number) = &scanner_song.disc_number {
-			self.number_fields
-				.entry(NumberField::DiscNumber)
-				.or_default()
-				.insert(*disc_number, song_key);
+			self.number_fields[NumberField::DiscNumber].insert(*disc_number, song_key);
 		}
 
 		for (str, spur) in scanner_song.genres.iter().zip(storage_song.genres.iter()) {
-			self.text_fields
-				.entry(TextField::Genre)
-				.or_default()
-				.insert(str, *spur, song_key);
+			self.text_fields[TextField::Genre].insert(str, *spur, song_key);
 		}
 
 		for (str, spur) in scanner_song.labels.iter().zip(storage_song.labels.iter()) {
-			self.text_fields
-				.entry(TextField::Label)
-				.or_default()
-				.insert(str, *spur, song_key);
+			self.text_fields[TextField::Label].insert(str, *spur, song_key);
 		}
 
 		for (str, spur) in scanner_song
@@ -339,37 +312,25 @@ impl Builder {
 			.iter()
 			.zip(storage_song.lyricists.iter())
 		{
-			self.text_fields
-				.entry(TextField::Lyricist)
-				.or_default()
-				.insert(str, *spur, song_key);
+			self.text_fields[TextField::Lyricist].insert(str, *spur, song_key);
 		}
 
-		self.text_fields.entry(TextField::Path).or_default().insert(
+		self.text_fields[TextField::Path].insert(
 			scanner_song.virtual_path.to_string_lossy().as_ref(),
 			storage_song.virtual_path.0,
 			song_key,
 		);
 
 		if let (Some(str), Some(spur)) = (&scanner_song.title, storage_song.title) {
-			self.text_fields
-				.entry(TextField::Title)
-				.or_default()
-				.insert(str, spur, song_key);
+			self.text_fields[TextField::Title].insert(str, spur, song_key);
 		}
 
 		if let Some(track_number) = &scanner_song.track_number {
-			self.number_fields
-				.entry(NumberField::TrackNumber)
-				.or_default()
-				.insert(*track_number, song_key);
+			self.number_fields[NumberField::TrackNumber].insert(*track_number, song_key);
 		}
 
 		if let Some(year) = &scanner_song.year {
-			self.number_fields
-				.entry(NumberField::Year)
-				.or_default()
-				.insert(*year, song_key);
+			self.number_fields[NumberField::Year].insert(*year, song_key);
 		}
 	}
 
