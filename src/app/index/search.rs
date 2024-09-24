@@ -106,17 +106,22 @@ impl Search {
 		op: BoolOp,
 		f: &Box<Expr>,
 	) -> IntSet<SongKey> {
-		match op {
-			BoolOp::And => self
-				.eval(strings, canon, e)
-				.intersection(&self.eval(strings, canon, f))
-				.cloned()
-				.collect(),
-			BoolOp::Or => self
-				.eval(strings, canon, e)
-				.union(&self.eval(strings, canon, f))
-				.cloned()
-				.collect(),
+		let is_operable = |expr: &Expr| match expr {
+			Expr::Fuzzy(Literal::Text(s)) if s.chars().count() < NGRAM_SIZE => false,
+			Expr::Fuzzy(Literal::Number(n)) if *n < 10 => false,
+			Expr::TextCmp(_, _, s) if s.chars().count() < NGRAM_SIZE => false,
+			_ => true,
+		};
+
+		let left = is_operable(e).then(|| self.eval(strings, canon, e));
+		let right = is_operable(f).then(|| self.eval(strings, canon, f));
+
+		match (left, op, right) {
+			(Some(l), BoolOp::And, Some(r)) => l.intersection(&r).cloned().collect(),
+			(Some(l), BoolOp::Or, Some(r)) => l.union(&r).cloned().collect(),
+			(Some(l), _, None) => l,
+			(None, _, Some(r)) => r,
+			(None, _, None) => IntSet::default(),
 		}
 	}
 
@@ -666,5 +671,25 @@ mod test {
 
 		let songs = ctx.search("love");
 		assert!(songs.is_empty());
+	}
+
+	#[test]
+	fn ignores_single_letter_components() {
+		let ctx = setup_test(vec![scanner::Song {
+			virtual_path: PathBuf::from("seasons.mp3"),
+			..Default::default()
+		}]);
+
+		let songs = ctx.search("seas u");
+		assert_eq!(songs.len(), 1);
+
+		let songs = ctx.search("seas 2");
+		assert_eq!(songs.len(), 1);
+
+		let songs = ctx.search("seas || u");
+		assert_eq!(songs.len(), 1);
+
+		let songs = ctx.search("seas || 2");
+		assert_eq!(songs.len(), 1);
 	}
 }
