@@ -119,6 +119,8 @@ impl Search {
 		match (left, op, right) {
 			(Some(l), BoolOp::And, Some(r)) => l.intersection(&r).cloned().collect(),
 			(Some(l), BoolOp::Or, Some(r)) => l.union(&r).cloned().collect(),
+			(Some(l), BoolOp::Not, Some(r)) => l.difference(&r).cloned().collect(),
+			(None, BoolOp::Not, _) => IntSet::default(),
 			(Some(l), _, None) => l,
 			(None, _, Some(r)) => r,
 			(None, _, None) => IntSet::default(),
@@ -603,6 +605,28 @@ mod test {
 		assert!(songs.contains(&PathBuf::from("whale.mp3")));
 		assert!(songs.contains(&PathBuf::from("space.mp3")));
 		assert!(songs.contains(&PathBuf::from("whales in space.mp3")));
+	}
+
+	#[test]
+	fn can_use_not_operator() {
+		let ctx = setup_test(vec![
+			scanner::Song {
+				virtual_path: PathBuf::from("whale.mp3"),
+				..Default::default()
+			},
+			scanner::Song {
+				virtual_path: PathBuf::from("space.mp3"),
+				..Default::default()
+			},
+			scanner::Song {
+				virtual_path: PathBuf::from("whales in space.mp3"),
+				..Default::default()
+			},
+		]);
+
+		let songs = ctx.search("whale !! space");
+		assert_eq!(songs.len(), 1);
+		assert!(songs.contains(&PathBuf::from("whale.mp3")));
 	}
 
 	#[test]

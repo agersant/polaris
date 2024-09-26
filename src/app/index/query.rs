@@ -54,6 +54,7 @@ pub enum Literal {
 pub enum BoolOp {
 	And,
 	Or,
+	Not,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -128,7 +129,12 @@ pub fn make_parser() -> impl Parser<char, Expr, Error = Simple<char>> {
 		let filter = choice((text_cmp, number_cmp, fuzzy));
 		let atom = choice((filter, expr.delimited_by(just('('), just(')'))));
 
-		let bool_op = choice((just("&&").to(BoolOp::And), just("||").to(BoolOp::Or))).padded();
+		let bool_op = choice((
+			just("&&").to(BoolOp::And),
+			just("||").to(BoolOp::Or),
+			just("!!").to(BoolOp::Not),
+		))
+		.padded();
 
 		let combined = atom
 			.clone()
