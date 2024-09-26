@@ -71,7 +71,7 @@ pub fn make_parser() -> impl Parser<char, Expr, Error = Simple<char>> {
 			.ignore_then(none_of('"').repeated().collect::<String>())
 			.then_ignore(just('"'));
 
-		let symbols = r#"()<>"|&="#.chars().collect::<HashSet<_>>();
+		let symbols = r#"()<>"|&=!"#.chars().collect::<HashSet<_>>();
 
 		let raw_str = filter(move |c: &char| !c.is_whitespace() && !symbols.contains(c))
 			.repeated()
@@ -295,7 +295,7 @@ fn can_parse_number_operators() {
 }
 
 #[test]
-fn can_use_boolean_operators() {
+fn can_use_and_operator() {
 	let parser = make_parser();
 
 	assert_eq!(
@@ -314,6 +314,11 @@ fn can_use_boolean_operators() {
 			))
 		),
 	);
+}
+
+#[test]
+fn can_use_or_operator() {
+	let parser = make_parser();
 
 	assert_eq!(
 		parser.parse(r#"album % lands || title % "sword""#).unwrap(),
@@ -324,6 +329,28 @@ fn can_use_boolean_operators() {
 				"lands".to_owned()
 			)),
 			BoolOp::Or,
+			Box::new(Expr::TextCmp(
+				TextField::Title,
+				TextOp::Like,
+				"sword".to_owned()
+			))
+		),
+	);
+}
+
+#[test]
+fn can_use_not_operator() {
+	let parser = make_parser();
+
+	assert_eq!(
+		parser.parse(r#"album % lands !! title % "sword""#).unwrap(),
+		Expr::Combined(
+			Box::new(Expr::TextCmp(
+				TextField::Album,
+				TextOp::Like,
+				"lands".to_owned()
+			)),
+			BoolOp::Not,
 			Box::new(Expr::TextCmp(
 				TextField::Title,
 				TextOp::Like,
