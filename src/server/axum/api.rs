@@ -519,14 +519,8 @@ async fn get_search(
 		Err(e) => return APIError::from(e).into_response(),
 	};
 
-	let paths = songs
-		.iter()
-		.take(SONG_LIST_CAPACITY)
-		.map(|s| s.virtual_path.clone())
-		.collect();
-
 	let song_list = dto::SongList {
-		paths,
+		paths: songs.iter().map(|s| s.virtual_path.clone()).collect(),
 		first_songs: songs
 			.into_iter()
 			.take(SONG_LIST_CAPACITY)
