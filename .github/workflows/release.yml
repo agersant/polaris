@@ -58,7 +58,7 @@ jobs:
       - name: Write Upload URL To Disk
         run: echo "${{ steps.create_release.outputs.upload_url }}" > upload-url
       - name: Store Upload URL
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v4
         with:
           name: release
           path: upload-url
@@ -84,7 +84,7 @@ jobs:
           version-number: ${{ github.event.inputs.versionNumber }}
           output-file: polaris.msi
       - name: Retrieve Upload URL
-        uses: actions/download-artifact@v1
+        uses: actions/download-artifact@v4
         with:
           name: release
       - name: Read Upload URL
@@ -116,7 +116,7 @@ jobs:
           version-number: ${{ github.event.inputs.versionNumber }}
           output-file: polaris.tar.gz
       - name: Retrieve Upload URL
-        uses: actions/download-artifact@v1
+        uses: actions/download-artifact@v4
         with:
           name: release
       - name: Read Upload URL
