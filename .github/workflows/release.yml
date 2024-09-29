@@ -26,18 +26,12 @@ jobs:
       - name: Update Polaris Version in Cargo.toml
         run: gawk -i inplace '/^version/ { if (count == 0) { $3 = "\"${{ github.event.inputs.versionNumber }}\""; count++ } } 1' Cargo.toml
       - name: Commit Cargo.toml Version Change
-        uses: EndBug/add-and-commit@v5
+        uses: EndBug/add-and-commit@v9
         with:
-          branch: release
           message: "Updated version number"
+          tag: -f -a ${{ github.event.inputs.versionNumber }} -m "Version number"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Add <version number> Git Tag
-        run: |
-          git config --global user.name ${{ github.actor }}
-          git config --global user.email "<>"
-          git tag -f -a ${{ github.event.inputs.versionNumber }} -m "Version number"
-          git push -f --tags
 
   windows:
     name: Windows
