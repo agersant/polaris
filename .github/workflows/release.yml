@@ -29,9 +29,14 @@ jobs:
         uses: EndBug/add-and-commit@v9
         with:
           message: "Updated version number"
-          tag: -f -a ${{ github.event.inputs.versionNumber }} -m "Version number"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Add <version number> Git Tag
+        run: |
+          git config --global user.name ${{ github.actor }}
+          git config --global user.email "<>"
+          git tag -f -a ${{ github.event.inputs.versionNumber }} -m "Version number"
+          git push -f --tags
 
   windows:
     name: Windows
