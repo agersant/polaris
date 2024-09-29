@@ -70,9 +70,7 @@ pub struct Song {
 pub struct PathKey(pub Spur);
 
 #[derive(Copy, Clone, Debug, Default, Eq, Hash, PartialEq, Serialize, Deserialize)]
-pub struct GenreKey {
-	pub name: Spur,
-}
+pub struct GenreKey(pub Spur);
 
 #[derive(Copy, Clone, Debug, Default, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct ArtistKey(pub Spur);

@@ -408,7 +408,7 @@ impl Builder {
 
 	fn add_song_to_genres(&mut self, song: &storage::Song) {
 		for name in &song.genres {
-			let genre_key = GenreKey { name: *name };
+			let genre_key = GenreKey(*name);
 			let genre = self.genres.entry(genre_key).or_insert(storage::Genre {
 				name: *name,
 				songs: Vec::new(),

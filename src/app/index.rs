@@ -129,7 +129,7 @@ impl Manager {
 					.strings
 					.get(&name)
 					.ok_or_else(|| Error::GenreNotFound)?;
-				let genre_key = GenreKey { name };
+				let genre_key = GenreKey(name);
 				index
 					.collection
 					.get_genre(&index.strings, genre_key)
