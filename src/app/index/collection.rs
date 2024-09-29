@@ -22,6 +22,8 @@ pub struct GenreHeader {
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct Genre {
 	pub header: GenreHeader,
+	pub albums: Vec<AlbumHeader>,
+	pub artists: Vec<ArtistHeader>,
 	pub songs: Vec<Song>,
 }
 
@@ -202,6 +204,28 @@ impl Collection {
 
 	pub fn get_genre(&self, strings: &RodeoReader, genre_key: GenreKey) -> Option<Genre> {
 		self.genres.get(&genre_key).map(|genre| {
+			let mut albums = genre
+				.albums
+				.iter()
+				.filter_map(|album_key| {
+					self.albums
+						.get(album_key)
+						.map(|a| make_album_header(a, strings))
+				})
+				.collect::<Vec<_>>();
+			albums.sort_by(|a, b| a.name.cmp(&b.name));
+
+			let mut artists = genre
+				.artists
+				.iter()
+				.filter_map(|artist_key| {
+					self.artists
+						.get(artist_key)
+						.map(|a| make_artist_header(a, strings))
+				})
+				.collect::<Vec<_>>();
+			artists.sort_by(|a, b| a.name.cmp(&b.name));
+
 			let songs = genre
 				.songs
 				.iter()
@@ -211,6 +235,8 @@ impl Collection {
 
 			Genre {
 				header: make_genre_header(genre, strings),
+				albums,
+				artists,
 				songs,
 			}
 		})
@@ -411,8 +437,31 @@ impl Builder {
 			let genre_key = GenreKey(*name);
 			let genre = self.genres.entry(genre_key).or_insert(storage::Genre {
 				name: *name,
+				albums: HashSet::new(),
+				artists: HashSet::new(),
 				songs: Vec::new(),
 			});
+
+			if let Some(album_key) = song.album_key() {
+				genre.albums.insert(album_key);
+			}
+
+			for artist_key in &song.album_artists {
+				genre.artists.insert(*artist_key);
+			}
+
+			for artist_key in &song.artists {
+				genre.artists.insert(*artist_key);
+			}
+
+			for artist_key in &song.composers {
+				genre.artists.insert(*artist_key);
+			}
+
+			for artist_key in &song.lyricists {
+				genre.artists.insert(*artist_key);
+			}
+
 			genre.songs.push(SongKey {
 				virtual_path: song.virtual_path,
 			});

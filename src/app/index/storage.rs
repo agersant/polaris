@@ -19,6 +19,8 @@ pub enum File {
 #[derive(Serialize, Deserialize)]
 pub struct Genre {
 	pub name: Spur,
+	pub albums: HashSet<AlbumKey>,
+	pub artists: HashSet<ArtistKey>,
 	pub songs: Vec<SongKey>,
 }
 

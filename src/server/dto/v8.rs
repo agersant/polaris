@@ -334,12 +334,16 @@ impl From<index::GenreHeader> for GenreHeader {
 pub struct Genre {
 	#[serde(flatten)]
 	pub header: GenreHeader,
+	pub albums: Vec<AlbumHeader>,
+	pub artists: Vec<ArtistHeader>,
 }
 
 impl From<index::Genre> for Genre {
 	fn from(genre: index::Genre) -> Self {
 		Self {
 			header: GenreHeader::from(genre.header),
+			albums: genre.albums.into_iter().map(|a| a.into()).collect(),
+			artists: genre.artists.into_iter().map(|a| a.into()).collect(),
 		}
 	}
 }
