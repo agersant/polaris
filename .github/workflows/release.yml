@@ -62,6 +62,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           if-no-files-found: error
+          name: Polaris_${{ github.event.inputs.versionNumber }}.msi
           path: polaris.msi
 
   linux:
@@ -83,6 +84,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           if-no-files-found: error
+          name: Polaris_${{ github.event.inputs.versionNumber }}.tar.gz
           path: polaris.tar.gz
 
   create_release:
@@ -91,20 +93,10 @@ jobs:
     needs: [windows, linux]
 
     steps:
-      - name: Download Windows installer
+      - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          name: polaris.msi
-      - name: Name Windows installer
-        run: mv polaris.msi Polaris_${{ github.event.inputs.versionNumber }}.msi
-      
-      - name: Download Linux release
-        uses: actions/download-artifact@v4
-        with:
-          name: polaris.tar.gz
-      - name: Name Linux release
-        run: mv polaris.tar.gz Polaris_${{ github.event.inputs.versionNumber }}.tar.gz
-
+          merge-multiple: true
       - name: Make Github release
         uses: softprops/action-gh-release@v2
         with:
