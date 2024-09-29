@@ -20,8 +20,8 @@ mod search;
 mod storage;
 
 pub use browser::File;
-pub use collection::{Album, AlbumHeader, Artist, ArtistHeader, Song};
-use storage::{store_song, AlbumKey, ArtistKey, InternPath, SongKey};
+pub use collection::{Album, AlbumHeader, Artist, ArtistHeader, Genre, GenreHeader, Song};
+use storage::{store_song, AlbumKey, ArtistKey, GenreKey, InternPath, SongKey};
 
 #[derive(Clone)]
 pub struct Manager {
@@ -108,6 +108,38 @@ impl Manager {
 		.unwrap()
 	}
 
+	pub async fn get_genres(&self) -> Vec<GenreHeader> {
+		spawn_blocking({
+			let index_manager = self.clone();
+			move || {
+				let index = index_manager.index.read().unwrap();
+				index.collection.get_genres(&index.strings)
+			}
+		})
+		.await
+		.unwrap()
+	}
+
+	pub async fn get_genre(&self, name: String) -> Result<Genre, Error> {
+		spawn_blocking({
+			let index_manager = self.clone();
+			move || {
+				let index = index_manager.index.read().unwrap();
+				let name = index
+					.strings
+					.get(&name)
+					.ok_or_else(|| Error::GenreNotFound)?;
+				let genre_key = GenreKey { name };
+				index
+					.collection
+					.get_genre(&index.strings, genre_key)
+					.ok_or_else(|| Error::GenreNotFound)
+			}
+		})
+		.await
+		.unwrap()
+	}
+
 	pub async fn get_albums(&self) -> Vec<AlbumHeader> {
 		spawn_blocking({
 			let index_manager = self.clone();
@@ -137,12 +169,11 @@ impl Manager {
 			let index_manager = self.clone();
 			move || {
 				let index = index_manager.index.read().unwrap();
-				let artist_key = ArtistKey {
-					name: match name.as_str() {
-						"" => None,
-						s => index.strings.get(s),
-					},
-				};
+				let name = index
+					.strings
+					.get(name)
+					.ok_or_else(|| Error::ArtistNotFound)?;
+				let artist_key = ArtistKey { name };
 				index
 					.collection
 					.get_artist(&index.strings, artist_key)
@@ -166,6 +197,7 @@ impl Manager {
 					artists: artists
 						.into_iter()
 						.filter_map(|a| index.strings.get(a))
+						.map(|k| ArtistKey { name: k })
 						.collect(),
 					name,
 				};

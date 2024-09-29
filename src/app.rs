@@ -104,6 +104,8 @@ pub enum Error {
 	ArtistNotFound,
 	#[error("Album not found")]
 	AlbumNotFound,
+	#[error("Genre not found")]
+	GenreNotFound,
 	#[error("Song not found")]
 	SongNotFound,
 	#[error("Invalid search query syntax")]

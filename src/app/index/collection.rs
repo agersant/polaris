@@ -4,15 +4,26 @@ use std::{
 	path::PathBuf,
 };
 
-use lasso2::{RodeoReader, Spur};
+use lasso2::RodeoReader;
 use rand::{rngs::StdRng, seq::SliceRandom, SeedableRng};
 use serde::{Deserialize, Serialize};
 use tinyvec::TinyVec;
 use unicase::UniCase;
 
-use crate::app::index::storage::{self, AlbumKey, ArtistKey, SongKey};
+use crate::app::index::storage::{self, AlbumKey, ArtistKey, GenreKey, SongKey};
 
 use super::storage::fetch_song;
+
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct GenreHeader {
+	pub name: String,
+}
+
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct Genre {
+	pub header: GenreHeader,
+	pub songs: Vec<Song>,
+}
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ArtistHeader {
@@ -70,6 +81,7 @@ pub struct Song {
 pub struct Collection {
 	artists: HashMap<ArtistKey, storage::Artist>,
 	albums: HashMap<AlbumKey, storage::Album>,
+	genres: HashMap<GenreKey, storage::Genre>,
 	songs: HashMap<SongKey, storage::Song>,
 	recent_albums: Vec<AlbumKey>,
 }
@@ -178,6 +190,32 @@ impl Collection {
 			.collect()
 	}
 
+	pub fn get_genres(&self, strings: &RodeoReader) -> Vec<GenreHeader> {
+		let mut genres = self
+			.genres
+			.values()
+			.map(|a| make_genre_header(a, strings))
+			.collect::<Vec<_>>();
+		genres.sort_by(|a, b| a.name.cmp(&b.name));
+		genres
+	}
+
+	pub fn get_genre(&self, strings: &RodeoReader, genre_key: GenreKey) -> Option<Genre> {
+		self.genres.get(&genre_key).map(|genre| {
+			let songs = genre
+				.songs
+				.iter()
+				.filter_map(|k| self.get_song(strings, *k))
+				.collect::<Vec<_>>();
+			// TODO sort songs
+
+			Genre {
+				header: make_genre_header(genre, strings),
+				songs,
+			}
+		})
+	}
+
 	pub fn get_song(&self, strings: &RodeoReader, song_key: SongKey) -> Option<Song> {
 		self.songs.get(&song_key).map(|s| fetch_song(strings, s))
 	}
@@ -194,7 +232,7 @@ fn make_album_header(album: &storage::Album, strings: &RodeoReader) -> AlbumHead
 		artists: album
 			.artists
 			.iter()
-			.map(|a| strings.resolve(a).to_string())
+			.map(|a| strings.resolve(&a.name).to_string())
 			.collect(),
 		year: album.year,
 		date_added: album.date_added,
@@ -217,10 +255,17 @@ fn make_artist_header(artist: &storage::Artist, strings: &RodeoReader) -> Artist
 	}
 }
 
+fn make_genre_header(genre: &storage::Genre, strings: &RodeoReader) -> GenreHeader {
+	GenreHeader {
+		name: strings.resolve(&genre.name).to_string(),
+	}
+}
+
 #[derive(Default)]
 pub struct Builder {
 	artists: HashMap<ArtistKey, storage::Artist>,
 	albums: HashMap<AlbumKey, storage::Album>,
+	genres: HashMap<GenreKey, storage::Genre>,
 	songs: HashMap<SongKey, storage::Song>,
 }
 
@@ -228,6 +273,7 @@ impl Builder {
 	pub fn add_song(&mut self, song: &storage::Song) {
 		self.add_song_to_album(&song);
 		self.add_song_to_artists(&song);
+		self.add_song_to_genres(&song);
 
 		self.songs.insert(
 			SongKey {
@@ -249,6 +295,7 @@ impl Builder {
 		Collection {
 			artists: self.artists,
 			albums: self.albums,
+			genres: self.genres,
 			songs: self.songs,
 			recent_albums,
 		}
@@ -257,39 +304,39 @@ impl Builder {
 	fn add_song_to_artists(&mut self, song: &storage::Song) {
 		let album_key = song.album_key();
 
-		let mut all_artists = TinyVec::<[Spur; 8]>::new();
+		let mut all_artists = TinyVec::<[ArtistKey; 8]>::new();
 
-		for name in &song.album_artists {
-			all_artists.push(*name);
+		for artist_key in &song.album_artists {
+			all_artists.push(*artist_key);
 			if let Some(album_key) = &album_key {
-				let artist = self.get_or_create_artist(*name);
+				let artist = self.get_or_create_artist(*artist_key);
 				artist.albums_as_performer.insert(album_key.clone());
 			}
 		}
 
-		for name in &song.composers {
-			all_artists.push(*name);
+		for artist_key in &song.composers {
+			all_artists.push(*artist_key);
 			if let Some(album_key) = &album_key {
-				let artist = self.get_or_create_artist(*name);
+				let artist = self.get_or_create_artist(*artist_key);
 				artist.albums_as_composer.insert(album_key.clone());
 			}
 		}
 
-		for name in &song.lyricists {
-			all_artists.push(*name);
+		for artist_key in &song.lyricists {
+			all_artists.push(*artist_key);
 			if let Some(album_key) = &album_key {
-				let artist = self.get_or_create_artist(*name);
+				let artist = self.get_or_create_artist(*artist_key);
 				artist.albums_as_lyricist.insert(album_key.clone());
 			}
 		}
 
-		for name in &song.artists {
-			all_artists.push(*name);
+		for artist_key in &song.artists {
+			all_artists.push(*artist_key);
 			if let Some(album_key) = &album_key {
-				let artist = self.get_or_create_artist(*name);
+				let artist = self.get_or_create_artist(*artist_key);
 				if song.album_artists.is_empty() {
 					artist.albums_as_performer.insert(album_key.clone());
-				} else if !song.album_artists.contains(name) {
+				} else if !song.album_artists.contains(artist_key) {
 					artist
 						.albums_as_additional_performer
 						.insert(album_key.clone());
@@ -297,8 +344,8 @@ impl Builder {
 			}
 		}
 
-		for name in all_artists {
-			let artist = self.get_or_create_artist(name);
+		for artist_key in all_artists {
+			let artist = self.get_or_create_artist(artist_key);
 			artist.num_songs += 1;
 			if let Some(album_key) = &album_key {
 				artist.all_albums.insert(album_key.clone());
@@ -313,12 +360,11 @@ impl Builder {
 		}
 	}
 
-	fn get_or_create_artist(&mut self, name: lasso2::Spur) -> &mut storage::Artist {
-		let artist_key = ArtistKey { name: Some(name) };
+	fn get_or_create_artist(&mut self, artist_key: ArtistKey) -> &mut storage::Artist {
 		self.artists
 			.entry(artist_key)
 			.or_insert_with(|| storage::Artist {
-				name,
+				name: artist_key.name,
 				all_albums: HashSet::new(),
 				albums_as_performer: HashSet::new(),
 				albums_as_additional_performer: HashSet::new(),
@@ -358,6 +404,19 @@ impl Builder {
 		album.songs.insert(SongKey {
 			virtual_path: song.virtual_path,
 		});
+	}
+
+	fn add_song_to_genres(&mut self, song: &storage::Song) {
+		for name in &song.genres {
+			let genre_key = GenreKey { name: *name };
+			let genre = self.genres.entry(genre_key).or_insert(storage::Genre {
+				name: *name,
+				songs: Vec::new(),
+			});
+			genre.songs.push(SongKey {
+				virtual_path: song.virtual_path,
+			});
+		}
 	}
 }
 
@@ -721,7 +780,7 @@ mod test {
 		let artist = collection.get_artist(
 			&strings,
 			ArtistKey {
-				name: strings.get("Stratovarius"),
+				name: strings.get("Stratovarius").unwrap(),
 			},
 		);
 
@@ -787,7 +846,9 @@ mod test {
 		let album = collection.get_album(
 			&strings,
 			AlbumKey {
-				artists: tiny_vec![strings.get("FSOL").unwrap()],
+				artists: tiny_vec![ArtistKey {
+					name: strings.get("FSOL").unwrap()
+				}],
 				name: strings.get("Lifeforms").unwrap(),
 			},
 		);

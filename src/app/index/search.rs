@@ -282,24 +282,24 @@ impl Builder {
 			self.text_fields[TextField::Album].insert(str, spur, song_key);
 		}
 
-		for (str, spur) in scanner_song
+		for (str, artist_key) in scanner_song
 			.album_artists
 			.iter()
 			.zip(storage_song.album_artists.iter())
 		{
-			self.text_fields[TextField::AlbumArtist].insert(str, *spur, song_key);
+			self.text_fields[TextField::AlbumArtist].insert(str, artist_key.name, song_key);
 		}
 
-		for (str, spur) in scanner_song.artists.iter().zip(storage_song.artists.iter()) {
-			self.text_fields[TextField::Artist].insert(str, *spur, song_key);
+		for (str, artist_key) in scanner_song.artists.iter().zip(storage_song.artists.iter()) {
+			self.text_fields[TextField::Artist].insert(str, artist_key.name, song_key);
 		}
 
-		for (str, spur) in scanner_song
+		for (str, artist_key) in scanner_song
 			.composers
 			.iter()
 			.zip(storage_song.composers.iter())
 		{
-			self.text_fields[TextField::Composer].insert(str, *spur, song_key);
+			self.text_fields[TextField::Composer].insert(str, artist_key.name, song_key);
 		}
 
 		if let Some(disc_number) = &scanner_song.disc_number {
@@ -314,12 +314,12 @@ impl Builder {
 			self.text_fields[TextField::Label].insert(str, *spur, song_key);
 		}
 
-		for (str, spur) in scanner_song
+		for (str, artist_key) in scanner_song
 			.lyricists
 			.iter()
 			.zip(storage_song.lyricists.iter())
 		{
-			self.text_fields[TextField::Lyricist].insert(str, *spur, song_key);
+			self.text_fields[TextField::Lyricist].insert(str, artist_key.name, song_key);
 		}
 
 		self.text_fields[TextField::Path].insert(

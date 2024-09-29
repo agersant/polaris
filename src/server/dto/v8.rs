@@ -318,6 +318,33 @@ impl From<index::File> for BrowserEntry {
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GenreHeader {
+	pub name: String,
+}
+
+impl From<index::GenreHeader> for GenreHeader {
+	fn from(g: index::GenreHeader) -> Self {
+		Self {
+			name: g.name.to_string(),
+		}
+	}
+}
+
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Genre {
+	#[serde(flatten)]
+	pub header: GenreHeader,
+}
+
+impl From<index::Genre> for Genre {
+	fn from(genre: index::Genre) -> Self {
+		Self {
+			header: GenreHeader::from(genre.header),
+		}
+	}
+}
+
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ArtistHeader {
 	pub name: String,
 	pub num_albums_as_performer: u32,

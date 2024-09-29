@@ -17,6 +17,12 @@ pub enum File {
 }
 
 #[derive(Serialize, Deserialize)]
+pub struct Genre {
+	pub name: Spur,
+	pub songs: Vec<SongKey>,
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct Artist {
 	pub name: Spur,
 	pub all_albums: HashSet<AlbumKey>,
@@ -32,7 +38,7 @@ pub struct Artist {
 pub struct Album {
 	pub name: Spur,
 	pub artwork: Option<PathKey>,
-	pub artists: TinyVec<[Spur; 1]>,
+	pub artists: TinyVec<[ArtistKey; 1]>,
 	pub year: Option<i64>,
 	pub date_added: i64,
 	pub songs: HashSet<SongKey>,
@@ -45,14 +51,14 @@ pub struct Song {
 	pub track_number: Option<i64>,
 	pub disc_number: Option<i64>,
 	pub title: Option<Spur>,
-	pub artists: TinyVec<[Spur; 1]>,
-	pub album_artists: TinyVec<[Spur; 1]>,
+	pub artists: TinyVec<[ArtistKey; 1]>,
+	pub album_artists: TinyVec<[ArtistKey; 1]>,
 	pub year: Option<i64>,
 	pub album: Option<Spur>,
 	pub artwork: Option<PathKey>,
 	pub duration: Option<i64>,
-	pub lyricists: TinyVec<[Spur; 0]>,
-	pub composers: TinyVec<[Spur; 0]>,
+	pub lyricists: TinyVec<[ArtistKey; 0]>,
+	pub composers: TinyVec<[ArtistKey; 0]>,
 	pub genres: TinyVec<[Spur; 1]>,
 	pub labels: TinyVec<[Spur; 0]>,
 	pub date_added: i64,
@@ -63,14 +69,19 @@ pub struct Song {
 )]
 pub struct PathKey(pub Spur);
 
-#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Default, Eq, Hash, PartialEq, Serialize, Deserialize)]
+pub struct GenreKey {
+	pub name: Spur,
+}
+
+#[derive(Copy, Clone, Debug, Default, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct ArtistKey {
-	pub name: Option<Spur>,
+	pub name: Spur,
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct AlbumKey {
-	pub artists: TinyVec<[Spur; 4]>,
+	pub artists: TinyVec<[ArtistKey; 4]>,
 	pub name: Spur,
 }
 
@@ -151,11 +162,17 @@ pub fn store_song(
 		track_number: song.track_number,
 		disc_number: song.disc_number,
 		title: song.title.as_ref().and_then(&mut canonicalize),
-		artists: song.artists.iter().filter_map(&mut canonicalize).collect(),
+		artists: song
+			.artists
+			.iter()
+			.filter_map(&mut canonicalize)
+			.map(|k| ArtistKey { name: k })
+			.collect(),
 		album_artists: song
 			.album_artists
 			.iter()
 			.filter_map(&mut canonicalize)
+			.map(|k| ArtistKey { name: k })
 			.collect(),
 		year: song.year,
 		album: song.album.as_ref().and_then(&mut canonicalize),
@@ -165,11 +182,13 @@ pub fn store_song(
 			.lyricists
 			.iter()
 			.filter_map(&mut canonicalize)
+			.map(|k| ArtistKey { name: k })
 			.collect(),
 		composers: song
 			.composers
 			.iter()
 			.filter_map(&mut canonicalize)
+			.map(|k| ArtistKey { name: k })
 			.collect(),
 		genres: song.genres.iter().filter_map(&mut canonicalize).collect(),
 		labels: song.labels.iter().filter_map(&mut canonicalize).collect(),
@@ -187,12 +206,12 @@ pub fn fetch_song(strings: &RodeoReader, song: &Song) -> super::Song {
 		artists: song
 			.artists
 			.iter()
-			.map(|s| strings.resolve(&s).to_string())
+			.map(|k| strings.resolve(&k.name).to_string())
 			.collect(),
 		album_artists: song
 			.album_artists
 			.iter()
-			.map(|s| strings.resolve(&s).to_string())
+			.map(|k| strings.resolve(&k.name).to_string())
 			.collect(),
 		year: song.year,
 		album: song.album.map(|s| strings.resolve(&s).to_string()),
@@ -201,12 +220,12 @@ pub fn fetch_song(strings: &RodeoReader, song: &Song) -> super::Song {
 		lyricists: song
 			.lyricists
 			.iter()
-			.map(|s| strings.resolve(&s).to_string())
+			.map(|k| strings.resolve(&k.name).to_string())
 			.collect(),
 		composers: song
 			.composers
 			.iter()
-			.map(|s| strings.resolve(&s).to_string())
+			.map(|k| strings.resolve(&k.name).to_string())
 			.collect(),
 		genres: song
 			.genres

@@ -59,6 +59,9 @@ pub fn router() -> Router<App> {
 		.route("/artists", get(get_artists))
 		.route("/artists/:artist", get(get_artist))
 		.route("/artists/:artists/albums/:name", get(get_album))
+		.route("/genres", get(get_genres))
+		.route("/genres/:genre", get(get_genre))
+		.route("/genres/:genre/songs", get(get_genre_songs))
 		.route("/random", get(get_random_albums)) // Deprecated
 		.route("/recent", get(get_recent_albums)) // Deprecated
 		// Search
@@ -506,6 +509,45 @@ async fn get_recent_albums(
 		Err(e) => return APIError::from(e).into_response(),
 	};
 	albums_to_response(albums, api_version)
+}
+
+async fn get_genres(
+	_auth: Auth,
+	State(index_manager): State<index::Manager>,
+) -> Result<Json<Vec<dto::GenreHeader>>, APIError> {
+	Ok(Json(
+		index_manager
+			.get_genres()
+			.await
+			.into_iter()
+			.map(|g| g.into())
+			.collect(),
+	))
+}
+
+async fn get_genre(
+	_auth: Auth,
+	State(index_manager): State<index::Manager>,
+	Path(genre): Path<String>,
+) -> Result<Json<dto::Genre>, APIError> {
+	Ok(Json(index_manager.get_genre(genre).await?.into()))
+}
+
+async fn get_genre_songs(
+	_auth: Auth,
+	State(index_manager): State<index::Manager>,
+	Path(genre): Path<String>,
+) -> Result<Json<dto::SongList>, APIError> {
+	let songs = index_manager.get_genre(genre).await?.songs;
+	let song_list = dto::SongList {
+		paths: songs.iter().map(|s| s.virtual_path.clone()).collect(),
+		first_songs: songs
+			.into_iter()
+			.take(SONG_LIST_CAPACITY)
+			.map(|s| s.into())
+			.collect(),
+	};
+	Ok(Json(song_list))
 }
 
 async fn get_search(
