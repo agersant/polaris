@@ -105,6 +105,7 @@ jobs:
           prerelease: false
           name: Polaris ${{ github.event.inputs.versionNumber }}
           tag_name: ${{ github.event.inputs.versionNumber }}
+          fail_on_unmatched_files: true
           files: |
             Polaris_${{ github.event.inputs.versionNumber }}.tar.gz
             Polaris_${{ github.event.inputs.versionNumber }}.msi
