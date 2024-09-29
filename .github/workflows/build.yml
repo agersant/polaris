@@ -14,12 +14,14 @@ jobs:
         features: ["", --features ui]
 
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --release ${{ matrix.features }}
+    - name: Install libsqlite3-dev
+      if: contains(matrix.os, 'ubuntu') && !contains(matrix.features, 'bundle-sqlite')
+      run: sudo apt-get update && sudo apt-get install libsqlite3-dev
+    - uses: actions/checkout@v4
+    - uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+    - uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --release ${{ matrix.features }}
