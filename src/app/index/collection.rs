@@ -232,7 +232,7 @@ fn make_album_header(album: &storage::Album, strings: &RodeoReader) -> AlbumHead
 		artists: album
 			.artists
 			.iter()
-			.map(|a| strings.resolve(&a.name).to_string())
+			.map(|a| strings.resolve(&a.0).to_string())
 			.collect(),
 		year: album.year,
 		date_added: album.date_added,
@@ -364,7 +364,7 @@ impl Builder {
 		self.artists
 			.entry(artist_key)
 			.or_insert_with(|| storage::Artist {
-				name: artist_key.name,
+				name: artist_key.0,
 				all_albums: HashSet::new(),
 				albums_as_performer: HashSet::new(),
 				albums_as_additional_performer: HashSet::new(),
@@ -777,12 +777,8 @@ mod test {
 			},
 		]));
 
-		let artist = collection.get_artist(
-			&strings,
-			ArtistKey {
-				name: strings.get("Stratovarius").unwrap(),
-			},
-		);
+		let artist =
+			collection.get_artist(&strings, ArtistKey(strings.get("Stratovarius").unwrap()));
 
 		let names = artist
 			.unwrap()
@@ -843,12 +839,11 @@ mod test {
 			},
 		]));
 
+		let artist = ArtistKey(strings.get("FSOL").unwrap());
 		let album = collection.get_album(
 			&strings,
 			AlbumKey {
-				artists: tiny_vec![ArtistKey {
-					name: strings.get("FSOL").unwrap()
-				}],
+				artists: tiny_vec!([ArtistKey; 4] => artist),
 				name: strings.get("Lifeforms").unwrap(),
 			},
 		);

@@ -287,11 +287,11 @@ impl Builder {
 			.iter()
 			.zip(storage_song.album_artists.iter())
 		{
-			self.text_fields[TextField::AlbumArtist].insert(str, artist_key.name, song_key);
+			self.text_fields[TextField::AlbumArtist].insert(str, artist_key.0, song_key);
 		}
 
 		for (str, artist_key) in scanner_song.artists.iter().zip(storage_song.artists.iter()) {
-			self.text_fields[TextField::Artist].insert(str, artist_key.name, song_key);
+			self.text_fields[TextField::Artist].insert(str, artist_key.0, song_key);
 		}
 
 		for (str, artist_key) in scanner_song
@@ -299,7 +299,7 @@ impl Builder {
 			.iter()
 			.zip(storage_song.composers.iter())
 		{
-			self.text_fields[TextField::Composer].insert(str, artist_key.name, song_key);
+			self.text_fields[TextField::Composer].insert(str, artist_key.0, song_key);
 		}
 
 		if let Some(disc_number) = &scanner_song.disc_number {
@@ -319,7 +319,7 @@ impl Builder {
 			.iter()
 			.zip(storage_song.lyricists.iter())
 		{
-			self.text_fields[TextField::Lyricist].insert(str, artist_key.name, song_key);
+			self.text_fields[TextField::Lyricist].insert(str, artist_key.0, song_key);
 		}
 
 		self.text_fields[TextField::Path].insert(

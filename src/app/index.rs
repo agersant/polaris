@@ -173,7 +173,7 @@ impl Manager {
 					.strings
 					.get(name)
 					.ok_or_else(|| Error::ArtistNotFound)?;
-				let artist_key = ArtistKey { name };
+				let artist_key = ArtistKey(name);
 				index
 					.collection
 					.get_artist(&index.strings, artist_key)
@@ -197,7 +197,7 @@ impl Manager {
 					artists: artists
 						.into_iter()
 						.filter_map(|a| index.strings.get(a))
-						.map(|k| ArtistKey { name: k })
+						.map(|k| ArtistKey(k))
 						.collect(),
 					name,
 				};

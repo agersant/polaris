@@ -75,9 +75,7 @@ pub struct GenreKey {
 }
 
 #[derive(Copy, Clone, Debug, Default, Eq, Hash, PartialEq, Serialize, Deserialize)]
-pub struct ArtistKey {
-	pub name: Spur,
-}
+pub struct ArtistKey(pub Spur);
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct AlbumKey {
@@ -166,13 +164,13 @@ pub fn store_song(
 			.artists
 			.iter()
 			.filter_map(&mut canonicalize)
-			.map(|k| ArtistKey { name: k })
+			.map(|k| ArtistKey(k))
 			.collect(),
 		album_artists: song
 			.album_artists
 			.iter()
 			.filter_map(&mut canonicalize)
-			.map(|k| ArtistKey { name: k })
+			.map(|k| ArtistKey(k))
 			.collect(),
 		year: song.year,
 		album: song.album.as_ref().and_then(&mut canonicalize),
@@ -182,13 +180,13 @@ pub fn store_song(
 			.lyricists
 			.iter()
 			.filter_map(&mut canonicalize)
-			.map(|k| ArtistKey { name: k })
+			.map(|k| ArtistKey(k))
 			.collect(),
 		composers: song
 			.composers
 			.iter()
 			.filter_map(&mut canonicalize)
-			.map(|k| ArtistKey { name: k })
+			.map(|k| ArtistKey(k))
 			.collect(),
 		genres: song.genres.iter().filter_map(&mut canonicalize).collect(),
 		labels: song.labels.iter().filter_map(&mut canonicalize).collect(),
@@ -206,12 +204,12 @@ pub fn fetch_song(strings: &RodeoReader, song: &Song) -> super::Song {
 		artists: song
 			.artists
 			.iter()
-			.map(|k| strings.resolve(&k.name).to_string())
+			.map(|k| strings.resolve(&k.0).to_string())
 			.collect(),
 		album_artists: song
 			.album_artists
 			.iter()
-			.map(|k| strings.resolve(&k.name).to_string())
+			.map(|k| strings.resolve(&k.0).to_string())
 			.collect(),
 		year: song.year,
 		album: song.album.map(|s| strings.resolve(&s).to_string()),
@@ -220,12 +218,12 @@ pub fn fetch_song(strings: &RodeoReader, song: &Song) -> super::Song {
 		lyricists: song
 			.lyricists
 			.iter()
-			.map(|k| strings.resolve(&k.name).to_string())
+			.map(|k| strings.resolve(&k.0).to_string())
 			.collect(),
 		composers: song
 			.composers
 			.iter()
-			.map(|k| strings.resolve(&k.name).to_string())
+			.map(|k| strings.resolve(&k.0).to_string())
 			.collect(),
 		genres: song
 			.genres
