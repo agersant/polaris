@@ -34,6 +34,13 @@
 - The seekbar for the current song being played has been replaced with a waveform visualization.
 - Improved responsiveness when queuing large amount of songs at once.
 
+## Polaris 0.14.3
+
+### Server
+
+- Fixed a build error (https://github.com/rust-lang/rust/issues/127343) with recent versions of the Rust compiler (thanks @pbsds) 
+- Added support for m4b audio files (thanks @duydl)
+
 ## Polaris 0.14.2
 
 ### Server
