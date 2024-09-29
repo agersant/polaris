@@ -82,9 +82,7 @@ jobs:
   create_release:
     name: Create Github Release
     runs-on: ubuntu-latest
-    needs:
-      - windows
-      - linux
+    needs: [windows, linux]
 
     steps:
       - name: Download Windows installer
@@ -109,6 +107,6 @@ jobs:
           prerelease: false
           name: Polaris ${{ github.event.inputs.versionNumber }}
           tag_name: ${{ github.event.inputs.versionNumber }}
-          files:
-            - Polaris_${{ github.event.inputs.versionNumber }}.tar.gz
-            - Polaris_${{ github.event.inputs.versionNumber }}.msi
+          files: |
+            Polaris_${{ github.event.inputs.versionNumber }}.tar.gz
+            Polaris_${{ github.event.inputs.versionNumber }}.msi
