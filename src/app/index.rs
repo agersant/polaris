@@ -14,7 +14,6 @@ mod update;
 
 pub use self::query::*;
 pub use self::types::*;
-pub use self::update::*;
 
 #[derive(Clone)]
 pub struct Index {

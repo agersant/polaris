@@ -24,6 +24,7 @@ pub enum AudioFormat {
 	OGG,
 	OPUS,
 	WAVE,
+	M4B,
 }
 
 pub fn get_audio_format(path: &Path) -> Option<AudioFormat> {
@@ -46,6 +47,7 @@ pub fn get_audio_format(path: &Path) -> Option<AudioFormat> {
 		"ogg" => Some(AudioFormat::OGG),
 		"opus" => Some(AudioFormat::OPUS),
 		"wav" => Some(AudioFormat::WAVE),
+		"m4b" => Some(AudioFormat::M4B),
 		_ => None,
 	}
 }

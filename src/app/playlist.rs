@@ -98,8 +98,7 @@ impl Manager {
 			}
 		}
 
-		let mut new_songs: Vec<NewPlaylistSong> = Vec::new();
-		new_songs.reserve(content.len());
+		let mut new_songs: Vec<NewPlaylistSong> = Vec::with_capacity(content.len());
 
 		for (i, path) in content.iter().enumerate() {
 			let virtual_path = Path::new(&path);
