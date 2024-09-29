@@ -56,13 +56,13 @@ jobs:
         uses: ./.github/actions/make-windows-release
         with:
           version-number: ${{ github.event.inputs.versionNumber }}
-          output-file: polaris.msi
+          output-file: Polaris_${{ github.event.inputs.versionNumber }}.msi
       - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
           if-no-files-found: error
-          name: Polaris_${{ github.event.inputs.versionNumber }}.msi
-          path: polaris.msi
+          name: windows-artifact
+          path: Polaris_${{ github.event.inputs.versionNumber }}.msi
 
   linux:
     name: Linux
@@ -78,13 +78,13 @@ jobs:
         uses: ./.github/actions/make-linux-release
         with:
           version-number: ${{ github.event.inputs.versionNumber }}
-          output-file: polaris.tar.gz
+          output-file: Polaris_${{ github.event.inputs.versionNumber }}.tar.gz
       - name: Upload release
         uses: actions/upload-artifact@v4
         with:
           if-no-files-found: error
-          name: Polaris_${{ github.event.inputs.versionNumber }}.tar.gz
-          path: polaris.tar.gz
+          name: linux-artifact
+          path: Polaris_${{ github.event.inputs.versionNumber }}.tar.gz
 
   create_release:
     name: Create Github Release
@@ -96,8 +96,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           merge-multiple: true
-      - name: Troublshooting
-        run: ls -R
       - name: Make Github release
         uses: softprops/action-gh-release@v2
         with:
