@@ -61,6 +61,8 @@ pub fn router() -> Router<App> {
 		.route("/artists/:artists/albums/:name", get(get_album))
 		.route("/genres", get(get_genres))
 		.route("/genres/:genre", get(get_genre))
+		.route("/genres/:genre/albums", get(get_genre_albums))
+		.route("/genres/:genre/artists", get(get_genre_artists))
 		.route("/genres/:genre/songs", get(get_genre_songs))
 		.route("/random", get(get_random_albums)) // Deprecated
 		.route("/recent", get(get_recent_albums)) // Deprecated
@@ -531,6 +533,36 @@ async fn get_genre(
 	Path(genre): Path<String>,
 ) -> Result<Json<dto::Genre>, APIError> {
 	Ok(Json(index_manager.get_genre(genre).await?.into()))
+}
+
+async fn get_genre_albums(
+	_auth: Auth,
+	State(index_manager): State<index::Manager>,
+	Path(genre): Path<String>,
+) -> Result<Json<Vec<dto::AlbumHeader>>, APIError> {
+	let albums = index_manager
+		.get_genre(genre)
+		.await?
+		.albums
+		.into_iter()
+		.map(|a| a.into())
+		.collect();
+	Ok(Json(albums))
+}
+
+async fn get_genre_artists(
+	_auth: Auth,
+	State(index_manager): State<index::Manager>,
+	Path(genre): Path<String>,
+) -> Result<Json<Vec<dto::ArtistHeader>>, APIError> {
+	let artists = index_manager
+		.get_genre(genre)
+		.await?
+		.artists
+		.into_iter()
+		.map(|a| a.into())
+		.collect();
+	Ok(Json(artists))
 }
 
 async fn get_genre_songs(
