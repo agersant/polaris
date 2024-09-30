@@ -24,6 +24,7 @@ pub struct Genre {
 	pub header: GenreHeader,
 	pub albums: Vec<AlbumHeader>,
 	pub artists: Vec<ArtistHeader>,
+	pub related_genres: HashMap<String, u32>,
 	pub songs: Vec<Song>,
 }
 
@@ -233,10 +234,19 @@ impl Collection {
 				.collect::<Vec<_>>();
 			// TODO sort songs
 
+			let related_genres = genre
+				.related_genres
+				.iter()
+				.map(|(genre_key, song_count)| {
+					(strings.resolve(&genre_key.0).to_owned(), *song_count)
+				})
+				.collect();
+
 			Genre {
 				header: make_genre_header(genre, strings),
 				albums,
 				artists,
+				related_genres,
 				songs,
 			}
 		})
@@ -439,6 +449,7 @@ impl Builder {
 				name: *name,
 				albums: HashSet::new(),
 				artists: HashSet::new(),
+				related_genres: HashMap::new(),
 				songs: Vec::new(),
 			});
 
@@ -465,6 +476,23 @@ impl Builder {
 			genre.songs.push(SongKey {
 				virtual_path: song.virtual_path,
 			});
+		}
+
+		let genres = song.genres.clone();
+		for genre in &genres {
+			for other_genre in &genres {
+				if genre == other_genre {
+					continue;
+				}
+				let Some(genre) = self.genres.get_mut(&GenreKey(*genre)) else {
+					continue;
+				};
+				genre
+					.related_genres
+					.entry(GenreKey(*other_genre))
+					.and_modify(|n| *n += 1)
+					.or_insert(1);
+			}
 		}
 	}
 }

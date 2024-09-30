@@ -21,6 +21,7 @@ pub struct Genre {
 	pub name: Spur,
 	pub albums: HashSet<AlbumKey>,
 	pub artists: HashSet<ArtistKey>,
+	pub related_genres: HashMap<GenreKey, u32>,
 	pub songs: Vec<SongKey>,
 }
 

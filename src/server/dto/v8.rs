@@ -334,12 +334,14 @@ impl From<index::GenreHeader> for GenreHeader {
 pub struct Genre {
 	#[serde(flatten)]
 	pub header: GenreHeader,
+	pub related_genres: HashMap<String, u32>,
 }
 
 impl From<index::Genre> for Genre {
 	fn from(genre: index::Genre) -> Self {
 		Self {
 			header: GenreHeader::from(genre.header),
+			related_genres: genre.related_genres,
 		}
 	}
 }
