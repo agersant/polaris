@@ -12,11 +12,13 @@ pub mod protocol;
 
 mod admin;
 mod auth;
+mod browser;
 mod collection;
 mod ddns;
 mod lastfm;
 mod media;
 mod playlist;
+mod search;
 mod settings;
 mod swagger;
 mod user;
