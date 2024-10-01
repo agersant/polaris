@@ -335,13 +335,42 @@ pub struct Genre {
 	#[serde(flatten)]
 	pub header: GenreHeader,
 	pub related_genres: HashMap<String, u32>,
+	pub main_artists: Vec<ArtistHeader>,
+	pub recently_added: Vec<AlbumHeader>,
 }
 
 impl From<index::Genre> for Genre {
-	fn from(genre: index::Genre) -> Self {
+	fn from(mut genre: index::Genre) -> Self {
+		let main_artists = {
+			genre.artists.sort_by_key(|a| {
+				-(a.num_songs_by_genre
+					.get(&genre.header.name)
+					.copied()
+					.unwrap_or_default() as i32)
+			});
+			genre
+				.artists
+				.into_iter()
+				.take(20)
+				.map(|a| a.into())
+				.collect()
+		};
+
+		let recently_added = {
+			genre.albums.sort_by_key(|a| -a.date_added);
+			genre
+				.albums
+				.into_iter()
+				.take(20)
+				.map(|a| a.into())
+				.collect()
+		};
+
 		Self {
 			header: GenreHeader::from(genre.header),
 			related_genres: genre.related_genres,
+			main_artists,
+			recently_added,
 		}
 	}
 }
