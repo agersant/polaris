@@ -970,4 +970,68 @@ mod test {
 			})
 		);
 	}
+
+	#[test]
+	fn can_list_genres() {
+		let (collection, strings) = setup_test(Vec::from([
+			scanner::Song {
+				virtual_path: PathBuf::from("Kai.mp3"),
+				title: Some("Kai".to_owned()),
+				genres: vec!["Ambient".to_owned()],
+				..Default::default()
+			},
+			scanner::Song {
+				virtual_path: PathBuf::from("Fantasy.mp3"),
+				title: Some("Fantasy".to_owned()),
+				genres: vec!["Metal".to_owned()],
+				..Default::default()
+			},
+		]));
+
+		let genres = collection
+			.get_genres(&strings)
+			.into_iter()
+			.map(|a| a.name)
+			.collect::<Vec<_>>();
+
+		assert_eq!(genres, vec!["Ambient".to_owned(), "Metal".to_owned()]);
+	}
+
+	#[test]
+	fn can_get_genre() {
+		let (collection, strings) = setup_test(Vec::from([
+			scanner::Song {
+				virtual_path: PathBuf::from("Seasons.mp3"),
+				title: Some("Seasons".to_owned()),
+				artists: vec!["Dragonforce".to_owned()],
+				genres: vec!["Metal".to_owned()],
+				..Default::default()
+			},
+			scanner::Song {
+				virtual_path: PathBuf::from("Fantasy.mp3"),
+				title: Some("Fantasy".to_owned()),
+				artists: vec!["Stratovarius".to_owned()],
+				genres: vec!["Metal".to_owned(), "Power Metal".to_owned()],
+				..Default::default()
+			},
+			scanner::Song {
+				virtual_path: PathBuf::from("Calcium.mp3"),
+				title: Some("Calcium".to_owned()),
+				genres: vec!["Electronic".to_owned()],
+				..Default::default()
+			},
+		]));
+
+		let genre = collection
+			.get_genre(&strings, GenreKey(strings.get("Metal").unwrap()))
+			.unwrap();
+
+		assert_eq!(genre.header.name, "Metal".to_owned());
+		assert_eq!(genre.artists[0].name, UniCase::new("Dragonforce"));
+		assert_eq!(genre.artists[1].name, UniCase::new("Stratovarius"));
+		assert_eq!(
+			genre.related_genres,
+			HashMap::from_iter([("Power Metal".to_owned(), 1)])
+		);
+	}
 }
