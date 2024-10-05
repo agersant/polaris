@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::app::{config, ddns, index, peaks, settings, thumbnail, user, vfs};
+use crate::app::{config, ddns, index, peaks, playlist, settings, thumbnail, user, vfs};
 use std::{collections::HashMap, convert::From, path::PathBuf};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
@@ -77,8 +77,20 @@ impl From<peaks::Peaks> for Peaks {
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ListPlaylistsEntry {
+pub struct PlaylistHeader {
 	pub name: String,
+	pub num_songs_by_genre: HashMap<String, u32>,
+	pub duration: u64,
+}
+
+impl From<playlist::PlaylistHeader> for PlaylistHeader {
+	fn from(header: playlist::PlaylistHeader) -> Self {
+		Self {
+			name: header.name,
+			num_songs_by_genre: header.num_songs_by_genre,
+			duration: header.duration.as_secs(),
+		}
+	}
 }
 
 #[derive(Clone, Serialize, Deserialize)]

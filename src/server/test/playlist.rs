@@ -22,7 +22,7 @@ async fn list_playlists_golden_path() {
 	service.login().await;
 	let request = protocol::playlists();
 	let response = service
-		.fetch_json::<_, Vec<dto::ListPlaylistsEntry>>(&request)
+		.fetch_json::<_, Vec<dto::PlaylistHeader>>(&request)
 		.await;
 	assert_eq!(response.status(), StatusCode::OK);
 }

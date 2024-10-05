@@ -1,6 +1,9 @@
 use core::clone::Clone;
-use sqlx::{Acquire, QueryBuilder, Sqlite};
+use std::collections::HashMap;
 use std::path::PathBuf;
+use std::time::Duration;
+
+use sqlx::{Acquire, QueryBuilder, Sqlite};
 
 use crate::app::Error;
 use crate::db::DB;
@@ -10,12 +13,19 @@ pub struct Manager {
 	db: DB,
 }
 
+#[derive(Debug)]
+pub struct PlaylistHeader {
+	pub name: String,
+	pub duration: Duration,
+	pub num_songs_by_genre: HashMap<String, u32>,
+}
+
 impl Manager {
 	pub fn new(db: DB) -> Self {
 		Self { db }
 	}
 
-	pub async fn list_playlists(&self, owner: &str) -> Result<Vec<String>, Error> {
+	pub async fn list_playlists(&self, owner: &str) -> Result<Vec<PlaylistHeader>, Error> {
 		let mut connection = self.db.connect().await?;
 
 		let user_id = sqlx::query_scalar!("SELECT id FROM users WHERE name = $1", owner)
@@ -198,7 +208,7 @@ mod test {
 			.await
 			.unwrap();
 		assert_eq!(found_playlists.len(), 1);
-		assert_eq!(found_playlists[0], TEST_PLAYLIST_NAME);
+		assert_eq!(found_playlists[0].name, TEST_PLAYLIST_NAME);
 	}
 
 	#[tokio::test]

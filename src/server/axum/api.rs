@@ -618,12 +618,9 @@ async fn get_search(
 async fn get_playlists(
 	auth: Auth,
 	State(playlist_manager): State<playlist::Manager>,
-) -> Result<Json<Vec<dto::ListPlaylistsEntry>>, APIError> {
-	let playlist_names = playlist_manager.list_playlists(auth.get_username()).await?;
-	let playlists: Vec<dto::ListPlaylistsEntry> = playlist_names
-		.into_iter()
-		.map(|p| dto::ListPlaylistsEntry { name: p })
-		.collect();
+) -> Result<Json<Vec<dto::PlaylistHeader>>, APIError> {
+	let playlists = playlist_manager.list_playlists(auth.get_username()).await?;
+	let playlists = playlists.into_iter().map(|p| p.into()).collect();
 
 	Ok(Json(playlists))
 }
