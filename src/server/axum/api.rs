@@ -628,11 +628,18 @@ async fn get_playlists(
 async fn put_playlist(
 	auth: Auth,
 	State(playlist_manager): State<playlist::Manager>,
+	State(index_manager): State<index::Manager>,
 	Path(name): Path<String>,
 	playlist: Json<dto::SavePlaylistInput>,
 ) -> Result<(), APIError> {
+	let songs = index_manager
+		.get_songs(playlist.tracks.clone())
+		.await
+		.into_iter()
+		.filter_map(|s| s.ok())
+		.collect();
 	playlist_manager
-		.save_playlist(&name, auth.get_username(), &playlist.tracks)
+		.save_playlist(&name, auth.get_username(), songs)
 		.await?;
 	Ok(())
 }
@@ -644,14 +651,14 @@ async fn get_playlist(
 	State(playlist_manager): State<playlist::Manager>,
 	Path(name): Path<String>,
 ) -> Response {
-	let paths = match playlist_manager
+	let playlist = match playlist_manager
 		.read_playlist(&name, auth.get_username())
 		.await
 	{
 		Ok(s) => s,
 		Err(e) => return APIError::from(e).into_response(),
 	};
-	let song_list = make_song_list(paths, &index_manager).await;
+	let song_list = make_song_list(playlist.songs, &index_manager).await;
 	song_list_to_response(song_list, api_version)
 }
 

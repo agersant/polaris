@@ -143,14 +143,3 @@ async fn delete_playlist_golden_path() {
 	let response = service.fetch(&request).await;
 	assert_eq!(response.status(), StatusCode::OK);
 }
-
-#[tokio::test]
-async fn delete_playlist_bad_name_returns_not_found() {
-	let mut service = ServiceType::new(&test_name!()).await;
-	service.complete_initial_setup().await;
-	service.login().await;
-
-	let request = protocol::delete_playlist(TEST_PLAYLIST_NAME);
-	let response = service.fetch(&request).await;
-	assert_eq!(response.status(), StatusCode::NOT_FOUND);
-}

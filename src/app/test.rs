@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::app::{config, ddns, index, playlist, scanner, settings, user, vfs};
+use crate::app::{config, ddns, index, ndb, playlist, scanner, settings, user, vfs};
 use crate::db::DB;
 use crate::test::*;
 
@@ -52,8 +52,10 @@ impl ContextBuilder {
 	}
 	pub async fn build(self) -> Context {
 		let db_path = self.test_directory.join("db.sqlite");
+		let ndb_path = self.test_directory.join("polaris.ndb");
 
 		let db = DB::new(&db_path).await.unwrap();
+		let ndb_manager = ndb::Manager::new(&ndb_path).unwrap();
 		let settings_manager = settings::Manager::new(db.clone());
 		let auth_secret = settings_manager.get_auth_secret().await.unwrap();
 		let user_manager = user::Manager::new(db.clone(), auth_secret);
@@ -73,7 +75,7 @@ impl ContextBuilder {
 		)
 		.await
 		.unwrap();
-		let playlist_manager = playlist::Manager::new(db.clone());
+		let playlist_manager = playlist::Manager::new(ndb_manager.clone());
 
 		config_manager.apply(&self.config).await.unwrap();
 

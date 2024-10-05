@@ -6,6 +6,7 @@ pub struct Paths {
 	pub cache_dir_path: PathBuf,
 	pub config_file_path: Option<PathBuf>,
 	pub db_file_path: PathBuf,
+	pub ndb_file_path: PathBuf,
 	pub log_file_path: Option<PathBuf>,
 	#[cfg(unix)]
 	pub pid_file_path: PathBuf,
@@ -22,6 +23,7 @@ impl Default for Paths {
 			cache_dir_path: ["."].iter().collect(),
 			config_file_path: None,
 			db_file_path: [".", "db.sqlite"].iter().collect(),
+			ndb_file_path: [".", "polaris.ndb"].iter().collect(),
 			log_file_path: Some([".", "polaris.log"].iter().collect()),
 			pid_file_path: [".", "polaris.pid"].iter().collect(),
 			swagger_dir_path: [".", "docs", "swagger"].iter().collect(),
@@ -40,6 +42,7 @@ impl Default for Paths {
 			cache_dir_path: install_directory.clone(),
 			config_file_path: None,
 			db_file_path: install_directory.join("db.sqlite"),
+			ndb_file_path: install_directory.join("polaris.ndb"),
 			log_file_path: Some(install_directory.join("polaris.log")),
 			swagger_dir_path: install_directory.join("swagger"),
 			web_dir_path: install_directory.join("web"),
@@ -55,6 +58,10 @@ impl Paths {
 				.map(PathBuf::from)
 				.map(|p| p.join("db.sqlite"))
 				.unwrap_or(defaults.db_file_path),
+			ndb_file_path: option_env!("POLARIS_DB_DIR")
+				.map(PathBuf::from)
+				.map(|p| p.join("polaris.ndb"))
+				.unwrap_or(defaults.ndb_file_path),
 			config_file_path: None,
 			cache_dir_path: option_env!("POLARIS_CACHE_DIR")
 				.map(PathBuf::from)

@@ -3,14 +3,15 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::Duration;
 
-use sqlx::{Acquire, QueryBuilder, Sqlite};
+use native_db::*;
+use native_model::{native_model, Model};
+use serde::{Deserialize, Serialize};
 
-use crate::app::Error;
-use crate::db::DB;
+use crate::app::{index, ndb, Error};
 
 #[derive(Clone)]
 pub struct Manager {
-	db: DB,
+	db: ndb::Manager,
 }
 
 #[derive(Debug)]
@@ -20,161 +21,137 @@ pub struct PlaylistHeader {
 	pub num_songs_by_genre: HashMap<String, u32>,
 }
 
+#[derive(Debug)]
+pub struct Playlist {
+	pub header: PlaylistHeader,
+	pub songs: Vec<PathBuf>,
+}
+
+pub type PlaylistModel = v1::PlaylistModel;
+type PlaylistModelKey = v1::PlaylistModelKey;
+
+pub mod v1 {
+
+	use super::*;
+
+	#[derive(Debug, Default, Serialize, Deserialize)]
+	#[native_model(id = 1, version = 1)]
+	#[native_db(primary_key(custom_id))]
+	pub struct PlaylistModel {
+		#[secondary_key]
+		pub owner: String,
+		pub name: String,
+		pub duration: Duration,
+		pub num_songs_by_genre: HashMap<String, u32>,
+		pub virtual_paths: Vec<PathBuf>,
+	}
+
+	impl PlaylistModel {
+		fn custom_id(&self) -> (&str, &str) {
+			(&self.owner, &self.name)
+		}
+	}
+}
+
+impl From<PlaylistModel> for PlaylistHeader {
+	fn from(p: PlaylistModel) -> Self {
+		Self {
+			name: p.name,
+			duration: p.duration,
+			num_songs_by_genre: p.num_songs_by_genre,
+		}
+	}
+}
+
+impl From<PlaylistModel> for Playlist {
+	fn from(mut p: PlaylistModel) -> Self {
+		let songs = p.virtual_paths.drain(0..).collect();
+		Self {
+			songs,
+			header: p.into(),
+		}
+	}
+}
+
 impl Manager {
-	pub fn new(db: DB) -> Self {
+	pub fn new(db: ndb::Manager) -> Self {
 		Self { db }
 	}
 
 	pub async fn list_playlists(&self, owner: &str) -> Result<Vec<PlaylistHeader>, Error> {
-		let mut connection = self.db.connect().await?;
-
-		let user_id = sqlx::query_scalar!("SELECT id FROM users WHERE name = $1", owner)
-			.fetch_optional(connection.as_mut())
-			.await?
-			.ok_or(Error::UserNotFound)?;
-
-		Ok(
-			sqlx::query_scalar!("SELECT name FROM playlists WHERE owner = $1", user_id)
-				.fetch_all(connection.as_mut())
-				.await?,
-		)
+		let transaction = self.db.r_transaction()?;
+		let playlists = transaction
+			.scan()
+			.secondary::<PlaylistModel>(PlaylistModelKey::owner)?
+			.range(owner..=owner)?
+			.filter_map(|p| p.ok())
+			.map(PlaylistHeader::from)
+			.collect::<Vec<_>>();
+		Ok(playlists)
 	}
 
 	pub async fn save_playlist(
 		&self,
 		playlist_name: &str,
 		owner: &str,
-		content: &[PathBuf],
+		songs: Vec<index::Song>,
 	) -> Result<(), Error> {
-		struct PlaylistSong {
-			virtual_path: String,
-			ordering: i64,
+		let transaction = self.db.rw_transaction()?;
+
+		let duration = songs
+			.iter()
+			.filter_map(|s| s.duration.map(|d| d as u64))
+			.sum();
+
+		let mut num_songs_by_genre = HashMap::<String, u32>::new();
+		for song in &songs {
+			for genre in &song.genres {
+				*num_songs_by_genre.entry(genre.clone()).or_default() += 1;
+			}
 		}
 
-		let mut new_songs: Vec<PlaylistSong> = Vec::with_capacity(content.len());
-		for (i, virtual_path) in content.iter().enumerate() {
-			new_songs.push(PlaylistSong {
-				virtual_path: virtual_path.to_string_lossy().to_string(),
-				ordering: i as i64,
-			});
-		}
+		let virtual_paths = songs.into_iter().map(|s| s.virtual_path).collect();
 
-		let mut connection = self.db.connect().await?;
+		transaction.remove::<PlaylistModel>(PlaylistModel {
+			owner: owner.to_owned(),
+			name: playlist_name.to_owned(),
+			..Default::default()
+		})?;
 
-		// Find owner
-		let user_id = sqlx::query_scalar!("SELECT id FROM users WHERE name = $1", owner)
-			.fetch_optional(connection.as_mut())
-			.await?
-			.ok_or(Error::UserNotFound)?;
+		transaction.insert::<PlaylistModel>(PlaylistModel {
+			owner: owner.to_owned(),
+			name: playlist_name.to_owned(),
+			duration: Duration::from_secs(duration),
+			num_songs_by_genre,
+			virtual_paths,
+		})?;
 
-		// Create playlist
-		sqlx::query!(
-			"INSERT INTO playlists (owner, name) VALUES($1, $2)",
-			user_id,
-			playlist_name
-		)
-		.execute(connection.as_mut())
-		.await?;
-
-		let playlist_id = sqlx::query_scalar!(
-			"SELECT id FROM playlists WHERE owner = $1 AND name = $2",
-			user_id,
-			playlist_name
-		)
-		.fetch_one(connection.as_mut())
-		.await?;
-
-		connection.acquire().await?;
-
-		sqlx::query!(
-			"DELETE FROM playlist_songs WHERE playlist = $1",
-			playlist_id
-		)
-		.execute(connection.as_mut())
-		.await?;
-
-		for chunk in new_songs.chunks(10_000) {
-			QueryBuilder::<Sqlite>::new(
-				"INSERT INTO playlist_songs (playlist, virtual_path, ordering) ",
-			)
-			.push_values(chunk, |mut b, song| {
-				b.push_bind(playlist_id)
-					.push_bind(&song.virtual_path)
-					.push_bind(song.ordering);
-			})
-			.build()
-			.execute(connection.as_mut())
-			.await?;
-		}
+		transaction.commit()?;
 
 		Ok(())
 	}
 
-	pub async fn read_playlist(
-		&self,
-		playlist_name: &str,
-		owner: &str,
-	) -> Result<Vec<PathBuf>, Error> {
-		let songs = {
-			let mut connection = self.db.connect().await?;
-
-			// Find owner
-			let user_id = sqlx::query_scalar!("SELECT id FROM users WHERE name = $1", owner)
-				.fetch_optional(connection.as_mut())
-				.await?
-				.ok_or(Error::UserNotFound)?;
-
-			// Find playlist
-			let playlist_id = sqlx::query_scalar!(
-				"SELECT id FROM playlists WHERE name = $1 and owner = $2",
-				playlist_name,
-				user_id
-			)
-			.fetch_optional(connection.as_mut())
-			.await?
-			.ok_or(Error::PlaylistNotFound)?;
-
-			// List songs
-			sqlx::query_scalar!(
-				r#"
-					SELECT virtual_path
-					FROM playlist_songs ps
-					WHERE ps.playlist = $1
-					ORDER BY ps.ordering
-				"#,
-				playlist_id
-			)
-			.fetch_all(connection.as_mut())
-			.await?
-			.into_iter()
-			.map(PathBuf::from)
-			.collect()
-		};
-
-		Ok(songs)
+	pub async fn read_playlist(&self, playlist_name: &str, owner: &str) -> Result<Playlist, Error> {
+		let transaction = self.db.r_transaction()?;
+		match transaction
+			.get()
+			.primary::<PlaylistModel>((owner, playlist_name))
+		{
+			Ok(Some(p)) => Ok(Playlist::from(p)),
+			Ok(None) => Err(Error::PlaylistNotFound),
+			Err(e) => Err(Error::NativeDatabase(e)),
+		}
 	}
 
 	pub async fn delete_playlist(&self, playlist_name: &str, owner: &str) -> Result<(), Error> {
-		let mut connection = self.db.connect().await?;
-
-		let user_id = sqlx::query_scalar!("SELECT id FROM users WHERE name = $1", owner)
-			.fetch_optional(connection.as_mut())
-			.await?
-			.ok_or(Error::UserNotFound)?;
-
-		let num_deletions = sqlx::query_scalar!(
-			"DELETE FROM playlists WHERE owner = $1 AND name = $2",
-			user_id,
-			playlist_name
-		)
-		.execute(connection.as_mut())
-		.await?
-		.rows_affected();
-
-		match num_deletions {
-			0 => Err(Error::PlaylistNotFound),
-			_ => Ok(()),
-		}
+		let transaction = self.db.rw_transaction()?;
+		transaction.remove::<PlaylistModel>(PlaylistModel {
+			name: playlist_name.to_owned(),
+			owner: owner.to_owned(),
+			..Default::default()
+		})?;
+		transaction.commit()?;
+		Ok(())
 	}
 }
 
@@ -182,13 +159,35 @@ impl Manager {
 mod test {
 	use std::path::PathBuf;
 
-	use crate::app::test;
+	use crate::app::index;
+	use crate::app::test::{self, Context};
 	use crate::test_name;
 
 	const TEST_USER: &str = "test_user";
 	const TEST_PASSWORD: &str = "password";
 	const TEST_PLAYLIST_NAME: &str = "Chill & Grill";
 	const TEST_MOUNT_NAME: &str = "root";
+
+	async fn list_all_songs(ctx: &Context) -> Vec<index::Song> {
+		let paths = ctx
+			.index_manager
+			.flatten(PathBuf::from(TEST_MOUNT_NAME))
+			.await
+			.unwrap()
+			.into_iter()
+			.collect::<Vec<_>>();
+
+		let songs = ctx
+			.index_manager
+			.get_songs(paths)
+			.await
+			.into_iter()
+			.map(|s| s.unwrap())
+			.collect::<Vec<_>>();
+
+		assert_eq!(songs.len(), 13);
+		songs
+	}
 
 	#[tokio::test]
 	async fn save_playlist_golden_path() {
@@ -198,7 +197,7 @@ mod test {
 			.await;
 
 		ctx.playlist_manager
-			.save_playlist(TEST_PLAYLIST_NAME, TEST_USER, &Vec::new())
+			.save_playlist(TEST_PLAYLIST_NAME, TEST_USER, Vec::new())
 			.await
 			.unwrap();
 
@@ -207,6 +206,7 @@ mod test {
 			.list_playlists(TEST_USER)
 			.await
 			.unwrap();
+
 		assert_eq!(found_playlists.len(), 1);
 		assert_eq!(found_playlists[0].name, TEST_PLAYLIST_NAME);
 	}
@@ -221,31 +221,24 @@ mod test {
 
 		ctx.scanner.update().await.unwrap();
 
-		let playlist_content = ctx
-			.index_manager
-			.flatten(PathBuf::from(TEST_MOUNT_NAME))
-			.await
-			.unwrap()
-			.into_iter()
-			.collect::<Vec<_>>();
-		assert_eq!(playlist_content.len(), 13);
+		let songs = list_all_songs(&ctx).await;
 
 		ctx.playlist_manager
-			.save_playlist(TEST_PLAYLIST_NAME, TEST_USER, &playlist_content)
+			.save_playlist(TEST_PLAYLIST_NAME, TEST_USER, songs.clone())
 			.await
 			.unwrap();
 
 		ctx.playlist_manager
-			.save_playlist(TEST_PLAYLIST_NAME, TEST_USER, &playlist_content)
+			.save_playlist(TEST_PLAYLIST_NAME, TEST_USER, songs.clone())
 			.await
 			.unwrap();
 
-		let songs = ctx
+		let playlist = ctx
 			.playlist_manager
 			.read_playlist(TEST_PLAYLIST_NAME, TEST_USER)
 			.await
 			.unwrap();
-		assert_eq!(songs.len(), 13);
+		assert_eq!(playlist.songs.len(), 13);
 	}
 
 	#[tokio::test]
@@ -255,10 +248,8 @@ mod test {
 			.build()
 			.await;
 
-		let playlist_content = Vec::new();
-
 		ctx.playlist_manager
-			.save_playlist(TEST_PLAYLIST_NAME, TEST_USER, &playlist_content)
+			.save_playlist(TEST_PLAYLIST_NAME, TEST_USER, Vec::new())
 			.await
 			.unwrap();
 
@@ -285,27 +276,20 @@ mod test {
 
 		ctx.scanner.update().await.unwrap();
 
-		let playlist_content = ctx
-			.index_manager
-			.flatten(PathBuf::from(TEST_MOUNT_NAME))
-			.await
-			.unwrap()
-			.into_iter()
-			.collect::<Vec<_>>();
-		assert_eq!(playlist_content.len(), 13);
+		let songs = list_all_songs(&ctx).await;
 
 		ctx.playlist_manager
-			.save_playlist(TEST_PLAYLIST_NAME, TEST_USER, &playlist_content)
+			.save_playlist(TEST_PLAYLIST_NAME, TEST_USER, songs)
 			.await
 			.unwrap();
 
-		let songs = ctx
+		let playlist = ctx
 			.playlist_manager
 			.read_playlist(TEST_PLAYLIST_NAME, TEST_USER)
 			.await
 			.unwrap();
 
-		assert_eq!(songs.len(), 13);
+		assert_eq!(playlist.songs.len(), 13);
 
 		let first_song_path: PathBuf = [
 			TEST_MOUNT_NAME,
@@ -315,6 +299,6 @@ mod test {
 		]
 		.iter()
 		.collect();
-		assert_eq!(songs[0], first_song_path);
+		assert_eq!(playlist.songs[0], first_song_path);
 	}
 }

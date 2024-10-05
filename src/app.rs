@@ -9,6 +9,7 @@ pub mod ddns;
 pub mod formats;
 pub mod index;
 pub mod lastfm;
+pub mod ndb;
 pub mod peaks;
 pub mod playlist;
 pub mod scanner;
@@ -72,6 +73,11 @@ pub enum Error {
 	ConnectionPool,
 	#[error("Could not apply database migrations: {0}")]
 	Migration(sqlx::migrate::MigrateError),
+
+	#[error(transparent)]
+	NativeDatabase(#[from] native_db::db_type::Error),
+	#[error("Could not initialize database")]
+	NativeDatabaseCreationError(native_db::db_type::Error),
 
 	#[error("DDNS update query failed with HTTP status code `{0}`")]
 	UpdateQueryFailed(u16),
@@ -179,6 +185,7 @@ impl App {
 		fs::create_dir_all(&thumbnails_dir_path)
 			.map_err(|e| Error::Io(thumbnails_dir_path.clone(), e))?;
 
+		let ndb_manager = ndb::Manager::new(&paths.ndb_file_path)?;
 		let vfs_manager = vfs::Manager::new(db.clone());
 		let settings_manager = settings::Manager::new(db.clone());
 		let auth_secret = settings_manager.get_auth_secret().await?;
@@ -198,7 +205,7 @@ impl App {
 			ddns_manager.clone(),
 		);
 		let peaks_manager = peaks::Manager::new(peaks_dir_path);
-		let playlist_manager = playlist::Manager::new(db.clone());
+		let playlist_manager = playlist::Manager::new(ndb_manager);
 		let thumbnail_manager = thumbnail::Manager::new(thumbnails_dir_path);
 		let lastfm_manager = lastfm::Manager::new(index_manager.clone(), user_manager.clone());
 

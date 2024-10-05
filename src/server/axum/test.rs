@@ -25,6 +25,7 @@ impl TestService for AxumTestService {
 			cache_dir_path: ["test-output", test_name].iter().collect(),
 			config_file_path: None,
 			db_file_path: output_dir.join("db.sqlite"),
+			ndb_file_path: output_dir.join("polaris.ndb"),
 			#[cfg(unix)]
 			pid_file_path: output_dir.join("polaris.pid"),
 			log_file_path: None,

@@ -23,6 +23,8 @@ pub enum APIError {
 	BrancaTokenEncoding,
 	#[error("Database error:\n\n{0}")]
 	Database(sqlx::Error),
+	#[error("Native Database error:\n\n{0}")]
+	NativeDatabase(native_db::db_type::Error),
 	#[error("Directory not found: {0}")]
 	DirectoryNotFound(PathBuf),
 	#[error("Artist not found")]
@@ -116,6 +118,9 @@ impl From<app::Error> for APIError {
 
 			app::Error::PeaksSerialization(_) => APIError::Internal,
 			app::Error::PeaksDeserialization(_) => APIError::Internal,
+
+			app::Error::NativeDatabaseCreationError(_) => APIError::Internal,
+			app::Error::NativeDatabase(e) => APIError::NativeDatabase(e),
 
 			app::Error::Database(e) => APIError::Database(e),
 			app::Error::ConnectionPoolBuild => APIError::Internal,
