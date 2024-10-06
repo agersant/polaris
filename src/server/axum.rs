@@ -65,12 +65,6 @@ impl FromRef<App> for app::ddns::Manager {
 	}
 }
 
-impl FromRef<App> for app::lastfm::Manager {
-	fn from_ref(app: &App) -> Self {
-		app.lastfm_manager.clone()
-	}
-}
-
 impl FromRef<App> for app::peaks::Manager {
 	fn from_ref(app: &App) -> Self {
 		app.peaks_manager.clone()

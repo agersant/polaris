@@ -963,163 +963,6 @@
                     }
                 ]
             }
-        },
-        "/lastfm/now_playing/{song}": {
-            "put": {
-                "tags": [
-                    "Last.fm"
-                ],
-                "summary": "Tells Last.fm the song currently being played",
-                "operationId": "putLastFMNowPlaying",
-                "parameters": [
-                    {
-                        "name": "song",
-                        "in": "path",
-                        "description": "Path to the song being played",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful operation"
-                    }
-                },
-                "security": [
-                    {
-                        "auth_http_bearer": [],
-                        "auth_query_parameter": []
-                    }
-                ]
-            }
-        },
-        "/lastfm/scrobble/{song}": {
-            "post": {
-                "tags": [
-                    "Last.fm"
-                ],
-                "summary": "Tells Last.fm that a song has been playing for long enough to be scrobbled",
-                "operationId": "postLastFMScrobble",
-                "parameters": [
-                    {
-                        "name": "song",
-                        "in": "path",
-                        "description": "Path to the song being played",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful operation"
-                    }
-                },
-                "security": [
-                    {
-                        "auth_http_bearer": [],
-                        "auth_query_parameter": []
-                    }
-                ]
-            }
-        },
-        "/lastfm/link_token": {
-            "get": {
-                "tags": [
-                    "Last.fm"
-                ],
-                "summary": "Obtain an authentication token to be used when linking a Polaris account to a Last.fm account. The token is only valid for 10 minutes.",
-                "operationId": "getLastFMLinkToken",
-                "responses": {
-                    "200": {
-                        "description": "Successful operation",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/LastFMLinkToken"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "auth_http_bearer": [],
-                        "auth_query_parameter": []
-                    }
-                ]
-            }
-        },
-        "/lastfm/link": {
-            "get": {
-                "tags": [
-                    "Last.fm"
-                ],
-                "summary": "Links a Polaris user with a Last.fm account.",
-                "externalDocs": {
-                    "description": "This endpoint is meant to be used as a Last.fm authentication handler, as described here:",
-                    "url": "https://www.last.fm/api/webauth"
-                },
-                "operationId": "getLastFMLink",
-                "parameters": [
-                    {
-                        "name": "auth_token",
-                        "in": "query",
-                        "required": true,
-                        "description": "Polaris authentication token received from the `lastfm/link_token` endpoint",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "token",
-                        "in": "query",
-                        "required": true,
-                        "description": "Last.fm authentication token",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "content",
-                        "in": "query",
-                        "required": true,
-                        "description": "Base64 encoded HTML content to be returned to the client initiating the link operation",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful operation",
-                        "content": {
-                            "text/html": {
-                                "description": "The same content originally present in the 'content' parameter"
-                            }
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "tags": [
-                    "Last.fm"
-                ],
-                "summary": "Unlinks Polaris user and Last.fm account",
-                "operationId": "deleteLastFMLink",
-                "responses": {
-                    "200": {
-                        "description": "Successful operation"
-                    }
-                },
-                "security": [
-                    {
-                        "auth_http_bearer": [],
-                        "auth_query_parameter": []
-                    }
-                ]
-            }
         }
     },
     "components": {
@@ -1262,9 +1105,6 @@
             "Preferences": {
                 "type": "object",
                 "properties": {
-                    "lastfm_username": {
-                        "type": "string"
-                    },
                     "web_theme_base": {
                         "type": "string"
                     },
@@ -1295,14 +1135,6 @@
                     },
                     "is_admin": {
                         "type": "bool"
-                    }
-                }
-            },
-            "LastFMLinkToken": {
-                "type": "object",
-                "properties": {
-                    "value": {
-                        "type": "string"
                     }
                 }
             },

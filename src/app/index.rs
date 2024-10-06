@@ -1,5 +1,4 @@
 use std::{
-	borrow::Borrow,
 	collections::HashMap,
 	path::PathBuf,
 	sync::{Arc, RwLock},
@@ -248,29 +247,6 @@ impl Manager {
 		.unwrap()
 	}
 
-	fn get_song_internal(virtual_path: &PathBuf, index: &Index) -> Result<Song, Error> {
-		let Some(virtual_path) = virtual_path.get(&index.strings) else {
-			return Err(Error::SongNotFound);
-		};
-		let song_key = SongKey { virtual_path };
-		index
-			.collection
-			.get_song(&index.strings, song_key)
-			.ok_or_else(|| Error::SongNotFound)
-	}
-
-	pub async fn get_song(&self, virtual_path: PathBuf) -> Result<Song, Error> {
-		spawn_blocking({
-			let index_manager = self.clone();
-			move || {
-				let index = index_manager.index.read().unwrap();
-				Self::get_song_internal(&virtual_path, index.borrow())
-			}
-		})
-		.await
-		.unwrap()
-	}
-
 	pub async fn get_songs(&self, virtual_paths: Vec<PathBuf>) -> Vec<Result<Song, Error>> {
 		spawn_blocking({
 			let index_manager = self.clone();
@@ -278,7 +254,14 @@ impl Manager {
 				let index = index_manager.index.read().unwrap();
 				virtual_paths
 					.into_iter()
-					.map(|path| Self::get_song_internal(&path, index.borrow()))
+					.map(|p| {
+						p.get(&index.strings)
+							.and_then(|virtual_path| {
+								let key = SongKey { virtual_path };
+								index.collection.get_song(&index.strings, key)
+							})
+							.ok_or_else(|| Error::SongNotFound)
+					})
 					.collect()
 			}
 		})

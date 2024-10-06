@@ -38,8 +38,6 @@ CREATE TABLE users (
 	name TEXT NOT NULL,
 	password_hash TEXT NOT NULL,
 	admin INTEGER NOT NULL,
-	lastfm_username TEXT,
-	lastfm_session_key TEXT,
 	web_theme_base TEXT,
 	web_theme_accent TEXT,
 	UNIQUE(name)

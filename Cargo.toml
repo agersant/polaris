@@ -33,11 +33,9 @@ nohash-hasher = "0.2.0"
 num_cpus = "1.14.0"
 opus_headers = "0.1.2"
 pbkdf2 = "0.11"
-percent-encoding = "2.2"
 rand = "0.8"
 rayon = "1.10.0"
 regex = "1.10.5"
-rustfm-scrobble = "1.1.1"
 serde = { version = "1.0.147", features = ["derive"] }
 serde_derive = "1.0.147"
 serde_json = "1.0.122"
@@ -98,6 +96,7 @@ winres = "0.1"
 [dev-dependencies]
 axum-test = "15.7"
 bytes = "1.7.1"
+percent-encoding = "2.2"
 
 [profile.dev.package.sqlx-macros]
 opt-level = 3

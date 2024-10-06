@@ -15,7 +15,6 @@ mod auth;
 mod browser;
 mod collection;
 mod ddns;
-mod lastfm;
 mod media;
 mod playlist;
 mod search;

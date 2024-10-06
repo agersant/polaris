@@ -8,7 +8,6 @@ pub mod config;
 pub mod ddns;
 pub mod formats;
 pub mod index;
-pub mod lastfm;
 pub mod ndb;
 pub mod peaks;
 pub mod playlist;
@@ -133,21 +132,12 @@ pub enum Error {
 	InvalidAuthToken,
 	#[error("Incorrect authorization scope")]
 	IncorrectAuthorizationScope,
-	#[error("Last.fm session key is missing")]
-	MissingLastFMSessionKey,
 	#[error("Failed to hash password")]
 	PasswordHashing,
 	#[error("Failed to encode authorization token")]
 	AuthorizationTokenEncoding,
 	#[error("Failed to encode Branca token")]
 	BrancaTokenEncoding,
-
-	#[error("Failed to authenticate with last.fm")]
-	ScrobblerAuthentication(rustfm_scrobble::ScrobblerError),
-	#[error("Failed to emit last.fm scrobble")]
-	Scrobble(rustfm_scrobble::ScrobblerError),
-	#[error("Failed to emit last.fm now playing update")]
-	NowPlaying(rustfm_scrobble::ScrobblerError),
 }
 
 #[derive(Clone)]
@@ -159,7 +149,6 @@ pub struct App {
 	pub index_manager: index::Manager,
 	pub config_manager: config::Manager,
 	pub ddns_manager: ddns::Manager,
-	pub lastfm_manager: lastfm::Manager,
 	pub peaks_manager: peaks::Manager,
 	pub playlist_manager: playlist::Manager,
 	pub settings_manager: settings::Manager,
@@ -210,7 +199,6 @@ impl App {
 		let peaks_manager = peaks::Manager::new(peaks_dir_path);
 		let playlist_manager = playlist::Manager::new(ndb_manager);
 		let thumbnail_manager = thumbnail::Manager::new(thumbnails_dir_path);
-		let lastfm_manager = lastfm::Manager::new(index_manager.clone(), user_manager.clone());
 
 		if let Some(config_path) = paths.config_file_path {
 			let config = config::Config::from_path(&config_path)?;
@@ -225,7 +213,6 @@ impl App {
 			index_manager,
 			config_manager,
 			ddns_manager,
-			lastfm_manager,
 			peaks_manager,
 			playlist_manager,
 			settings_manager,

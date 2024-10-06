@@ -33,7 +33,6 @@ pub struct AuthToken(pub String);
 #[derive(Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub enum AuthorizationScope {
 	PolarisAuth,
-	LastFMLink,
 }
 
 #[derive(Debug, PartialEq, Eq, Deserialize, Serialize)]
@@ -44,7 +43,6 @@ pub struct Authorization {
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Preferences {
-	pub lastfm_username: Option<String>,
 	pub web_theme_base: Option<String>,
 	pub web_theme_accent: Option<String>,
 }
@@ -150,8 +148,7 @@ impl Manager {
 	) -> Result<Authorization, Error> {
 		let AuthToken(data) = auth_token;
 		let ttl = match scope {
-			AuthorizationScope::PolarisAuth => 0,      // permanent
-			AuthorizationScope::LastFMLink => 10 * 60, // 10 minutes
+			AuthorizationScope::PolarisAuth => 0, // permanent
 		};
 		let authorization = branca::decode(data, &self.auth_secret.key, ttl)
 			.map_err(|_| Error::InvalidAuthToken)?;
@@ -211,7 +208,7 @@ impl Manager {
 	pub async fn read_preferences(&self, username: &str) -> Result<Preferences, Error> {
 		Ok(sqlx::query_as!(
 			Preferences,
-			"SELECT web_theme_base, web_theme_accent, lastfm_username FROM users WHERE name = $1",
+			"SELECT web_theme_base, web_theme_accent FROM users WHERE name = $1",
 			username
 		)
 		.fetch_one(self.db.connect().await?.as_mut())
@@ -227,56 +224,6 @@ impl Manager {
 			"UPDATE users SET web_theme_base = $1, web_theme_accent = $2 WHERE name = $3",
 			preferences.web_theme_base,
 			preferences.web_theme_accent,
-			username
-		)
-		.execute(self.db.connect().await?.as_mut())
-		.await?;
-		Ok(())
-	}
-
-	pub async fn lastfm_link(
-		&self,
-		username: &str,
-		lastfm_login: &str,
-		session_key: &str,
-	) -> Result<(), Error> {
-		sqlx::query!(
-			"UPDATE users SET lastfm_username = $1, lastfm_session_key = $2 WHERE name = $3",
-			lastfm_login,
-			session_key,
-			username
-		)
-		.execute(self.db.connect().await?.as_mut())
-		.await?;
-		Ok(())
-	}
-
-	pub fn generate_lastfm_link_token(&self, username: &str) -> Result<AuthToken, Error> {
-		self.generate_auth_token(&Authorization {
-			username: username.to_owned(),
-			scope: AuthorizationScope::LastFMLink,
-		})
-	}
-
-	pub async fn get_lastfm_session_key(&self, username: &str) -> Result<String, Error> {
-		let token: Option<String> = sqlx::query_scalar!(
-			"SELECT lastfm_session_key FROM users WHERE name = $1",
-			username
-		)
-		.fetch_one(self.db.connect().await?.as_mut())
-		.await?;
-		token.ok_or(Error::MissingLastFMSessionKey)
-	}
-
-	pub async fn is_lastfm_linked(&self, username: &str) -> bool {
-		self.get_lastfm_session_key(username).await.is_ok()
-	}
-
-	pub async fn lastfm_unlink(&self, username: &str) -> Result<(), Error> {
-		let null: Option<String> = None;
-		sqlx::query!(
-			"UPDATE users SET lastfm_session_key = $1, lastfm_username = $1 WHERE name = $2",
-			null,
 			username
 		)
 		.execute(self.db.connect().await?.as_mut())
@@ -378,7 +325,6 @@ mod test {
 		let new_preferences = Preferences {
 			web_theme_base: Some("very-dark-theme".to_owned()),
 			web_theme_accent: Some("#FF0000".to_owned()),
-			lastfm_username: None,
 		};
 
 		let new_user = NewUser {
@@ -480,30 +426,5 @@ mod test {
 				scope: AuthorizationScope::PolarisAuth,
 			}
 		)
-	}
-
-	#[tokio::test]
-	async fn authenticate_validates_scope() {
-		let ctx = test::ContextBuilder::new(test_name!()).build().await;
-
-		let new_user = NewUser {
-			name: TEST_USERNAME.to_owned(),
-			password: TEST_PASSWORD.to_owned(),
-			admin: false,
-		};
-
-		ctx.user_manager.create(&new_user).await.unwrap();
-		let token = ctx
-			.user_manager
-			.generate_lastfm_link_token(TEST_USERNAME)
-			.unwrap();
-		let authorization = ctx
-			.user_manager
-			.authenticate(&token, AuthorizationScope::PolarisAuth)
-			.await;
-		assert!(matches!(
-			authorization.unwrap_err(),
-			Error::IncorrectAuthorizationScope
-		));
 	}
 }

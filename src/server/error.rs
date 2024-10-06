@@ -47,18 +47,6 @@ pub enum APIError {
 	EmptyPassword,
 	#[error("Incorrect Credentials")]
 	IncorrectCredentials,
-	#[error("No last.fm account has been linked")]
-	LastFMAccountNotLinked,
-	#[error("Could not decode content as base64 after linking last.fm account")]
-	LastFMLinkContentBase64DecodeError,
-	#[error("Could not decode content as UTF-8 after linking last.fm account")]
-	LastFMLinkContentEncodingError,
-	#[error("Could send Now Playing update to last.fm:\n\n{0}")]
-	LastFMNowPlaying(rustfm_scrobble::ScrobblerError),
-	#[error("Could emit scrobble with last.fm:\n\n{0}")]
-	LastFMScrobble(rustfm_scrobble::ScrobblerError),
-	#[error("Could authenticate with last.fm:\n\n{0}")]
-	LastFMScrobblerAuthentication(rustfm_scrobble::ScrobblerError),
 	#[error("Internal server error")]
 	Internal,
 	#[error("File I/O error for `{0}`:\n\n{1}")]
@@ -156,14 +144,9 @@ impl From<app::Error> for APIError {
 			app::Error::IncorrectPassword => APIError::IncorrectCredentials,
 			app::Error::InvalidAuthToken => APIError::IncorrectCredentials,
 			app::Error::IncorrectAuthorizationScope => APIError::IncorrectCredentials,
-			app::Error::MissingLastFMSessionKey => APIError::IncorrectCredentials,
 			app::Error::PasswordHashing => APIError::PasswordHashing,
 			app::Error::AuthorizationTokenEncoding => APIError::AuthorizationTokenEncoding,
 			app::Error::BrancaTokenEncoding => APIError::BrancaTokenEncoding,
-
-			app::Error::ScrobblerAuthentication(e) => APIError::LastFMScrobblerAuthentication(e),
-			app::Error::Scrobble(e) => APIError::LastFMScrobble(e),
-			app::Error::NowPlaying(e) => APIError::LastFMNowPlaying(e),
 		}
 	}
 }

@@ -364,34 +364,6 @@ pub fn delete_playlist(name: &str) -> Request<()> {
 		.unwrap()
 }
 
-pub fn lastfm_link_token() -> Request<()> {
-	Request::builder()
-		.method(Method::GET)
-		.uri("/api/lastfm/link_token")
-		.body(())
-		.unwrap()
-}
-
-pub fn lastfm_now_playing(path: &Path) -> Request<()> {
-	let path = path.to_string_lossy();
-	let endpoint = format!("/api/lastfm/now_playing/{}", url_encode(path.as_ref()));
-	Request::builder()
-		.method(Method::PUT)
-		.uri(&endpoint)
-		.body(())
-		.unwrap()
-}
-
-pub fn lastfm_scrobble(path: &Path) -> Request<()> {
-	let path = path.to_string_lossy();
-	let endpoint = format!("/api/lastfm/scrobble/{}", url_encode(path.as_ref()));
-	Request::builder()
-		.method(Method::POST)
-		.uri(&endpoint)
-		.body(())
-		.unwrap()
-}
-
 fn url_encode(input: &str) -> String {
 	percent_encode(input.as_bytes(), NON_ALPHANUMERIC).to_string()
 }

@@ -106,18 +106,6 @@ pub struct SavePlaylistInput {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct LastFMLink {
-	pub auth_token: String, // user::AuthToken emitted by Polaris, valid for LastFMLink scope
-	pub token: String,      // LastFM token for use in scrobble calls
-	pub content: String,    // Payload to send back to client after successful link
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct LastFMLinkToken {
-	pub value: String,
-}
-
-#[derive(Serialize, Deserialize)]
 pub struct User {
 	pub name: String,
 	pub is_admin: bool,

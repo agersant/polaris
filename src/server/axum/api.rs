@@ -2,21 +2,17 @@ use std::path::PathBuf;
 
 use axum::{
 	extract::{DefaultBodyLimit, Path, Query, State},
-	response::{Html, IntoResponse, Response},
+	response::{IntoResponse, Response},
 	routing::{delete, get, post, put},
 	Json, Router,
 };
 use axum_extra::headers::Range;
 use axum_extra::TypedHeader;
 use axum_range::{KnownSize, Ranged};
-use base64::{prelude::BASE64_STANDARD_NO_PAD, Engine};
-use percent_encoding::percent_decode_str;
 use tower_http::{compression::CompressionLayer, CompressionLevel};
 
 use crate::{
-	app::{
-		config, ddns, index, lastfm, peaks, playlist, scanner, settings, thumbnail, user, vfs, App,
-	},
+	app::{config, ddns, index, peaks, playlist, scanner, settings, thumbnail, user, vfs, App},
 	server::{
 		dto, error::APIError, APIMajorVersion, API_ARRAY_SEPARATOR, API_MAJOR_VERSION,
 		API_MINOR_VERSION,
@@ -73,12 +69,6 @@ pub fn router() -> Router<App> {
 		.route("/playlist/:name", put(put_playlist))
 		.route("/playlist/:name", get(get_playlist))
 		.route("/playlist/:name", delete(delete_playlist))
-		// LastFM
-		.route("/lastfm/now_playing/*path", put(put_lastfm_now_playing))
-		.route("/lastfm/scrobble/*path", post(post_lastfm_scrobble))
-		.route("/lastfm/link_token", get(get_lastfm_link_token))
-		.route("/lastfm/link", get(get_lastfm_link))
-		.route("/lastfm/link", delete(delete_lastfm_link))
 		// Media
 		.route("/songs", post(get_songs)) // post because of https://github.com/whatwg/fetch/issues/551
 		.route("/peaks/*path", get(get_peaks))
@@ -727,78 +717,4 @@ async fn get_thumbnail(
 
 	let range = range.map(|TypedHeader(r)| r);
 	Ok(Ranged::new(range, body))
-}
-
-async fn put_lastfm_now_playing(
-	auth: Auth,
-	State(lastfm_manager): State<lastfm::Manager>,
-	State(user_manager): State<user::Manager>,
-	Path(path): Path<PathBuf>,
-) -> Result<(), APIError> {
-	if !user_manager.is_lastfm_linked(auth.get_username()).await {
-		return Err(APIError::LastFMAccountNotLinked);
-	}
-	lastfm_manager
-		.now_playing(auth.get_username(), &path)
-		.await?;
-	Ok(())
-}
-
-async fn post_lastfm_scrobble(
-	auth: Auth,
-	State(lastfm_manager): State<lastfm::Manager>,
-	State(user_manager): State<user::Manager>,
-	Path(path): Path<PathBuf>,
-) -> Result<(), APIError> {
-	if !user_manager.is_lastfm_linked(auth.get_username()).await {
-		return Err(APIError::LastFMAccountNotLinked);
-	}
-	lastfm_manager.scrobble(auth.get_username(), &path).await?;
-	Ok(())
-}
-
-async fn get_lastfm_link_token(
-	auth: Auth,
-	State(lastfm_manager): State<lastfm::Manager>,
-) -> Result<Json<dto::LastFMLinkToken>, APIError> {
-	let user::AuthToken(value) = lastfm_manager.generate_link_token(auth.get_username())?;
-	Ok(Json(dto::LastFMLinkToken { value }))
-}
-
-async fn get_lastfm_link(
-	State(lastfm_manager): State<lastfm::Manager>,
-	State(user_manager): State<user::Manager>,
-	Query(payload): Query<dto::LastFMLink>,
-) -> Result<Html<String>, APIError> {
-	let auth_token = user::AuthToken(payload.auth_token.clone());
-	let authorization = user_manager
-		.authenticate(&auth_token, user::AuthorizationScope::LastFMLink)
-		.await?;
-	let lastfm_token = &payload.token;
-	lastfm_manager
-		.link(&authorization.username, lastfm_token)
-		.await?;
-
-	// Percent decode
-	let base64_content = percent_decode_str(&payload.content).decode_utf8_lossy();
-
-	// Base64 decode
-	let popup_content = BASE64_STANDARD_NO_PAD
-		.decode(base64_content.as_bytes())
-		.map_err(|_| APIError::LastFMLinkContentBase64DecodeError)?;
-
-	// UTF-8 decode
-	let popup_content_string = std::str::from_utf8(&popup_content)
-		.map_err(|_| APIError::LastFMLinkContentEncodingError)
-		.map(|s| s.to_owned())?;
-
-	Ok(Html(popup_content_string))
-}
-
-async fn delete_lastfm_link(
-	auth: Auth,
-	State(lastfm_manager): State<lastfm::Manager>,
-) -> Result<(), APIError> {
-	lastfm_manager.unlink(auth.get_username()).await?;
-	Ok(())
 }
