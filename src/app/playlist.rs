@@ -6,6 +6,7 @@ use std::time::Duration;
 use native_db::*;
 use native_model::{native_model, Model};
 use serde::{Deserialize, Serialize};
+use tokio::task::spawn_blocking;
 
 use crate::app::{index, ndb, Error};
 
@@ -79,79 +80,107 @@ impl Manager {
 	}
 
 	pub async fn list_playlists(&self, owner: &str) -> Result<Vec<PlaylistHeader>, Error> {
-		let transaction = self.db.r_transaction()?;
-		let playlists = transaction
-			.scan()
-			.secondary::<PlaylistModel>(PlaylistModelKey::owner)?
-			.range(owner..=owner)?
-			.filter_map(|p| p.ok())
-			.map(PlaylistHeader::from)
-			.collect::<Vec<_>>();
-		Ok(playlists)
+		spawn_blocking({
+			let manager = self.clone();
+			let owner = owner.to_owned();
+			move || {
+				let transaction = manager.db.r_transaction()?;
+				let playlists = transaction
+					.scan()
+					.secondary::<PlaylistModel>(PlaylistModelKey::owner)?
+					.range(owner.as_str()..=owner.as_str())?
+					.filter_map(|p| p.ok())
+					.map(PlaylistHeader::from)
+					.collect::<Vec<_>>();
+				Ok(playlists)
+			}
+		})
+		.await?
 	}
 
 	pub async fn save_playlist(
 		&self,
-		playlist_name: &str,
+		name: &str,
 		owner: &str,
 		songs: Vec<index::Song>,
 	) -> Result<(), Error> {
-		let transaction = self.db.rw_transaction()?;
+		spawn_blocking({
+			let manager = self.clone();
+			let owner = owner.to_owned();
+			let name = name.to_owned();
+			move || {
+				let transaction = manager.db.rw_transaction()?;
 
-		let duration = songs
-			.iter()
-			.filter_map(|s| s.duration.map(|d| d as u64))
-			.sum();
+				let duration = songs
+					.iter()
+					.filter_map(|s| s.duration.map(|d| d as u64))
+					.sum();
 
-		let mut num_songs_by_genre = HashMap::<String, u32>::new();
-		for song in &songs {
-			for genre in &song.genres {
-				*num_songs_by_genre.entry(genre.clone()).or_default() += 1;
+				let mut num_songs_by_genre = HashMap::<String, u32>::new();
+				for song in &songs {
+					for genre in &song.genres {
+						*num_songs_by_genre.entry(genre.clone()).or_default() += 1;
+					}
+				}
+
+				let virtual_paths = songs.into_iter().map(|s| s.virtual_path).collect();
+
+				transaction.remove::<PlaylistModel>(PlaylistModel {
+					owner: owner.to_owned(),
+					name: name.to_owned(),
+					..Default::default()
+				})?;
+
+				transaction.insert::<PlaylistModel>(PlaylistModel {
+					owner: owner.to_owned(),
+					name: name.to_owned(),
+					duration: Duration::from_secs(duration),
+					num_songs_by_genre,
+					virtual_paths,
+				})?;
+
+				transaction.commit()?;
+
+				Ok(())
 			}
-		}
-
-		let virtual_paths = songs.into_iter().map(|s| s.virtual_path).collect();
-
-		transaction.remove::<PlaylistModel>(PlaylistModel {
-			owner: owner.to_owned(),
-			name: playlist_name.to_owned(),
-			..Default::default()
-		})?;
-
-		transaction.insert::<PlaylistModel>(PlaylistModel {
-			owner: owner.to_owned(),
-			name: playlist_name.to_owned(),
-			duration: Duration::from_secs(duration),
-			num_songs_by_genre,
-			virtual_paths,
-		})?;
-
-		transaction.commit()?;
-
-		Ok(())
+		})
+		.await?
 	}
 
-	pub async fn read_playlist(&self, playlist_name: &str, owner: &str) -> Result<Playlist, Error> {
-		let transaction = self.db.r_transaction()?;
-		match transaction
-			.get()
-			.primary::<PlaylistModel>((owner, playlist_name))
-		{
-			Ok(Some(p)) => Ok(Playlist::from(p)),
-			Ok(None) => Err(Error::PlaylistNotFound),
-			Err(e) => Err(Error::NativeDatabase(e)),
-		}
+	pub async fn read_playlist(&self, name: &str, owner: &str) -> Result<Playlist, Error> {
+		spawn_blocking({
+			let manager = self.clone();
+			let owner = owner.to_owned();
+			let name = name.to_owned();
+			move || {
+				let transaction = manager.db.r_transaction()?;
+				match transaction.get().primary::<PlaylistModel>((&owner, &name)) {
+					Ok(Some(p)) => Ok(Playlist::from(p)),
+					Ok(None) => Err(Error::PlaylistNotFound),
+					Err(e) => Err(Error::NativeDatabase(e)),
+				}
+			}
+		})
+		.await?
 	}
 
-	pub async fn delete_playlist(&self, playlist_name: &str, owner: &str) -> Result<(), Error> {
-		let transaction = self.db.rw_transaction()?;
-		transaction.remove::<PlaylistModel>(PlaylistModel {
-			name: playlist_name.to_owned(),
-			owner: owner.to_owned(),
-			..Default::default()
-		})?;
-		transaction.commit()?;
-		Ok(())
+	pub async fn delete_playlist(&self, name: &str, owner: &str) -> Result<(), Error> {
+		spawn_blocking({
+			let manager = self.clone();
+			let owner = owner.to_owned();
+			let name = name.to_owned();
+			move || {
+				let transaction = manager.db.rw_transaction()?;
+				transaction.remove::<PlaylistModel>(PlaylistModel {
+					name: name.to_owned(),
+					owner: owner.to_owned(),
+					..Default::default()
+				})?;
+				transaction.commit()?;
+				Ok(())
+			}
+		})
+		.await?
 	}
 }
 
