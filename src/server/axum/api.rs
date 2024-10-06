@@ -658,8 +658,15 @@ async fn get_playlist(
 		Ok(s) => s,
 		Err(e) => return APIError::from(e).into_response(),
 	};
-	let song_list = make_song_list(playlist.songs, &index_manager).await;
-	song_list_to_response(song_list, api_version)
+
+	match api_version {
+		APIMajorVersion::V7 => Json(playlist.songs).into_response(),
+		APIMajorVersion::V8 => Json(dto::Playlist {
+			header: playlist.header.into(),
+			songs: make_song_list(playlist.songs, &index_manager).await,
+		})
+		.into_response(),
+	}
 }
 
 async fn delete_playlist(

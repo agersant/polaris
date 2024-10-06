@@ -2,7 +2,7 @@ use std::path::Path;
 
 use http::StatusCode;
 
-use crate::server::dto::{self, SongList};
+use crate::server::dto::{self};
 use crate::server::test::protocol::{V7, V8};
 use crate::server::test::{constants::*, protocol, ServiceType, TestService};
 use crate::test_name;
@@ -85,7 +85,7 @@ async fn get_playlist_golden_path() {
 	}
 
 	let request = protocol::read_playlist::<V8>(TEST_PLAYLIST_NAME);
-	let response = service.fetch_json::<_, SongList>(&request).await;
+	let response = service.fetch_json::<_, dto::Playlist>(&request).await;
 	assert_eq!(response.status(), StatusCode::OK);
 }
 

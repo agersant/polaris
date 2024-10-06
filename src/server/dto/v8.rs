@@ -93,6 +93,13 @@ impl From<playlist::PlaylistHeader> for PlaylistHeader {
 	}
 }
 
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Playlist {
+	#[serde(flatten)]
+	pub header: PlaylistHeader,
+	pub songs: SongList,
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SavePlaylistInput {
 	pub tracks: Vec<PathBuf>,
