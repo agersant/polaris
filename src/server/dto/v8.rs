@@ -86,7 +86,7 @@ pub struct PlaylistHeader {
 impl From<playlist::PlaylistHeader> for PlaylistHeader {
 	fn from(header: playlist::PlaylistHeader) -> Self {
 		Self {
-			name: header.name,
+			name: header.name.to_string(),
 			num_songs_by_genre: header.num_songs_by_genre,
 			duration: header.duration.as_secs(),
 		}

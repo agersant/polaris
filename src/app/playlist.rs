@@ -7,6 +7,7 @@ use native_db::*;
 use native_model::{native_model, Model};
 use serde::{Deserialize, Serialize};
 use tokio::task::spawn_blocking;
+use unicase::UniCase;
 
 use crate::app::{index, ndb, Error};
 
@@ -17,7 +18,7 @@ pub struct Manager {
 
 #[derive(Debug)]
 pub struct PlaylistHeader {
-	pub name: String,
+	pub name: UniCase<String>,
 	pub duration: Duration,
 	pub num_songs_by_genre: HashMap<String, u32>,
 }
@@ -57,7 +58,7 @@ pub mod v1 {
 impl From<PlaylistModel> for PlaylistHeader {
 	fn from(p: PlaylistModel) -> Self {
 		Self {
-			name: p.name,
+			name: UniCase::new(p.name),
 			duration: p.duration,
 			num_songs_by_genre: p.num_songs_by_genre,
 		}
@@ -85,13 +86,14 @@ impl Manager {
 			let owner = owner.to_owned();
 			move || {
 				let transaction = manager.db.r_transaction()?;
-				let playlists = transaction
+				let mut playlists = transaction
 					.scan()
 					.secondary::<PlaylistModel>(PlaylistModelKey::owner)?
 					.range(owner.as_str()..=owner.as_str())?
 					.filter_map(|p| p.ok())
 					.map(PlaylistHeader::from)
 					.collect::<Vec<_>>();
+				playlists.sort_by(|a, b| a.name.cmp(&b.name));
 				Ok(playlists)
 			}
 		})
@@ -237,7 +239,7 @@ mod test {
 			.unwrap();
 
 		assert_eq!(found_playlists.len(), 1);
-		assert_eq!(found_playlists[0].name, TEST_PLAYLIST_NAME);
+		assert_eq!(found_playlists[0].name.as_str(), TEST_PLAYLIST_NAME);
 	}
 
 	#[tokio::test]
@@ -329,5 +331,34 @@ mod test {
 		.iter()
 		.collect();
 		assert_eq!(playlist.songs[0], first_song_path);
+	}
+
+	#[tokio::test]
+	async fn playlists_are_sorted_alphabetically() {
+		let ctx = test::ContextBuilder::new(test_name!())
+			.user(TEST_USER, TEST_PASSWORD, false)
+			.mount(TEST_MOUNT_NAME, "test-data/small-collection")
+			.build()
+			.await;
+
+		for name in ["a", "b", "A", "B"] {
+			ctx.playlist_manager
+				.save_playlist(name, TEST_USER, Vec::new())
+				.await
+				.unwrap();
+		}
+
+		let playlists = ctx
+			.playlist_manager
+			.list_playlists(TEST_USER)
+			.await
+			.unwrap();
+
+		let names = playlists
+			.into_iter()
+			.map(|p| p.name.to_string())
+			.collect::<Vec<_>>();
+
+		assert_eq!(names, vec!["A", "a", "B", "b"]);
 	}
 }
