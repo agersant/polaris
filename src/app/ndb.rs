@@ -20,7 +20,9 @@ pub struct Manager {
 }
 
 impl Manager {
-	pub fn new(path: &Path) -> Result<Self, Error> {
+	pub fn new(directory: &Path) -> Result<Self, Error> {
+		std::fs::create_dir_all(directory).map_err(|e| Error::Io(directory.to_owned(), e))?;
+		let path = directory.join("polaris.ndb");
 		let database = native_db::Builder::new()
 			.create(&MODELS, path)
 			.map_err(|e| Error::NativeDatabaseCreationError(e))?;

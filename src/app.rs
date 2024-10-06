@@ -172,6 +172,9 @@ impl App {
 	pub async fn new(port: u16, paths: Paths) -> Result<Self, Error> {
 		let db = DB::new(&paths.db_file_path).await?;
 
+		fs::create_dir_all(&paths.data_dir_path)
+			.map_err(|e| Error::Io(paths.data_dir_path.clone(), e))?;
+
 		fs::create_dir_all(&paths.web_dir_path)
 			.map_err(|e| Error::Io(paths.web_dir_path.clone(), e))?;
 
@@ -185,7 +188,7 @@ impl App {
 		fs::create_dir_all(&thumbnails_dir_path)
 			.map_err(|e| Error::Io(thumbnails_dir_path.clone(), e))?;
 
-		let ndb_manager = ndb::Manager::new(&paths.ndb_file_path)?;
+		let ndb_manager = ndb::Manager::new(&paths.data_dir_path)?;
 		let vfs_manager = vfs::Manager::new(db.clone());
 		let settings_manager = settings::Manager::new(db.clone());
 		let auth_secret = settings_manager.get_auth_secret().await?;

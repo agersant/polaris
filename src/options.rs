@@ -10,6 +10,7 @@ pub struct CLIOptions {
 	pub config_file_path: Option<PathBuf>,
 	pub database_file_path: Option<PathBuf>,
 	pub cache_dir_path: Option<PathBuf>,
+	pub data_dir_path: Option<PathBuf>,
 	pub web_dir_path: Option<PathBuf>,
 	pub swagger_dir_path: Option<PathBuf>,
 	pub port: Option<u16>,
@@ -42,6 +43,7 @@ impl Manager {
 			config_file_path: matches.opt_str("c").map(PathBuf::from),
 			database_file_path: matches.opt_str("d").map(PathBuf::from),
 			cache_dir_path: matches.opt_str("cache").map(PathBuf::from),
+			data_dir_path: matches.opt_str("data").map(PathBuf::from),
 			web_dir_path: matches.opt_str("w").map(PathBuf::from),
 			swagger_dir_path: matches.opt_str("s").map(PathBuf::from),
 			port: matches.opt_str("p").and_then(|p| p.parse().ok()),
@@ -65,6 +67,12 @@ fn get_options() -> getopts::Options {
 		"",
 		"cache",
 		"set the directory to use as cache",
+		"DIRECTORY",
+	);
+	options.optopt(
+		"",
+		"data",
+		"set the directory for persistent data",
 		"DIRECTORY",
 	);
 	options.optopt("", "log", "set the path to the log file", "FILE");

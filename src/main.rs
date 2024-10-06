@@ -127,9 +127,9 @@ fn main() -> Result<(), Error> {
 	daemonize(cli_options.foreground, &paths.pid_file_path)?;
 
 	info!("Cache files location is {:#?}", paths.cache_dir_path);
+	info!("Data files location is {:#?}", paths.data_dir_path);
 	info!("Config files location is {:#?}", paths.config_file_path);
 	info!("Database file location is {:#?}", paths.db_file_path);
-	info!("NativeDatabase file location is {:#?}", paths.ndb_file_path);
 	info!("Log file location is {:#?}", paths.log_file_path);
 	#[cfg(unix)]
 	if !cli_options.foreground {

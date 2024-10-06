@@ -16,6 +16,7 @@
 - Added a new `/get_songs` endpoint which returns song metadata in bulk.
 - Added a new `/peaks` endpoint which returns audio signal peaks that can be used to draw waveform visualizations.
 - The `/thumbnail` endpoint supports a new size labeled `tiny` which returns 40x40px images.
+- Persistent data, such as playlists, is now saved in a directory that may be configured with the `--data` CLI option or the `POLARIS_DATA_DIR` environment variable.
 
 ### Web client
 
