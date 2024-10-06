@@ -15,6 +15,7 @@ TestConfig.toml
 **/*.sqlite-shm
 **/*.sqlite-wal
 polaris.log
+polaris.ndb
 polaris.pid
 profile.json
 /peaks
