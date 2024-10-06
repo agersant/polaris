@@ -127,13 +127,7 @@ impl Manager {
 
 				let virtual_paths = songs.into_iter().map(|s| s.virtual_path).collect();
 
-				transaction.remove::<PlaylistModel>(PlaylistModel {
-					owner: owner.to_owned(),
-					name: name.to_owned(),
-					..Default::default()
-				})?;
-
-				transaction.insert::<PlaylistModel>(PlaylistModel {
+				transaction.upsert::<PlaylistModel>(PlaylistModel {
 					owner: owner.to_owned(),
 					name: name.to_owned(),
 					duration: Duration::from_secs(duration),
