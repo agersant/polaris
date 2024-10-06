@@ -52,10 +52,9 @@ impl ContextBuilder {
 	}
 	pub async fn build(self) -> Context {
 		let db_path = self.test_directory.join("db.sqlite");
-		let ndb_path = self.test_directory.join("polaris.ndb");
 
 		let db = DB::new(&db_path).await.unwrap();
-		let ndb_manager = ndb::Manager::new(&ndb_path).unwrap();
+		let ndb_manager = ndb::Manager::new(&self.test_directory).unwrap();
 		let settings_manager = settings::Manager::new(db.clone());
 		let auth_secret = settings_manager.get_auth_secret().await.unwrap();
 		let user_manager = user::Manager::new(db.clone(), auth_secret);
@@ -67,7 +66,7 @@ impl ContextBuilder {
 			vfs_manager.clone(),
 			ddns_manager.clone(),
 		);
-		let index_manager = index::Manager::new(db.clone()).await;
+		let index_manager = index::Manager::new(&self.test_directory).await.unwrap();
 		let scanner = scanner::Scanner::new(
 			index_manager.clone(),
 			settings_manager.clone(),

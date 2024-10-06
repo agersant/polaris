@@ -1,6 +1,6 @@
 use std::{
 	collections::HashMap,
-	path::PathBuf,
+	path::{Path, PathBuf},
 	sync::{Arc, RwLock},
 };
 
@@ -10,7 +10,6 @@ use serde::{Deserialize, Serialize};
 use tokio::task::spawn_blocking;
 
 use crate::app::{scanner, Error};
-use crate::db::DB;
 
 mod browser;
 mod collection;
@@ -24,20 +23,28 @@ use storage::{store_song, AlbumKey, ArtistKey, GenreKey, InternPath, SongKey};
 
 #[derive(Clone)]
 pub struct Manager {
-	db: DB,
-	index: Arc<RwLock<Index>>, // Not a tokio RwLock as we want to do CPU-bound work with Index
+	index_file_path: PathBuf,
+	index: Arc<RwLock<Index>>, // Not a tokio RwLock as we want to do CPU-bound work with Index and lock this inside spawn_blocking()
 }
 
 impl Manager {
-	pub async fn new(db: DB) -> Self {
+	pub async fn new(directory: &Path) -> Result<Self, Error> {
+		tokio::fs::create_dir_all(directory)
+			.await
+			.map_err(|e| Error::Io(directory.to_owned(), e))?;
+
 		let mut index_manager = Self {
-			db,
+			index_file_path: directory.join("collection.index"),
 			index: Arc::default(),
 		};
+
 		if let Err(e) = index_manager.try_restore_index().await {
 			error!("Failed to restore index: {}", e);
+		} else {
+			info!("Restored collection index from disk");
 		}
-		index_manager
+
+		Ok(index_manager)
 	}
 
 	pub async fn replace_index(&mut self, new_index: Index) {
@@ -57,21 +64,25 @@ impl Manager {
 			Ok(s) => s,
 			Err(_) => return Err(Error::IndexSerializationError),
 		};
-		sqlx::query!("UPDATE collection_index SET content = $1", serialized)
-			.execute(self.db.connect().await?.as_mut())
-			.await?;
+		tokio::fs::write(&self.index_file_path, &serialized[..])
+			.await
+			.map_err(|e| Error::Io(self.index_file_path.clone(), e))?;
 		Ok(())
 	}
 
 	async fn try_restore_index(&mut self) -> Result<bool, Error> {
-		let serialized = sqlx::query_scalar!("SELECT content FROM collection_index")
-			.fetch_one(self.db.connect().await?.as_mut())
-			.await?;
-
-		let Some(serialized) = serialized else {
-			info!("Database did not contain a collection to restore");
-			return Ok(false);
+		match tokio::fs::try_exists(&self.index_file_path).await {
+			Ok(false) => {
+				info!("No existing index to restore");
+				return Ok(false);
+			}
+			Ok(true) => (),
+			Err(e) => return Err(Error::Io(self.index_file_path.clone(), e)),
 		};
+
+		let serialized = tokio::fs::read(&self.index_file_path)
+			.await
+			.map_err(|e| Error::Io(self.index_file_path.clone(), e))?;
 
 		let index = match bitcode::deserialize(&serialized[..]) {
 			Ok(i) => i,
@@ -352,5 +363,22 @@ impl Builder {
 impl Default for Builder {
 	fn default() -> Self {
 		Self::new()
+	}
+}
+
+#[cfg(test)]
+mod test {
+	use crate::{
+		app::{index, test},
+		test_name,
+	};
+
+	#[tokio::test]
+	async fn can_persist_index() {
+		let mut ctx = test::ContextBuilder::new(test_name!()).build().await;
+		assert_eq!(ctx.index_manager.try_restore_index().await.unwrap(), false);
+		let index = index::Builder::new().build();
+		ctx.index_manager.persist_index(&index).await.unwrap();
+		assert_eq!(ctx.index_manager.try_restore_index().await.unwrap(), true);
 	}
 }
