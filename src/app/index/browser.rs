@@ -130,7 +130,7 @@ impl Browser {
 	}
 }
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Builder {
 	directories: HashMap<PathKey, BTreeSet<storage::File>>,
 	flattened: TrieBuilder<lasso2::Spur>,

@@ -38,13 +38,25 @@ impl Manager {
 			index: Arc::default(),
 		};
 
-		if let Err(e) = index_manager.try_restore_index().await {
-			error!("Failed to restore index: {}", e);
-		} else {
-			info!("Restored collection index from disk");
-		}
+		match index_manager.try_restore_index().await {
+			Ok(true) => info!("Restored collection index from disk"),
+			Ok(false) => info!("No existing collection index to restore"),
+			Err(e) => error!("Failed to restore collection index: {}", e),
+		};
 
 		Ok(index_manager)
+	}
+
+	pub async fn is_index_empty(&self) -> bool {
+		spawn_blocking({
+			let index_manager = self.clone();
+			move || {
+				let index = index_manager.index.read().unwrap();
+				index.collection.num_songs() == 0
+			}
+		})
+		.await
+		.unwrap()
 	}
 
 	pub async fn replace_index(&mut self, new_index: Index) {
@@ -72,11 +84,8 @@ impl Manager {
 
 	async fn try_restore_index(&mut self) -> Result<bool, Error> {
 		match tokio::fs::try_exists(&self.index_file_path).await {
-			Ok(false) => {
-				info!("No existing index to restore");
-				return Ok(false);
-			}
 			Ok(true) => (),
+			Ok(false) => return Ok(false),
 			Err(e) => return Err(Error::Io(self.index_file_path.clone(), e)),
 		};
 
@@ -316,6 +325,7 @@ impl Default for Index {
 	}
 }
 
+#[derive(Clone)]
 pub struct Builder {
 	strings: Rodeo,
 	canon: HashMap<String, Spur>,

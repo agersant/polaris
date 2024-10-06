@@ -16,7 +16,7 @@ pub enum File {
 	Song(PathKey),
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Genre {
 	pub name: Spur,
 	pub albums: HashSet<AlbumKey>,
@@ -25,7 +25,7 @@ pub struct Genre {
 	pub songs: Vec<SongKey>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Artist {
 	pub name: Spur,
 	pub all_albums: HashSet<AlbumKey>,

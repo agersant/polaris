@@ -252,6 +252,10 @@ impl Collection {
 		})
 	}
 
+	pub fn num_songs(&self) -> usize {
+		self.songs.len()
+	}
+
 	pub fn get_song(&self, strings: &RodeoReader, song_key: SongKey) -> Option<Song> {
 		self.songs.get(&song_key).map(|s| fetch_song(strings, s))
 	}
@@ -297,7 +301,7 @@ fn make_genre_header(genre: &storage::Genre, strings: &RodeoReader) -> GenreHead
 	}
 }
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Builder {
 	artists: HashMap<ArtistKey, storage::Artist>,
 	albums: HashMap<AlbumKey, storage::Album>,

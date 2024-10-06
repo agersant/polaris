@@ -175,7 +175,7 @@ impl Search {
 
 const NGRAM_SIZE: usize = 2;
 
-#[derive(Default, Deserialize, Serialize)]
+#[derive(Clone, Default, Deserialize, Serialize)]
 struct TextFieldIndex {
 	exact: HashMap<Spur, IntSet<SongKey>>,
 	ngrams: HashMap<[char; NGRAM_SIZE], IntMap<SongKey, Spur>>,
@@ -239,7 +239,7 @@ impl TextFieldIndex {
 	}
 }
 
-#[derive(Default, Deserialize, Serialize)]
+#[derive(Clone, Default, Deserialize, Serialize)]
 struct NumberFieldIndex {
 	values: BTreeMap<i64, IntSet<SongKey>>,
 }
@@ -266,7 +266,7 @@ impl NumberFieldIndex {
 	}
 }
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Builder {
 	text_fields: EnumMap<TextField, TextFieldIndex>,
 	number_fields: EnumMap<NumberField, NumberFieldIndex>,
