@@ -3,7 +3,7 @@ use percent_encoding::{percent_encode, NON_ALPHANUMERIC};
 use std::path::Path;
 
 use crate::server::dto;
-use crate::{app::user, server::dto::ThumbnailSize};
+use crate::server::dto::ThumbnailSize;
 
 pub trait ProtocolVersion {
 	fn header_value() -> i32;
@@ -92,22 +92,6 @@ pub fn put_settings(settings: dto::NewSettings) -> Request<dto::NewSettings> {
 		.unwrap()
 }
 
-pub fn get_ddns_config() -> Request<()> {
-	Request::builder()
-		.method(Method::GET)
-		.uri("/api/ddns")
-		.body(())
-		.unwrap()
-}
-
-pub fn put_ddns_config(ddns_config: dto::DDNSConfig) -> Request<dto::DDNSConfig> {
-	Request::builder()
-		.method(Method::PUT)
-		.uri("/api/ddns")
-		.body(ddns_config)
-		.unwrap()
-}
-
 pub fn list_users() -> Request<()> {
 	Request::builder()
 		.method(Method::GET)
@@ -148,7 +132,7 @@ pub fn get_preferences() -> Request<()> {
 		.unwrap()
 }
 
-pub fn put_preferences(preferences: user::Preferences) -> Request<user::Preferences> {
+pub fn put_preferences(preferences: dto::NewPreferences) -> Request<dto::NewPreferences> {
 	Request::builder()
 		.method(Method::PUT)
 		.uri("/api/preferences")

@@ -19,7 +19,6 @@ impl IntoResponse for APIError {
 				StatusCode::from_u16(s).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR)
 			}
 			APIError::NativeDatabase(_) => StatusCode::INTERNAL_SERVER_ERROR,
-			APIError::Database(_) => StatusCode::INTERNAL_SERVER_ERROR,
 			APIError::DeletingOwnAccount => StatusCode::CONFLICT,
 			APIError::DirectoryNotFound(_) => StatusCode::NOT_FOUND,
 			APIError::ArtistNotFound => StatusCode::NOT_FOUND,

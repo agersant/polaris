@@ -45,16 +45,12 @@
             cargo-edit
             cargo-watch
             rust-analyzer
-            sqlx-cli
             samply
-            sqlitebrowser
           ];
 
           env = {
             # Required by rust-analyzer
             RUST_SRC_PATH = "${pkgs.rustToolchain}/lib/rustlib/src/rust/library";
-            # SQLx dev database URL
-            DATABASE_URL=sqlite:./src/db/schema.sqlite;
           };
         };
       });

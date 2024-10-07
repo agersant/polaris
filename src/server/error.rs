@@ -21,8 +21,6 @@ pub enum APIError {
 	AuthenticationRequired,
 	#[error("Could not encode Branca token")]
 	BrancaTokenEncoding,
-	#[error("Database error:\n\n{0}")]
-	Database(sqlx::Error),
 	#[error("Native Database error:\n\n{0}")]
 	NativeDatabase(native_db::db_type::Error),
 	#[error("Directory not found: {0}")]
@@ -109,11 +107,6 @@ impl From<app::Error> for APIError {
 
 			app::Error::NativeDatabaseCreationError(_) => APIError::Internal,
 			app::Error::NativeDatabase(e) => APIError::NativeDatabase(e),
-
-			app::Error::Database(e) => APIError::Database(e),
-			app::Error::ConnectionPoolBuild => APIError::Internal,
-			app::Error::ConnectionPool => APIError::Internal,
-			app::Error::Migration(_) => APIError::Internal,
 
 			app::Error::UpdateQueryFailed(s) => APIError::DdnsUpdateQueryFailed(s),
 			app::Error::UpdateQueryTransport => APIError::DdnsUpdateQueryFailed(0),

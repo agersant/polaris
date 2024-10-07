@@ -70,11 +70,6 @@ version = "0.25.2"
 default-features = false
 features = ["bmp", "gif", "jpeg", "png"]
 
-[dependencies.sqlx]
-version = "0.8.0"
-default-features = false
-features = ["macros", "migrate", "runtime-tokio", "sqlite"]
-
 [target.'cfg(windows)'.dependencies]
 native-windows-gui = { version = "1.0.13", default-features = false, features = [
 	"cursor",
@@ -97,6 +92,3 @@ winres = "0.1"
 axum-test = "15.7"
 bytes = "1.7.1"
 percent-encoding = "2.2"
-
-[profile.dev.package.sqlx-macros]
-opt-level = 3

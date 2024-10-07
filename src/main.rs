@@ -10,7 +10,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 mod app;
-mod db;
 mod options;
 mod paths;
 mod server;

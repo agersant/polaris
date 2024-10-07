@@ -1,7 +1,10 @@
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use crate::db::DB;
+use config::AuthSecret;
+use rand::rngs::OsRng;
+use rand::RngCore;
+
 use crate::paths::Paths;
 
 pub mod config;
@@ -12,10 +15,8 @@ pub mod ndb;
 pub mod peaks;
 pub mod playlist;
 pub mod scanner;
-pub mod settings;
 pub mod thumbnail;
 pub mod user;
-pub mod vfs;
 
 #[cfg(test)]
 pub mod test;
@@ -63,15 +64,6 @@ pub enum Error {
 	PeaksSerialization(bitcode::Error),
 	#[error(transparent)]
 	PeaksDeserialization(bitcode::Error),
-
-	#[error(transparent)]
-	Database(#[from] sqlx::Error),
-	#[error("Could not initialize database connection pool")]
-	ConnectionPoolBuild,
-	#[error("Could not acquire database connection from pool")]
-	ConnectionPool,
-	#[error("Could not apply database migrations: {0}")]
-	Migration(sqlx::migrate::MigrateError),
 
 	#[error(transparent)]
 	NativeDatabase(#[from] native_db::db_type::Error),
@@ -148,19 +140,13 @@ pub struct App {
 	pub scanner: scanner::Scanner,
 	pub index_manager: index::Manager,
 	pub config_manager: config::Manager,
-	pub ddns_manager: ddns::Manager,
 	pub peaks_manager: peaks::Manager,
 	pub playlist_manager: playlist::Manager,
-	pub settings_manager: settings::Manager,
 	pub thumbnail_manager: thumbnail::Manager,
-	pub user_manager: user::Manager,
-	pub vfs_manager: vfs::Manager,
 }
 
 impl App {
 	pub async fn new(port: u16, paths: Paths) -> Result<Self, Error> {
-		let db = DB::new(&paths.db_file_path).await?;
-
 		fs::create_dir_all(&paths.data_dir_path)
 			.map_err(|e| Error::Io(paths.data_dir_path.clone(), e))?;
 
@@ -177,33 +163,16 @@ impl App {
 		fs::create_dir_all(&thumbnails_dir_path)
 			.map_err(|e| Error::Io(thumbnails_dir_path.clone(), e))?;
 
+		let auth_secret_file_path = paths.data_dir_path.join("auth.secret");
+		let auth_secret = Self::get_or_create_auth_secret(&auth_secret_file_path);
+
+		let config_manager = config::Manager::new(&paths.config_file_path).await?;
 		let ndb_manager = ndb::Manager::new(&paths.data_dir_path)?;
-		let vfs_manager = vfs::Manager::new(db.clone());
-		let settings_manager = settings::Manager::new(db.clone());
-		let auth_secret = settings_manager.get_auth_secret().await?;
-		let ddns_manager = ddns::Manager::new(db.clone());
-		let user_manager = user::Manager::new(db.clone(), auth_secret);
 		let index_manager = index::Manager::new(&paths.data_dir_path).await?;
-		let scanner = scanner::Scanner::new(
-			index_manager.clone(),
-			settings_manager.clone(),
-			vfs_manager.clone(),
-		)
-		.await?;
-		let config_manager = config::Manager::new(
-			settings_manager.clone(),
-			user_manager.clone(),
-			vfs_manager.clone(),
-			ddns_manager.clone(),
-		);
+		let scanner = scanner::Scanner::new(index_manager.clone(), config_manager.clone()).await?;
 		let peaks_manager = peaks::Manager::new(peaks_dir_path);
 		let playlist_manager = playlist::Manager::new(ndb_manager);
 		let thumbnail_manager = thumbnail::Manager::new(thumbnails_dir_path);
-
-		if let Some(config_path) = paths.config_file_path {
-			let config = config::Config::from_path(&config_path)?;
-			config_manager.apply(&config).await?;
-		}
 
 		Ok(Self {
 			port,
@@ -212,13 +181,28 @@ impl App {
 			scanner,
 			index_manager,
 			config_manager,
-			ddns_manager,
 			peaks_manager,
 			playlist_manager,
-			settings_manager,
 			thumbnail_manager,
-			user_manager,
-			vfs_manager,
 		})
+	}
+
+	async fn get_or_create_auth_secret(path: &Path) -> Result<config::AuthSecret, Error> {
+		match tokio::fs::read(&path).await {
+			Ok(s) => Ok(config::AuthSecret {
+				key: s
+					.try_into()
+					.map_err(|_| Error::AuthenticationSecretInvalid)?,
+			}),
+			Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+				let mut secret = AuthSecret::default();
+				OsRng.fill_bytes(&mut secret.key);
+				tokio::fs::write(&path, &secret.key)
+					.await
+					.map_err(|_| Error::AuthenticationSecretInvalid)?;
+				Ok(secret)
+			}
+			Err(e) => return Err(Error::Io(path.to_owned(), e)),
+		}
 	}
 }

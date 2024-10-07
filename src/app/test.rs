@@ -1,18 +1,15 @@
 use std::path::PathBuf;
 
-use crate::app::{config, ddns, index, ndb, playlist, scanner, settings, user, vfs};
-use crate::db::DB;
+use crate::app::{config, index, ndb, playlist, scanner};
 use crate::test::*;
+
+use super::config::AuthSecret;
 
 pub struct Context {
 	pub index_manager: index::Manager,
 	pub scanner: scanner::Scanner,
 	pub config_manager: config::Manager,
-	pub ddns_manager: ddns::Manager,
 	pub playlist_manager: playlist::Manager,
-	pub settings_manager: settings::Manager,
-	pub user_manager: user::Manager,
-	pub vfs_manager: vfs::Manager,
 }
 
 pub struct ContextBuilder {
@@ -29,64 +26,41 @@ impl ContextBuilder {
 	}
 
 	pub fn user(mut self, name: &str, password: &str, is_admin: bool) -> Self {
-		self.config
-			.users
-			.get_or_insert(Vec::new())
-			.push(user::NewUser {
-				name: name.to_owned(),
-				password: password.to_owned(),
-				admin: is_admin,
-			});
+		self.config.users.push(config::User {
+			name: name.to_owned(),
+			initial_password: Some(password.to_owned()),
+			admin: Some(is_admin),
+			..Default::default()
+		});
 		self
 	}
 
 	pub fn mount(mut self, name: &str, source: &str) -> Self {
-		self.config
-			.mount_dirs
-			.get_or_insert(Vec::new())
-			.push(vfs::MountDir {
-				name: name.to_owned(),
-				source: source.to_owned(),
-			});
+		self.config.mount_dirs.push(config::MountDir {
+			name: name.to_owned(),
+			source: source.to_owned(),
+		});
 		self
 	}
 	pub async fn build(self) -> Context {
-		let db_path = self.test_directory.join("db.sqlite");
+		let config_path = self.test_directory.join("polaris.toml");
 
-		let db = DB::new(&db_path).await.unwrap();
+		let auth_secret = AuthSecret::default();
+		let config_manager = config::Manager::new(&config_path).await.unwrap();
 		let ndb_manager = ndb::Manager::new(&self.test_directory).unwrap();
-		let settings_manager = settings::Manager::new(db.clone());
-		let auth_secret = settings_manager.get_auth_secret().await.unwrap();
-		let user_manager = user::Manager::new(db.clone(), auth_secret);
-		let vfs_manager = vfs::Manager::new(db.clone());
-		let ddns_manager = ddns::Manager::new(db.clone());
-		let config_manager = config::Manager::new(
-			settings_manager.clone(),
-			user_manager.clone(),
-			vfs_manager.clone(),
-			ddns_manager.clone(),
-		);
 		let index_manager = index::Manager::new(&self.test_directory).await.unwrap();
-		let scanner = scanner::Scanner::new(
-			index_manager.clone(),
-			settings_manager.clone(),
-			vfs_manager.clone(),
-		)
-		.await
-		.unwrap();
+		let scanner = scanner::Scanner::new(index_manager.clone(), config_manager.clone())
+			.await
+			.unwrap();
 		let playlist_manager = playlist::Manager::new(ndb_manager.clone());
 
-		config_manager.apply(&self.config).await.unwrap();
+		config_manager.apply(self.config).await.unwrap();
 
 		Context {
 			index_manager,
 			scanner,
 			config_manager,
-			ddns_manager,
 			playlist_manager,
-			settings_manager,
-			user_manager,
-			vfs_manager,
 		}
 	}
 }

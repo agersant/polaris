@@ -99,36 +99,6 @@
                 ]
             }
         },
-        "/config": {
-            "put": {
-                "tags": [
-                    "Configuration"
-                ],
-                "summary": "Amends the server settings, mount directories and list of users",
-                "operationId": "putConfig",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#components/schemas/Config"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful operation"
-                    }
-                },
-                "security": [
-                    {
-                        "admin_http_bearer": [],
-                        "admin_query_parameter": []
-                    }
-                ]
-            }
-        },
         "/mount_dirs": {
             "get": {
                 "tags": [
@@ -1016,26 +986,6 @@
                                 "type": "string",
                                 "example": "hunter2"
                             }
-                        }
-                    }
-                }
-            },
-            "Config": {
-                "type": "object",
-                "properties": {
-                    "settings": {
-                        "$ref": "#/components/schemas/Settings"
-                    },
-                    "mount_dirs": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/MountDir"
-                        }
-                    },
-                    "users": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/User"
                         }
                     }
                 }

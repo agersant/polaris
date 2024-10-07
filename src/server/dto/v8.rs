@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::app::{config, ddns, index, peaks, playlist, settings, thumbnail, user, vfs};
+use crate::app::{config, index, peaks, playlist, thumbnail, user};
 use std::{collections::HashMap, convert::From, path::PathBuf};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
@@ -111,11 +111,11 @@ pub struct User {
 	pub is_admin: bool,
 }
 
-impl From<user::User> for User {
-	fn from(u: user::User) -> Self {
+impl From<config::User> for User {
+	fn from(u: config::User) -> Self {
 		Self {
 			name: u.name,
-			is_admin: u.admin != 0,
+			is_admin: u.admin == Some(true),
 		}
 	}
 }
@@ -143,31 +143,16 @@ pub struct UserUpdate {
 	pub new_is_admin: Option<bool>,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
-pub struct DDNSConfig {
-	pub host: String,
-	pub username: String,
-	pub password: String,
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Preferences {
+	pub web_theme_base: Option<String>,
+	pub web_theme_accent: Option<String>,
 }
 
-impl From<DDNSConfig> for ddns::Config {
-	fn from(c: DDNSConfig) -> Self {
-		Self {
-			ddns_host: c.host,
-			ddns_username: c.username,
-			ddns_password: c.password,
-		}
-	}
-}
-
-impl From<ddns::Config> for DDNSConfig {
-	fn from(c: ddns::Config) -> Self {
-		Self {
-			host: c.ddns_host,
-			username: c.ddns_username,
-			password: c.ddns_password,
-		}
-	}
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NewPreferences {
+	pub web_theme_base: Option<String>,
+	pub web_theme_accent: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
@@ -176,7 +161,7 @@ pub struct MountDir {
 	pub name: String,
 }
 
-impl From<MountDir> for vfs::MountDir {
+impl From<MountDir> for config::MountDir {
 	fn from(m: MountDir) -> Self {
 		Self {
 			name: m.name,
@@ -185,8 +170,8 @@ impl From<MountDir> for vfs::MountDir {
 	}
 }
 
-impl From<vfs::MountDir> for MountDir {
-	fn from(m: vfs::MountDir) -> Self {
+impl From<config::MountDir> for MountDir {
+	fn from(m: config::MountDir) -> Self {
 		Self {
 			name: m.name,
 			source: m.source,
@@ -195,54 +180,17 @@ impl From<vfs::MountDir> for MountDir {
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Config {
-	pub settings: Option<NewSettings>,
-	pub users: Option<Vec<NewUser>>,
-	pub mount_dirs: Option<Vec<MountDir>>,
-	pub ydns: Option<DDNSConfig>,
-}
-
-impl From<Config> for config::Config {
-	fn from(s: Config) -> Self {
-		Self {
-			settings: s.settings.map(|s| s.into()),
-			mount_dirs: s
-				.mount_dirs
-				.map(|v| v.into_iter().map(|m| m.into()).collect()),
-			users: s.users.map(|v| v.into_iter().map(|u| u.into()).collect()),
-			ydns: s.ydns.map(|c| c.into()),
-		}
-	}
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NewSettings {
 	pub album_art_pattern: Option<String>,
 	pub reindex_every_n_seconds: Option<i64>,
-}
-
-impl From<NewSettings> for settings::NewSettings {
-	fn from(s: NewSettings) -> Self {
-		Self {
-			album_art_pattern: s.album_art_pattern,
-			reindex_every_n_seconds: s.reindex_every_n_seconds,
-		}
-	}
+	pub ddns_update_url: Option<String>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Settings {
 	pub album_art_pattern: String,
-	pub reindex_every_n_seconds: i64,
-}
-
-impl From<settings::Settings> for Settings {
-	fn from(s: settings::Settings) -> Self {
-		Self {
-			album_art_pattern: s.index_album_art_pattern,
-			reindex_every_n_seconds: s.index_sleep_duration_seconds,
-		}
-	}
+	pub reindex_every_n_seconds: u64,
+	pub ddns_update_url: String,
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -513,5 +461,3 @@ pub struct GetRecentAlbumsParameters {
 	pub offset: Option<usize>,
 	pub count: Option<usize>,
 }
-
-// TODO: Preferences should have dto types

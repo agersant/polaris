@@ -10,7 +10,7 @@ use std::{cmp::min, time::Duration};
 use tokio::sync::Notify;
 use tokio::time::Instant;
 
-use crate::app::{formats, index, settings, vfs, Error};
+use crate::app::{config, formats, index, Error};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Directory {
@@ -40,21 +40,18 @@ pub struct Song {
 #[derive(Clone)]
 pub struct Scanner {
 	index_manager: index::Manager,
-	settings_manager: settings::Manager,
-	vfs_manager: vfs::Manager,
+	config_manager: config::Manager,
 	pending_scan: Arc<Notify>,
 }
 
 impl Scanner {
 	pub async fn new(
 		index_manager: index::Manager,
-		settings_manager: settings::Manager,
-		vfs_manager: vfs::Manager,
+		config_manager: config::Manager,
 	) -> Result<Self, Error> {
 		let scanner = Self {
 			index_manager,
-			vfs_manager,
-			settings_manager,
+			config_manager,
 			pending_scan: Arc::new(Notify::new()),
 		};
 
@@ -83,14 +80,7 @@ impl Scanner {
 			async move {
 				loop {
 					index.trigger_scan();
-					let sleep_duration = index
-						.settings_manager
-						.get_index_sleep_duration()
-						.await
-						.unwrap_or_else(|e| {
-							error!("Could not retrieve index sleep duration: {}", e);
-							Duration::from_secs(1800)
-						});
+					let sleep_duration = index.config_manager.get_index_sleep_duration().await;
 					tokio::time::sleep(sleep_duration).await;
 				}
 			}
@@ -104,22 +94,17 @@ impl Scanner {
 		let was_empty = self.index_manager.is_index_empty().await;
 		let mut partial_update_time = Instant::now();
 
-		let album_art_pattern = self
-			.settings_manager
-			.get_index_album_art_pattern()
-			.await
-			.ok();
+		let album_art_pattern = self.config_manager.get_index_album_art_pattern().await;
+		let album_art_regex = Regex::new(&format!("(?i){}", &album_art_pattern)).ok();
 
 		let (scan_directories_output, collection_directories_input) = channel();
 		let (scan_songs_output, collection_songs_input) = channel();
 
-		let vfs = self.vfs_manager.get_vfs().await?;
-
 		let scan = Scan::new(
 			scan_directories_output,
 			scan_songs_output,
-			vfs.mounts().clone(),
-			album_art_pattern,
+			self.config_manager.get_mounts().await,
+			album_art_regex,
 		);
 
 		let scan_task = tokio::task::spawn_blocking(|| scan.run());
@@ -203,7 +188,7 @@ impl Scanner {
 struct Scan {
 	directories_output: Sender<Directory>,
 	songs_output: Sender<Song>,
-	mounts: Vec<vfs::Mount>,
+	mounts: Vec<config::MountDir>,
 	artwork_regex: Option<Regex>,
 }
 
@@ -211,7 +196,7 @@ impl Scan {
 	pub fn new(
 		directories_output: Sender<Directory>,
 		songs_output: Sender<Song>,
-		mounts: Vec<vfs::Mount>,
+		mounts: Vec<config::MountDir>,
 		artwork_regex: Option<Regex>,
 	) -> Self {
 		Self {
@@ -371,9 +356,9 @@ mod test {
 	async fn scan_finds_songs_and_directories() {
 		let (directories_sender, directories_receiver) = channel();
 		let (songs_sender, songs_receiver) = channel();
-		let mounts = vec![vfs::Mount {
-			source: PathBuf::from_iter(["test-data", "small-collection"]),
-			name: "root".to_string(),
+		let mounts = vec![config::MountDir {
+			source: "test-data/small-collection".to_owned(),
+			name: "root".to_owned(),
 		}];
 		let artwork_regex = None;
 
@@ -391,9 +376,9 @@ mod test {
 	async fn scan_finds_embedded_artwork() {
 		let (directories_sender, _) = channel();
 		let (songs_sender, songs_receiver) = channel();
-		let mounts = vec![vfs::Mount {
-			source: PathBuf::from_iter(["test-data", "small-collection"]),
-			name: "root".to_string(),
+		let mounts = vec![config::MountDir {
+			source: "test-data/small-collection".to_owned(),
+			name: "root".to_owned(),
 		}];
 		let artwork_regex = None;
 
@@ -414,9 +399,9 @@ mod test {
 		for pattern in patterns.into_iter() {
 			let (directories_sender, _) = channel();
 			let (songs_sender, songs_receiver) = channel();
-			let mounts = vec![vfs::Mount {
-				source: PathBuf::from_iter(["test-data", "small-collection"]),
-				name: "root".to_string(),
+			let mounts = vec![config::MountDir {
+				source: "test-data/small-collection".to_owned(),
+				name: "root".to_owned(),
 			}];
 			let artwork_regex = Some(Regex::new(pattern).unwrap());
 

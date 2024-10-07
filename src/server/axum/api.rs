@@ -12,7 +12,7 @@ use axum_range::{KnownSize, Ranged};
 use tower_http::{compression::CompressionLayer, CompressionLevel};
 
 use crate::{
-	app::{ddns, index, peaks, playlist, scanner, settings, thumbnail, user, vfs, App},
+	app::{config, index, peaks, playlist, scanner, thumbnail, App},
 	server::{
 		dto, error::APIError, APIMajorVersion, API_ARRAY_SEPARATOR, API_MAJOR_VERSION,
 		API_MINOR_VERSION,
@@ -32,8 +32,6 @@ pub fn router() -> Router<App> {
 		.route("/settings", put(put_settings))
 		.route("/mount_dirs", get(get_mount_dirs))
 		.route("/mount_dirs", put(put_mount_dirs))
-		.route("/ddns", get(get_ddns))
-		.route("/ddns", put(put_ddns))
 		.route("/trigger_index", post(post_trigger_index))
 		// User management
 		.route("/user", post(post_user))
@@ -88,11 +86,11 @@ async fn get_version() -> Json<dto::Version> {
 }
 
 async fn get_initial_setup(
-	State(user_manager): State<user::Manager>,
+	State(config_manager): State<config::Manager>,
 ) -> Result<Json<dto::InitialSetup>, APIError> {
 	let initial_setup = {
-		let users = user_manager.list().await?;
-		let has_any_admin = users.iter().any(|u| u.is_admin());
+		let users = config_manager.get_users().await;
+		let has_any_admin = users.iter().any(|u| u.admin == Some(true));
 		dto::InitialSetup {
 			has_any_users: has_any_admin,
 		}
@@ -101,16 +99,23 @@ async fn get_initial_setup(
 }
 
 async fn get_settings(
-	State(settings_manager): State<settings::Manager>,
 	_admin_rights: AdminRights,
+	State(config_manager): State<config::Manager>,
 ) -> Result<Json<dto::Settings>, APIError> {
-	let settings = settings_manager.read().await?;
-	Ok(Json(settings.into()))
+	let settings = dto::Settings {
+		album_art_pattern: config_manager.get_index_album_art_pattern().await,
+		reindex_every_n_seconds: config_manager.get_index_sleep_duration().await.as_secs(),
+		ddns_update_url: config_manager
+			.get_ddns_update_url()
+			.await
+			.unwrap_or_default(),
+	};
+	Ok(Json(settings))
 }
 
 async fn put_settings(
 	_admin_rights: AdminRights,
-	State(settings_manager): State<settings::Manager>,
+	State(config_manager): State<config::Manager>,
 	Json(new_settings): Json<dto::NewSettings>,
 ) -> Result<(), APIError> {
 	settings_manager
@@ -121,43 +126,26 @@ async fn put_settings(
 
 async fn get_mount_dirs(
 	_admin_rights: AdminRights,
-	State(vfs_manager): State<vfs::Manager>,
+	State(config_manager): State<config::Manager>,
 ) -> Result<Json<Vec<dto::MountDir>>, APIError> {
-	let mount_dirs = vfs_manager.mount_dirs().await?;
+	let mount_dirs = config_manager.get_mounts().await;
 	let mount_dirs = mount_dirs.into_iter().map(|m| m.into()).collect();
 	Ok(Json(mount_dirs))
 }
 
 async fn put_mount_dirs(
 	_admin_rights: AdminRights,
-	State(vfs_manager): State<vfs::Manager>,
+	State(config_manager): State<config::Manager>,
 	new_mount_dirs: Json<Vec<dto::MountDir>>,
 ) -> Result<(), APIError> {
-	let new_mount_dirs: Vec<vfs::MountDir> =
+	let new_mount_dirs: Vec<config::MountDir> =
 		new_mount_dirs.iter().cloned().map(|m| m.into()).collect();
-	vfs_manager.set_mount_dirs(&new_mount_dirs).await?;
-	Ok(())
-}
-
-async fn get_ddns(
-	_admin_rights: AdminRights,
-	State(ddns_manager): State<ddns::Manager>,
-) -> Result<Json<dto::DDNSConfig>, APIError> {
-	let ddns_config = ddns_manager.config().await?;
-	Ok(Json(ddns_config.into()))
-}
-
-async fn put_ddns(
-	_admin_rights: AdminRights,
-	State(ddns_manager): State<ddns::Manager>,
-	Json(new_ddns_config): Json<dto::DDNSConfig>,
-) -> Result<(), APIError> {
-	ddns_manager.set_config(&new_ddns_config.into()).await?;
+	config_manager.set_mounts(new_mount_dirs).await;
 	Ok(())
 }
 
 async fn post_auth(
-	State(user_manager): State<user::Manager>,
+	State(config_manager): State<config::Manager>,
 	credentials: Json<dto::Credentials>,
 ) -> Result<Json<dto::Authorization>, APIError> {
 	let username = credentials.username.clone();
@@ -178,16 +166,16 @@ async fn post_auth(
 
 async fn get_users(
 	_admin_rights: AdminRights,
-	State(user_manager): State<user::Manager>,
+	State(config_manager): State<config::Manager>,
 ) -> Result<Json<Vec<dto::User>>, APIError> {
-	let users = user_manager.list().await?;
+	let users = config_manager.get_users().await;
 	let users = users.into_iter().map(|u| u.into()).collect();
 	Ok(Json(users))
 }
 
 async fn post_user(
 	_admin_rights: AdminRights,
-	State(user_manager): State<user::Manager>,
+	State(config_manager): State<config::Manager>,
 	Json(new_user): Json<dto::NewUser>,
 ) -> Result<(), APIError> {
 	user_manager.create(&new_user.into()).await?;
@@ -196,7 +184,7 @@ async fn post_user(
 
 async fn put_user(
 	admin_rights: AdminRights,
-	State(user_manager): State<user::Manager>,
+	State(config_manager): State<config::Manager>,
 	Path(name): Path<String>,
 	user_update: Json<dto::UserUpdate>,
 ) -> Result<(), APIError> {
@@ -219,7 +207,7 @@ async fn put_user(
 
 async fn delete_user(
 	admin_rights: AdminRights,
-	State(user_manager): State<user::Manager>,
+	State(config_manager): State<config::Manager>,
 	Path(name): Path<String>,
 ) -> Result<(), APIError> {
 	if let Some(auth) = &admin_rights.get_auth() {
@@ -227,22 +215,26 @@ async fn delete_user(
 			return Err(APIError::DeletingOwnAccount);
 		}
 	}
-	user_manager.delete(&name).await?;
+	config_manager.delete_user(&name).await;
 	Ok(())
 }
 
 async fn get_preferences(
 	auth: Auth,
-	State(user_manager): State<user::Manager>,
-) -> Result<Json<user::Preferences>, APIError> {
-	let preferences = user_manager.read_preferences(auth.get_username()).await?;
+	State(config_manager): State<config::Manager>,
+) -> Result<Json<dto::Preferences>, APIError> {
+	let user = config_manager.get_user(auth.get_username()).await?;
+	let preferences = dto::Preferences {
+		web_theme_base: user.web_theme_base,
+		web_theme_accent: user.web_theme_accent,
+	};
 	Ok(Json(preferences))
 }
 
 async fn put_preferences(
 	auth: Auth,
-	State(user_manager): State<user::Manager>,
-	Json(preferences): Json<user::Preferences>,
+	State(config_manager): State<config::Manager>,
+	Json(preferences): Json<dto::NewPreferences>,
 ) -> Result<(), APIError> {
 	user_manager
 		.write_preferences(auth.get_username(), &preferences)
@@ -450,12 +442,11 @@ async fn get_songs(
 
 async fn get_peaks(
 	_auth: Auth,
-	State(vfs_manager): State<vfs::Manager>,
+	State(config_manager): State<config::Manager>,
 	State(peaks_manager): State<peaks::Manager>,
 	Path(path): Path<PathBuf>,
 ) -> Result<dto::Peaks, APIError> {
-	let vfs = vfs_manager.get_vfs().await?;
-	let audio_path = vfs.virtual_to_real(&path)?;
+	let audio_path = config_manager.resolve_virtual_path(&path).await?;
 	let peaks = peaks_manager.get_peaks(&audio_path).await?;
 	Ok(peaks.interleaved)
 }
@@ -662,12 +653,11 @@ async fn delete_playlist(
 
 async fn get_audio(
 	_auth: Auth,
-	State(vfs_manager): State<vfs::Manager>,
+	State(config_manager): State<config::Manager>,
 	Path(path): Path<PathBuf>,
 	range: Option<TypedHeader<Range>>,
 ) -> Result<impl IntoResponse, APIError> {
-	let vfs = vfs_manager.get_vfs().await?;
-	let audio_path = vfs.virtual_to_real(&path)?;
+	let audio_path = config_manager.resolve_virtual_path(&path).await?;
 
 	let Ok(file) = tokio::fs::File::open(audio_path).await else {
 		return Err(APIError::AudioFileIOError);
@@ -683,15 +673,14 @@ async fn get_audio(
 
 async fn get_thumbnail(
 	_auth: Auth,
-	State(vfs_manager): State<vfs::Manager>,
+	State(config_manager): State<config::Manager>,
 	State(thumbnails_manager): State<thumbnail::Manager>,
 	Path(path): Path<PathBuf>,
 	Query(options_input): Query<dto::ThumbnailOptions>,
 	range: Option<TypedHeader<Range>>,
 ) -> Result<impl IntoResponse, APIError> {
 	let options = thumbnail::Options::from(options_input);
-	let vfs = vfs_manager.get_vfs().await?;
-	let image_path = vfs.virtual_to_real(&path)?;
+	let image_path = config_manager.resolve_virtual_path(&path).await?;
 
 	let thumbnail_path = thumbnails_manager
 		.get_thumbnail(&image_path, &options)

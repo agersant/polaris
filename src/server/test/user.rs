@@ -1,7 +1,6 @@
 use http::StatusCode;
 use std::default::Default;
 
-use crate::app::user;
 use crate::server::dto;
 use crate::server::test::{constants::*, protocol, ServiceType, TestService};
 use crate::test_name;
@@ -156,14 +155,14 @@ async fn get_preferences_golden_path() {
 	service.login().await;
 
 	let request = protocol::get_preferences();
-	let response = service.fetch_json::<_, user::Preferences>(&request).await;
+	let response = service.fetch_json::<_, dto::Preferences>(&request).await;
 	assert_eq!(response.status(), StatusCode::OK);
 }
 
 #[tokio::test]
 async fn put_preferences_requires_auth() {
 	let mut service = ServiceType::new(&test_name!()).await;
-	let request = protocol::put_preferences(user::Preferences::default());
+	let request = protocol::put_preferences(dto::NewPreferences::default());
 	let response = service.fetch(&request).await;
 	assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
@@ -174,7 +173,7 @@ async fn put_preferences_golden_path() {
 	service.complete_initial_setup().await;
 	service.login().await;
 
-	let request = protocol::put_preferences(user::Preferences::default());
+	let request = protocol::put_preferences(dto::NewPreferences::default());
 	let response = service.fetch(&request).await;
 	assert_eq!(response.status(), StatusCode::OK);
 }

@@ -6,7 +6,7 @@ use headers::authorization::{Bearer, Credentials};
 use http::request::Parts;
 
 use crate::{
-	app::user,
+	app::config,
 	server::{dto, error::APIError},
 };
 
@@ -24,13 +24,13 @@ impl Auth {
 #[async_trait]
 impl<S> FromRequestParts<S> for Auth
 where
-	user::Manager: FromRef<S>,
+	config::Manager: FromRef<S>,
 	S: Send + Sync,
 {
 	type Rejection = APIError;
 
 	async fn from_request_parts(parts: &mut Parts, app: &S) -> Result<Self, Self::Rejection> {
-		let user_manager = user::Manager::from_ref(app);
+		let config_manager = config::Manager::from_ref(app);
 
 		let header_token = parts
 			.headers
@@ -73,13 +73,13 @@ impl AdminRights {
 #[async_trait]
 impl<S> FromRequestParts<S> for AdminRights
 where
-	user::Manager: FromRef<S>,
+	config::Manager: FromRef<S>,
 	S: Send + Sync,
 {
 	type Rejection = APIError;
 
 	async fn from_request_parts(parts: &mut Parts, app: &S) -> Result<Self, Self::Rejection> {
-		let user_manager = user::Manager::from_ref(app);
+		let config_manager = config::Manager::from_ref(app);
 
 		let user_count = user_manager.count().await?;
 		if user_count == 0 {
