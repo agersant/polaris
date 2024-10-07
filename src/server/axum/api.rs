@@ -12,7 +12,7 @@ use axum_range::{KnownSize, Ranged};
 use tower_http::{compression::CompressionLayer, CompressionLevel};
 
 use crate::{
-	app::{config, ddns, index, peaks, playlist, scanner, settings, thumbnail, user, vfs, App},
+	app::{ddns, index, peaks, playlist, scanner, settings, thumbnail, user, vfs, App},
 	server::{
 		dto, error::APIError, APIMajorVersion, API_ARRAY_SEPARATOR, API_MAJOR_VERSION,
 		API_MINOR_VERSION,
@@ -28,7 +28,6 @@ pub fn router() -> Router<App> {
 		.route("/initial_setup", get(get_initial_setup))
 		.route("/auth", post(post_auth))
 		// Configuration
-		.route("/config", put(put_config))
 		.route("/settings", get(get_settings))
 		.route("/settings", put(put_settings))
 		.route("/mount_dirs", get(get_mount_dirs))
@@ -99,15 +98,6 @@ async fn get_initial_setup(
 		}
 	};
 	Ok(Json(initial_setup))
-}
-
-async fn put_config(
-	_admin_rights: AdminRights,
-	State(config_manager): State<config::Manager>,
-	Json(config): Json<dto::Config>,
-) -> Result<(), APIError> {
-	config_manager.apply(&config.into()).await?;
-	Ok(())
 }
 
 async fn get_settings(

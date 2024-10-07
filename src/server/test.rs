@@ -65,28 +65,41 @@ pub trait TestService {
 	}
 
 	async fn complete_initial_setup(&mut self) {
-		let configuration = dto::Config {
-			users: Some(vec![
-				dto::NewUser {
-					name: TEST_USERNAME_ADMIN.into(),
-					password: TEST_PASSWORD_ADMIN.into(),
-					admin: true,
-				},
-				dto::NewUser {
-					name: TEST_USERNAME.into(),
-					password: TEST_PASSWORD.into(),
-					admin: false,
-				},
-			]),
-			mount_dirs: Some(vec![dto::MountDir {
+		assert_eq!(
+			self.fetch(&protocol::put_mount_dirs(vec![dto::MountDir {
 				name: TEST_MOUNT_NAME.into(),
 				source: TEST_MOUNT_SOURCE.into(),
-			}]),
-			..Default::default()
-		};
-		let request = protocol::apply_config(configuration);
-		let response = self.fetch(&request).await;
-		assert_eq!(response.status(), StatusCode::OK);
+			}]))
+			.await
+			.status(),
+			StatusCode::OK
+		);
+
+		assert_eq!(
+			self.fetch(&protocol::create_user(dto::NewUser {
+				name: TEST_USERNAME_ADMIN.into(),
+				password: TEST_PASSWORD_ADMIN.into(),
+				admin: true,
+			}))
+			.await
+			.status(),
+			StatusCode::OK
+		);
+
+		self.login_admin().await;
+
+		assert_eq!(
+			self.fetch(&protocol::create_user(dto::NewUser {
+				name: TEST_USERNAME.into(),
+				password: TEST_PASSWORD.into(),
+				admin: false,
+			}))
+			.await
+			.status(),
+			StatusCode::OK
+		);
+
+		self.logout().await;
 	}
 
 	async fn login_internal(&mut self, username: &str, password: &str) {

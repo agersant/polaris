@@ -18,6 +18,7 @@
 - The `/thumbnail` endpoint supports a new size labeled `tiny` which returns 40x40px images.
 - Persistent data, such as playlists, is now saved in a directory that may be configured with the `--data` CLI option or the `POLARIS_DATA_DIR` environment variable.
 - Removed last.fm integration due to maintenance concerns (abandoned libraries, broken account linking) and mismatch with project goals.
+- Removed `/config` API endpoint.
 
 ### Web client
 

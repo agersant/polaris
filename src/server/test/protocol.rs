@@ -68,11 +68,11 @@ pub fn login(username: &str, password: &str) -> Request<dto::Credentials> {
 		.unwrap()
 }
 
-pub fn apply_config(config: dto::Config) -> Request<dto::Config> {
+pub fn put_mount_dirs(dirs: Vec<dto::MountDir>) -> Request<Vec<dto::MountDir>> {
 	Request::builder()
 		.method(Method::PUT)
-		.uri("/api/config")
-		.body(config)
+		.uri("/api/mount_dirs")
+		.body(dirs)
 		.unwrap()
 }
 
