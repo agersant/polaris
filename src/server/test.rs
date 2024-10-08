@@ -14,7 +14,6 @@ mod admin;
 mod auth;
 mod browser;
 mod collection;
-mod ddns;
 mod media;
 mod playlist;
 mod search;
