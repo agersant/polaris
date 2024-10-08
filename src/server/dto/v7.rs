@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::app::{config, ddns, index, settings, thumbnail, user, vfs};
+use crate::app::{config, ddns, index, thumbnail};
 use std::{convert::From, path::PathBuf};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
@@ -161,27 +161,6 @@ impl From<vfs::MountDir> for MountDir {
 		Self {
 			name: m.name,
 			source: m.source,
-		}
-	}
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Config {
-	pub settings: Option<NewSettings>,
-	pub users: Option<Vec<NewUser>>,
-	pub mount_dirs: Option<Vec<MountDir>>,
-	pub ydns: Option<DDNSConfig>,
-}
-
-impl From<Config> for config::Config {
-	fn from(s: Config) -> Self {
-		Self {
-			settings: s.settings.map(|s| s.into()),
-			mount_dirs: s
-				.mount_dirs
-				.map(|v| v.into_iter().map(|m| m.into()).collect()),
-			users: s.users.map(|v| v.into_iter().map(|u| u.into()).collect()),
-			ydns: s.ydns.map(|c| c.into()),
 		}
 	}
 }
