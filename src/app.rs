@@ -1,12 +1,12 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use config::AuthSecret;
 use rand::rngs::OsRng;
 use rand::RngCore;
 
 use crate::paths::Paths;
 
+pub mod auth;
 pub mod config;
 pub mod ddns;
 pub mod formats;
@@ -16,7 +16,6 @@ pub mod peaks;
 pub mod playlist;
 pub mod scanner;
 pub mod thumbnail;
-pub mod user;
 
 #[cfg(test)]
 pub mod test;
@@ -116,6 +115,8 @@ pub enum Error {
 	EmptyUsername,
 	#[error("Cannot use empty password")]
 	EmptyPassword,
+	#[error("Username already exists")]
+	DuplicateUsername,
 	#[error("Username does not exist")]
 	IncorrectUsername,
 	#[error("Password does not match username")]
@@ -164,9 +165,9 @@ impl App {
 			.map_err(|e| Error::Io(thumbnails_dir_path.clone(), e))?;
 
 		let auth_secret_file_path = paths.data_dir_path.join("auth.secret");
-		let auth_secret = Self::get_or_create_auth_secret(&auth_secret_file_path);
+		let auth_secret = Self::get_or_create_auth_secret(&auth_secret_file_path).await?;
 
-		let config_manager = config::Manager::new(&paths.config_file_path).await?;
+		let config_manager = config::Manager::new(&paths.config_file_path, auth_secret).await?;
 		let ndb_manager = ndb::Manager::new(&paths.data_dir_path)?;
 		let index_manager = index::Manager::new(&paths.data_dir_path).await?;
 		let scanner = scanner::Scanner::new(index_manager.clone(), config_manager.clone()).await?;
@@ -187,15 +188,15 @@ impl App {
 		})
 	}
 
-	async fn get_or_create_auth_secret(path: &Path) -> Result<config::AuthSecret, Error> {
+	async fn get_or_create_auth_secret(path: &Path) -> Result<auth::Secret, Error> {
 		match tokio::fs::read(&path).await {
-			Ok(s) => Ok(config::AuthSecret {
+			Ok(s) => Ok(auth::Secret {
 				key: s
 					.try_into()
 					.map_err(|_| Error::AuthenticationSecretInvalid)?,
 			}),
 			Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-				let mut secret = AuthSecret::default();
+				let mut secret = auth::Secret::default();
 				OsRng.fill_bytes(&mut secret.key);
 				tokio::fs::write(&path, &secret.key)
 					.await

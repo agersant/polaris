@@ -1,65 +1,56 @@
 use std::{
-	io::Read,
-	ops::Deref,
+	collections::HashMap,
 	path::{Path, PathBuf},
 	sync::Arc,
 	time::Duration,
 };
 
-use pbkdf2::password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString};
-use pbkdf2::Pbkdf2;
-use rand::rngs::OsRng;
-use regex::Regex;
-use serde::{Deserialize, Serialize};
+use tokio::sync::RwLock;
 
 use crate::app::Error;
 
-#[derive(Clone, Default)]
-pub struct AuthSecret {
-	pub key: [u8; 32],
-}
+mod mounts;
+mod raw;
+mod user;
 
-#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
-pub struct MountDir {
-	pub source: String,
-	pub name: String,
-}
+pub use mounts::*;
+pub use user::*;
 
-#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
-pub struct User {
-	pub name: String,
-	#[serde(skip_serializing_if = "Option::is_none")]
-	pub admin: Option<bool>,
-	#[serde(skip_serializing_if = "Option::is_none")]
-	pub initial_password: Option<String>,
-	#[serde(skip_serializing_if = "Option::is_none")]
-	pub hashed_password: Option<String>,
-}
+use super::auth;
 
-#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct Config {
-	#[serde(skip_serializing_if = "Option::is_none")]
 	pub reindex_every_n_seconds: Option<u64>,
-	#[serde(skip_serializing_if = "Option::is_none")]
 	pub album_art_pattern: Option<String>,
-	#[serde(skip_serializing_if = "Vec::is_empty")]
-	pub mount_dirs: Vec<MountDir>,
-	#[serde(skip_serializing_if = "Option::is_none")]
 	pub ddns_url: Option<String>,
-	#[serde(skip_serializing_if = "Vec::is_empty")]
-	pub users: Vec<User>,
+	pub mount_dirs: Vec<MountDir>,
+	pub users: HashMap<String, User>,
 }
 
-impl Config {
-	pub fn from_path(path: &Path) -> Result<Config, Error> {
-		let mut config_file =
-			std::fs::File::open(path).map_err(|e| Error::Io(path.to_owned(), e))?;
-		let mut config_file_content = String::new();
-		config_file
-			.read_to_string(&mut config_file_content)
-			.map_err(|e| Error::Io(path.to_owned(), e))?;
-		let config = toml::de::from_str::<Self>(&config_file_content)?;
-		Ok(config)
+impl TryFrom<raw::Config> for Config {
+	type Error = Error;
+
+	fn try_from(raw: raw::Config) -> Result<Self, Self::Error> {
+		let mut users: HashMap<String, User> = HashMap::new();
+		for user in raw.users {
+			if let Ok(user) = <raw::User as TryInto<User>>::try_into(user) {
+				users.insert(user.name.clone(), user);
+			}
+		}
+
+		let mount_dirs = raw
+			.mount_dirs
+			.into_iter()
+			.filter_map(|m| m.try_into().ok())
+			.collect();
+
+		Ok(Config {
+			reindex_every_n_seconds: raw.reindex_every_n_seconds, // TODO validate and warn
+			album_art_pattern: raw.album_art_pattern,             // TODO validate and warn
+			ddns_url: raw.ddns_url,                               // TODO validate and warn
+			mount_dirs,
+			users,
+		})
 	}
 }
 
@@ -67,54 +58,37 @@ impl Config {
 pub struct Manager {
 	config_file_path: PathBuf,
 	config: Arc<tokio::sync::RwLock<Config>>,
+	auth_secret: auth::Secret,
 }
 
 impl Manager {
-	pub async fn new(config_file_path: &Path) -> Result<Self, Error> {
-		let config = Config::default(); // TODO read from disk!!
+	pub async fn new(config_file_path: &Path, auth_secret: auth::Secret) -> Result<Self, Error> {
+		let raw_config = raw::Config::default(); // TODO read from disk!!
+		let config = raw_config.try_into()?;
 		let manager = Self {
 			config_file_path: config_file_path.to_owned(),
-			config: Arc::default(),
+			config: Arc::new(RwLock::new(config)),
+			auth_secret,
 		};
-		manager.apply(config);
 		Ok(manager)
 	}
 
-	pub async fn apply(&self, mut config: Config) -> Result<(), Error> {
-		config
-			.users
-			.retain(|u| u.initial_password.is_some() || u.hashed_password.is_some());
-
-		for user in &mut config.users {
-			if let (Some(password), None) = (&user.initial_password, &user.hashed_password) {
-				user.hashed_password = Some(hash_password(&password)?);
-			}
-		}
-
-		*self.config.write().await = config;
-
+	pub async fn apply(&self, raw_config: raw::Config) -> Result<(), Error> {
+		*self.config.write().await = raw_config.try_into()?;
 		// TODO persistence
-
 		Ok(())
 	}
 
 	pub async fn get_index_sleep_duration(&self) -> Duration {
-		let seconds = self
-			.config
-			.read()
-			.await
-			.reindex_every_n_seconds
-			.unwrap_or(1800);
+		let config = self.config.read().await;
+		let seconds = config.reindex_every_n_seconds.unwrap_or(1800);
 		Duration::from_secs(seconds)
 	}
 
 	pub async fn get_index_album_art_pattern(&self) -> String {
-		self.config
-			.read()
-			.await
-			.album_art_pattern
-			.clone()
-			.unwrap_or("Folder.(jpeg|jpg|png)".to_owned())
+		let config = self.config.read().await;
+		let pattern = config.album_art_pattern.clone();
+		pattern.unwrap_or("Folder.(jpeg|jpg|png)".to_owned())
 	}
 
 	pub async fn get_ddns_update_url(&self) -> Option<String> {
@@ -122,18 +96,55 @@ impl Manager {
 	}
 
 	pub async fn get_users(&self) -> Vec<User> {
-		self.config.read().await.users.clone()
+		self.config.read().await.users.values().cloned().collect()
 	}
 
 	pub async fn get_user(&self, username: &str) -> Result<User, Error> {
 		let config = self.config.read().await;
-		let user = config.users.iter().find(|u| u.name == username);
+		let user = config.users.get(username);
 		user.cloned().ok_or(Error::UserNotFound)
+	}
+
+	pub async fn create_user(
+		&self,
+		username: &str,
+		password: &str,
+		admin: bool,
+	) -> Result<(), Error> {
+		let mut config = self.config.write().await;
+		config.create_user(username, password, admin)
+		// TODO persistence
+	}
+
+	pub async fn login(&self, username: &str, password: &str) -> Result<auth::Token, Error> {
+		let config = self.config.read().await;
+		config.login(username, password, &self.auth_secret)
+	}
+
+	pub async fn set_is_admin(&self, username: &str, is_admin: bool) -> Result<(), Error> {
+		let mut config = self.config.write().await;
+		config.set_is_admin(username, is_admin)
+		// TODO persistence
+	}
+
+	pub async fn set_password(&self, username: &str, password: &str) -> Result<(), Error> {
+		let mut config = self.config.write().await;
+		config.set_password(username, password)
+		// TODO persistence
+	}
+
+	pub async fn authenticate(
+		&self,
+		auth_token: &auth::Token,
+		scope: auth::Scope,
+	) -> Result<auth::Authorization, Error> {
+		let config = self.config.read().await;
+		config.authenticate(auth_token, scope, &self.auth_secret)
 	}
 
 	pub async fn delete_user(&self, username: &str) {
 		let mut config = self.config.write().await;
-		config.users.retain(|u| u.name != username);
+		config.delete_user(username);
 		// TODO persistence
 	}
 
@@ -146,42 +157,12 @@ impl Manager {
 		virtual_path: P,
 	) -> Result<PathBuf, Error> {
 		let config = self.config.read().await;
-		for mount in &config.mount_dirs {
-			let mounth_source = sanitize_path(&mount.source);
-			let mount_path = Path::new(&mount.name);
-			if let Ok(p) = virtual_path.as_ref().strip_prefix(mount_path) {
-				return if p.components().count() == 0 {
-					Ok(mounth_source)
-				} else {
-					Ok(mounth_source.join(p))
-				};
-			}
-		}
-		Err(Error::CouldNotMapToRealPath(virtual_path.as_ref().into()))
+		config.resolve_virtual_path(virtual_path)
 	}
 
-	pub async fn set_mounts(&self, mount_dirs: Vec<MountDir>) {
-		self.config.write().await.mount_dirs = mount_dirs;
+	pub async fn set_mounts(&self, mount_dirs: Vec<raw::MountDir>) {
+		self.config.write().await.set_mounts(mount_dirs);
 		// TODO persistence
-	}
-}
-
-fn sanitize_path(source: &str) -> PathBuf {
-	let separator_regex = Regex::new(r"\\|/").unwrap();
-	let mut correct_separator = String::new();
-	correct_separator.push(std::path::MAIN_SEPARATOR);
-	let path_string = separator_regex.replace_all(source, correct_separator.as_str());
-	PathBuf::from(path_string.deref())
-}
-
-fn hash_password(password: &str) -> Result<String, Error> {
-	if password.is_empty() {
-		return Err(Error::EmptyPassword);
-	}
-	let salt = SaltString::generate(&mut OsRng);
-	match Pbkdf2.hash_password(password.as_bytes(), &salt) {
-		Ok(h) => Ok(h.to_string()),
-		Err(_) => Err(Error::PasswordHashing),
 	}
 }
 
@@ -195,10 +176,10 @@ mod test {
 	#[tokio::test]
 	async fn can_apply_config() {
 		let ctx = test::ContextBuilder::new(test_name!()).build().await;
-		let new_config = Config {
+		let new_config = raw::Config {
 			reindex_every_n_seconds: Some(100),
 			album_art_pattern: Some("cool_pattern".to_owned()),
-			mount_dirs: vec![MountDir {
+			mount_dirs: vec![raw::MountDir {
 				source: "/home/music".to_owned(),
 				name: "Library".to_owned(),
 			}],
@@ -207,107 +188,5 @@ mod test {
 		};
 		ctx.config_manager.apply(new_config.clone()).await.unwrap();
 		assert_eq!(new_config, ctx.config_manager.config.read().await.clone(),);
-	}
-
-	#[tokio::test]
-	async fn applying_config_adds_or_preserves_password_hashes() {
-		let ctx = test::ContextBuilder::new(test_name!()).build().await;
-
-		let new_config = Config {
-			users: vec![
-				User {
-					name: "walter".to_owned(),
-					initial_password: Some("super salmon 64".to_owned()),
-					..Default::default()
-				},
-				User {
-					name: "lara".to_owned(),
-					hashed_password: Some("hash".to_owned()),
-					..Default::default()
-				},
-			],
-			..Default::default()
-		};
-
-		ctx.config_manager.apply(new_config).await.unwrap();
-		let actual_config = ctx.config_manager.config.read().await.clone();
-
-		assert_eq!(actual_config.users[0].name, "walter");
-		assert_eq!(
-			actual_config.users[0].initial_password,
-			Some("super salmon 64".to_owned())
-		);
-		assert!(actual_config.users[0].hashed_password.is_some());
-
-		assert_eq!(
-			actual_config.users[1],
-			User {
-				name: "lara".to_owned(),
-				hashed_password: Some("hash".to_owned()),
-				..Default::default()
-			}
-		);
-	}
-
-	#[test]
-	fn converts_virtual_to_real() {
-		let vfs = VFS::new(vec![Mount {
-			name: "root".to_owned(),
-			source: Path::new("test_dir").to_owned(),
-		}]);
-		let real_path: PathBuf = ["test_dir", "somewhere", "something.png"].iter().collect();
-		let virtual_path: PathBuf = ["root", "somewhere", "something.png"].iter().collect();
-		let converted_path = vfs.virtual_to_real(virtual_path.as_path()).unwrap();
-		assert_eq!(converted_path, real_path);
-	}
-
-	#[test]
-	fn converts_virtual_to_real_top_level() {
-		let vfs = VFS::new(vec![Mount {
-			name: "root".to_owned(),
-			source: Path::new("test_dir").to_owned(),
-		}]);
-		let real_path = Path::new("test_dir");
-		let converted_path = vfs.virtual_to_real(Path::new("root")).unwrap();
-		assert_eq!(converted_path, real_path);
-	}
-
-	#[test]
-	fn cleans_path_string() {
-		let mut correct_path = path::PathBuf::new();
-		if cfg!(target_os = "windows") {
-			correct_path.push("C:\\");
-		} else {
-			correct_path.push("/usr");
-		}
-		correct_path.push("some");
-		correct_path.push("path");
-
-		let tests = if cfg!(target_os = "windows") {
-			vec![
-				r#"C:/some/path"#,
-				r#"C:\some\path"#,
-				r#"C:\some\path\"#,
-				r#"C:\some\path\\\\"#,
-				r#"C:\some/path//"#,
-			]
-		} else {
-			vec![
-				r#"/usr/some/path"#,
-				r#"/usr\some\path"#,
-				r#"/usr\some\path\"#,
-				r#"/usr\some\path\\\\"#,
-				r#"/usr\some/path//"#,
-			]
-		};
-
-		for test in tests {
-			let mount_dir = MountDir {
-				source: test.to_owned(),
-				name: "name".to_owned(),
-			};
-			let mount: Mount = mount_dir.into();
-			assert_eq!(mount.source, correct_path);
-		}
 	}
 }

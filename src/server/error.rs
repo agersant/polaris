@@ -37,6 +37,8 @@ pub enum APIError {
 	DdnsUpdateQueryFailed(u16),
 	#[error("Cannot delete your own account")]
 	DeletingOwnAccount,
+	#[error("Username already exists")]
+	DuplicateUsername,
 	#[error("EmbeddedArtworkNotFound")]
 	EmbeddedArtworkNotFound,
 	#[error("EmptyUsername")]
@@ -131,6 +133,7 @@ impl From<app::Error> for APIError {
 			app::Error::SearchQueryParseError => APIError::SearchQueryParseError,
 			app::Error::EmbeddedArtworkNotFound(_) => APIError::EmbeddedArtworkNotFound,
 
+			app::Error::DuplicateUsername => APIError::DuplicateUsername,
 			app::Error::EmptyUsername => APIError::EmptyUsername,
 			app::Error::EmptyPassword => APIError::EmptyPassword,
 			app::Error::IncorrectUsername => APIError::IncorrectCredentials,

@@ -21,6 +21,7 @@ impl IntoResponse for APIError {
 			APIError::NativeDatabase(_) => StatusCode::INTERNAL_SERVER_ERROR,
 			APIError::DeletingOwnAccount => StatusCode::CONFLICT,
 			APIError::DirectoryNotFound(_) => StatusCode::NOT_FOUND,
+			APIError::DuplicateUsername => StatusCode::CONFLICT,
 			APIError::ArtistNotFound => StatusCode::NOT_FOUND,
 			APIError::AlbumNotFound => StatusCode::NOT_FOUND,
 			APIError::GenreNotFound => StatusCode::NOT_FOUND,

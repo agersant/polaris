@@ -1,9 +1,7 @@
 use std::path::PathBuf;
 
-use crate::app::{config, index, ndb, playlist, scanner};
+use crate::app::{auth, config, index, ndb, playlist, scanner};
 use crate::test::*;
-
-use super::config::AuthSecret;
 
 pub struct Context {
 	pub index_manager: index::Manager,
@@ -42,11 +40,14 @@ impl ContextBuilder {
 		});
 		self
 	}
+
 	pub async fn build(self) -> Context {
 		let config_path = self.test_directory.join("polaris.toml");
 
-		let auth_secret = AuthSecret::default();
-		let config_manager = config::Manager::new(&config_path).await.unwrap();
+		let auth_secret = auth::Secret::default();
+		let config_manager = config::Manager::new(&config_path, auth_secret)
+			.await
+			.unwrap();
 		let ndb_manager = ndb::Manager::new(&self.test_directory).unwrap();
 		let index_manager = index::Manager::new(&self.test_directory).await.unwrap();
 		let scanner = scanner::Scanner::new(index_manager.clone(), config_manager.clone())

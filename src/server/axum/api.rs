@@ -12,7 +12,7 @@ use axum_range::{KnownSize, Ranged};
 use tower_http::{compression::CompressionLayer, CompressionLevel};
 
 use crate::{
-	app::{config, index, peaks, playlist, scanner, thumbnail, App},
+	app::{auth, config, index, peaks, playlist, scanner, thumbnail, App},
 	server::{
 		dto, error::APIError, APIMajorVersion, API_ARRAY_SEPARATOR, API_MAJOR_VERSION,
 		API_MINOR_VERSION,
@@ -148,10 +148,11 @@ async fn post_auth(
 ) -> Result<Json<dto::Authorization>, APIError> {
 	let username = credentials.username.clone();
 
-	let user::AuthToken(token) = user_manager
+	let auth::Token(token) = config_manager
 		.login(&credentials.username, &credentials.password)
 		.await?;
-	let is_admin = user_manager.is_admin(&credentials.username).await?;
+	let user = config_manager.get_user(&credentials.username).await?;
+	let is_admin = user.is_admin();
 
 	let authorization = dto::Authorization {
 		username: username.clone(),
@@ -176,7 +177,9 @@ async fn post_user(
 	State(config_manager): State<config::Manager>,
 	Json(new_user): Json<dto::NewUser>,
 ) -> Result<(), APIError> {
-	user_manager.create(&new_user.into()).await?;
+	config_manager
+		.create_user(&new_user.name, &new_user.password, new_user.admin)
+		.await?;
 	Ok(())
 }
 
@@ -193,11 +196,11 @@ async fn put_user(
 	}
 
 	if let Some(password) = &user_update.new_password {
-		user_manager.set_password(&name, password).await?;
+		config_manager.set_password(&name, password).await?;
 	}
 
 	if let Some(is_admin) = &user_update.new_is_admin {
-		user_manager.set_is_admin(&name, *is_admin).await?;
+		config_manager.set_is_admin(&name, *is_admin).await?;
 	}
 
 	Ok(())

@@ -357,7 +357,7 @@ mod test {
 		let (directories_sender, directories_receiver) = channel();
 		let (songs_sender, songs_receiver) = channel();
 		let mounts = vec![config::MountDir {
-			source: "test-data/small-collection".to_owned(),
+			source: ["test-data", "small-collection"].iter().collect(),
 			name: "root".to_owned(),
 		}];
 		let artwork_regex = None;
@@ -377,7 +377,7 @@ mod test {
 		let (directories_sender, _) = channel();
 		let (songs_sender, songs_receiver) = channel();
 		let mounts = vec![config::MountDir {
-			source: "test-data/small-collection".to_owned(),
+			source: ["test-data", "small-collection"].iter().collect(),
 			name: "root".to_owned(),
 		}];
 		let artwork_regex = None;
@@ -400,7 +400,7 @@ mod test {
 			let (directories_sender, _) = channel();
 			let (songs_sender, songs_receiver) = channel();
 			let mounts = vec![config::MountDir {
-				source: "test-data/small-collection".to_owned(),
+				source: ["test-data", "small-collection"].iter().collect(),
 				name: "root".to_owned(),
 			}];
 			let artwork_regex = Some(Regex::new(pattern).unwrap());

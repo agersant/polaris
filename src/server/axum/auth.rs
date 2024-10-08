@@ -6,7 +6,7 @@ use headers::authorization::{Bearer, Credentials};
 use http::request::Parts;
 
 use crate::{
-	app::config,
+	app::{auth, config},
 	server::{dto, error::APIError},
 };
 
@@ -46,11 +46,8 @@ where
 			return Err(APIError::AuthenticationRequired);
 		};
 
-		let authorization = user_manager
-			.authenticate(
-				&user::AuthToken(token),
-				user::AuthorizationScope::PolarisAuth,
-			)
+		let authorization = config_manager
+			.authenticate(&auth::Token(token), auth::Scope::PolarisAuth)
 			.await?;
 
 		Ok(Auth {
@@ -81,13 +78,13 @@ where
 	async fn from_request_parts(parts: &mut Parts, app: &S) -> Result<Self, Self::Rejection> {
 		let config_manager = config::Manager::from_ref(app);
 
-		let user_count = user_manager.count().await?;
+		let user_count = config_manager.get_users().await.len();
 		if user_count == 0 {
 			return Ok(AdminRights { auth: None });
 		}
 
 		let auth = Auth::from_request_parts(parts, app).await?;
-		if user_manager.is_admin(&auth.username).await? {
+		if config_manager.get_user(&auth.username).await?.is_admin() {
 			Ok(AdminRights { auth: Some(auth) })
 		} else {
 			Err(APIError::AdminPermissionRequired)
