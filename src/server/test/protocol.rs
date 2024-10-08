@@ -124,22 +124,6 @@ pub fn delete_user(username: &str) -> Request<()> {
 		.unwrap()
 }
 
-pub fn get_preferences() -> Request<()> {
-	Request::builder()
-		.method(Method::GET)
-		.uri("/api/preferences")
-		.body(())
-		.unwrap()
-}
-
-pub fn put_preferences(preferences: dto::NewPreferences) -> Request<dto::NewPreferences> {
-	Request::builder()
-		.method(Method::PUT)
-		.uri("/api/preferences")
-		.body(preferences)
-		.unwrap()
-}
-
 pub fn trigger_index() -> Request<()> {
 	Request::builder()
 		.method(Method::POST)

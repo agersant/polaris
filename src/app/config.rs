@@ -34,10 +34,6 @@ pub struct User {
 	pub initial_password: Option<String>,
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub hashed_password: Option<String>,
-	#[serde(skip_serializing_if = "Option::is_none")]
-	pub web_theme_base: Option<String>,
-	#[serde(skip_serializing_if = "Option::is_none")]
-	pub web_theme_accent: Option<String>,
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]

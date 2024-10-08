@@ -143,18 +143,6 @@ pub struct UserUpdate {
 	pub new_is_admin: Option<bool>,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Preferences {
-	pub web_theme_base: Option<String>,
-	pub web_theme_accent: Option<String>,
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct NewPreferences {
-	pub web_theme_base: Option<String>,
-	pub web_theme_accent: Option<String>,
-}
-
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 pub struct MountDir {
 	pub source: String,

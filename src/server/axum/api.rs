@@ -38,8 +38,6 @@ pub fn router() -> Router<App> {
 		.route("/user/:name", delete(delete_user))
 		.route("/user/:name", put(put_user))
 		.route("/users", get(get_users))
-		.route("/preferences", get(get_preferences))
-		.route("/preferences", put(put_preferences))
 		// File browser
 		.route("/browse", get(get_browse_root))
 		.route("/browse/*path", get(get_browse))
@@ -216,29 +214,6 @@ async fn delete_user(
 		}
 	}
 	config_manager.delete_user(&name).await;
-	Ok(())
-}
-
-async fn get_preferences(
-	auth: Auth,
-	State(config_manager): State<config::Manager>,
-) -> Result<Json<dto::Preferences>, APIError> {
-	let user = config_manager.get_user(auth.get_username()).await?;
-	let preferences = dto::Preferences {
-		web_theme_base: user.web_theme_base,
-		web_theme_accent: user.web_theme_accent,
-	};
-	Ok(Json(preferences))
-}
-
-async fn put_preferences(
-	auth: Auth,
-	State(config_manager): State<config::Manager>,
-	Json(preferences): Json<dto::NewPreferences>,
-) -> Result<(), APIError> {
-	user_manager
-		.write_preferences(auth.get_username(), &preferences)
-		.await?;
 	Ok(())
 }
 
