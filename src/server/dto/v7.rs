@@ -82,30 +82,11 @@ pub struct User {
 	pub is_admin: bool,
 }
 
-impl From<user::User> for User {
-	fn from(u: user::User) -> Self {
-		Self {
-			name: u.name,
-			is_admin: u.admin != 0,
-		}
-	}
-}
-
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NewUser {
 	pub name: String,
 	pub password: String,
 	pub admin: bool,
-}
-
-impl From<NewUser> for user::NewUser {
-	fn from(u: NewUser) -> Self {
-		Self {
-			name: u.name,
-			password: u.password,
-			admin: u.admin,
-		}
-	}
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -143,11 +124,11 @@ impl From<ddns::Config> for DDNSConfig {
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 pub struct MountDir {
-	pub source: String,
+	pub source: PathBuf,
 	pub name: String,
 }
 
-impl From<MountDir> for vfs::MountDir {
+impl From<MountDir> for config::storage::MountDir {
 	fn from(m: MountDir) -> Self {
 		Self {
 			name: m.name,
@@ -156,8 +137,8 @@ impl From<MountDir> for vfs::MountDir {
 	}
 }
 
-impl From<vfs::MountDir> for MountDir {
-	fn from(m: vfs::MountDir) -> Self {
+impl From<config::MountDir> for MountDir {
+	fn from(m: config::MountDir) -> Self {
 		Self {
 			name: m.name,
 			source: m.source,
@@ -171,28 +152,10 @@ pub struct NewSettings {
 	pub reindex_every_n_seconds: Option<i64>,
 }
 
-impl From<NewSettings> for settings::NewSettings {
-	fn from(s: NewSettings) -> Self {
-		Self {
-			album_art_pattern: s.album_art_pattern,
-			reindex_every_n_seconds: s.reindex_every_n_seconds,
-		}
-	}
-}
-
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Settings {
 	pub album_art_pattern: String,
 	pub reindex_every_n_seconds: i64,
-}
-
-impl From<settings::Settings> for Settings {
-	fn from(s: settings::Settings) -> Self {
-		Self {
-			album_art_pattern: s.index_album_art_pattern,
-			reindex_every_n_seconds: s.index_sleep_duration_seconds,
-		}
-	}
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
