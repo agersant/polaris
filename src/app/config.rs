@@ -254,11 +254,13 @@ mod test {
 	use super::*;
 
 	#[tokio::test]
-	async fn blank_config_is_valid() {
+	async fn blank_config_round_trip() {
 		let config_path = PathBuf::from_iter(["test-data", "blank.toml"]);
-		Manager::new(&config_path, auth::Secret([0; 32]))
+		let manager = Manager::new(&config_path, auth::Secret([0; 32]))
 			.await
 			.unwrap();
+		let config: storage::Config = manager.config.read().await.clone().into();
+		assert_eq!(config, storage::Config::default());
 	}
 
 	#[tokio::test]

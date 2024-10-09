@@ -111,8 +111,9 @@ async fn get_settings(
 		ddns_update_url: config_manager
 			.get_ddns_update_url()
 			.await
-			.unwrap_or_default()
-			.to_string(),
+			.as_ref()
+			.map(http::Uri::to_string)
+			.unwrap_or_default(),
 	};
 	Ok(Json(settings))
 }
