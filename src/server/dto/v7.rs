@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::app::{config, ddns, index, thumbnail};
+use crate::app::{config, index, thumbnail};
 use std::{convert::From, path::PathBuf};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
@@ -93,33 +93,6 @@ pub struct NewUser {
 pub struct UserUpdate {
 	pub new_password: Option<String>,
 	pub new_is_admin: Option<bool>,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
-pub struct DDNSConfig {
-	pub host: String,
-	pub username: String,
-	pub password: String,
-}
-
-impl From<DDNSConfig> for ddns::Config {
-	fn from(c: DDNSConfig) -> Self {
-		Self {
-			ddns_host: c.host,
-			ddns_username: c.username,
-			ddns_password: c.password,
-		}
-	}
-}
-
-impl From<ddns::Config> for DDNSConfig {
-	fn from(c: ddns::Config) -> Self {
-		Self {
-			host: c.ddns_host,
-			username: c.ddns_username,
-			password: c.ddns_password,
-		}
-	}
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]

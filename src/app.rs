@@ -82,6 +82,8 @@ pub enum Error {
 	MiscSettingsNotFound,
 	#[error("Index album art pattern is not a valid regex")]
 	IndexAlbumArtPatternInvalid,
+	#[error("DDNS update URL is invalid")]
+	DDNSUpdateURLInvalid,
 
 	#[error(transparent)]
 	Toml(#[from] toml::de::Error),
@@ -138,6 +140,7 @@ pub struct App {
 	pub port: u16,
 	pub web_dir_path: PathBuf,
 	pub swagger_dir_path: PathBuf,
+	pub ddns_manager: ddns::Manager,
 	pub scanner: scanner::Scanner,
 	pub index_manager: index::Manager,
 	pub config_manager: config::Manager,
@@ -168,6 +171,7 @@ impl App {
 		let auth_secret = Self::get_or_create_auth_secret(&auth_secret_file_path).await?;
 
 		let config_manager = config::Manager::new(&paths.config_file_path, auth_secret).await?;
+		let ddns_manager = ddns::Manager::new(config_manager.clone());
 		let ndb_manager = ndb::Manager::new(&paths.data_dir_path)?;
 		let index_manager = index::Manager::new(&paths.data_dir_path).await?;
 		let scanner = scanner::Scanner::new(index_manager.clone(), config_manager.clone()).await?;
@@ -179,6 +183,7 @@ impl App {
 			port,
 			web_dir_path: paths.web_dir_path,
 			swagger_dir_path: paths.swagger_dir_path,
+			ddns_manager,
 			scanner,
 			index_manager,
 			config_manager,

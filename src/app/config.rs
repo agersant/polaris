@@ -22,8 +22,8 @@ use super::auth;
 #[derive(Default)]
 pub struct Config {
 	pub reindex_every_n_seconds: Option<u64>,
-	pub album_art_pattern: Option<String>,
-	pub ddns_url: Option<String>,
+	pub album_art_pattern: Option<Regex>,
+	pub ddns_url: Option<http::Uri>,
 	pub mount_dirs: Vec<MountDir>,
 	pub users: HashMap<String, User>,
 }
@@ -45,10 +45,22 @@ impl TryFrom<storage::Config> for Config {
 			.filter_map(|m| m.try_into().ok())
 			.collect();
 
+		let ddns_url = match c.ddns_url.map(http::Uri::try_from) {
+			Some(Ok(u)) => Some(u),
+			Some(Err(_)) => return Err(Error::DDNSUpdateURLInvalid),
+			None => None,
+		};
+
+		let album_art_pattern = match c.album_art_pattern.as_deref().map(Regex::new) {
+			Some(Ok(u)) => Some(u),
+			Some(Err(_)) => return Err(Error::IndexAlbumArtPatternInvalid),
+			None => None,
+		};
+
 		Ok(Config {
 			reindex_every_n_seconds: c.reindex_every_n_seconds, // TODO validate and warn
-			album_art_pattern: c.album_art_pattern,             // TODO validate and warn
-			ddns_url: c.ddns_url,                               // TODO validate and warn
+			album_art_pattern,
+			ddns_url,
 			mount_dirs,
 			users,
 		})
@@ -92,25 +104,25 @@ impl Manager {
 		// TODO persistence
 	}
 
-	pub async fn get_index_album_art_pattern(&self) -> String {
+	pub async fn get_index_album_art_pattern(&self) -> Regex {
 		let config = self.config.read().await;
 		let pattern = config.album_art_pattern.clone();
-		pattern.unwrap_or("Folder.(jpeg|jpg|png)".to_owned())
+		pattern.unwrap_or_else(|| Regex::new("Folder.(jpeg|jpg|png)").unwrap())
 	}
 
 	pub async fn set_index_album_art_pattern(&self, regex: Regex) {
 		let mut config = self.config.write().await;
-		config.album_art_pattern = Some(regex.as_str().to_owned());
+		config.album_art_pattern = Some(regex);
 		// TODO persistence
 	}
 
-	pub async fn get_ddns_update_url(&self) -> Option<String> {
+	pub async fn get_ddns_update_url(&self) -> Option<http::Uri> {
 		self.config.read().await.ddns_url.clone()
 	}
 
 	pub async fn set_ddns_update_url(&self, url: http::Uri) {
 		let mut config = self.config.write().await;
-		config.ddns_url = Some(url.to_string());
+		config.ddns_url = Some(url);
 		// TODO persistence
 	}
 

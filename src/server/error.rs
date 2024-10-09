@@ -120,7 +120,8 @@ impl From<app::Error> for APIError {
 			app::Error::AuthenticationSecretNotFound => APIError::Internal,
 			app::Error::AuthenticationSecretInvalid => APIError::Internal,
 			app::Error::MiscSettingsNotFound => APIError::Internal,
-			app::Error::IndexAlbumArtPatternInvalid => APIError::Internal,
+			app::Error::DDNSUpdateURLInvalid => APIError::InvalidDDNSURL,
+			app::Error::IndexAlbumArtPatternInvalid => APIError::InvalidAlbumArtPattern,
 
 			app::Error::Toml(_) => APIError::Internal,
 			app::Error::IndexDeserializationError => APIError::Internal,

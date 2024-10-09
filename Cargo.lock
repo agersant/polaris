@@ -1390,7 +1390,6 @@ dependencies = [
  "axum-extra",
  "axum-range",
  "axum-test",
- "base64 0.22.1",
  "bitcode",
  "branca",
  "bytes",

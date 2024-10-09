@@ -102,12 +102,17 @@ async fn get_settings(
 	State(config_manager): State<config::Manager>,
 ) -> Result<Json<dto::Settings>, APIError> {
 	let settings = dto::Settings {
-		album_art_pattern: config_manager.get_index_album_art_pattern().await,
+		album_art_pattern: config_manager
+			.get_index_album_art_pattern()
+			.await
+			.as_str()
+			.to_owned(),
 		reindex_every_n_seconds: config_manager.get_index_sleep_duration().await.as_secs(),
 		ddns_update_url: config_manager
 			.get_ddns_update_url()
 			.await
-			.unwrap_or_default(),
+			.unwrap_or_default()
+			.to_string(),
 	};
 	Ok(Json(settings))
 }
