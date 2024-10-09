@@ -127,7 +127,7 @@ fn main() -> Result<(), Error> {
 
 	info!("Cache files location is {:#?}", paths.cache_dir_path);
 	info!("Data files location is {:#?}", paths.data_dir_path);
-	info!("Config files location is {:#?}", paths.config_file_path);
+	info!("Config file location is {:#?}", paths.config_file_path);
 	info!("Database file location is {:#?}", paths.db_file_path);
 	info!("Log file location is {:#?}", paths.log_file_path);
 	#[cfg(unix)]
