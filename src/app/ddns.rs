@@ -13,7 +13,7 @@ impl Manager {
 		Self { config_manager }
 	}
 
-	async fn update_ddns(&self) -> Result<(), Error> {
+	pub async fn update_ddns(&self) -> Result<(), Error> {
 		let url = self.config_manager.get_ddns_update_url().await;
 		let Some(url) = url else {
 			debug!("Skipping DDNS update because credentials are missing");

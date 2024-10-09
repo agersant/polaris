@@ -59,6 +59,12 @@ impl FromRef<App> for app::config::Manager {
 	}
 }
 
+impl FromRef<App> for app::ddns::Manager {
+	fn from_ref(app: &App) -> Self {
+		app.ddns_manager.clone()
+	}
+}
+
 impl FromRef<App> for app::peaks::Manager {
 	fn from_ref(app: &App) -> Self {
 		app.peaks_manager.clone()

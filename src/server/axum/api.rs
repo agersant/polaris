@@ -13,7 +13,7 @@ use regex::Regex;
 use tower_http::{compression::CompressionLayer, CompressionLevel};
 
 use crate::{
-	app::{auth, config, index, peaks, playlist, scanner, thumbnail, App},
+	app::{auth, config, ddns, index, peaks, playlist, scanner, thumbnail, App},
 	server::{
 		dto, error::APIError, APIMajorVersion, API_ARRAY_SEPARATOR, API_MAJOR_VERSION,
 		API_MINOR_VERSION,
@@ -121,6 +121,7 @@ async fn get_settings(
 async fn put_settings(
 	_admin_rights: AdminRights,
 	State(config_manager): State<config::Manager>,
+	State(ddns_manager): State<ddns::Manager>,
 	Json(new_settings): Json<dto::NewSettings>,
 ) -> Result<(), APIError> {
 	if let Some(pattern) = new_settings.album_art_pattern {
@@ -141,6 +142,7 @@ async fn put_settings(
 			return Err(APIError::InvalidDDNSURL);
 		};
 		config_manager.set_ddns_update_url(uri).await?;
+		ddns_manager.update_ddns().await?;
 	}
 
 	Ok(())
