@@ -19,7 +19,7 @@ pub use user::*;
 
 use super::auth;
 
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct Config {
 	pub reindex_every_n_seconds: Option<u64>,
 	pub album_art_pattern: Option<Regex>,
@@ -64,6 +64,18 @@ impl TryFrom<storage::Config> for Config {
 			mount_dirs,
 			users,
 		})
+	}
+}
+
+impl From<Config> for storage::Config {
+	fn from(c: Config) -> Self {
+		Self {
+			reindex_every_n_seconds: c.reindex_every_n_seconds,
+			album_art_pattern: c.album_art_pattern.map(|p| p.as_str().to_owned()),
+			mount_dirs: c.mount_dirs.into_iter().map(|d| d.into()).collect(),
+			ddns_url: c.ddns_url.map(|u| u.to_string()),
+			users: c.users.into_iter().map(|(_, u)| u.into()).collect(),
+		}
 	}
 }
 
@@ -220,6 +232,7 @@ mod test {
 			users: vec![],
 		};
 		ctx.config_manager.apply(new_config.clone()).await.unwrap();
-		assert_eq!(new_config, ctx.config_manager.config.read().await.clone(),);
+		let effective_config: Config = ctx.config_manager.config.read().await.clone().into();
+		assert_eq!(new_config, effective_config,);
 	}
 }

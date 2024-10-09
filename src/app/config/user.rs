@@ -11,6 +11,12 @@ pub struct User {
 	pub hashed_password: String,
 }
 
+impl User {
+	pub fn is_admin(&self) -> bool {
+		self.admin == Some(true)
+	}
+}
+
 impl TryFrom<storage::User> for User {
 	type Error = Error;
 
@@ -27,12 +33,6 @@ impl TryFrom<storage::User> for User {
 			initial_password: user.initial_password,
 			hashed_password,
 		})
-	}
-}
-
-impl User {
-	pub fn is_admin(&self) -> bool {
-		self.admin == Some(true)
 	}
 }
 
@@ -136,6 +136,7 @@ mod test {
 	const TEST_USERNAME: &str = "Walter";
 	const TEST_PASSWORD: &str = "super_secret!";
 
+	#[test]
 	fn adds_password_hashes() {
 		let user_in = storage::User {
 			name: TEST_USERNAME.to_owned(),
@@ -152,6 +153,7 @@ mod test {
 		assert!(user_out.hashed_password.is_some());
 	}
 
+	#[test]
 	fn preserves_password_hashes() {
 		let user_in = storage::User {
 			name: TEST_USERNAME.to_owned(),

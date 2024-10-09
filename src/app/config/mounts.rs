@@ -28,6 +28,15 @@ impl TryFrom<storage::MountDir> for MountDir {
 	}
 }
 
+impl From<MountDir> for storage::MountDir {
+	fn from(m: MountDir) -> Self {
+		Self {
+			source: m.source,
+			name: m.name,
+		}
+	}
+}
+
 impl Config {
 	pub fn set_mounts(&mut self, mount_dirs: Vec<storage::MountDir>) {
 		self.mount_dirs = mount_dirs
