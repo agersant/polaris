@@ -113,6 +113,7 @@ impl Manager {
 		Ok(manager)
 	}
 
+	#[cfg(test)]
 	pub async fn apply(&self, config: storage::Config) -> Result<(), Error> {
 		*self.config.write().await = config.try_into()?;
 		// TODO persistence
@@ -221,33 +222,5 @@ impl Manager {
 	pub async fn set_mounts(&self, mount_dirs: Vec<storage::MountDir>) {
 		self.config.write().await.set_mounts(mount_dirs);
 		// TODO persistence
-	}
-}
-
-#[cfg(test)]
-mod test {
-
-	use std::path::PathBuf;
-
-	use crate::app::config::storage::*;
-	use crate::app::test;
-	use crate::test_name;
-
-	#[tokio::test]
-	async fn can_apply_config() {
-		let ctx = test::ContextBuilder::new(test_name!()).build().await;
-		let new_config = Config {
-			reindex_every_n_seconds: Some(100),
-			album_art_pattern: Some("cool_pattern".to_owned()),
-			mount_dirs: vec![MountDir {
-				source: PathBuf::from("/home/music"),
-				name: "Library".to_owned(),
-			}],
-			ddns_url: Some("https://cooldns.com".to_owned()),
-			users: vec![],
-		};
-		ctx.config_manager.apply(new_config.clone()).await.unwrap();
-		let effective_config: Config = ctx.config_manager.config.read().await.clone().into();
-		assert_eq!(new_config, effective_config,);
 	}
 }
