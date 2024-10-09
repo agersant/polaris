@@ -5,12 +5,13 @@ use std::{
 	time::Duration,
 };
 
+use regex::Regex;
 use tokio::sync::RwLock;
 
 use crate::app::Error;
 
 mod mounts;
-mod raw;
+pub mod storage;
 mod user;
 
 pub use mounts::*;
@@ -27,27 +28,27 @@ pub struct Config {
 	pub users: HashMap<String, User>,
 }
 
-impl TryFrom<raw::Config> for Config {
+impl TryFrom<storage::Config> for Config {
 	type Error = Error;
 
-	fn try_from(raw: raw::Config) -> Result<Self, Self::Error> {
+	fn try_from(c: storage::Config) -> Result<Self, Self::Error> {
 		let mut users: HashMap<String, User> = HashMap::new();
-		for user in raw.users {
-			if let Ok(user) = <raw::User as TryInto<User>>::try_into(user) {
+		for user in c.users {
+			if let Ok(user) = <storage::User as TryInto<User>>::try_into(user) {
 				users.insert(user.name.clone(), user);
 			}
 		}
 
-		let mount_dirs = raw
+		let mount_dirs = c
 			.mount_dirs
 			.into_iter()
 			.filter_map(|m| m.try_into().ok())
 			.collect();
 
 		Ok(Config {
-			reindex_every_n_seconds: raw.reindex_every_n_seconds, // TODO validate and warn
-			album_art_pattern: raw.album_art_pattern,             // TODO validate and warn
-			ddns_url: raw.ddns_url,                               // TODO validate and warn
+			reindex_every_n_seconds: c.reindex_every_n_seconds, // TODO validate and warn
+			album_art_pattern: c.album_art_pattern,             // TODO validate and warn
+			ddns_url: c.ddns_url,                               // TODO validate and warn
 			mount_dirs,
 			users,
 		})
@@ -63,8 +64,8 @@ pub struct Manager {
 
 impl Manager {
 	pub async fn new(config_file_path: &Path, auth_secret: auth::Secret) -> Result<Self, Error> {
-		let raw_config = raw::Config::default(); // TODO read from disk!!
-		let config = raw_config.try_into()?;
+		let config = storage::Config::default(); // TODO read from disk!!
+		let config: Config = config.try_into()?;
 		let manager = Self {
 			config_file_path: config_file_path.to_owned(),
 			config: Arc::new(RwLock::new(config)),
@@ -73,8 +74,8 @@ impl Manager {
 		Ok(manager)
 	}
 
-	pub async fn apply(&self, raw_config: raw::Config) -> Result<(), Error> {
-		*self.config.write().await = raw_config.try_into()?;
+	pub async fn apply(&self, config: storage::Config) -> Result<(), Error> {
+		*self.config.write().await = config.try_into()?;
 		// TODO persistence
 		Ok(())
 	}
@@ -85,14 +86,32 @@ impl Manager {
 		Duration::from_secs(seconds)
 	}
 
+	pub async fn set_index_sleep_duration(&self, duration: Duration) {
+		let mut config = self.config.write().await;
+		config.reindex_every_n_seconds = Some(duration.as_secs());
+		// TODO persistence
+	}
+
 	pub async fn get_index_album_art_pattern(&self) -> String {
 		let config = self.config.read().await;
 		let pattern = config.album_art_pattern.clone();
 		pattern.unwrap_or("Folder.(jpeg|jpg|png)".to_owned())
 	}
 
+	pub async fn set_index_album_art_pattern(&self, regex: Regex) {
+		let mut config = self.config.write().await;
+		config.album_art_pattern = Some(regex.as_str().to_owned());
+		// TODO persistence
+	}
+
 	pub async fn get_ddns_update_url(&self) -> Option<String> {
 		self.config.read().await.ddns_url.clone()
+	}
+
+	pub async fn set_ddns_update_url(&self, url: http::Uri) {
+		let mut config = self.config.write().await;
+		config.ddns_url = Some(url.to_string());
+		// TODO persistence
 	}
 
 	pub async fn get_users(&self) -> Vec<User> {
@@ -160,7 +179,7 @@ impl Manager {
 		config.resolve_virtual_path(virtual_path)
 	}
 
-	pub async fn set_mounts(&self, mount_dirs: Vec<raw::MountDir>) {
+	pub async fn set_mounts(&self, mount_dirs: Vec<storage::MountDir>) {
 		self.config.write().await.set_mounts(mount_dirs);
 		// TODO persistence
 	}
@@ -169,18 +188,20 @@ impl Manager {
 #[cfg(test)]
 mod test {
 
-	use super::*;
+	use std::path::PathBuf;
+
+	use crate::app::config::storage::*;
 	use crate::app::test;
 	use crate::test_name;
 
 	#[tokio::test]
 	async fn can_apply_config() {
 		let ctx = test::ContextBuilder::new(test_name!()).build().await;
-		let new_config = raw::Config {
+		let new_config = Config {
 			reindex_every_n_seconds: Some(100),
 			album_art_pattern: Some("cool_pattern".to_owned()),
-			mount_dirs: vec![raw::MountDir {
-				source: "/home/music".to_owned(),
+			mount_dirs: vec![MountDir {
+				source: PathBuf::from("/home/music"),
 				name: "Library".to_owned(),
 			}],
 			ddns_url: Some("https://cooldns.com".to_owned()),

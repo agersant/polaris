@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, time::Duration};
 
 use axum::{
 	extract::{DefaultBodyLimit, Path, Query, State},
@@ -9,6 +9,7 @@ use axum::{
 use axum_extra::headers::Range;
 use axum_extra::TypedHeader;
 use axum_range::{KnownSize, Ranged};
+use regex::Regex;
 use tower_http::{compression::CompressionLayer, CompressionLevel};
 
 use crate::{
@@ -116,9 +117,26 @@ async fn put_settings(
 	State(config_manager): State<config::Manager>,
 	Json(new_settings): Json<dto::NewSettings>,
 ) -> Result<(), APIError> {
-	settings_manager
-		.amend(&new_settings.to_owned().into())
-		.await?;
+	if let Some(pattern) = new_settings.album_art_pattern {
+		let Ok(regex) = Regex::new(&pattern) else {
+			return Err(APIError::InvalidAlbumArtPattern);
+		};
+		config_manager.set_index_album_art_pattern(regex).await;
+	}
+
+	if let Some(seconds) = new_settings.reindex_every_n_seconds {
+		config_manager
+			.set_index_sleep_duration(Duration::from_secs(seconds as u64))
+			.await;
+	}
+
+	if let Some(url_string) = new_settings.ddns_update_url {
+		let Ok(uri) = http::Uri::try_from(url_string) else {
+			return Err(APIError::InvalidDDNSURL);
+		};
+		config_manager.set_ddns_update_url(uri).await;
+	}
+
 	Ok(())
 }
 
@@ -136,7 +154,7 @@ async fn put_mount_dirs(
 	State(config_manager): State<config::Manager>,
 	new_mount_dirs: Json<Vec<dto::MountDir>>,
 ) -> Result<(), APIError> {
-	let new_mount_dirs: Vec<config::MountDir> =
+	let new_mount_dirs: Vec<config::storage::MountDir> =
 		new_mount_dirs.iter().cloned().map(|m| m.into()).collect();
 	config_manager.set_mounts(new_mount_dirs).await;
 	Ok(())

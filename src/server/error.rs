@@ -49,6 +49,10 @@ pub enum APIError {
 	IncorrectCredentials,
 	#[error("Internal server error")]
 	Internal,
+	#[error("Could not parse album art pattern")]
+	InvalidAlbumArtPattern,
+	#[error("Could not parse DDNS update URL")]
+	InvalidDDNSURL,
 	#[error("File I/O error for `{0}`:\n\n{1}")]
 	Io(PathBuf, std::io::Error),
 	#[error("Cannot remove your own admin privilege")]

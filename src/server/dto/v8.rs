@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::app::{config, index, peaks, playlist, thumbnail, user};
+use crate::app::{config, index, peaks, playlist, thumbnail};
 use std::{collections::HashMap, convert::From, path::PathBuf};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
@@ -127,16 +127,6 @@ pub struct NewUser {
 	pub admin: bool,
 }
 
-impl From<NewUser> for user::NewUser {
-	fn from(u: NewUser) -> Self {
-		Self {
-			name: u.name,
-			password: u.password,
-			admin: u.admin,
-		}
-	}
-}
-
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UserUpdate {
 	pub new_password: Option<String>,
@@ -145,11 +135,11 @@ pub struct UserUpdate {
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 pub struct MountDir {
-	pub source: String,
+	pub source: PathBuf,
 	pub name: String,
 }
 
-impl From<MountDir> for config::MountDir {
+impl From<MountDir> for config::storage::MountDir {
 	fn from(m: MountDir) -> Self {
 		Self {
 			name: m.name,

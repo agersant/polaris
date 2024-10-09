@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use crate::app::config::storage::*;
 use crate::app::{auth, config, index, ndb, playlist, scanner};
 use crate::test::*;
 
@@ -11,7 +12,7 @@ pub struct Context {
 }
 
 pub struct ContextBuilder {
-	config: config::Config,
+	config: Config,
 	pub test_directory: PathBuf,
 }
 
@@ -19,12 +20,12 @@ impl ContextBuilder {
 	pub fn new(test_name: String) -> Self {
 		Self {
 			test_directory: prepare_test_directory(test_name),
-			config: config::Config::default(),
+			config: Config::default(),
 		}
 	}
 
 	pub fn user(mut self, name: &str, password: &str, is_admin: bool) -> Self {
-		self.config.users.push(config::User {
+		self.config.users.push(User {
 			name: name.to_owned(),
 			initial_password: Some(password.to_owned()),
 			admin: Some(is_admin),
@@ -34,9 +35,9 @@ impl ContextBuilder {
 	}
 
 	pub fn mount(mut self, name: &str, source: &str) -> Self {
-		self.config.mount_dirs.push(config::MountDir {
+		self.config.mount_dirs.push(MountDir {
 			name: name.to_owned(),
-			source: source.to_owned(),
+			source: PathBuf::from(source),
 		});
 		self
 	}

@@ -1,4 +1,7 @@
-use std::{io::Read, path::Path};
+use std::{
+	io::Read,
+	path::{Path, PathBuf},
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -17,7 +20,7 @@ pub struct User {
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct MountDir {
-	pub source: String,
+	pub source: PathBuf,
 	pub name: String,
 }
 

@@ -7,7 +7,7 @@ use regex::Regex;
 
 use crate::app::Error;
 
-use super::raw;
+use super::storage;
 use super::Config;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -16,10 +16,10 @@ pub struct MountDir {
 	pub name: String,
 }
 
-impl TryFrom<raw::MountDir> for MountDir {
+impl TryFrom<storage::MountDir> for MountDir {
 	type Error = Error;
 
-	fn try_from(mount_dir: raw::MountDir) -> Result<Self, Self::Error> {
+	fn try_from(mount_dir: storage::MountDir) -> Result<Self, Self::Error> {
 		// TODO validation
 		Ok(Self {
 			source: sanitize_path(&mount_dir.source),
@@ -29,7 +29,7 @@ impl TryFrom<raw::MountDir> for MountDir {
 }
 
 impl Config {
-	pub fn set_mounts(&mut self, mount_dirs: Vec<raw::MountDir>) {
+	pub fn set_mounts(&mut self, mount_dirs: Vec<storage::MountDir>) {
 		self.mount_dirs = mount_dirs
 			.into_iter()
 			.filter_map(|m| m.try_into().ok())
@@ -51,11 +51,12 @@ impl Config {
 	}
 }
 
-fn sanitize_path(source: &str) -> PathBuf {
+fn sanitize_path(source: &PathBuf) -> PathBuf {
+	let path_string = source.to_string_lossy();
 	let separator_regex = Regex::new(r"\\|/").unwrap();
 	let mut correct_separator = String::new();
 	correct_separator.push(std::path::MAIN_SEPARATOR);
-	let path_string = separator_regex.replace_all(source, correct_separator.as_str());
+	let path_string = separator_regex.replace_all(&path_string, correct_separator.as_str());
 	PathBuf::from(path_string.deref())
 }
 
@@ -65,10 +66,10 @@ mod test {
 
 	#[test]
 	fn can_resolve_virtual_paths() {
-		let raw_config = raw::Config {
-			mount_dirs: vec![raw::MountDir {
+		let raw_config = storage::Config {
+			mount_dirs: vec![storage::MountDir {
 				name: "root".to_owned(),
-				source: "test_dir".to_owned(),
+				source: PathBuf::from("test_dir"),
 			}],
 			..Default::default()
 		};
@@ -121,10 +122,10 @@ mod test {
 		};
 
 		for test in tests {
-			let raw_config = raw::Config {
-				mount_dirs: vec![raw::MountDir {
+			let raw_config = storage::Config {
+				mount_dirs: vec![storage::MountDir {
 					name: "root".to_owned(),
-					source: test.to_owned(),
+					source: PathBuf::from(test),
 				}],
 				..Default::default()
 			};

@@ -1,6 +1,6 @@
 use crate::app::{auth, Error};
 
-use super::raw;
+use super::storage;
 use super::Config;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -11,10 +11,10 @@ pub struct User {
 	pub hashed_password: String,
 }
 
-impl TryFrom<raw::User> for User {
+impl TryFrom<storage::User> for User {
 	type Error = Error;
 
-	fn try_from(user: raw::User) -> Result<Self, Self::Error> {
+	fn try_from(user: storage::User) -> Result<Self, Self::Error> {
 		let hashed_password = match (&user.initial_password, &user.hashed_password) {
 			(_, Some(p)) => p.clone(),
 			(Some(p), None) => auth::hash_password(p)?,
@@ -36,7 +36,7 @@ impl User {
 	}
 }
 
-impl From<User> for raw::User {
+impl From<User> for storage::User {
 	fn from(user: User) -> Self {
 		Self {
 			name: user.name,
@@ -137,7 +137,7 @@ mod test {
 	const TEST_PASSWORD: &str = "super_secret!";
 
 	fn adds_password_hashes() {
-		let user_in = raw::User {
+		let user_in = storage::User {
 			name: TEST_USERNAME.to_owned(),
 			initial_password: Some(TEST_PASSWORD.to_owned()),
 			..Default::default()
@@ -145,7 +145,7 @@ mod test {
 
 		let user: User = user_in.try_into().unwrap();
 
-		let user_out: raw::User = user.into();
+		let user_out: storage::User = user.into();
 
 		assert_eq!(user_out.name, TEST_USERNAME);
 		assert_eq!(user_out.initial_password, Some(TEST_PASSWORD.to_owned()));
@@ -153,13 +153,13 @@ mod test {
 	}
 
 	fn preserves_password_hashes() {
-		let user_in = raw::User {
+		let user_in = storage::User {
 			name: TEST_USERNAME.to_owned(),
 			hashed_password: Some("hash".to_owned()),
 			..Default::default()
 		};
 		let user: User = user_in.clone().try_into().unwrap();
-		let user_out: raw::User = user.into();
+		let user_out: storage::User = user.into();
 		assert_eq!(user_out, user_in);
 	}
 
