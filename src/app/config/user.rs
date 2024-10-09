@@ -196,10 +196,14 @@ mod test {
 	#[tokio::test]
 	async fn cannot_create_duplicate_user() {
 		let ctx = test::ContextBuilder::new(test_name!()).build().await;
-		let result = ctx.config_manager.create_user(TEST_USERNAME, "", false);
+		let result = ctx
+			.config_manager
+			.create_user(TEST_USERNAME, TEST_PASSWORD, false);
 		assert!(result.await.is_ok());
 
-		let result = ctx.config_manager.create_user(TEST_USERNAME, "", false);
+		let result = ctx
+			.config_manager
+			.create_user(TEST_USERNAME, TEST_PASSWORD, false);
 		assert!(matches!(
 			result.await.unwrap_err(),
 			Error::DuplicateUsername
