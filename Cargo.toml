@@ -8,6 +8,9 @@ build = "build.rs"
 [features]
 ui = ["native-windows-gui", "native-windows-derive"]
 
+[profile.release]
+lto = true
+
 [dependencies]
 ape = "0.5"
 axum-extra = { version = "0.9.3", features = ["typed-header"] }
