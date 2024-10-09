@@ -1,11 +1,6 @@
-use std::{
-	io::Read,
-	path::{Path, PathBuf},
-};
+use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
-
-use crate::app::Error;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct User {
@@ -36,17 +31,4 @@ pub struct Config {
 	pub ddns_url: Option<String>,
 	#[serde(skip_serializing_if = "Vec::is_empty")]
 	pub users: Vec<User>,
-}
-
-impl Config {
-	pub fn from_path(path: &Path) -> Result<Self, Error> {
-		let mut config_file =
-			std::fs::File::open(path).map_err(|e| Error::Io(path.to_owned(), e))?;
-		let mut config_file_content = String::new();
-		config_file
-			.read_to_string(&mut config_file_content)
-			.map_err(|e| Error::Io(path.to_owned(), e))?;
-		let config = toml::de::from_str::<Self>(&config_file_content)?;
-		Ok(config)
-	}
 }

@@ -85,8 +85,8 @@ pub enum Error {
 	#[error("DDNS update URL is invalid")]
 	DDNSUpdateURLInvalid,
 
-	#[error(transparent)]
-	Toml(#[from] toml::de::Error),
+	#[error("Could not deserialize configuration: `{0}`")]
+	ConfigDeserialization(toml::de::Error),
 	#[error("Could not deserialize collection")]
 	IndexDeserializationError,
 	#[error("Could not serialize collection")]

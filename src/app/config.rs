@@ -88,13 +88,28 @@ pub struct Manager {
 
 impl Manager {
 	pub async fn new(config_file_path: &Path, auth_secret: auth::Secret) -> Result<Self, Error> {
-		let config = storage::Config::default(); // TODO read from disk!!
-		let config: Config = config.try_into()?;
+		let config = {
+			if tokio::fs::try_exists(config_file_path)
+				.await
+				.map_err(|e| Error::Io(config_file_path.to_owned(), e))?
+			{
+				let config_content = tokio::fs::read_to_string(config_file_path)
+					.await
+					.map_err(|e| Error::Io(config_file_path.to_owned(), e))?;
+				let config = toml::de::from_str::<storage::Config>(&config_content)
+					.map_err(Error::ConfigDeserialization)?;
+				config.try_into()?
+			} else {
+				Config::default()
+			}
+		};
+
 		let manager = Self {
 			config_file_path: config_file_path.to_owned(),
 			config: Arc::new(RwLock::new(config)),
 			auth_secret,
 		};
+
 		Ok(manager)
 	}
 
