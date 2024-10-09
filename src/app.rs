@@ -195,15 +195,14 @@ impl App {
 
 	async fn get_or_create_auth_secret(path: &Path) -> Result<auth::Secret, Error> {
 		match tokio::fs::read(&path).await {
-			Ok(s) => Ok(auth::Secret {
-				key: s
-					.try_into()
+			Ok(s) => Ok(auth::Secret(
+				s.try_into()
 					.map_err(|_| Error::AuthenticationSecretInvalid)?,
-			}),
+			)),
 			Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
 				let mut secret = auth::Secret::default();
-				OsRng.fill_bytes(&mut secret.key);
-				tokio::fs::write(&path, &secret.key)
+				OsRng.fill_bytes(secret.as_mut());
+				tokio::fs::write(&path, &secret)
 					.await
 					.map_err(|_| Error::AuthenticationSecretInvalid)?;
 				Ok(secret)

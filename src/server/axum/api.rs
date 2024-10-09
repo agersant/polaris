@@ -161,7 +161,7 @@ async fn put_mount_dirs(
 ) -> Result<(), APIError> {
 	let new_mount_dirs: Vec<config::storage::MountDir> =
 		new_mount_dirs.iter().cloned().map(|m| m.into()).collect();
-	config_manager.set_mounts(new_mount_dirs).await;
+	config_manager.set_mounts(new_mount_dirs).await?;
 	Ok(())
 }
 

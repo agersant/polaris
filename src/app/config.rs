@@ -24,7 +24,7 @@ pub struct Config {
 	pub reindex_every_n_seconds: Option<u64>,
 	pub album_art_pattern: Option<Regex>,
 	pub ddns_url: Option<http::Uri>,
-	pub mount_dirs: Vec<MountDir>,
+	pub mount_dirs: HashMap<String, MountDir>,
 	pub users: HashMap<String, User>,
 }
 
@@ -34,16 +34,15 @@ impl TryFrom<storage::Config> for Config {
 	fn try_from(c: storage::Config) -> Result<Self, Self::Error> {
 		let mut users: HashMap<String, User> = HashMap::new();
 		for user in c.users {
-			if let Ok(user) = <storage::User as TryInto<User>>::try_into(user) {
-				users.insert(user.name.clone(), user);
-			}
+			let user = <storage::User as TryInto<User>>::try_into(user)?;
+			users.insert(user.name.clone(), user);
 		}
 
-		let mount_dirs = c
-			.mount_dirs
-			.into_iter()
-			.filter_map(|m| m.try_into().ok())
-			.collect();
+		let mut mount_dirs: HashMap<String, MountDir> = HashMap::new();
+		for mount_dir in c.mount_dirs {
+			let mount_dir = <storage::MountDir as TryInto<MountDir>>::try_into(mount_dir)?;
+			mount_dirs.insert(mount_dir.name.clone(), mount_dir);
+		}
 
 		let ddns_url = match c.ddns_url.map(http::Uri::try_from) {
 			Some(Ok(u)) => Some(u),
@@ -58,7 +57,7 @@ impl TryFrom<storage::Config> for Config {
 		};
 
 		Ok(Config {
-			reindex_every_n_seconds: c.reindex_every_n_seconds, // TODO validate and warn
+			reindex_every_n_seconds: c.reindex_every_n_seconds,
 			album_art_pattern,
 			ddns_url,
 			mount_dirs,
@@ -72,7 +71,7 @@ impl From<Config> for storage::Config {
 		Self {
 			reindex_every_n_seconds: c.reindex_every_n_seconds,
 			album_art_pattern: c.album_art_pattern.map(|p| p.as_str().to_owned()),
-			mount_dirs: c.mount_dirs.into_iter().map(|d| d.into()).collect(),
+			mount_dirs: c.mount_dirs.into_iter().map(|(_, d)| d.into()).collect(),
 			ddns_url: c.ddns_url.map(|u| u.to_string()),
 			users: c.users.into_iter().map(|(_, u)| u.into()).collect(),
 		}
@@ -208,7 +207,8 @@ impl Manager {
 	}
 
 	pub async fn get_mounts(&self) -> Vec<MountDir> {
-		self.config.read().await.mount_dirs.clone()
+		let config = self.config.read().await;
+		config.mount_dirs.values().cloned().collect()
 	}
 
 	pub async fn resolve_virtual_path<P: AsRef<Path>>(
@@ -219,8 +219,42 @@ impl Manager {
 		config.resolve_virtual_path(virtual_path)
 	}
 
-	pub async fn set_mounts(&self, mount_dirs: Vec<storage::MountDir>) {
-		self.config.write().await.set_mounts(mount_dirs);
+	pub async fn set_mounts(&self, mount_dirs: Vec<storage::MountDir>) -> Result<(), Error> {
+		self.config.write().await.set_mounts(mount_dirs)
 		// TODO persistence
+	}
+}
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	#[tokio::test]
+	async fn can_read_config() {
+		let config_path = PathBuf::from_iter(["test-data", "config.toml"]);
+		let manager = Manager::new(&config_path, auth::Secret([0; 32]))
+			.await
+			.unwrap();
+		let config: storage::Config = manager.config.read().await.clone().into();
+
+		assert_eq!(config.reindex_every_n_seconds, None);
+		assert_eq!(
+			config.album_art_pattern,
+			Some(r#"^Folder\.(png|jpg|jpeg)$"#.to_owned())
+		);
+		assert_eq!(
+			config.mount_dirs,
+			vec![storage::MountDir {
+				source: PathBuf::from("test-data/small-collection"),
+				name: "root".to_owned(),
+			}]
+		);
+		assert_eq!(config.users[0].name, "test_user");
+		assert_eq!(config.users[0].admin, Some(true));
+		assert_eq!(
+			config.users[0].initial_password,
+			Some("very_secret_password".to_owned())
+		);
+		assert!(config.users[0].hashed_password.is_some());
 	}
 }

@@ -9,8 +9,18 @@ use serde::{Deserialize, Serialize};
 use crate::app::Error;
 
 #[derive(Clone, Default)]
-pub struct Secret {
-	pub key: [u8; 32],
+pub struct Secret(pub [u8; 32]);
+
+impl AsRef<[u8]> for Secret {
+	fn as_ref(&self) -> &[u8] {
+		&self.0
+	}
+}
+
+impl AsMut<[u8]> for Secret {
+	fn as_mut(&mut self) -> &mut [u8] {
+		&mut self.0
+	}
 }
 
 #[derive(Debug)]
@@ -55,7 +65,7 @@ pub fn generate_auth_token(
 		serde_json::to_string(&authorization).or(Err(Error::AuthorizationTokenEncoding))?;
 	branca::encode(
 		serialized_authorization.as_bytes(),
-		&auth_secret.key,
+		auth_secret.as_ref(),
 		SystemTime::now()
 			.duration_since(UNIX_EPOCH)
 			.unwrap_or_default()
@@ -75,7 +85,7 @@ pub fn decode_auth_token(
 		Scope::PolarisAuth => 0, // permanent
 	};
 	let authorization =
-		branca::decode(data, &auth_secret.key, ttl).map_err(|_| Error::InvalidAuthToken)?;
+		branca::decode(data, auth_secret.as_ref(), ttl).map_err(|_| Error::InvalidAuthToken)?;
 	let authorization: Authorization =
 		serde_json::from_slice(&authorization[..]).map_err(|_| Error::InvalidAuthToken)?;
 	if authorization.scope != scope {
