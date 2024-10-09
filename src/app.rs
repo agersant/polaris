@@ -87,6 +87,8 @@ pub enum Error {
 
 	#[error("Could not deserialize configuration: `{0}`")]
 	ConfigDeserialization(toml::de::Error),
+	#[error("Could not serialize configuration: `{0}`")]
+	ConfigSerialization(toml::ser::Error),
 	#[error("Could not deserialize collection")]
 	IndexDeserializationError,
 	#[error("Could not serialize collection")]

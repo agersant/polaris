@@ -126,20 +126,20 @@ async fn put_settings(
 		let Ok(regex) = Regex::new(&pattern) else {
 			return Err(APIError::InvalidAlbumArtPattern);
 		};
-		config_manager.set_index_album_art_pattern(regex).await;
+		config_manager.set_index_album_art_pattern(regex).await?;
 	}
 
 	if let Some(seconds) = new_settings.reindex_every_n_seconds {
 		config_manager
 			.set_index_sleep_duration(Duration::from_secs(seconds as u64))
-			.await;
+			.await?;
 	}
 
 	if let Some(url_string) = new_settings.ddns_update_url {
 		let Ok(uri) = http::Uri::try_from(url_string) else {
 			return Err(APIError::InvalidDDNSURL);
 		};
-		config_manager.set_ddns_update_url(uri).await;
+		config_manager.set_ddns_update_url(uri).await?;
 	}
 
 	Ok(())
@@ -239,7 +239,7 @@ async fn delete_user(
 			return Err(APIError::DeletingOwnAccount);
 		}
 	}
-	config_manager.delete_user(&name).await;
+	config_manager.delete_user(&name).await?;
 	Ok(())
 }
 

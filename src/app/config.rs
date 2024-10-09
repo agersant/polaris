@@ -114,8 +114,32 @@ impl Manager {
 
 	#[cfg(test)]
 	pub async fn apply(&self, config: storage::Config) -> Result<(), Error> {
-		*self.config.write().await = config.try_into()?;
-		// TODO persistence
+		self.mutate_fallible(|c| {
+			*c = config.try_into()?;
+			Ok(())
+		})
+		.await
+	}
+
+	async fn mutate<F: FnOnce(&mut Config)>(&self, op: F) -> Result<(), Error> {
+		self.mutate_fallible(|c| {
+			op(c);
+			Ok(())
+		})
+		.await
+	}
+
+	async fn mutate_fallible<F: FnOnce(&mut Config) -> Result<(), Error>>(
+		&self,
+		op: F,
+	) -> Result<(), Error> {
+		let mut config = self.config.write().await;
+		op(&mut config)?;
+		let serialized = toml::ser::to_string_pretty::<storage::Config>(&config.clone().into())
+			.map_err(Error::ConfigSerialization)?;
+		tokio::fs::write(&self.config_file_path, serialized.as_bytes())
+			.await
+			.map_err(|e| Error::Io(self.config_file_path.clone(), e))?;
 		Ok(())
 	}
 
@@ -125,10 +149,11 @@ impl Manager {
 		Duration::from_secs(seconds)
 	}
 
-	pub async fn set_index_sleep_duration(&self, duration: Duration) {
-		let mut config = self.config.write().await;
-		config.reindex_every_n_seconds = Some(duration.as_secs());
-		// TODO persistence
+	pub async fn set_index_sleep_duration(&self, duration: Duration) -> Result<(), Error> {
+		self.mutate(|c| {
+			c.reindex_every_n_seconds = Some(duration.as_secs());
+		})
+		.await
 	}
 
 	pub async fn get_index_album_art_pattern(&self) -> Regex {
@@ -137,20 +162,22 @@ impl Manager {
 		pattern.unwrap_or_else(|| Regex::new("Folder.(jpeg|jpg|png)").unwrap())
 	}
 
-	pub async fn set_index_album_art_pattern(&self, regex: Regex) {
-		let mut config = self.config.write().await;
-		config.album_art_pattern = Some(regex);
-		// TODO persistence
+	pub async fn set_index_album_art_pattern(&self, regex: Regex) -> Result<(), Error> {
+		self.mutate(|c| {
+			c.album_art_pattern = Some(regex);
+		})
+		.await
 	}
 
 	pub async fn get_ddns_update_url(&self) -> Option<http::Uri> {
 		self.config.read().await.ddns_url.clone()
 	}
 
-	pub async fn set_ddns_update_url(&self, url: http::Uri) {
-		let mut config = self.config.write().await;
-		config.ddns_url = Some(url);
-		// TODO persistence
+	pub async fn set_ddns_update_url(&self, url: http::Uri) -> Result<(), Error> {
+		self.mutate(|c| {
+			c.ddns_url = Some(url);
+		})
+		.await
 	}
 
 	pub async fn get_users(&self) -> Vec<User> {
@@ -169,9 +196,8 @@ impl Manager {
 		password: &str,
 		admin: bool,
 	) -> Result<(), Error> {
-		let mut config = self.config.write().await;
-		config.create_user(username, password, admin)
-		// TODO persistence
+		self.mutate_fallible(|c| c.create_user(username, password, admin))
+			.await
 	}
 
 	pub async fn login(&self, username: &str, password: &str) -> Result<auth::Token, Error> {
@@ -180,15 +206,13 @@ impl Manager {
 	}
 
 	pub async fn set_is_admin(&self, username: &str, is_admin: bool) -> Result<(), Error> {
-		let mut config = self.config.write().await;
-		config.set_is_admin(username, is_admin)
-		// TODO persistence
+		self.mutate_fallible(|c| c.set_is_admin(username, is_admin))
+			.await
 	}
 
 	pub async fn set_password(&self, username: &str, password: &str) -> Result<(), Error> {
-		let mut config = self.config.write().await;
-		config.set_password(username, password)
-		// TODO persistence
+		self.mutate_fallible(|c| c.set_password(username, password))
+			.await
 	}
 
 	pub async fn authenticate(
@@ -200,10 +224,8 @@ impl Manager {
 		config.authenticate(auth_token, scope, &self.auth_secret)
 	}
 
-	pub async fn delete_user(&self, username: &str) {
-		let mut config = self.config.write().await;
-		config.delete_user(username);
-		// TODO persistence
+	pub async fn delete_user(&self, username: &str) -> Result<(), Error> {
+		self.mutate(|c| c.delete_user(username)).await
 	}
 
 	pub async fn get_mounts(&self) -> Vec<MountDir> {
@@ -220,14 +242,24 @@ impl Manager {
 	}
 
 	pub async fn set_mounts(&self, mount_dirs: Vec<storage::MountDir>) -> Result<(), Error> {
-		self.config.write().await.set_mounts(mount_dirs)
-		// TODO persistence
+		self.mutate_fallible(|c| c.set_mounts(mount_dirs)).await
 	}
 }
 
 #[cfg(test)]
 mod test {
+	use crate::app::test;
+	use crate::test_name;
+
 	use super::*;
+
+	#[tokio::test]
+	async fn blank_config_is_valid() {
+		let config_path = PathBuf::from_iter(["test-data", "blank.toml"]);
+		Manager::new(&config_path, auth::Secret([0; 32]))
+			.await
+			.unwrap();
+	}
 
 	#[tokio::test]
 	async fn can_read_config() {
@@ -256,5 +288,19 @@ mod test {
 			Some("very_secret_password".to_owned())
 		);
 		assert!(config.users[0].hashed_password.is_some());
+	}
+
+	#[tokio::test]
+	async fn can_write_config() {
+		let ctx = test::ContextBuilder::new(test_name!()).build().await;
+		ctx.config_manager
+			.create_user("Walter", "example_password", false)
+			.await
+			.unwrap();
+
+		let manager = Manager::new(&ctx.config_manager.config_file_path, auth::Secret([0; 32]))
+			.await
+			.unwrap();
+		assert!(manager.get_user("Walter").await.is_ok());
 	}
 }

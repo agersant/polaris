@@ -175,7 +175,7 @@ mod test {
 			.unwrap();
 		assert!(ctx.config_manager.get_user(TEST_USERNAME).await.is_ok());
 
-		ctx.config_manager.delete_user(TEST_USERNAME).await;
+		ctx.config_manager.delete_user(TEST_USERNAME).await.unwrap();
 		assert!(ctx.config_manager.get_user(TEST_USERNAME).await.is_err());
 	}
 

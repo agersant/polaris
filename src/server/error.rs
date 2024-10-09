@@ -124,6 +124,7 @@ impl From<app::Error> for APIError {
 			app::Error::IndexAlbumArtPatternInvalid => APIError::InvalidAlbumArtPattern,
 
 			app::Error::ConfigDeserialization(_) => APIError::Internal,
+			app::Error::ConfigSerialization(_) => APIError::Internal,
 			app::Error::IndexDeserializationError => APIError::Internal,
 			app::Error::IndexSerializationError => APIError::Internal,
 

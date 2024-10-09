@@ -25,10 +25,10 @@ pub struct Config {
 	pub reindex_every_n_seconds: Option<u64>,
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub album_art_pattern: Option<String>,
-	#[serde(skip_serializing_if = "Vec::is_empty")]
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
 	pub mount_dirs: Vec<MountDir>,
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub ddns_url: Option<String>,
-	#[serde(skip_serializing_if = "Vec::is_empty")]
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
 	pub users: Vec<User>,
 }
