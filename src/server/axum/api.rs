@@ -138,8 +138,9 @@ async fn put_settings(
 	}
 
 	if let Some(url_string) = new_settings.ddns_update_url {
-		let Ok(uri) = http::Uri::try_from(url_string) else {
-			return Err(APIError::InvalidDDNSURL);
+		let uri = match url_string.trim() {
+			"" => None,
+			u => Some(http::Uri::try_from(u).or(Err(APIError::InvalidDDNSURL))?),
 		};
 		config_manager.set_ddns_update_url(uri).await?;
 		ddns_manager.update_ddns().await?;

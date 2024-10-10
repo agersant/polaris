@@ -173,9 +173,9 @@ impl Manager {
 		self.config.read().await.ddns_url.clone()
 	}
 
-	pub async fn set_ddns_update_url(&self, url: http::Uri) -> Result<(), Error> {
+	pub async fn set_ddns_update_url(&self, url: Option<http::Uri>) -> Result<(), Error> {
 		self.mutate(|c| {
-			c.ddns_url = Some(url);
+			c.ddns_url = url;
 		})
 		.await
 	}
