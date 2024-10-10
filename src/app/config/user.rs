@@ -48,6 +48,17 @@ impl From<User> for storage::User {
 }
 
 impl Config {
+	pub fn set_users(&mut self, users: Vec<storage::User>) -> Result<(), Error> {
+		let mut new_users = Vec::new();
+		for user in users {
+			let user = <storage::User as TryInto<User>>::try_into(user)?;
+			new_users.push(user);
+		}
+		new_users.dedup_by(|a, b| a.name == b.name);
+		self.users = new_users;
+		Ok(())
+	}
+
 	pub fn create_user(
 		&mut self,
 		username: &str,
@@ -58,23 +69,32 @@ impl Config {
 			return Err(Error::EmptyUsername);
 		}
 
-		if self.users.contains_key(username) {
+		if self.exists(username) {
 			return Err(Error::DuplicateUsername);
 		}
 
 		let password_hash = auth::hash_password(&password)?;
 
-		self.users.insert(
-			username.to_owned(),
-			User {
-				name: username.to_owned(),
-				admin: Some(admin),
-				initial_password: None,
-				hashed_password: password_hash,
-			},
-		);
+		self.users.push(User {
+			name: username.to_owned(),
+			admin: Some(admin),
+			initial_password: None,
+			hashed_password: password_hash,
+		});
 
 		Ok(())
+	}
+
+	pub fn exists(&self, username: &str) -> bool {
+		self.users.iter().any(|u| u.name == username)
+	}
+
+	pub fn get_user(&self, username: &str) -> Option<&User> {
+		self.users.iter().find(|u| u.name == username)
+	}
+
+	pub fn get_user_mut(&mut self, username: &str) -> Option<&mut User> {
+		self.users.iter_mut().find(|u| u.name == username)
 	}
 
 	pub fn authenticate(
@@ -84,7 +104,7 @@ impl Config {
 		auth_secret: &auth::Secret,
 	) -> Result<auth::Authorization, Error> {
 		let authorization = auth::decode_auth_token(auth_token, scope, auth_secret)?;
-		if self.users.contains_key(&authorization.username) {
+		if self.exists(&authorization.username) {
 			Ok(authorization)
 		} else {
 			Err(Error::IncorrectUsername)
@@ -97,7 +117,7 @@ impl Config {
 		password: &str,
 		auth_secret: &auth::Secret,
 	) -> Result<auth::Token, Error> {
-		let user = self.users.get(username).ok_or(Error::IncorrectUsername)?;
+		let user = self.get_user(username).ok_or(Error::IncorrectUsername)?;
 		if auth::verify_password(&user.hashed_password, password) {
 			let authorization = auth::Authorization {
 				username: username.to_owned(),
@@ -110,19 +130,19 @@ impl Config {
 	}
 
 	pub fn set_is_admin(&mut self, username: &str, is_admin: bool) -> Result<(), Error> {
-		let user = self.users.get_mut(username).ok_or(Error::UserNotFound)?;
+		let user = self.get_user_mut(username).ok_or(Error::UserNotFound)?;
 		user.admin = Some(is_admin);
 		Ok(())
 	}
 
 	pub fn set_password(&mut self, username: &str, password: &str) -> Result<(), Error> {
-		let user = self.users.get_mut(username).ok_or(Error::UserNotFound)?;
+		let user = self.get_user_mut(username).ok_or(Error::UserNotFound)?;
 		user.hashed_password = auth::hash_password(password)?;
 		Ok(())
 	}
 
 	pub fn delete_user(&mut self, username: &str) {
-		self.users.remove(username);
+		self.users.retain(|u| u.name != username);
 	}
 }
 

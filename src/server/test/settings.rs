@@ -64,7 +64,7 @@ async fn put_settings_golden_path() {
 	let request = protocol::put_settings(dto::NewSettings {
 		album_art_pattern: Some("test_pattern".to_owned()),
 		reindex_every_n_seconds: Some(31),
-		ddns_update_url: Some("ddns_url".to_owned()),
+		ddns_update_url: Some("http://example.com/".to_owned()),
 	});
 	let response = service.fetch(&request).await;
 	assert_eq!(response.status(), StatusCode::OK);
@@ -77,7 +77,7 @@ async fn put_settings_golden_path() {
 		&Settings {
 			album_art_pattern: "test_pattern".to_owned(),
 			reindex_every_n_seconds: 31,
-			ddns_update_url: "ddns_url".to_owned(),
+			ddns_update_url: "http://example.com/".to_owned(),
 		},
 	);
 }

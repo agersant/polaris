@@ -1,5 +1,4 @@
 use std::{
-	collections::HashMap,
 	ops::Deref,
 	path::{Path, PathBuf},
 };
@@ -40,18 +39,19 @@ impl From<MountDir> for storage::MountDir {
 
 impl Config {
 	pub fn set_mounts(&mut self, mount_dirs: Vec<storage::MountDir>) -> Result<(), Error> {
-		let mut new_mount_dirs = HashMap::new();
+		let mut new_mount_dirs = Vec::new();
 		for mount_dir in mount_dirs {
 			let mount_dir = <storage::MountDir as TryInto<MountDir>>::try_into(mount_dir)?;
-			new_mount_dirs.insert(mount_dir.name.clone(), mount_dir);
+			new_mount_dirs.push(mount_dir);
 		}
+		new_mount_dirs.dedup_by(|a, b| a.name == b.name);
 		self.mount_dirs = new_mount_dirs;
 		Ok(())
 	}
 
 	pub fn resolve_virtual_path<P: AsRef<Path>>(&self, virtual_path: P) -> Result<PathBuf, Error> {
-		for (name, mount) in &self.mount_dirs {
-			if let Ok(p) = virtual_path.as_ref().strip_prefix(name) {
+		for mount in &self.mount_dirs {
+			if let Ok(p) = virtual_path.as_ref().strip_prefix(&mount.name) {
 				return if p.components().count() == 0 {
 					Ok(mount.source.clone())
 				} else {

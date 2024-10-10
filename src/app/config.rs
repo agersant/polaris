@@ -1,5 +1,4 @@
 use std::{
-	collections::HashMap,
 	path::{Path, PathBuf},
 	sync::Arc,
 	time::Duration,
@@ -24,45 +23,33 @@ pub struct Config {
 	pub reindex_every_n_seconds: Option<u64>,
 	pub album_art_pattern: Option<Regex>,
 	pub ddns_url: Option<http::Uri>,
-	pub mount_dirs: HashMap<String, MountDir>,
-	pub users: HashMap<String, User>,
+	pub mount_dirs: Vec<MountDir>,
+	pub users: Vec<User>,
 }
 
 impl TryFrom<storage::Config> for Config {
 	type Error = Error;
 
 	fn try_from(c: storage::Config) -> Result<Self, Self::Error> {
-		let mut users: HashMap<String, User> = HashMap::new();
-		for user in c.users {
-			let user = <storage::User as TryInto<User>>::try_into(user)?;
-			users.insert(user.name.clone(), user);
-		}
+		let mut config = Config::default();
+		config.set_mounts(c.mount_dirs)?;
+		config.set_users(c.users)?;
 
-		let mut mount_dirs: HashMap<String, MountDir> = HashMap::new();
-		for mount_dir in c.mount_dirs {
-			let mount_dir = <storage::MountDir as TryInto<MountDir>>::try_into(mount_dir)?;
-			mount_dirs.insert(mount_dir.name.clone(), mount_dir);
-		}
+		config.reindex_every_n_seconds = c.reindex_every_n_seconds;
 
-		let ddns_url = match c.ddns_url.map(http::Uri::try_from) {
-			Some(Ok(u)) => Some(u),
-			Some(Err(_)) => return Err(Error::DDNSUpdateURLInvalid),
-			None => None,
-		};
-
-		let album_art_pattern = match c.album_art_pattern.as_deref().map(Regex::new) {
+		config.album_art_pattern = match c.album_art_pattern.as_deref().map(Regex::new) {
 			Some(Ok(u)) => Some(u),
 			Some(Err(_)) => return Err(Error::IndexAlbumArtPatternInvalid),
 			None => None,
 		};
 
-		Ok(Config {
-			reindex_every_n_seconds: c.reindex_every_n_seconds,
-			album_art_pattern,
-			ddns_url,
-			mount_dirs,
-			users,
-		})
+		config.ddns_url = match c.ddns_url.map(http::Uri::try_from) {
+			Some(Ok(u)) => Some(u),
+			Some(Err(_)) => return Err(Error::DDNSUpdateURLInvalid),
+			None => None,
+		};
+
+		Ok(config)
 	}
 }
 
@@ -71,9 +58,9 @@ impl From<Config> for storage::Config {
 		Self {
 			reindex_every_n_seconds: c.reindex_every_n_seconds,
 			album_art_pattern: c.album_art_pattern.map(|p| p.as_str().to_owned()),
-			mount_dirs: c.mount_dirs.into_iter().map(|(_, d)| d.into()).collect(),
+			mount_dirs: c.mount_dirs.into_iter().map(|d| d.into()).collect(),
 			ddns_url: c.ddns_url.map(|u| u.to_string()),
-			users: c.users.into_iter().map(|(_, u)| u.into()).collect(),
+			users: c.users.into_iter().map(|u| u.into()).collect(),
 		}
 	}
 }
@@ -181,13 +168,15 @@ impl Manager {
 	}
 
 	pub async fn get_users(&self) -> Vec<User> {
-		self.config.read().await.users.values().cloned().collect()
+		self.config.read().await.users.iter().cloned().collect()
 	}
 
 	pub async fn get_user(&self, username: &str) -> Result<User, Error> {
 		let config = self.config.read().await;
-		let user = config.users.get(username);
-		user.cloned().ok_or(Error::UserNotFound)
+		config
+			.get_user(username)
+			.cloned()
+			.ok_or(Error::UserNotFound)
 	}
 
 	pub async fn create_user(
@@ -230,7 +219,7 @@ impl Manager {
 
 	pub async fn get_mounts(&self) -> Vec<MountDir> {
 		let config = self.config.read().await;
-		config.mount_dirs.values().cloned().collect()
+		config.mount_dirs.iter().cloned().collect()
 	}
 
 	pub async fn resolve_virtual_path<P: AsRef<Path>>(
