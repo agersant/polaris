@@ -8,7 +8,7 @@ use log::{error, info};
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use notify_debouncer_full::{Debouncer, FileIdMap};
 use regex::Regex;
-use tokio::sync::{mpsc::unbounded_channel, RwLock};
+use tokio::sync::{futures::Notified, mpsc::unbounded_channel, Notify, RwLock};
 
 use crate::app::Error;
 
@@ -75,6 +75,7 @@ pub struct Manager {
 	auth_secret: auth::Secret,
 	#[allow(dead_code)]
 	file_watcher: Arc<Debouncer<RecommendedWatcher, FileIdMap>>,
+	change_notify: Arc<Notify>,
 }
 
 impl Manager {
@@ -96,6 +97,7 @@ impl Manager {
 			config: Arc::new(RwLock::new(Config::default())),
 			auth_secret,
 			file_watcher: Arc::new(debouncer),
+			change_notify: Arc::default(),
 		};
 
 		tokio::task::spawn({
@@ -119,6 +121,10 @@ impl Manager {
 		manager.reload_config().await?;
 
 		Ok(manager)
+	}
+
+	pub fn on_config_change(&self) -> Notified {
+		self.change_notify.notified()
 	}
 
 	async fn reload_config(&self) -> Result<(), Error> {
@@ -147,6 +153,7 @@ impl Manager {
 	pub async fn apply_config(&self, new_config: storage::Config) -> Result<(), Error> {
 		let mut config = self.config.write().await;
 		*config = new_config.try_into()?;
+		self.change_notify.notify_waiters();
 		Ok(())
 	}
 
@@ -166,6 +173,7 @@ impl Manager {
 			let mut config = self.config.write().await;
 			op(&mut config)?;
 		}
+		self.change_notify.notify_waiters();
 		self.save_config().await?;
 		Ok(())
 	}

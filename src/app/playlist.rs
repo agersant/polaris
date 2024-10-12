@@ -238,13 +238,13 @@ mod test {
 
 	#[tokio::test]
 	async fn save_playlist_is_idempotent() {
-		let mut ctx = test::ContextBuilder::new(test_name!())
+		let ctx = test::ContextBuilder::new(test_name!())
 			.user(TEST_USER, TEST_PASSWORD, false)
 			.mount(TEST_MOUNT_NAME, "test-data/small-collection")
 			.build()
 			.await;
 
-		ctx.scanner.update().await.unwrap();
+		ctx.scanner.run_scan().await.unwrap();
 
 		let songs = list_all_songs(&ctx).await;
 
@@ -293,13 +293,13 @@ mod test {
 
 	#[tokio::test]
 	async fn read_playlist_golden_path() {
-		let mut ctx = test::ContextBuilder::new(test_name!())
+		let ctx = test::ContextBuilder::new(test_name!())
 			.user(TEST_USER, TEST_PASSWORD, false)
 			.mount(TEST_MOUNT_NAME, "test-data/small-collection")
 			.build()
 			.await;
 
-		ctx.scanner.update().await.unwrap();
+		ctx.scanner.run_scan().await.unwrap();
 
 		let songs = list_all_songs(&ctx).await;
 

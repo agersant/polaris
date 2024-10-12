@@ -10,6 +10,7 @@ use std::time::SystemTime;
 use std::{cmp::min, time::Duration};
 use tokio::sync::mpsc::unbounded_channel;
 use tokio::sync::{Notify, RwLock};
+use tokio::task::JoinSet;
 use tokio::time::Instant;
 
 use crate::app::{config, formats, index, Error};
@@ -48,6 +49,20 @@ pub enum State {
 	UpToDate,
 }
 
+#[derive(Clone)]
+struct Parameters {
+	artwork_regex: Option<Regex>,
+	mount_dirs: Vec<config::MountDir>,
+}
+
+impl PartialEq for Parameters {
+	fn eq(&self, other: &Self) -> bool {
+		self.artwork_regex.as_ref().map(|r| r.as_str())
+			== other.artwork_regex.as_ref().map(|r| r.as_str())
+			&& self.mount_dirs == other.mount_dirs
+	}
+}
+
 #[derive(Clone, Default)]
 pub struct Status {
 	pub state: State,
@@ -62,6 +77,7 @@ pub struct Scanner {
 	config_manager: config::Manager,
 	pending_scan: Arc<Notify>,
 	status: Arc<RwLock<Status>>,
+	parameters: Arc<RwLock<Option<Parameters>>>,
 }
 
 impl Scanner {
@@ -71,19 +87,53 @@ impl Scanner {
 	) -> Result<Self, Error> {
 		let scanner = Self {
 			index_manager,
-			config_manager,
+			config_manager: config_manager.clone(),
 			pending_scan: Arc::new(Notify::new()),
 			status: Arc::new(RwLock::new(Status::default())),
+			parameters: Arc::default(),
 		};
 
+		let abort_scan = Arc::new(Notify::new());
+
 		tokio::spawn({
-			let mut scanner = scanner.clone();
+			let config_manager = config_manager.clone();
+			let scanner = scanner.clone();
+			let abort_scan = abort_scan.clone();
+			async move {
+				loop {
+					config_manager.on_config_change().await;
+					if *scanner.parameters.read().await == Some(scanner.read_parameters().await) {
+						continue;
+					}
+					abort_scan.notify_waiters();
+					scanner.status.write().await.state = State::Pending;
+					while tokio::time::timeout(
+						Duration::from_secs(2),
+						config_manager.on_config_change(),
+					)
+					.await
+					.is_ok()
+					{}
+					scanner.pending_scan.notify_waiters();
+				}
+			}
+		});
+
+		tokio::spawn({
+			let scanner = scanner.clone();
 			async move {
 				loop {
 					scanner.pending_scan.notified().await;
-					if let Err(e) = scanner.update().await {
-						error!("Error while updating index: {}", e);
-					}
+					tokio::select! {
+						result = scanner.run_scan() => {
+							if let Err(e) = result {
+								error!("Error while updating index: {e}");
+							}
+						}
+						_ = abort_scan.notified() => {
+							info!("Interrupted index update");
+						}
+					};
 				}
 			}
 		});
@@ -91,28 +141,28 @@ impl Scanner {
 		Ok(scanner)
 	}
 
+	async fn read_parameters(&self) -> Parameters {
+		let album_art_pattern = self.config_manager.get_index_album_art_pattern().await;
+		let artwork_regex = Regex::new(&format!("(?i){}", &album_art_pattern)).ok();
+		Parameters {
+			artwork_regex,
+			mount_dirs: self.config_manager.get_mounts().await,
+		}
+	}
+
 	pub async fn get_status(&self) -> Status {
 		self.status.read().await.clone()
 	}
 
-	pub fn trigger_scan(&self) {
+	pub fn queue_scan(&self) {
 		self.pending_scan.notify_one();
 	}
 
-	pub fn begin_periodic_scans(&self) {
-		tokio::spawn({
-			let index = self.clone();
-			async move {
-				loop {
-					index.trigger_scan();
-					let sleep_duration = index.config_manager.get_index_sleep_duration().await;
-					tokio::time::sleep(sleep_duration).await;
-				}
-			}
-		});
+	pub fn try_trigger_scan(&self) {
+		self.pending_scan.notify_waiters();
 	}
 
-	pub async fn update(&mut self) -> Result<(), Error> {
+	pub async fn run_scan(&self) -> Result<(), Error> {
 		info!("Beginning collection scan");
 
 		let start = Instant::now();
@@ -125,24 +175,22 @@ impl Scanner {
 		let was_empty = self.index_manager.is_index_empty().await;
 		let mut partial_update_time = Instant::now();
 
-		let album_art_pattern = self.config_manager.get_index_album_art_pattern().await;
-		let album_art_regex = Regex::new(&format!("(?i){}", &album_art_pattern)).ok();
+		let new_parameters = self.read_parameters().await;
+		*self.parameters.write().await = Some(new_parameters.clone());
 
 		let (scan_directories_output, collection_directories_input) = channel();
 		let (scan_songs_output, collection_songs_input) = channel();
+		let scan = Scan::new(scan_directories_output, scan_songs_output, new_parameters);
 
-		let scan = Scan::new(
-			scan_directories_output,
-			scan_songs_output,
-			self.config_manager.get_mounts().await,
-			album_art_regex,
-		);
+		let mut scan_task_set = JoinSet::new();
+		let mut index_task_set = JoinSet::new();
+		let mut secondary_task_set = JoinSet::new();
 
-		let scan_task = tokio::task::spawn_blocking(|| scan.run());
+		scan_task_set.spawn_blocking(|| scan.run());
 
 		let partial_index_notify = Arc::new(tokio::sync::Notify::new());
 		let partial_index_mutex = Arc::new(tokio::sync::Mutex::new(index::Builder::default()));
-		let partial_application_task = tokio::task::spawn({
+		secondary_task_set.spawn({
 			let index_manager = self.index_manager.clone();
 			let partial_index_notify = partial_index_notify.clone();
 			let partial_index_mutex = partial_index_mutex.clone();
@@ -161,7 +209,7 @@ impl Scanner {
 		});
 
 		let (status_sender, mut status_receiver) = unbounded_channel();
-		let progress_monitor = tokio::task::spawn({
+		secondary_task_set.spawn({
 			let manager = self.clone();
 			async move {
 				loop {
@@ -175,7 +223,7 @@ impl Scanner {
 			}
 		});
 
-		let index_task = tokio::task::spawn_blocking(move || {
+		index_task_set.spawn_blocking(move || {
 			let mut index_builder = index::Builder::default();
 			let mut num_songs_scanned = 0;
 
@@ -219,9 +267,9 @@ impl Scanner {
 			index_builder.build()
 		});
 
-		let index = tokio::join!(scan_task, index_task).1?;
-		partial_application_task.abort();
-		progress_monitor.abort();
+		scan_task_set.join_next().await.unwrap()??;
+		let index = index_task_set.join_next().await.unwrap()?;
+		secondary_task_set.abort_all();
 
 		self.index_manager.persist_index(&index).await?;
 		self.index_manager.replace_index(index).await;
@@ -244,22 +292,19 @@ impl Scanner {
 struct Scan {
 	directories_output: Sender<Directory>,
 	songs_output: Sender<Song>,
-	mounts: Vec<config::MountDir>,
-	artwork_regex: Option<Regex>,
+	parameters: Parameters,
 }
 
 impl Scan {
 	pub fn new(
 		directories_output: Sender<Directory>,
 		songs_output: Sender<Song>,
-		mounts: Vec<config::MountDir>,
-		artwork_regex: Option<Regex>,
+		parameters: Parameters,
 	) -> Self {
 		Self {
 			directories_output,
 			songs_output,
-			mounts,
-			artwork_regex,
+			parameters,
 		}
 	}
 
@@ -273,12 +318,12 @@ impl Scan {
 
 		let directories_output = self.directories_output.clone();
 		let songs_output = self.songs_output.clone();
-		let artwork_regex = self.artwork_regex.clone();
+		let artwork_regex = self.parameters.artwork_regex.clone();
 
 		let thread_pool = ThreadPoolBuilder::new().num_threads(num_threads).build()?;
 		thread_pool.scope({
 			|scope| {
-				for mount in self.mounts {
+				for mount in self.parameters.mount_dirs {
 					scope.spawn(|scope| {
 						process_directory(
 							scope,
@@ -412,13 +457,15 @@ mod test {
 	async fn scan_finds_songs_and_directories() {
 		let (directories_sender, directories_receiver) = channel();
 		let (songs_sender, songs_receiver) = channel();
-		let mounts = vec![config::MountDir {
-			source: ["test-data", "small-collection"].iter().collect(),
-			name: "root".to_owned(),
-		}];
-		let artwork_regex = None;
+		let parameters = Parameters {
+			artwork_regex: None,
+			mount_dirs: vec![config::MountDir {
+				source: ["test-data", "small-collection"].iter().collect(),
+				name: "root".to_owned(),
+			}],
+		};
 
-		let scan = Scan::new(directories_sender, songs_sender, mounts, artwork_regex);
+		let scan = Scan::new(directories_sender, songs_sender, parameters);
 		scan.run().unwrap();
 
 		let directories = directories_receiver.iter().collect::<Vec<_>>();
@@ -432,13 +479,15 @@ mod test {
 	async fn scan_finds_embedded_artwork() {
 		let (directories_sender, _) = channel();
 		let (songs_sender, songs_receiver) = channel();
-		let mounts = vec![config::MountDir {
-			source: ["test-data", "small-collection"].iter().collect(),
-			name: "root".to_owned(),
-		}];
-		let artwork_regex = None;
+		let parameters = Parameters {
+			artwork_regex: None,
+			mount_dirs: vec![config::MountDir {
+				source: ["test-data", "small-collection"].iter().collect(),
+				name: "root".to_owned(),
+			}],
+		};
 
-		let scan = Scan::new(directories_sender, songs_sender, mounts, artwork_regex);
+		let scan = Scan::new(directories_sender, songs_sender, parameters);
 		scan.run().unwrap();
 
 		let songs = songs_receiver.iter().collect::<Vec<_>>();
@@ -455,13 +504,15 @@ mod test {
 		for pattern in patterns.into_iter() {
 			let (directories_sender, _) = channel();
 			let (songs_sender, songs_receiver) = channel();
-			let mounts = vec![config::MountDir {
-				source: ["test-data", "small-collection"].iter().collect(),
-				name: "root".to_owned(),
-			}];
-			let artwork_regex = Some(Regex::new(pattern).unwrap());
+			let parameters = Parameters {
+				artwork_regex: Some(Regex::new(pattern).unwrap()),
+				mount_dirs: vec![config::MountDir {
+					source: ["test-data", "small-collection"].iter().collect(),
+					name: "root".to_owned(),
+				}],
+			};
 
-			let scan = Scan::new(directories_sender, songs_sender, mounts, artwork_regex);
+			let scan = Scan::new(directories_sender, songs_sender, parameters);
 			scan.run().unwrap();
 
 			let songs = songs_receiver.iter().collect::<Vec<_>>();

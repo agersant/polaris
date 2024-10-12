@@ -252,7 +252,7 @@ async fn post_trigger_index(
 	_admin_rights: AdminRights,
 	State(scanner): State<scanner::Scanner>,
 ) -> Result<(), APIError> {
-	scanner.trigger_scan();
+	scanner.try_trigger_scan();
 	Ok(())
 }
 

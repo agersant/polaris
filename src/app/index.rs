@@ -33,7 +33,7 @@ impl Manager {
 			.await
 			.map_err(|e| Error::Io(directory.to_owned(), e))?;
 
-		let mut index_manager = Self {
+		let index_manager = Self {
 			index_file_path: directory.join("collection.index"),
 			index: Arc::default(),
 		};
@@ -59,7 +59,7 @@ impl Manager {
 		.unwrap()
 	}
 
-	pub async fn replace_index(&mut self, new_index: Index) {
+	pub async fn replace_index(&self, new_index: Index) {
 		spawn_blocking({
 			let index_manager = self.clone();
 			move || {
@@ -71,7 +71,7 @@ impl Manager {
 		.unwrap()
 	}
 
-	pub async fn persist_index(&mut self, index: &Index) -> Result<(), Error> {
+	pub async fn persist_index(&self, index: &Index) -> Result<(), Error> {
 		let serialized = match bitcode::serialize(index) {
 			Ok(s) => s,
 			Err(_) => return Err(Error::IndexSerializationError),
@@ -82,7 +82,7 @@ impl Manager {
 		Ok(())
 	}
 
-	async fn try_restore_index(&mut self) -> Result<bool, Error> {
+	async fn try_restore_index(&self) -> Result<bool, Error> {
 		match tokio::fs::try_exists(&self.index_file_path).await {
 			Ok(true) => (),
 			Ok(false) => return Ok(false),
@@ -385,7 +385,7 @@ mod test {
 
 	#[tokio::test]
 	async fn can_persist_index() {
-		let mut ctx = test::ContextBuilder::new(test_name!()).build().await;
+		let ctx = test::ContextBuilder::new(test_name!()).build().await;
 		assert_eq!(ctx.index_manager.try_restore_index().await.unwrap(), false);
 		let index = index::Builder::new().build();
 		ctx.index_manager.persist_index(&index).await.unwrap();
