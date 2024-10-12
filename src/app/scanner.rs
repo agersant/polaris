@@ -77,7 +77,7 @@ pub struct Status {
 pub struct Scanner {
 	index_manager: index::Manager,
 	config_manager: config::Manager,
-	file_watcher: Arc<RwLock<Debouncer<RecommendedWatcher, FileIdMap>>>,
+	file_watcher: Arc<RwLock<Option<Debouncer<RecommendedWatcher, FileIdMap>>>>,
 	on_file_change: Arc<Notify>,
 	pending_scan: Arc<Notify>,
 	status: Arc<RwLock<Status>>,
@@ -89,16 +89,11 @@ impl Scanner {
 		index_manager: index::Manager,
 		config_manager: config::Manager,
 	) -> Result<Self, Error> {
-		let on_file_change = Arc::new(Notify::new());
-		let file_watcher = Arc::new(RwLock::new(
-			Self::setup_file_watcher(&config_manager, on_file_change.clone()).await?,
-		));
-
 		let scanner = Self {
 			index_manager,
 			config_manager: config_manager.clone(),
-			file_watcher,
-			on_file_change,
+			file_watcher: Arc::default(),
+			on_file_change: Arc::default(),
 			pending_scan: Arc::new(Notify::new()),
 			status: Arc::new(RwLock::new(Status::default())),
 			parameters: Arc::default(),
@@ -216,8 +211,9 @@ impl Scanner {
 
 		let new_parameters = self.read_parameters().await;
 		*self.parameters.write().await = Some(new_parameters.clone());
-		*self.file_watcher.write().await =
-			Self::setup_file_watcher(&self.config_manager, self.on_file_change.clone()).await?;
+		*self.file_watcher.write().await = Some(
+			Self::setup_file_watcher(&self.config_manager, self.on_file_change.clone()).await?,
+		);
 
 		let (scan_directories_output, collection_directories_input) = channel();
 		let (scan_songs_output, collection_songs_input) = channel();
