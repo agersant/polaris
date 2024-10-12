@@ -1,6 +1,6 @@
 use std::{
 	path::{Path, PathBuf},
-	sync::Arc,
+	sync::{mpsc::channel, Arc},
 	time::Duration,
 };
 
@@ -71,7 +71,7 @@ impl From<Config> for storage::Config {
 #[derive(Clone)]
 pub struct Manager {
 	config_file_path: PathBuf,
-	config: Arc<tokio::sync::RwLock<Config>>,
+	config: Arc<RwLock<Config>>,
 	auth_secret: auth::Secret,
 	#[allow(dead_code)]
 	file_watcher: Arc<Debouncer<RecommendedWatcher, FileIdMap>>,
@@ -81,7 +81,7 @@ impl Manager {
 	pub async fn new(config_file_path: &Path, auth_secret: auth::Secret) -> Result<Self, Error> {
 		tokio::fs::File::create_new(config_file_path).await.ok();
 
-		let (sender, receiver) = std::sync::mpsc::channel::<DebounceEventResult>();
+		let (sender, receiver) = channel::<DebounceEventResult>();
 		let mut debouncer =
 			notify_debouncer_full::new_debouncer(Duration::from_secs(1), None, sender)?;
 
