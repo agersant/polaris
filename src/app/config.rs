@@ -4,6 +4,9 @@ use std::{
 	time::Duration,
 };
 
+use log::{error, info};
+use notify::{RecommendedWatcher, RecursiveMode, Watcher};
+use notify_debouncer_full::{DebounceEventResult, Debouncer, FileIdMap};
 use regex::Regex;
 use tokio::sync::RwLock;
 
@@ -70,40 +73,62 @@ pub struct Manager {
 	config_file_path: PathBuf,
 	config: Arc<tokio::sync::RwLock<Config>>,
 	auth_secret: auth::Secret,
+	#[allow(dead_code)]
+	file_watcher: Arc<Debouncer<RecommendedWatcher, FileIdMap>>,
 }
 
 impl Manager {
 	pub async fn new(config_file_path: &Path, auth_secret: auth::Secret) -> Result<Self, Error> {
-		let config = {
-			if tokio::fs::try_exists(config_file_path)
-				.await
-				.map_err(|e| Error::Io(config_file_path.to_owned(), e))?
-			{
-				let config_content = tokio::fs::read_to_string(config_file_path)
-					.await
-					.map_err(|e| Error::Io(config_file_path.to_owned(), e))?;
-				let config = toml::de::from_str::<storage::Config>(&config_content)
-					.map_err(Error::ConfigDeserialization)?;
-				config.try_into()?
-			} else {
-				Config::default()
-			}
-		};
+		tokio::fs::File::create_new(config_file_path).await.ok();
+
+		let (sender, receiver) = std::sync::mpsc::channel::<DebounceEventResult>();
+		let mut debouncer =
+			notify_debouncer_full::new_debouncer(Duration::from_secs(1), None, sender)?;
+
+		debouncer
+			.watcher()
+			.watch(&config_file_path, RecursiveMode::NonRecursive)?;
 
 		let manager = Self {
 			config_file_path: config_file_path.to_owned(),
-			config: Arc::new(RwLock::new(config)),
+			config: Arc::new(RwLock::new(Config::default())),
 			auth_secret,
+			file_watcher: Arc::new(debouncer),
 		};
 
-		if !tokio::fs::try_exists(config_file_path)
-			.await
-			.map_err(|e| Error::Io(config_file_path.to_owned(), e))?
-		{
-			manager.save_config().await?;
-		}
+		tokio::task::spawn({
+			let manager = manager.clone();
+			async move {
+				loop {
+					match receiver.recv() {
+						Err(_) => break,
+						Ok(_) => {
+							if let Err(e) = manager.reload_config().await {
+								error!("Configuration error: {e}");
+							} else {
+								info!("Sucessfully applied configuration change");
+							}
+						}
+					}
+				}
+			}
+		});
+
+		manager.reload_config().await?;
 
 		Ok(manager)
+	}
+
+	async fn reload_config(&self) -> Result<(), Error> {
+		let config = Self::read_config(&self.config_file_path).await?;
+		self.apply_config(config).await
+	}
+
+	async fn read_config(config_file_path: &Path) -> Result<storage::Config, Error> {
+		let config_content = tokio::fs::read_to_string(config_file_path)
+			.await
+			.map_err(|e| Error::Io(config_file_path.to_owned(), e))?;
+		toml::de::from_str::<storage::Config>(&config_content).map_err(Error::ConfigDeserialization)
 	}
 
 	async fn save_config(&self) -> Result<(), Error> {
@@ -117,13 +142,10 @@ impl Manager {
 		Ok(())
 	}
 
-	#[cfg(test)]
-	pub async fn apply(&self, config: storage::Config) -> Result<(), Error> {
-		self.mutate_fallible(|c| {
-			*c = config.try_into()?;
-			Ok(())
-		})
-		.await
+	pub async fn apply_config(&self, new_config: storage::Config) -> Result<(), Error> {
+		let mut config = self.config.write().await;
+		*config = new_config.try_into()?;
+		Ok(())
 	}
 
 	async fn mutate<F: FnOnce(&mut Config)>(&self, op: F) -> Result<(), Error> {
@@ -138,8 +160,10 @@ impl Manager {
 		&self,
 		op: F,
 	) -> Result<(), Error> {
-		let mut config = self.config.write().await;
-		op(&mut config)?;
+		{
+			let mut config = self.config.write().await;
+			op(&mut config)?;
+		}
 		self.save_config().await?;
 		Ok(())
 	}

@@ -56,7 +56,7 @@ impl ContextBuilder {
 			.unwrap();
 		let playlist_manager = playlist::Manager::new(ndb_manager.clone());
 
-		config_manager.apply(self.config).await.unwrap();
+		config_manager.apply_config(self.config).await.unwrap();
 
 		Context {
 			index_manager,

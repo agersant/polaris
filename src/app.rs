@@ -30,6 +30,8 @@ pub enum Error {
 	#[error("Filesystem error for `{0}`: `{1}`")]
 	Io(PathBuf, std::io::Error),
 	#[error(transparent)]
+	FileWatch(#[from] notify::Error),
+	#[error(transparent)]
 	Ape(#[from] ape::Error),
 	#[error("ID3 error in `{0}`: `{1}`")]
 	Id3(PathBuf, id3::Error),
