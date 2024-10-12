@@ -1,4 +1,6 @@
 use log::{error, info};
+use notify::{RecommendedWatcher, Watcher};
+use notify_debouncer_full::{Debouncer, FileIdMap};
 use rayon::{Scope, ThreadPoolBuilder};
 use regex::Regex;
 use std::fs;
@@ -75,6 +77,8 @@ pub struct Status {
 pub struct Scanner {
 	index_manager: index::Manager,
 	config_manager: config::Manager,
+	file_watcher: Arc<RwLock<Debouncer<RecommendedWatcher, FileIdMap>>>,
+	on_file_change: Arc<Notify>,
 	pending_scan: Arc<Notify>,
 	status: Arc<RwLock<Status>>,
 	parameters: Arc<RwLock<Option<Parameters>>>,
@@ -85,9 +89,16 @@ impl Scanner {
 		index_manager: index::Manager,
 		config_manager: config::Manager,
 	) -> Result<Self, Error> {
+		let on_file_change = Arc::new(Notify::new());
+		let file_watcher = Arc::new(RwLock::new(
+			Self::setup_file_watcher(&config_manager, on_file_change.clone()).await?,
+		));
+
 		let scanner = Self {
 			index_manager,
 			config_manager: config_manager.clone(),
+			file_watcher,
+			on_file_change,
 			pending_scan: Arc::new(Notify::new()),
 			status: Arc::new(RwLock::new(Status::default())),
 			parameters: Arc::default(),
@@ -96,23 +107,16 @@ impl Scanner {
 		let abort_scan = Arc::new(Notify::new());
 
 		tokio::spawn({
-			let config_manager = config_manager.clone();
 			let scanner = scanner.clone();
 			let abort_scan = abort_scan.clone();
 			async move {
 				loop {
-					config_manager.on_config_change().await;
-					if *scanner.parameters.read().await == Some(scanner.read_parameters().await) {
-						continue;
-					}
+					scanner.wait_for_change().await;
 					abort_scan.notify_waiters();
 					scanner.status.write().await.state = State::Pending;
-					while tokio::time::timeout(
-						Duration::from_secs(2),
-						config_manager.on_config_change(),
-					)
-					.await
-					.is_ok()
+					while tokio::time::timeout(Duration::from_secs(2), scanner.wait_for_change())
+						.await
+						.is_ok()
 					{}
 					scanner.pending_scan.notify_waiters();
 				}
@@ -139,6 +143,40 @@ impl Scanner {
 		});
 
 		Ok(scanner)
+	}
+
+	async fn setup_file_watcher(
+		config_manager: &config::Manager,
+		on_file_changed: Arc<Notify>,
+	) -> Result<Debouncer<RecommendedWatcher, FileIdMap>, Error> {
+		let mut debouncer =
+			notify_debouncer_full::new_debouncer(Duration::from_millis(100), None, move |_| {
+				on_file_changed.notify_waiters();
+			})?;
+
+		let mount_dirs = config_manager.get_mounts().await;
+		for mount_dir in &mount_dirs {
+			debouncer
+				.watcher()
+				.watch(&mount_dir.source, notify::RecursiveMode::Recursive)?;
+		}
+
+		Ok(debouncer)
+	}
+
+	async fn wait_for_change(&self) {
+		tokio::select! {
+			_ = async {
+				loop {
+					self.config_manager.on_config_change().await;
+					if *self.parameters.read().await == Some(self.read_parameters().await) {
+						continue;
+					}
+					break;
+				}
+			} => {},
+			_ = self.on_file_change.notified() => {},
+		}
 	}
 
 	async fn read_parameters(&self) -> Parameters {
@@ -177,6 +215,8 @@ impl Scanner {
 
 		let new_parameters = self.read_parameters().await;
 		*self.parameters.write().await = Some(new_parameters.clone());
+		*self.file_watcher.write().await =
+			Self::setup_file_watcher(&self.config_manager, self.on_file_change.clone()).await?;
 
 		let (scan_directories_output, collection_directories_input) = channel();
 		let (scan_songs_output, collection_songs_input) = channel();
