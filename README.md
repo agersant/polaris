@@ -19,7 +19,7 @@ Password: `demo_password`
 - Optimized for large music collections
 - Can run on Windows, Linux, BSD, or through Docker
 - Support for `flac`, `mp3`, `mp4`, `mpc`, `ogg`, `opus`, `ape`, `wav` and `aiff` files
-- Easy to setup and administer, no configuration files needed
+- Easy to setup and administer, no configuration files required
 - Dark mode and customizable color themes
 - Listen to your music on the go:
   - Polaris Android ([Google Play Store](https://play.google.com/store/apps/details?id=agersant.polaris) · [F-Droid](https://f-droid.org/packages/agersant.polaris/) · [Repository](https://github.com/agersant/polaris-android))
@@ -33,6 +33,7 @@ Password: `demo_password`
 
 ## Documentation
 
+- [Configuration](docs/CONFIGURATION.md)
 - [Contribute to Polaris](docs/CONTRIBUTING.md)
 - [Maintenance Runbooks](docs/MAINTENANCE.md)
 

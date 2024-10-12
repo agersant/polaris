@@ -28,7 +28,7 @@ pub struct Config {
 	#[serde(default, skip_serializing_if = "Vec::is_empty")]
 	pub mount_dirs: Vec<MountDir>,
 	#[serde(skip_serializing_if = "Option::is_none")]
-	pub ddns_url: Option<String>,
+	pub ddns_update_url: Option<String>,
 	#[serde(default, skip_serializing_if = "Vec::is_empty")]
 	pub users: Vec<User>,
 }

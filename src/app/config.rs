@@ -22,7 +22,7 @@ use super::auth;
 pub struct Config {
 	pub reindex_every_n_seconds: Option<u64>,
 	pub album_art_pattern: Option<Regex>,
-	pub ddns_url: Option<http::Uri>,
+	pub ddns_update_url: Option<http::Uri>,
 	pub mount_dirs: Vec<MountDir>,
 	pub users: Vec<User>,
 }
@@ -43,7 +43,7 @@ impl TryFrom<storage::Config> for Config {
 			None => None,
 		};
 
-		config.ddns_url = match c.ddns_url.map(http::Uri::try_from) {
+		config.ddns_update_url = match c.ddns_update_url.map(http::Uri::try_from) {
 			Some(Ok(u)) => Some(u),
 			Some(Err(_)) => return Err(Error::DDNSUpdateURLInvalid),
 			None => None,
@@ -59,7 +59,7 @@ impl From<Config> for storage::Config {
 			reindex_every_n_seconds: c.reindex_every_n_seconds,
 			album_art_pattern: c.album_art_pattern.map(|p| p.as_str().to_owned()),
 			mount_dirs: c.mount_dirs.into_iter().map(|d| d.into()).collect(),
-			ddns_url: c.ddns_url.map(|u| u.to_string()),
+			ddns_update_url: c.ddns_update_url.map(|u| u.to_string()),
 			users: c.users.into_iter().map(|u| u.into()).collect(),
 		}
 	}
@@ -157,12 +157,12 @@ impl Manager {
 	}
 
 	pub async fn get_ddns_update_url(&self) -> Option<http::Uri> {
-		self.config.read().await.ddns_url.clone()
+		self.config.read().await.ddns_update_url.clone()
 	}
 
 	pub async fn set_ddns_update_url(&self, url: Option<http::Uri>) -> Result<(), Error> {
 		self.mutate(|c| {
-			c.ddns_url = url;
+			c.ddns_update_url = url;
 		})
 		.await
 	}
