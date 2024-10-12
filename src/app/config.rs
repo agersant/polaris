@@ -96,7 +96,25 @@ impl Manager {
 			auth_secret,
 		};
 
+		if !tokio::fs::try_exists(config_file_path)
+			.await
+			.map_err(|e| Error::Io(config_file_path.to_owned(), e))?
+		{
+			manager.save_config().await?;
+		}
+
 		Ok(manager)
+	}
+
+	async fn save_config(&self) -> Result<(), Error> {
+		let serialized = toml::ser::to_string_pretty::<storage::Config>(
+			&self.config.read().await.clone().into(),
+		)
+		.map_err(Error::ConfigSerialization)?;
+		tokio::fs::write(&self.config_file_path, serialized.as_bytes())
+			.await
+			.map_err(|e| Error::Io(self.config_file_path.clone(), e))?;
+		Ok(())
 	}
 
 	#[cfg(test)]
@@ -122,11 +140,7 @@ impl Manager {
 	) -> Result<(), Error> {
 		let mut config = self.config.write().await;
 		op(&mut config)?;
-		let serialized = toml::ser::to_string_pretty::<storage::Config>(&config.clone().into())
-			.map_err(Error::ConfigSerialization)?;
-		tokio::fs::write(&self.config_file_path, serialized.as_bytes())
-			.await
-			.map_err(|e| Error::Io(self.config_file_path.clone(), e))?;
+		self.save_config().await?;
 		Ok(())
 	}
 
