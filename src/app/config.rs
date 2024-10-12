@@ -8,7 +8,7 @@ use log::{error, info};
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use notify_debouncer_full::{Debouncer, FileIdMap};
 use regex::Regex;
-use tokio::sync::{futures::Notified, mpsc::unbounded_channel, Notify, RwLock};
+use tokio::sync::{futures::Notified, Notify, RwLock};
 
 use crate::app::Error;
 
@@ -82,11 +82,13 @@ impl Manager {
 	pub async fn new(config_file_path: &Path, auth_secret: auth::Secret) -> Result<Self, Error> {
 		tokio::fs::File::create_new(config_file_path).await.ok();
 
-		let (sender, mut receiver) = unbounded_channel::<()>();
-		let mut debouncer =
-			notify_debouncer_full::new_debouncer(Duration::from_secs(1), None, move |_| {
-				sender.send(()).ok();
-			})?;
+		let notify = Arc::new(Notify::new());
+		let mut debouncer = notify_debouncer_full::new_debouncer(Duration::from_secs(1), None, {
+			let notify = notify.clone();
+			move |_| {
+				notify.notify_waiters();
+			}
+		})?;
 
 		debouncer
 			.watcher()
@@ -104,15 +106,11 @@ impl Manager {
 			let manager = manager.clone();
 			async move {
 				loop {
-					match receiver.recv().await {
-						None => break,
-						Some(_) => {
-							if let Err(e) = manager.reload_config().await {
-								error!("Configuration error: {e}");
-							} else {
-								info!("Sucessfully applied configuration change");
-							}
-						}
+					notify.notified().await;
+					if let Err(e) = manager.reload_config().await {
+						error!("Configuration error: {e}");
+					} else {
+						info!("Sucessfully applied configuration change");
 					}
 				}
 			}
