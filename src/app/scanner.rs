@@ -491,6 +491,9 @@ fn get_date_created<P: AsRef<Path>>(path: P) -> Option<i64> {
 mod test {
 	use std::path::PathBuf;
 
+	use crate::app::test::{self};
+	use crate::test_name;
+
 	use super::*;
 
 	#[tokio::test]
@@ -561,5 +564,31 @@ mod test {
 				.iter()
 				.any(|s| s.artwork.as_ref() == Some(&artwork_path));
 		}
+	}
+
+	#[tokio::test]
+	async fn scanner_reacts_to_config_changes() {
+		let ctx = test::ContextBuilder::new(test_name!()).build().await;
+
+		assert!(ctx.index_manager.is_index_empty().await);
+
+		ctx.config_manager
+			.set_mounts(vec![config::storage::MountDir {
+				source: ["test-data", "small-collection"].iter().collect(),
+				name: "root".to_owned(),
+			}])
+			.await
+			.unwrap();
+
+		tokio::time::timeout(Duration::from_secs(10), async {
+			loop {
+				tokio::time::sleep(Duration::from_millis(100)).await;
+				if !ctx.index_manager.is_index_empty().await {
+					break;
+				}
+			}
+		})
+		.await
+		.expect("Index did not populate");
 	}
 }
