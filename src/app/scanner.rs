@@ -6,8 +6,10 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::mpsc::{channel, Sender, TryRecvError};
 use std::sync::Arc;
+use std::time::SystemTime;
 use std::{cmp::min, time::Duration};
-use tokio::sync::Notify;
+use tokio::sync::mpsc::unbounded_channel;
+use tokio::sync::{Notify, RwLock};
 use tokio::time::Instant;
 
 use crate::app::{config, formats, index, Error};
@@ -37,11 +39,29 @@ pub struct Song {
 	pub date_added: i64,
 }
 
+#[derive(Clone, Default)]
+pub enum State {
+	#[default]
+	Initial,
+	Pending,
+	InProgress,
+	UpToDate,
+}
+
+#[derive(Clone, Default)]
+pub struct Status {
+	pub state: State,
+	pub last_start_time: Option<SystemTime>,
+	pub last_end_time: Option<SystemTime>,
+	pub num_songs_indexed: u32,
+}
+
 #[derive(Clone)]
 pub struct Scanner {
 	index_manager: index::Manager,
 	config_manager: config::Manager,
 	pending_scan: Arc<Notify>,
+	status: Arc<RwLock<Status>>,
 }
 
 impl Scanner {
@@ -53,6 +73,7 @@ impl Scanner {
 			index_manager,
 			config_manager,
 			pending_scan: Arc::new(Notify::new()),
+			status: Arc::new(RwLock::new(Status::default())),
 		};
 
 		tokio::spawn({
@@ -68,6 +89,10 @@ impl Scanner {
 		});
 
 		Ok(scanner)
+	}
+
+	pub async fn get_status(&self) -> Status {
+		self.status.read().await.clone()
 	}
 
 	pub fn trigger_scan(&self) {
@@ -88,8 +113,14 @@ impl Scanner {
 	}
 
 	pub async fn update(&mut self) -> Result<(), Error> {
-		let start = Instant::now();
 		info!("Beginning collection scan");
+
+		let start = Instant::now();
+		{
+			let mut status = self.status.write().await;
+			status.last_start_time = Some(SystemTime::now());
+			status.state = State::InProgress;
+		}
 
 		let was_empty = self.index_manager.is_index_empty().await;
 		let mut partial_update_time = Instant::now();
@@ -129,13 +160,31 @@ impl Scanner {
 			}
 		});
 
+		let (status_sender, mut status_receiver) = unbounded_channel();
+		let progress_monitor = tokio::task::spawn({
+			let manager = self.clone();
+			async move {
+				loop {
+					match status_receiver.recv().await {
+						Some(n) => {
+							manager.status.write().await.num_songs_indexed = n;
+						}
+						None => break,
+					}
+				}
+			}
+		});
+
 		let index_task = tokio::task::spawn_blocking(move || {
 			let mut index_builder = index::Builder::default();
+			let mut num_songs_scanned = 0;
 
 			loop {
 				let exhausted_songs = match collection_songs_input.try_recv() {
 					Ok(song) => {
 						index_builder.add_song(song);
+						num_songs_scanned += 1;
+						status_sender.send(num_songs_scanned).ok();
 						false
 					}
 					Err(TryRecvError::Empty) => {
@@ -172,9 +221,16 @@ impl Scanner {
 
 		let index = tokio::join!(scan_task, index_task).1?;
 		partial_application_task.abort();
+		progress_monitor.abort();
 
 		self.index_manager.persist_index(&index).await?;
 		self.index_manager.replace_index(index).await;
+
+		{
+			let mut status = self.status.write().await;
+			status.state = State::UpToDate;
+			status.last_end_time = Some(SystemTime::now());
+		}
 
 		info!(
 			"Collection scan took {} seconds",

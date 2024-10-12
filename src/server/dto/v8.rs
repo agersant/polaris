@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-use crate::app::{config, index, peaks, playlist, thumbnail};
-use std::{collections::HashMap, convert::From, path::PathBuf};
+use crate::app::{config, index, peaks, playlist, scanner, thumbnail};
+use std::{collections::HashMap, convert::From, path::PathBuf, time::UNIX_EPOCH};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct Version {
@@ -169,6 +169,49 @@ pub struct Settings {
 	pub album_art_pattern: String,
 	pub reindex_every_n_seconds: u64,
 	pub ddns_update_url: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum IndexState {
+	OutOfDate,
+	InProgress,
+	UpToDate,
+}
+
+impl From<scanner::State> for IndexState {
+	fn from(state: scanner::State) -> Self {
+		match state {
+			scanner::State::Initial => Self::OutOfDate,
+			scanner::State::Pending => Self::OutOfDate,
+			scanner::State::InProgress => Self::InProgress,
+			scanner::State::UpToDate => Self::UpToDate,
+		}
+	}
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct IndexStatus {
+	state: IndexState,
+	last_start_time: Option<u64>,
+	last_end_time: Option<u64>,
+	num_songs_indexed: u32,
+}
+
+impl From<scanner::Status> for IndexStatus {
+	fn from(s: scanner::Status) -> Self {
+		Self {
+			state: s.state.into(),
+			last_start_time: s
+				.last_start_time
+				.and_then(|t| t.duration_since(UNIX_EPOCH).ok())
+				.map(|d| d.as_millis() as u64),
+			last_end_time: s
+				.last_end_time
+				.and_then(|t| t.duration_since(UNIX_EPOCH).ok())
+				.map(|d| d.as_millis() as u64),
+			num_songs_indexed: s.num_songs_indexed,
+		}
+	}
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]

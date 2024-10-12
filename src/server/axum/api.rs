@@ -34,6 +34,7 @@ pub fn router() -> Router<App> {
 		.route("/mount_dirs", get(get_mount_dirs))
 		.route("/mount_dirs", put(put_mount_dirs))
 		.route("/trigger_index", post(post_trigger_index))
+		.route("/index_status", get(get_index_status))
 		// User management
 		.route("/user", post(post_user))
 		.route("/user/:name", delete(delete_user))
@@ -253,6 +254,13 @@ async fn post_trigger_index(
 ) -> Result<(), APIError> {
 	scanner.trigger_scan();
 	Ok(())
+}
+
+async fn get_index_status(
+	_admin_rights: AdminRights,
+	State(scanner): State<scanner::Scanner>,
+) -> Result<Json<dto::IndexStatus>, APIError> {
+	Ok(Json(scanner.get_status().await.into()))
 }
 
 fn index_files_to_response(files: Vec<index::File>, api_version: APIMajorVersion) -> Response {
