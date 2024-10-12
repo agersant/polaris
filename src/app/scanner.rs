@@ -208,6 +208,7 @@ impl Scanner {
 			let mut status = self.status.write().await;
 			status.last_start_time = Some(SystemTime::now());
 			status.state = State::InProgress;
+			status.num_songs_indexed = 0;
 		}
 
 		let was_empty = self.index_manager.is_index_empty().await;
