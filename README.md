@@ -26,13 +26,14 @@ Password: `demo_password`
   - Polarios ([App Store](https://apps.apple.com/app/polarios/id1662366309) · [Repository](https://gitlab.com/elise/Polarios))
 - [Last.fm](https://www.last.fm) scrobbling
 
-## Tutorials
+## Setup Guide
 
-- [Getting Started](docs/SETUP.md)
+- [Installation](docs/SETUP.md)
 - [Streaming From Remote Devices](docs/DDNS.md)
 
 ## Documentation
 
+- [Changelog](CHANGELOG.md)
 - [Configuration](docs/CONFIGURATION.md)
 - [Contribute to Polaris](docs/CONTRIBUTING.md)
 - [Maintenance Runbooks](docs/MAINTENANCE.md)
