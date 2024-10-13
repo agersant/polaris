@@ -160,14 +160,12 @@ impl From<config::MountDir> for MountDir {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NewSettings {
 	pub album_art_pattern: Option<String>,
-	pub reindex_every_n_seconds: Option<i64>,
 	pub ddns_update_url: Option<String>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Settings {
 	pub album_art_pattern: String,
-	pub reindex_every_n_seconds: u64,
 	pub ddns_update_url: String,
 }
 

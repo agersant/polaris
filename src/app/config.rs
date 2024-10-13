@@ -23,7 +23,6 @@ use super::auth;
 
 #[derive(Debug, Clone, Default)]
 pub struct Config {
-	pub reindex_every_n_seconds: Option<u64>,
 	pub album_art_pattern: Option<Regex>,
 	pub ddns_update_url: Option<http::Uri>,
 	pub mount_dirs: Vec<MountDir>,
@@ -37,8 +36,6 @@ impl TryFrom<storage::Config> for Config {
 		let mut config = Config::default();
 		config.set_mounts(c.mount_dirs)?;
 		config.set_users(c.users)?;
-
-		config.reindex_every_n_seconds = c.reindex_every_n_seconds;
 
 		config.album_art_pattern = match c.album_art_pattern.as_deref().map(Regex::new) {
 			Some(Ok(u)) => Some(u),
@@ -59,7 +56,6 @@ impl TryFrom<storage::Config> for Config {
 impl From<Config> for storage::Config {
 	fn from(c: Config) -> Self {
 		Self {
-			reindex_every_n_seconds: c.reindex_every_n_seconds,
 			album_art_pattern: c.album_art_pattern.map(|p| p.as_str().to_owned()),
 			mount_dirs: c.mount_dirs.into_iter().map(|d| d.into()).collect(),
 			ddns_update_url: c.ddns_update_url.map(|u| u.to_string()),
@@ -174,19 +170,6 @@ impl Manager {
 		self.change_notify.notify_waiters();
 		self.save_config().await?;
 		Ok(())
-	}
-
-	pub async fn get_index_sleep_duration(&self) -> Duration {
-		let config = self.config.read().await;
-		let seconds = config.reindex_every_n_seconds.unwrap_or(1800);
-		Duration::from_secs(seconds)
-	}
-
-	pub async fn set_index_sleep_duration(&self, duration: Duration) -> Result<(), Error> {
-		self.mutate(|c| {
-			c.reindex_every_n_seconds = Some(duration.as_secs());
-		})
-		.await
 	}
 
 	pub async fn get_index_album_art_pattern(&self) -> Regex {
@@ -306,7 +289,6 @@ mod test {
 			.unwrap();
 		let config: storage::Config = manager.config.read().await.clone().into();
 
-		assert_eq!(config.reindex_every_n_seconds, None);
 		assert_eq!(
 			config.album_art_pattern,
 			Some(r#"^Folder\.(png|jpg|jpeg)$"#.to_owned())

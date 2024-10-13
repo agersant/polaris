@@ -1,4 +1,4 @@
-use std::{path::PathBuf, time::Duration};
+use std::path::PathBuf;
 
 use axum::{
 	extract::{DefaultBodyLimit, Path, Query, State},
@@ -108,7 +108,6 @@ async fn get_settings(
 			.await
 			.as_str()
 			.to_owned(),
-		reindex_every_n_seconds: config_manager.get_index_sleep_duration().await.as_secs(),
 		ddns_update_url: config_manager
 			.get_ddns_update_url()
 			.await
@@ -130,12 +129,6 @@ async fn put_settings(
 			return Err(APIError::InvalidAlbumArtPattern);
 		};
 		config_manager.set_index_album_art_pattern(regex).await?;
-	}
-
-	if let Some(seconds) = new_settings.reindex_every_n_seconds {
-		config_manager
-			.set_index_sleep_duration(Duration::from_secs(seconds as u64))
-			.await?;
 	}
 
 	if let Some(url_string) = new_settings.ddns_update_url {

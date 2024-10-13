@@ -22,8 +22,6 @@ pub struct MountDir {
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Config {
 	#[serde(skip_serializing_if = "Option::is_none")]
-	pub reindex_every_n_seconds: Option<u64>,
-	#[serde(skip_serializing_if = "Option::is_none")]
 	pub album_art_pattern: Option<String>,
 	#[serde(default, skip_serializing_if = "Vec::is_empty")]
 	pub mount_dirs: Vec<MountDir>,

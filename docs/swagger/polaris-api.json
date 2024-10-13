@@ -339,61 +339,6 @@
                 ]
             }
         },
-        "/preferences": {
-            "get": {
-                "tags": [
-                    "Users"
-                ],
-                "summary": "Reads the preferences of the current user",
-                "operationId": "getPreferences",
-                "responses": {
-                    "200": {
-                        "description": "Successful operation",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#components/schemas/Preferences"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "auth_http_bearer": [],
-                        "auth_query_parameter": []
-                    }
-                ]
-            },
-            "put": {
-                "tags": [
-                    "Users"
-                ],
-                "summary": "Saves the preferences of the current user",
-                "operationId": "putPreferences",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#components/schemas/Preferences"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful operation"
-                    }
-                },
-                "security": [
-                    {
-                        "auth_http_bearer": [],
-                        "auth_query_parameter": []
-                    }
-                ]
-            }
-        },
         "/auth": {
             "post": {
                 "tags": [
@@ -967,10 +912,6 @@
                         "type": "string",
                         "example": "^Folder.(png|jpg|jpeg)$"
                     },
-                    "reindex_every_n_seconds": {
-                        "type": "integer",
-                        "example": 3600
-                    },
                     "ydns": {
                         "type": "object",
                         "properties": {
@@ -1051,17 +992,6 @@
                     "source",
                     "name"
                 ]
-            },
-            "Preferences": {
-                "type": "object",
-                "properties": {
-                    "web_theme_base": {
-                        "type": "string"
-                    },
-                    "web_theme_accent": {
-                        "type": "string"
-                    }
-                }
             },
             "Credentials": {
                 "type": "object",
