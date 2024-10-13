@@ -211,9 +211,6 @@ impl Scanner {
 
 		let new_parameters = self.read_parameters().await;
 		*self.parameters.write().await = Some(new_parameters.clone());
-		*self.file_watcher.write().await = Some(
-			Self::setup_file_watcher(&self.config_manager, self.on_file_change.clone()).await?,
-		);
 
 		let (scan_directories_output, collection_directories_input) = channel();
 		let (scan_songs_output, collection_songs_input) = channel();
@@ -221,9 +218,24 @@ impl Scanner {
 
 		let mut scan_task_set = JoinSet::new();
 		let mut index_task_set = JoinSet::new();
+		let mut watch_task_set = JoinSet::<Result<(), Error>>::new();
 		let mut secondary_task_set = JoinSet::new();
 
 		scan_task_set.spawn_blocking(|| scan.run());
+
+		watch_task_set.spawn({
+			let scanner = self.clone();
+			let config_manager = self.config_manager.clone();
+			async move {
+				let mut watcher = scanner.file_watcher.write().await;
+				*watcher = None; // Drops previous watcher
+				*watcher = Some(
+					Self::setup_file_watcher(&config_manager, scanner.on_file_change.clone())
+						.await?,
+				);
+				Ok(())
+			}
+		});
 
 		let partial_index_notify = Arc::new(tokio::sync::Notify::new());
 		let partial_index_mutex = Arc::new(tokio::sync::Mutex::new(index::Builder::default()));
@@ -305,6 +317,7 @@ impl Scanner {
 		});
 
 		scan_task_set.join_next().await.unwrap()??;
+		watch_task_set.join_next().await.unwrap()??;
 		let index = index_task_set.join_next().await.unwrap()?;
 		secondary_task_set.abort_all();
 
