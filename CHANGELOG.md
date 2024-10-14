@@ -4,26 +4,20 @@
 
 ### Server
 
-- API version is now 8.0
-- Clients are now expected to send their preferred API major version in a `Accept-Version` header. Omitting this currently defaults to `7`, but will become an error in future Polaris releases. Support for API version 7 will be removed in a future release.
-- Most API responses now support gzip compression.
-- Added support for multi-value metadata for the following fields: `artist`, `album artist`, `composer`, `genre`, `label` and `lyricist`.
-- The response format of the `/browse`, `/flatten` and `/get_playlist` endpoints has been modified.
-- Added new endpoints to query albums and artists.
-- The `/random` and `/recent` albums are deprecated in favor of `/albums/random` and `/albums/recent`. These endpoints now have optional parameters for RNG seeding and pagination.
-- The `/search/<query>` endpoint now requires a non-empty query (`/search/` now returns HTTP status code 404, regardless of API version).
-- The response format of the `/search/<query>` endpoint has changed.
-- Added a new `/get_songs` endpoint which returns song metadata in bulk.
-- Added a new `/peaks` endpoint which returns audio signal peaks that can be used to draw waveform visualizations.
-- The `/thumbnail` endpoint supports a new size labeled `tiny` which returns 40x40px images.
+- Added support for browsing the music collection by metadata (by artist, by genre, etc.).
+- Added support for multi-value metadata for the following song fields: `artist`, `album artist`, `composer`, `genre`, `label` and `lyricist`.
+- Added support for structured search query syntax.
+- Added capability to extract audio waveform data.
+- Configuration data (user credentials, music directories, etc.) is now stored in a plain-text file ([documentation](docs/CONFIGURATION.md)).
 - Persistent data, such as playlists, is now saved in a directory that may be configured with the `--data` CLI option or the `POLARIS_DATA_DIR` environment variable.
+- Collection scans are now automatically triggered when configuration changes or files are added/removed.
+- Dynamic DNS now works with any provider that supports updates over HTTP, not just YDNS.
 - Removed last.fm integration due to maintenance concerns (abandoned libraries, broken account linking) and mismatch with project goals.
-- Removed the `/config` and `/preferences` API endpoints.
-- Removed the `/ddns` API endpoints, merged into the existing `/settings` endpoints.
+- Removed periodic collection scans.
 
 ### Web client
 
-- Overhauled visual style of every page.
+- Every page has been updated to a new visual style.
 - The file browser is now displayed as an interactive tree on a single page.
 - The file browser now supports common navigation keyboard shortcuts.
 - The file browser now supports jumping to a visible file or folder by typing the start of its name.
@@ -37,6 +31,26 @@
 - The current playlist now supports common navigation keyboard shortcuts.
 - The seekbar for the current song being played has been replaced with a waveform visualization.
 - Improved responsiveness when queuing large amount of songs at once.
+- The `Settings > Collection` page now shows the current status of collection scanning.
+- Theme preferences have been reset (😟) are now stored client-side.
+- Accent color is now configured as a saturation multiplier and base hue, to generate a full color ramp.
+
+### API
+
+- API version is now 8.0.
+- Clients are now expected to send their preferred API major version in a `Accept-Version` header. Omitting this currently defaults to `7`, but will become an error in future Polaris releases. Support for API version 7 will be removed entirely in a future release.
+- Most API responses now support gzip compression.
+- The response format of the `/browse`, `/flatten`, `/get_playlist`, `/search/<query>` endpoints has been modified to accomodate large lists.
+- Added new endpoints to query albums and artists.
+- The `/random` and `/recent` albums are deprecated in favor of `/albums/random` and `/albums/recent`. These endpoints now have optional parameters for RNG seeding and pagination.
+- The `/search/<query>` endpoint now requires a non-empty query (`/search/` now returns HTTP status code 404, regardless of API version).
+- The `/search/<query>` endpoint now supports per-field queries and boolean combinators.
+- The `/thumbnail` endpoint supports a new size labeled `tiny`, which returns 40x40px images.
+- Added a new `/get_songs` endpoint which returns song metadata in bulk.
+- Added a new `/peaks` endpoint which returns audio signal peaks that can be used to draw waveform visualizations.
+- Added a new `/index_status` endpoint which returns the status of music collection scans.
+- Removed the `/config` and `/preferences` API endpoints.
+- Removed the `/ddns` API endpoints, merged into the existing `/settings` endpoints.
 
 ## Polaris 0.14.3
 
