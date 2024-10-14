@@ -24,16 +24,17 @@
 - The file browser now omits the top-level directory when only one music folder has been configured.
 - The current playlist now has two display modes: compact or with album art.
 - Songs in the current playlist can now be selected and re-ordered with the mouse.
+- Added new pages to browse the music collection by genre.
 - Added new pages to browse the music collection by artist.
 - Added a new page to browse the music collection by album.
 - The Recently Added Albums and Random Albums pages now distinguish albums by file metadata instead of file path.
-- When navigating back to the Random Albums page, the shuffled order is now preserved.
+- When navigating back to the Random Albums page, the shuffle ordering is now preserved.
 - The current playlist now supports common navigation keyboard shortcuts.
 - The seekbar for the current song being played has been replaced with a waveform visualization.
-- Improved responsiveness when queuing large amount of songs at once.
+- Improved responsiveness when queuing large amounts of songs at once.
 - The `Settings > Collection` page now shows the current status of collection scanning.
-- Theme preferences have been reset (😟) are now stored client-side.
-- Accent color is now configured as a saturation multiplier and base hue, to generate a full color ramp.
+- Theme preferences have been reset and are now stored client-side.
+- Accent color is now configured as a saturation multiplier and base hue, which are used to generate a full color ramp.
 
 ### API
 
