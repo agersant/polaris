@@ -1,7 +1,7 @@
 use chumsky::Parser;
 use enum_map::EnumMap;
 use lasso2::Spur;
-use nohash_hasher::{IntMap, IntSet};
+use nohash_hasher::IntSet;
 use serde::{Deserialize, Serialize};
 use std::{
 	cmp::Ordering,
@@ -97,9 +97,9 @@ impl Search {
 		f: &Box<Expr>,
 	) -> IntSet<SongKey> {
 		let is_operable = |expr: &Expr| match expr {
-			Expr::Fuzzy(Literal::Text(s)) if s.chars().count() < NGRAM_SIZE => false,
+			Expr::Fuzzy(Literal::Text(s)) if s.chars().count() < BIGRAM_SIZE => false,
 			Expr::Fuzzy(Literal::Number(n)) if *n < 10 => false,
-			Expr::TextCmp(_, _, s) if s.chars().count() < NGRAM_SIZE => false,
+			Expr::TextCmp(_, _, s) if s.chars().count() < BIGRAM_SIZE => false,
 			_ => true,
 		};
 
@@ -162,55 +162,76 @@ impl Search {
 	}
 }
 
-const NGRAM_SIZE: usize = 2;
+const BIGRAM_SIZE: usize = 2;
+const ASCII_RANGE: usize = u8::MAX as usize;
 
-#[derive(Clone, Default, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize)]
 struct TextFieldIndex {
 	exact: HashMap<Spur, IntSet<SongKey>>,
-	ngrams: HashMap<[char; NGRAM_SIZE], IntMap<SongKey, Spur>>,
+	ascii_bigrams: Vec<Vec<(SongKey, Spur)>>,
+	other_bigrams: HashMap<[char; BIGRAM_SIZE], Vec<(SongKey, Spur)>>,
+}
+
+impl Default for TextFieldIndex {
+	fn default() -> Self {
+		Self {
+			exact: Default::default(),
+			ascii_bigrams: vec![Default::default(); ASCII_RANGE * ASCII_RANGE],
+			other_bigrams: Default::default(),
+		}
+	}
 }
 
 impl TextFieldIndex {
-	pub fn insert(&mut self, raw_value: &str, value: Spur, key: SongKey) {
+	fn ascii_bigram_to_index(a: char, b: char) -> usize {
+		assert!(a.is_ascii());
+		assert!(b.is_ascii());
+		(a as usize) * ASCII_RANGE + (b as usize) as usize
+	}
+
+	pub fn insert(&mut self, raw_value: &str, value: Spur, song: SongKey) {
 		let characters = sanitize(raw_value).chars().collect::<TinyVec<[char; 32]>>();
-		for substring in characters[..].windows(NGRAM_SIZE) {
-			self.ngrams
-				.entry(substring.try_into().unwrap())
-				.or_default()
-				.insert(key, value);
+		for substring in characters[..].windows(BIGRAM_SIZE) {
+			if substring.iter().all(|c| c.is_ascii()) {
+				let index = Self::ascii_bigram_to_index(substring[0], substring[1]);
+				self.ascii_bigrams[index].push((song, value));
+			} else {
+				self.other_bigrams
+					.entry(substring.try_into().unwrap())
+					.or_default()
+					.push((song, value));
+			}
 		}
 
-		self.exact.entry(value).or_default().insert(key);
+		self.exact.entry(value).or_default().insert(song);
 	}
 
 	pub fn find_like(&self, dictionary: &Dictionary, value: &str) -> IntSet<SongKey> {
 		let sanitized = sanitize(value);
 		let characters = sanitized.chars().collect::<Vec<_>>();
-		let empty = IntMap::default();
+		let empty = Vec::new();
 
-		let mut candidates = characters[..]
-			.windows(NGRAM_SIZE)
+		let candidates_by_bigram = characters[..]
+			.windows(BIGRAM_SIZE)
 			.map(|s| {
-				self.ngrams
-					.get::<[char; NGRAM_SIZE]>(s.try_into().unwrap())
-					.unwrap_or(&empty)
+				if s.iter().all(|c| c.is_ascii()) {
+					let index = Self::ascii_bigram_to_index(s[0], s[1]);
+					&self.ascii_bigrams[index]
+				} else {
+					self.other_bigrams
+						.get::<[char; BIGRAM_SIZE]>(s.try_into().unwrap())
+						.unwrap_or(&empty)
+				}
 			})
 			.collect::<Vec<_>>();
 
-		if candidates.is_empty() {
-			return IntSet::default();
-		}
-
-		candidates.sort_by_key(|h| h.len());
-
-		candidates[0]
+		candidates_by_bigram
+			.into_iter()
+			.min_by_key(|h| h.len()) // Only check songs that contain the least common bigram from the search term
+			.unwrap_or(&empty)
 			.iter()
-			// [broad phase] Only keep songs that match all bigrams from the search term
-			.filter(move |(song_key, _indexed_value)| {
-				candidates[1..].iter().all(|c| c.contains_key(&song_key))
-			})
-			// [narrow phase] Only keep songs that actually contain the search term in full
 			.filter(|(_song_key, indexed_value)| {
+				// Only keep songs that actually contain the search term in full
 				let resolved = dictionary.resolve(indexed_value);
 				sanitize(resolved).contains(&sanitized)
 			})
