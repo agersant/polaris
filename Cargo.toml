@@ -9,7 +9,7 @@ build = "build.rs"
 ui = ["native-windows-gui", "native-windows-derive"]
 
 [profile.release]
-lto = true
+lto = "thin"
 
 [dependencies]
 ape = "0.5"
