@@ -1,5 +1,6 @@
 use std::{
 	borrow::BorrowMut,
+	cmp::Ordering,
 	collections::{HashMap, HashSet},
 	path::PathBuf,
 };
@@ -12,7 +13,7 @@ use unicase::UniCase;
 use crate::app::index::dictionary::Dictionary;
 use crate::app::index::storage::{self, AlbumKey, ArtistKey, GenreKey, SongKey};
 
-use super::storage::fetch_song;
+use super::{dictionary, storage::fetch_song};
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct GenreHeader {
@@ -96,7 +97,8 @@ impl Collection {
 			.values()
 			.map(|a| make_album_header(a, dictionary))
 			.collect::<Vec<_>>();
-		albums.sort_by(|a, b| a.name.cmp(&b.name));
+		let collator = dictionary::make_collator();
+		albums.sort_by(|a, b| collator.compare(&a.name, &b.name));
 		albums
 	}
 
@@ -108,8 +110,8 @@ impl Collection {
 			.filter(|a| !exceptions.contains(&Some(a.name)))
 			.map(|a| make_artist_header(a, dictionary))
 			.collect::<Vec<_>>();
-		// TODO collator sort
-		artists.sort_by(|a, b| a.name.cmp(&b.name));
+		let collator = dictionary::make_collator();
+		artists.sort_by(|a, b| collator.compare(&a.name, &b.name));
 		artists
 	}
 
@@ -122,9 +124,9 @@ impl Collection {
 					.iter()
 					.filter_map(|key| self.get_album(dictionary, key.clone()))
 					.collect::<Vec<_>>();
-				// TODO collator sort
-				albums.sort_by(|a, b| {
-					(&a.header.year, &a.header.name).cmp(&(&b.header.year, &b.header.name))
+				albums.sort_by(|a, b| match a.header.year.cmp(&b.header.year) {
+					Ordering::Equal => a.header.name.cmp(&b.header.name),
+					o => o,
 				});
 				albums
 			};
@@ -201,12 +203,15 @@ impl Collection {
 			.values()
 			.map(|a| make_genre_header(a, dictionary))
 			.collect::<Vec<_>>();
-		genres.sort_by(|a, b| a.name.cmp(&b.name));
+		let collator = dictionary::make_collator();
+		genres.sort_by(|a, b| collator.compare(&a.name, &b.name));
 		genres
 	}
 
 	pub fn get_genre(&self, dictionary: &Dictionary, genre_key: GenreKey) -> Option<Genre> {
 		self.genres.get(&genre_key).map(|genre| {
+			let collator = dictionary::make_collator();
+
 			let mut albums = genre
 				.albums
 				.iter()
@@ -216,7 +221,7 @@ impl Collection {
 						.map(|a| make_album_header(a, dictionary))
 				})
 				.collect::<Vec<_>>();
-			albums.sort_by(|a, b| a.name.cmp(&b.name));
+			albums.sort_by(|a, b| collator.compare(&a.name, &b.name));
 
 			let mut artists = genre
 				.artists
@@ -227,7 +232,7 @@ impl Collection {
 						.map(|a| make_artist_header(a, dictionary))
 				})
 				.collect::<Vec<_>>();
-			artists.sort_by(|a, b| a.name.cmp(&b.name));
+			artists.sort_by(|a, b| collator.compare(&a.name, &b.name));
 
 			let songs = genre
 				.songs
@@ -282,7 +287,6 @@ fn make_album_header(album: &storage::Album, dictionary: &Dictionary) -> AlbumHe
 }
 
 fn make_artist_header(artist: &storage::Artist, dictionary: &Dictionary) -> ArtistHeader {
-	// TODO drop unicase
 	ArtistHeader {
 		name: UniCase::new(dictionary.resolve(&artist.name).to_owned()),
 		num_albums_as_performer: artist.albums_as_performer.len() as u32,
@@ -1020,6 +1024,13 @@ mod test {
 				..Default::default()
 			},
 			scanner::Song {
+				virtual_path: PathBuf::from("Arv.mp3"),
+				title: Some("Arv".to_owned()),
+				artists: vec!["Ásmegin".to_owned()],
+				genres: vec!["Metal".to_owned()],
+				..Default::default()
+			},
+			scanner::Song {
 				virtual_path: PathBuf::from("Calcium.mp3"),
 				title: Some("Calcium".to_owned()),
 				genres: vec!["Electronic".to_owned()],
@@ -1032,8 +1043,9 @@ mod test {
 			.unwrap();
 
 		assert_eq!(genre.header.name, "Metal".to_owned());
-		assert_eq!(genre.artists[0].name, UniCase::new("Dragonforce"));
-		assert_eq!(genre.artists[1].name, UniCase::new("Stratovarius"));
+		assert_eq!(genre.artists[0].name, UniCase::new("Ásmegin"));
+		assert_eq!(genre.artists[1].name, UniCase::new("Dragonforce"));
+		assert_eq!(genre.artists[2].name, UniCase::new("Stratovarius"));
 		assert_eq!(
 			genre.related_genres,
 			HashMap::from_iter([("Power Metal".to_owned(), 1)])
