@@ -1,10 +1,8 @@
 use std::{
-	collections::HashMap,
 	path::{Path, PathBuf},
 	sync::{Arc, RwLock},
 };
 
-use lasso2::{Rodeo, RodeoReader, Spur};
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use tokio::task::spawn_blocking;
@@ -13,6 +11,7 @@ use crate::app::{scanner, Error};
 
 mod browser;
 mod collection;
+mod dictionary;
 mod query;
 mod search;
 mod storage;
@@ -108,7 +107,7 @@ impl Manager {
 			let index_manager = self.clone();
 			move || {
 				let index = index_manager.index.read().unwrap();
-				index.browser.browse(&index.strings, virtual_path)
+				index.browser.browse(&index.dictionary, virtual_path)
 			}
 		})
 		.await
@@ -120,7 +119,7 @@ impl Manager {
 			let index_manager = self.clone();
 			move || {
 				let index = index_manager.index.read().unwrap();
-				index.browser.flatten(&index.strings, virtual_path)
+				index.browser.flatten(&index.dictionary, virtual_path)
 			}
 		})
 		.await
@@ -132,7 +131,7 @@ impl Manager {
 			let index_manager = self.clone();
 			move || {
 				let index = index_manager.index.read().unwrap();
-				index.collection.get_genres(&index.strings)
+				index.collection.get_genres(&index.dictionary)
 			}
 		})
 		.await
@@ -145,13 +144,13 @@ impl Manager {
 			move || {
 				let index = index_manager.index.read().unwrap();
 				let name = index
-					.strings
+					.dictionary
 					.get(&name)
 					.ok_or_else(|| Error::GenreNotFound)?;
 				let genre_key = GenreKey(name);
 				index
 					.collection
-					.get_genre(&index.strings, genre_key)
+					.get_genre(&index.dictionary, genre_key)
 					.ok_or_else(|| Error::GenreNotFound)
 			}
 		})
@@ -164,7 +163,7 @@ impl Manager {
 			let index_manager = self.clone();
 			move || {
 				let index = index_manager.index.read().unwrap();
-				index.collection.get_albums(&index.strings)
+				index.collection.get_albums(&index.dictionary)
 			}
 		})
 		.await
@@ -176,7 +175,7 @@ impl Manager {
 			let index_manager = self.clone();
 			move || {
 				let index = index_manager.index.read().unwrap();
-				index.collection.get_artists(&index.strings)
+				index.collection.get_artists(&index.dictionary)
 			}
 		})
 		.await
@@ -189,13 +188,13 @@ impl Manager {
 			move || {
 				let index = index_manager.index.read().unwrap();
 				let name = index
-					.strings
+					.dictionary
 					.get(name)
 					.ok_or_else(|| Error::ArtistNotFound)?;
 				let artist_key = ArtistKey(name);
 				index
 					.collection
-					.get_artist(&index.strings, artist_key)
+					.get_artist(&index.dictionary, artist_key)
 					.ok_or_else(|| Error::ArtistNotFound)
 			}
 		})
@@ -209,20 +208,20 @@ impl Manager {
 			move || {
 				let index = index_manager.index.read().unwrap();
 				let name = index
-					.strings
+					.dictionary
 					.get(&name)
 					.ok_or_else(|| Error::AlbumNotFound)?;
 				let album_key = AlbumKey {
 					artists: artists
 						.into_iter()
-						.filter_map(|a| index.strings.get(a))
+						.filter_map(|a| index.dictionary.get(a))
 						.map(|k| ArtistKey(k))
 						.collect(),
 					name,
 				};
 				index
 					.collection
-					.get_album(&index.strings, album_key)
+					.get_album(&index.dictionary, album_key)
 					.ok_or_else(|| Error::AlbumNotFound)
 			}
 		})
@@ -242,7 +241,7 @@ impl Manager {
 				let index = index_manager.index.read().unwrap();
 				Ok(index
 					.collection
-					.get_random_albums(&index.strings, seed, offset, count))
+					.get_random_albums(&index.dictionary, seed, offset, count))
 			}
 		})
 		.await
@@ -260,7 +259,7 @@ impl Manager {
 				let index = index_manager.index.read().unwrap();
 				Ok(index
 					.collection
-					.get_recent_albums(&index.strings, offset, count))
+					.get_recent_albums(&index.dictionary, offset, count))
 			}
 		})
 		.await
@@ -275,10 +274,10 @@ impl Manager {
 				virtual_paths
 					.into_iter()
 					.map(|p| {
-						p.get(&index.strings)
+						p.get(&index.dictionary)
 							.and_then(|virtual_path| {
 								let key = SongKey { virtual_path };
-								index.collection.get_song(&index.strings, key)
+								index.collection.get_song(&index.dictionary, key)
 							})
 							.ok_or_else(|| Error::SongNotFound)
 					})
@@ -296,7 +295,7 @@ impl Manager {
 				let index = index_manager.index.read().unwrap();
 				index
 					.search
-					.find_songs(&index.collection, &index.strings, &index.canon, &query)
+					.find_songs(&index.collection, &index.dictionary, &query)
 			}
 		})
 		.await
@@ -306,8 +305,7 @@ impl Manager {
 
 #[derive(Serialize, Deserialize)]
 pub struct Index {
-	pub strings: RodeoReader,
-	pub canon: HashMap<String, Spur>,
+	pub dictionary: dictionary::Dictionary,
 	pub browser: browser::Browser,
 	pub collection: collection::Collection,
 	pub search: search::Search,
@@ -316,8 +314,7 @@ pub struct Index {
 impl Default for Index {
 	fn default() -> Self {
 		Self {
-			strings: Rodeo::new().into_reader(),
-			canon: Default::default(),
+			dictionary: Default::default(),
 			browser: Default::default(),
 			collection: Default::default(),
 			search: Default::default(),
@@ -327,8 +324,7 @@ impl Default for Index {
 
 #[derive(Clone)]
 pub struct Builder {
-	strings: Rodeo,
-	canon: HashMap<String, Spur>,
+	dictionary_builder: dictionary::Builder,
 	browser_builder: browser::Builder,
 	collection_builder: collection::Builder,
 	search_builder: search::Builder,
@@ -337,8 +333,7 @@ pub struct Builder {
 impl Builder {
 	pub fn new() -> Self {
 		Self {
-			strings: Rodeo::new(),
-			canon: HashMap::default(),
+			dictionary_builder: dictionary::Builder::default(),
 			browser_builder: browser::Builder::default(),
 			collection_builder: collection::Builder::default(),
 			search_builder: search::Builder::default(),
@@ -347,13 +342,13 @@ impl Builder {
 
 	pub fn add_directory(&mut self, directory: scanner::Directory) {
 		self.browser_builder
-			.add_directory(&mut self.strings, directory);
+			.add_directory(&mut self.dictionary_builder, directory);
 	}
 
 	pub fn add_song(&mut self, scanner_song: scanner::Song) {
-		if let Some(storage_song) = store_song(&mut self.strings, &mut self.canon, &scanner_song) {
+		if let Some(storage_song) = store_song(&mut self.dictionary_builder, &scanner_song) {
 			self.browser_builder
-				.add_song(&mut self.strings, &scanner_song);
+				.add_song(&mut self.dictionary_builder, &scanner_song);
 			self.collection_builder.add_song(&storage_song);
 			self.search_builder.add_song(&scanner_song, &storage_song);
 		}
@@ -361,11 +356,10 @@ impl Builder {
 
 	pub fn build(self) -> Index {
 		Index {
+			dictionary: self.dictionary_builder.build(),
 			browser: self.browser_builder.build(),
 			collection: self.collection_builder.build(),
 			search: self.search_builder.build(),
-			strings: self.strings.into_reader(),
-			canon: self.canon,
 		}
 	}
 }

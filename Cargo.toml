@@ -22,6 +22,7 @@ enum-map = { version = "2.7.3", features = ["serde"] }
 getopts = "0.2.21"
 headers = "0.4"
 http = "1.1.0"
+icu_collator = "1.5.0"
 id3 = "1.14.0"
 lasso2 = { version = "0.8.2", features = ["serialize"] }
 lewton = "0.10.2"

@@ -3,12 +3,14 @@ use std::{
 	path::{Path, PathBuf},
 };
 
-use lasso2::{Rodeo, RodeoReader, Spur};
+use lasso2::Spur;
 use log::error;
 use serde::{Deserialize, Serialize};
 use tinyvec::TinyVec;
 
 use crate::app::scanner;
+
+use crate::app::index::dictionary::{self, Dictionary};
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum File {
@@ -111,49 +113,27 @@ impl Song {
 	}
 }
 
-pub fn sanitize(s: &str) -> String {
-	// TODO merge inconsistent diacritic usage
-	let mut cleaned = s.to_owned();
-	cleaned.retain(|c| match c {
-		' ' | '_' | '-' | '\'' => false,
-		_ => true,
-	});
-	cleaned.to_lowercase()
-}
-
 pub fn store_song(
-	strings: &mut Rodeo,
-	canon: &mut HashMap<String, Spur>,
+	dictionary_builder: &mut dictionary::Builder,
 	song: &scanner::Song,
 ) -> Option<Song> {
-	let Some(real_path) = (&song.real_path).get_or_intern(strings) else {
+	let Some(real_path) = (&song.real_path).get_or_intern(dictionary_builder) else {
 		return None;
 	};
 
-	let Some(virtual_path) = (&song.virtual_path).get_or_intern(strings) else {
+	let Some(virtual_path) = (&song.virtual_path).get_or_intern(dictionary_builder) else {
 		return None;
 	};
 
 	let artwork = match &song.artwork {
-		Some(a) => match a.get_or_intern(strings) {
+		Some(a) => match a.get_or_intern(dictionary_builder) {
 			Some(a) => Some(a),
 			None => return None,
 		},
 		None => None,
 	};
 
-	let mut canonicalize = |s: &String| {
-		let cleaned = sanitize(s);
-		match cleaned.is_empty() {
-			true => None,
-			false => Some(
-				canon
-					.entry(cleaned)
-					.or_insert_with(|| strings.get_or_intern(s))
-					.to_owned(),
-			),
-		}
-	};
+	let mut canonicalize = |s: &String| dictionary_builder.get_or_intern_canon(s);
 
 	Some(Song {
 		real_path,
@@ -195,63 +175,65 @@ pub fn store_song(
 	})
 }
 
-pub fn fetch_song(strings: &RodeoReader, song: &Song) -> super::Song {
+pub fn fetch_song(dictionary: &Dictionary, song: &Song) -> super::Song {
 	super::Song {
-		real_path: PathBuf::from(strings.resolve(&song.real_path.0)),
-		virtual_path: PathBuf::from(strings.resolve(&song.virtual_path.0)),
+		real_path: PathBuf::from(dictionary.resolve(&song.real_path.0)),
+		virtual_path: PathBuf::from(dictionary.resolve(&song.virtual_path.0)),
 		track_number: song.track_number,
 		disc_number: song.disc_number,
-		title: song.title.map(|s| strings.resolve(&s).to_string()),
+		title: song.title.map(|s| dictionary.resolve(&s).to_string()),
 		artists: song
 			.artists
 			.iter()
-			.map(|k| strings.resolve(&k.0).to_string())
+			.map(|k| dictionary.resolve(&k.0).to_string())
 			.collect(),
 		album_artists: song
 			.album_artists
 			.iter()
-			.map(|k| strings.resolve(&k.0).to_string())
+			.map(|k| dictionary.resolve(&k.0).to_string())
 			.collect(),
 		year: song.year,
-		album: song.album.map(|s| strings.resolve(&s).to_string()),
-		artwork: song.artwork.map(|a| PathBuf::from(strings.resolve(&a.0))),
+		album: song.album.map(|s| dictionary.resolve(&s).to_string()),
+		artwork: song
+			.artwork
+			.map(|a| PathBuf::from(dictionary.resolve(&a.0))),
 		duration: song.duration,
 		lyricists: song
 			.lyricists
 			.iter()
-			.map(|k| strings.resolve(&k.0).to_string())
+			.map(|k| dictionary.resolve(&k.0).to_string())
 			.collect(),
 		composers: song
 			.composers
 			.iter()
-			.map(|k| strings.resolve(&k.0).to_string())
+			.map(|k| dictionary.resolve(&k.0).to_string())
 			.collect(),
 		genres: song
 			.genres
 			.iter()
-			.map(|s| strings.resolve(&s).to_string())
+			.map(|s| dictionary.resolve(&s).to_string())
 			.collect(),
 		labels: song
 			.labels
 			.iter()
-			.map(|s| strings.resolve(&s).to_string())
+			.map(|s| dictionary.resolve(&s).to_string())
 			.collect(),
 		date_added: song.date_added,
 	}
 }
 
 pub trait InternPath {
-	fn get_or_intern(self, strings: &mut Rodeo) -> Option<PathKey>;
-	fn get(self, strings: &RodeoReader) -> Option<PathKey>;
+	fn get_or_intern(self, dictionary: &mut dictionary::Builder) -> Option<PathKey>;
+	fn get(self, dictionary: &Dictionary) -> Option<PathKey>;
 }
 
 impl<P: AsRef<Path>> InternPath for P {
-	fn get_or_intern(self, strings: &mut Rodeo) -> Option<PathKey> {
+	fn get_or_intern(self, dictionary: &mut dictionary::Builder) -> Option<PathKey> {
 		let id = self
 			.as_ref()
 			.as_os_str()
 			.to_str()
-			.map(|s| strings.get_or_intern(s))
+			.map(|s| dictionary.get_or_intern(s))
 			.map(PathKey);
 		if id.is_none() {
 			error!("Unsupported path: `{}`", self.as_ref().to_string_lossy());
@@ -259,12 +241,12 @@ impl<P: AsRef<Path>> InternPath for P {
 		id
 	}
 
-	fn get(self, strings: &RodeoReader) -> Option<PathKey> {
+	fn get(self, dictionary: &Dictionary) -> Option<PathKey> {
 		let id = self
 			.as_ref()
 			.as_os_str()
 			.to_str()
-			.and_then(|s| strings.get(s))
+			.and_then(|s| dictionary.get(s))
 			.map(PathKey);
 		if id.is_none() {
 			error!("Unsupported path: `{}`", self.as_ref().to_string_lossy());

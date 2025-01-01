@@ -6,14 +6,13 @@ use std::{
 	path::{Path, PathBuf},
 };
 
-use lasso2::{Rodeo, RodeoReader};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use tinyvec::TinyVec;
 use trie_rs::{Trie, TrieBuilder};
-use unicase::UniCase;
 
 use crate::app::index::{
+	dictionary::{self, Dictionary},
 	storage::{self, PathKey},
 	InternPath,
 };
@@ -43,12 +42,12 @@ impl Default for Browser {
 impl Browser {
 	pub fn browse<P: AsRef<Path>>(
 		&self,
-		strings: &RodeoReader,
+		dictionary: &Dictionary,
 		virtual_path: P,
 	) -> Result<Vec<File>, Error> {
 		let path = virtual_path
 			.as_ref()
-			.get(strings)
+			.get(dictionary)
 			.ok_or_else(|| Error::DirectoryNotFound(virtual_path.as_ref().to_owned()))?;
 
 		let Some(files) = self.directories.get(&path) else {
@@ -62,7 +61,7 @@ impl Browser {
 					storage::File::Directory(p) => p,
 					storage::File::Song(p) => p,
 				};
-				let path = Path::new(OsStr::new(strings.resolve(&path.0))).to_owned();
+				let path = Path::new(OsStr::new(dictionary.resolve(&path.0))).to_owned();
 				match f {
 					storage::File::Directory(_) => File::Directory(path),
 					storage::File::Song(_) => File::Song(path),
@@ -72,10 +71,11 @@ impl Browser {
 
 		if virtual_path.as_ref().parent().is_none() {
 			if let [File::Directory(ref p)] = files[..] {
-				return self.browse(strings, p);
+				return self.browse(dictionary, p);
 			}
 		}
 
+		let collator = dictionary::make_collator();
 		files.sort_by(|a, b| {
 			let (a, b) = match (a, b) {
 				(File::Directory(_), File::Song(_)) => return Ordering::Less,
@@ -83,10 +83,10 @@ impl Browser {
 				(File::Directory(a), File::Directory(b)) => (a, b),
 				(File::Song(a), File::Song(b)) => (a, b),
 			};
-			// TODO replace unicase with icu_collator to handle accented characters too
-			let a = UniCase::new(a.as_os_str().to_string_lossy());
-			let b = UniCase::new(b.as_os_str().to_string_lossy());
-			a.cmp(&b)
+			collator.compare(
+				a.as_os_str().to_string_lossy().as_ref(),
+				b.as_os_str().to_string_lossy().as_ref(),
+			)
 		});
 
 		Ok(files)
@@ -94,37 +94,45 @@ impl Browser {
 
 	pub fn flatten<P: AsRef<Path>>(
 		&self,
-		strings: &RodeoReader,
+		dictionary: &Dictionary,
 		virtual_path: P,
 	) -> Result<Vec<PathBuf>, Error> {
 		let path_components = virtual_path
 			.as_ref()
 			.components()
 			.map(|c| c.as_os_str().to_str().unwrap_or_default())
-			.filter_map(|c| strings.get(c))
+			.filter_map(|c| dictionary.get(c))
 			.collect::<Vec<_>>();
 
 		if !self.flattened.is_prefix(&path_components) {
 			return Err(Error::DirectoryNotFound(virtual_path.as_ref().to_owned()));
 		}
 
-		let mut files = self
+		let mut results: Vec<TinyVec<[_; 8]>> = self
 			.flattened
 			.predictive_search(path_components)
+			.collect::<Vec<_>>();
+
+		results.par_sort_unstable_by(|a, b| {
+			for (x, y) in a.iter().zip(b.iter()) {
+				match dictionary.cmp(x, y) {
+					Ordering::Equal => continue,
+					ordering @ _ => return ordering,
+				}
+			}
+			a.len().cmp(&b.len())
+		});
+
+		let files = results
+			.into_iter()
 			.map(|c: TinyVec<[_; 8]>| -> PathBuf {
 				c.into_iter()
-					.map(|s| strings.resolve(&s))
+					.map(|s| dictionary.resolve(&s))
 					.collect::<TinyVec<[&str; 8]>>()
 					.join(std::path::MAIN_SEPARATOR_STR)
 					.into()
 			})
 			.collect::<Vec<_>>();
-
-		files.par_sort_by(|a, b| {
-			let a = UniCase::new(a.as_os_str().to_string_lossy());
-			let b = UniCase::new(b.as_os_str().to_string_lossy());
-			a.cmp(&b)
-		});
 
 		Ok(files)
 	}
@@ -137,15 +145,19 @@ pub struct Builder {
 }
 
 impl Builder {
-	pub fn add_directory(&mut self, strings: &mut Rodeo, directory: scanner::Directory) {
-		let Some(virtual_path) = (&directory.virtual_path).get_or_intern(strings) else {
+	pub fn add_directory(
+		&mut self,
+		dictionary_builder: &mut dictionary::Builder,
+		directory: scanner::Directory,
+	) {
+		let Some(virtual_path) = (&directory.virtual_path).get_or_intern(dictionary_builder) else {
 			return;
 		};
 
 		let Some(virtual_parent) = directory
 			.virtual_path
 			.parent()
-			.and_then(|p| p.get_or_intern(strings))
+			.and_then(|p| p.get_or_intern(dictionary_builder))
 		else {
 			return;
 		};
@@ -158,15 +170,15 @@ impl Builder {
 			.insert(storage::File::Directory(virtual_path));
 	}
 
-	pub fn add_song(&mut self, strings: &mut Rodeo, song: &scanner::Song) {
-		let Some(virtual_path) = (&song.virtual_path).get_or_intern(strings) else {
+	pub fn add_song(&mut self, dictionary_builder: &mut dictionary::Builder, song: &scanner::Song) {
+		let Some(virtual_path) = (&song.virtual_path).get_or_intern(dictionary_builder) else {
 			return;
 		};
 
 		let Some(virtual_parent) = song
 			.virtual_path
 			.parent()
-			.and_then(|p| p.get_or_intern(strings))
+			.and_then(|p| p.get_or_intern(dictionary_builder))
 		else {
 			return;
 		};
@@ -179,7 +191,7 @@ impl Builder {
 		self.flattened.push(
 			song.virtual_path
 				.components()
-				.map(|c| strings.get_or_intern(c.as_os_str().to_str().unwrap()))
+				.map(|c| dictionary_builder.get_or_intern(c.as_os_str().to_str().unwrap()))
 				.collect::<TinyVec<[lasso2::Spur; 8]>>(),
 		);
 	}
@@ -199,8 +211,8 @@ mod test {
 
 	use super::*;
 
-	fn setup_test(songs: HashSet<PathBuf>) -> (Browser, RodeoReader) {
-		let mut strings = Rodeo::new();
+	fn setup_test(songs: HashSet<PathBuf>) -> (Browser, Dictionary) {
+		let mut dictionary_builder = dictionary::Builder::default();
 		let mut builder = Builder::default();
 
 		let directories = songs
@@ -210,7 +222,7 @@ mod test {
 
 		for directory in directories {
 			builder.add_directory(
-				&mut strings,
+				&mut dictionary_builder,
 				scanner::Directory {
 					virtual_path: directory.to_owned(),
 				},
@@ -220,13 +232,13 @@ mod test {
 		for path in songs {
 			let mut song = scanner::Song::default();
 			song.virtual_path = path.clone();
-			builder.add_song(&mut strings, &song);
+			builder.add_song(&mut dictionary_builder, &song);
 		}
 
 		let browser = builder.build();
-		let strings = strings.into_reader();
+		let dictionary = dictionary_builder.build();
 
-		(browser, strings)
+		(browser, dictionary)
 	}
 
 	#[test]
@@ -288,6 +300,7 @@ mod test {
 			PathBuf::from_iter(["Ott", "Mir.mp3"]),
 			PathBuf::from("Helios.mp3"),
 			PathBuf::from("asura.mp3"),
+			PathBuf::from("à la maison.mp3"),
 		]));
 
 		let files = browser.browse(&strings, PathBuf::new()).unwrap();
@@ -296,6 +309,7 @@ mod test {
 			files,
 			[
 				File::Directory(PathBuf::from("Ott")),
+				File::Song(PathBuf::from("à la maison.mp3")),
 				File::Song(PathBuf::from("asura.mp3")),
 				File::Song(PathBuf::from("Helios.mp3")),
 			]
@@ -342,6 +356,7 @@ mod test {
 		let (browser, strings) = setup_test(HashSet::from([
 			PathBuf::from_iter(["Ott", "Mir.mp3"]),
 			PathBuf::from("Helios.mp3"),
+			PathBuf::from("à la maison.mp3.mp3"),
 			PathBuf::from("asura.mp3"),
 		]));
 
@@ -350,6 +365,7 @@ mod test {
 		assert_eq!(
 			files,
 			[
+				PathBuf::from("à la maison.mp3.mp3"),
 				PathBuf::from("asura.mp3"),
 				PathBuf::from("Helios.mp3"),
 				PathBuf::from_iter(["Ott", "Mir.mp3"]),

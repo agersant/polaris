@@ -3,11 +3,11 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::Duration;
 
+use icu_collator::{Collator, CollatorOptions, Strength};
 use native_db::*;
 use native_model::{native_model, Model};
 use serde::{Deserialize, Serialize};
 use tokio::task::spawn_blocking;
-use unicase::UniCase;
 
 use crate::app::{index, ndb, Error};
 
@@ -18,7 +18,7 @@ pub struct Manager {
 
 #[derive(Debug)]
 pub struct PlaylistHeader {
-	pub name: UniCase<String>,
+	pub name: String,
 	pub duration: Duration,
 	pub num_songs_by_genre: HashMap<String, u32>,
 }
@@ -58,7 +58,7 @@ pub mod v1 {
 impl From<PlaylistModel> for PlaylistHeader {
 	fn from(p: PlaylistModel) -> Self {
 		Self {
-			name: UniCase::new(p.name),
+			name: p.name,
 			duration: p.duration,
 			num_songs_by_genre: p.num_songs_by_genre,
 		}
@@ -93,7 +93,15 @@ impl Manager {
 					.filter_map(|p| p.ok())
 					.map(PlaylistHeader::from)
 					.collect::<Vec<_>>();
-				playlists.sort_by(|a, b| a.name.cmp(&b.name));
+
+				let collator_options = {
+					let mut o = CollatorOptions::new();
+					o.strength = Some(Strength::Secondary);
+					o
+				};
+				let collator = Collator::try_new(&Default::default(), collator_options).unwrap();
+
+				playlists.sort_by(|a, b| collator.compare(&a.name, &b.name));
 				Ok(playlists)
 			}
 		})
@@ -335,7 +343,7 @@ mod test {
 			.build()
 			.await;
 
-		for name in ["a", "b", "A", "B"] {
+		for name in ["ax", "b", "Ay", "B", "àz"] {
 			ctx.playlist_manager
 				.save_playlist(name, TEST_USER, Vec::new())
 				.await
@@ -353,6 +361,6 @@ mod test {
 			.map(|p| p.name.to_string())
 			.collect::<Vec<_>>();
 
-		assert_eq!(names, vec!["A", "a", "B", "b"]);
+		assert_eq!(names, vec!["ax", "Ay", "àz", "B", "b"]);
 	}
 }

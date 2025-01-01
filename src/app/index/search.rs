@@ -1,6 +1,6 @@
 use chumsky::Parser;
 use enum_map::EnumMap;
-use lasso2::{RodeoReader, Spur};
+use lasso2::Spur;
 use nohash_hasher::{IntMap, IntSet};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -11,17 +11,14 @@ use tinyvec::TinyVec;
 
 use crate::app::{
 	index::{
+		dictionary::Dictionary,
 		query::{BoolOp, Expr, Literal, NumberField, NumberOp, TextField, TextOp},
 		storage::SongKey,
 	},
 	scanner, Error,
 };
 
-use super::{
-	collection,
-	query::make_parser,
-	storage::{self, sanitize},
-};
+use super::{collection, dictionary::sanitize, query::make_parser, storage};
 
 #[derive(Serialize, Deserialize)]
 pub struct Search {
@@ -64,8 +61,7 @@ impl Search {
 	pub fn find_songs(
 		&self,
 		collection: &collection::Collection,
-		strings: &RodeoReader,
-		canon: &HashMap<String, Spur>,
+		dictionary: &Dictionary,
 		query: &str,
 	) -> Result<Vec<collection::Song>, Error> {
 		let parser = make_parser();
@@ -74,9 +70,9 @@ impl Search {
 			.map_err(|_| Error::SearchQueryParseError)?;
 
 		let mut songs = self
-			.eval(strings, canon, &parsed_query)
+			.eval(dictionary, &parsed_query)
 			.into_iter()
-			.filter_map(|song_key| collection.get_song(strings, song_key))
+			.filter_map(|song_key| collection.get_song(dictionary, song_key))
 			.collect::<Vec<_>>();
 
 		songs.sort_by(compare_songs);
@@ -84,24 +80,18 @@ impl Search {
 		Ok(songs)
 	}
 
-	fn eval(
-		&self,
-		strings: &RodeoReader,
-		canon: &HashMap<String, Spur>,
-		expr: &Expr,
-	) -> IntSet<SongKey> {
+	fn eval(&self, dictionary: &Dictionary, expr: &Expr) -> IntSet<SongKey> {
 		match expr {
-			Expr::Fuzzy(s) => self.eval_fuzzy(strings, s),
-			Expr::TextCmp(field, op, s) => self.eval_text_operator(strings, canon, *field, *op, &s),
+			Expr::Fuzzy(s) => self.eval_fuzzy(dictionary, s),
+			Expr::TextCmp(field, op, s) => self.eval_text_operator(dictionary, *field, *op, &s),
 			Expr::NumberCmp(field, op, n) => self.eval_number_operator(*field, *op, *n),
-			Expr::Combined(e, op, f) => self.combine(strings, canon, e, *op, f),
+			Expr::Combined(e, op, f) => self.combine(dictionary, e, *op, f),
 		}
 	}
 
 	fn combine(
 		&self,
-		strings: &RodeoReader,
-		canon: &HashMap<String, Spur>,
+		dictionary: &Dictionary,
 		e: &Box<Expr>,
 		op: BoolOp,
 		f: &Box<Expr>,
@@ -113,8 +103,8 @@ impl Search {
 			_ => true,
 		};
 
-		let left = is_operable(e).then(|| self.eval(strings, canon, e));
-		let right = is_operable(f).then(|| self.eval(strings, canon, f));
+		let left = is_operable(e).then(|| self.eval(dictionary, e));
+		let right = is_operable(f).then(|| self.eval(dictionary, f));
 
 		match (left, op, right) {
 			(Some(l), BoolOp::And, Some(r)) => l.intersection(&r).cloned().collect(),
@@ -127,12 +117,12 @@ impl Search {
 		}
 	}
 
-	fn eval_fuzzy(&self, strings: &RodeoReader, value: &Literal) -> IntSet<SongKey> {
+	fn eval_fuzzy(&self, dictionary: &Dictionary, value: &Literal) -> IntSet<SongKey> {
 		match value {
 			Literal::Text(s) => {
 				let mut songs = IntSet::default();
 				for field in self.text_fields.values() {
-					songs.extend(field.find_like(strings, s));
+					songs.extend(field.find_like(dictionary, s));
 				}
 				songs
 			}
@@ -142,7 +132,7 @@ impl Search {
 					songs.extend(field.find(*n as i64, NumberOp::Eq));
 				}
 				songs
-					.union(&self.eval_fuzzy(strings, &Literal::Text(n.to_string())))
+					.union(&self.eval_fuzzy(dictionary, &Literal::Text(n.to_string())))
 					.copied()
 					.collect()
 			}
@@ -151,15 +141,14 @@ impl Search {
 
 	fn eval_text_operator(
 		&self,
-		strings: &RodeoReader,
-		canon: &HashMap<String, Spur>,
+		dictionary: &Dictionary,
 		field: TextField,
 		operator: TextOp,
 		value: &str,
 	) -> IntSet<SongKey> {
 		match operator {
-			TextOp::Eq => self.text_fields[field].find_exact(canon, value),
-			TextOp::Like => self.text_fields[field].find_like(strings, value),
+			TextOp::Eq => self.text_fields[field].find_exact(dictionary, value),
+			TextOp::Like => self.text_fields[field].find_like(dictionary, value),
 		}
 	}
 
@@ -194,7 +183,7 @@ impl TextFieldIndex {
 		self.exact.entry(value).or_default().insert(key);
 	}
 
-	pub fn find_like(&self, strings: &RodeoReader, value: &str) -> IntSet<SongKey> {
+	pub fn find_like(&self, dictionary: &Dictionary, value: &str) -> IntSet<SongKey> {
 		let sanitized = sanitize(value);
 		let characters = sanitized.chars().collect::<Vec<_>>();
 		let empty = IntMap::default();
@@ -222,7 +211,7 @@ impl TextFieldIndex {
 			})
 			// [narrow phase] Only keep songs that actually contain the search term in full
 			.filter(|(_song_key, indexed_value)| {
-				let resolved = strings.resolve(indexed_value);
+				let resolved = dictionary.resolve(indexed_value);
 				sanitize(resolved).contains(&sanitized)
 			})
 			.map(|(k, _v)| k)
@@ -230,9 +219,9 @@ impl TextFieldIndex {
 			.collect()
 	}
 
-	pub fn find_exact(&self, canon: &HashMap<String, Spur>, value: &str) -> IntSet<SongKey> {
-		canon
-			.get(&sanitize(value))
+	pub fn find_exact(&self, dictionary: &Dictionary, value: &str) -> IntSet<SongKey> {
+		dictionary
+			.get_canon(value)
 			.and_then(|s| self.exact.get(&s))
 			.cloned()
 			.unwrap_or_default()
@@ -353,23 +342,21 @@ impl Builder {
 mod test {
 	use std::path::PathBuf;
 
-	use lasso2::Rodeo;
+	use super::*;
+	use crate::app::index::dictionary;
+	use collection::Collection;
 	use storage::store_song;
 
-	use super::*;
-	use collection::Collection;
-
 	struct Context {
-		canon: HashMap<String, Spur>,
+		dictionary: Dictionary,
 		collection: Collection,
 		search: Search,
-		strings: RodeoReader,
 	}
 
 	impl Context {
 		pub fn search(&self, query: &str) -> Vec<PathBuf> {
 			self.search
-				.find_songs(&self.collection, &self.strings, &self.canon, query)
+				.find_songs(&self.collection, &self.dictionary, query)
 				.unwrap()
 				.into_iter()
 				.map(|s| s.virtual_path)
@@ -378,22 +365,19 @@ mod test {
 	}
 
 	fn setup_test(songs: Vec<scanner::Song>) -> Context {
-		let mut strings = Rodeo::new();
-		let mut canon = HashMap::new();
-
+		let mut dictionary_builder = dictionary::Builder::default();
 		let mut collection_builder = collection::Builder::default();
 		let mut search_builder = Builder::default();
 		for song in songs {
-			let storage_song = store_song(&mut strings, &mut canon, &song).unwrap();
+			let storage_song = store_song(&mut dictionary_builder, &song).unwrap();
 			collection_builder.add_song(&storage_song);
 			search_builder.add_song(&song, &storage_song);
 		}
 
 		Context {
-			canon,
 			collection: collection_builder.build(),
 			search: search_builder.build(),
-			strings: strings.into_reader(),
+			dictionary: dictionary_builder.build(),
 		}
 	}
 

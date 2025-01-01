@@ -4,12 +4,12 @@ use std::{
 	path::PathBuf,
 };
 
-use lasso2::RodeoReader;
 use rand::{rngs::StdRng, seq::SliceRandom, SeedableRng};
 use serde::{Deserialize, Serialize};
 use tinyvec::TinyVec;
 use unicase::UniCase;
 
+use crate::app::index::dictionary::Dictionary;
 use crate::app::index::storage::{self, AlbumKey, ArtistKey, GenreKey, SongKey};
 
 use super::storage::fetch_song;
@@ -90,37 +90,39 @@ pub struct Collection {
 }
 
 impl Collection {
-	pub fn get_albums(&self, strings: &RodeoReader) -> Vec<AlbumHeader> {
+	pub fn get_albums(&self, dictionary: &Dictionary) -> Vec<AlbumHeader> {
 		let mut albums = self
 			.albums
 			.values()
-			.map(|a| make_album_header(a, strings))
+			.map(|a| make_album_header(a, dictionary))
 			.collect::<Vec<_>>();
 		albums.sort_by(|a, b| a.name.cmp(&b.name));
 		albums
 	}
 
-	pub fn get_artists(&self, strings: &RodeoReader) -> Vec<ArtistHeader> {
-		let exceptions = vec![strings.get("Various Artists"), strings.get("VA")];
+	pub fn get_artists(&self, dictionary: &Dictionary) -> Vec<ArtistHeader> {
+		let exceptions = vec![dictionary.get("Various Artists"), dictionary.get("VA")];
 		let mut artists = self
 			.artists
 			.values()
 			.filter(|a| !exceptions.contains(&Some(a.name)))
-			.map(|a| make_artist_header(a, strings))
+			.map(|a| make_artist_header(a, dictionary))
 			.collect::<Vec<_>>();
+		// TODO collator sort
 		artists.sort_by(|a, b| a.name.cmp(&b.name));
 		artists
 	}
 
-	pub fn get_artist(&self, strings: &RodeoReader, artist_key: ArtistKey) -> Option<Artist> {
+	pub fn get_artist(&self, dictionary: &Dictionary, artist_key: ArtistKey) -> Option<Artist> {
 		self.artists.get(&artist_key).map(|artist| {
-			let header = make_artist_header(artist, strings);
+			let header = make_artist_header(artist, dictionary);
 			let albums = {
 				let mut albums = artist
 					.all_albums
 					.iter()
-					.filter_map(|key| self.get_album(strings, key.clone()))
+					.filter_map(|key| self.get_album(dictionary, key.clone()))
 					.collect::<Vec<_>>();
+				// TODO collator sort
 				albums.sort_by(|a, b| {
 					(&a.header.year, &a.header.name).cmp(&(&b.header.year, &b.header.name))
 				});
@@ -130,14 +132,14 @@ impl Collection {
 		})
 	}
 
-	pub fn get_album(&self, strings: &RodeoReader, album_key: AlbumKey) -> Option<Album> {
+	pub fn get_album(&self, dictionary: &Dictionary, album_key: AlbumKey) -> Option<Album> {
 		self.albums.get(&album_key).map(|a| {
 			let mut songs = a
 				.songs
 				.iter()
 				.filter_map(|s| {
 					self.get_song(
-						strings,
+						dictionary,
 						SongKey {
 							virtual_path: s.virtual_path,
 						},
@@ -148,7 +150,7 @@ impl Collection {
 			songs.sort_by_key(|s| (s.disc_number.unwrap_or(-1), s.track_number.unwrap_or(-1)));
 
 			Album {
-				header: make_album_header(a, strings),
+				header: make_album_header(a, dictionary),
 				songs,
 			}
 		})
@@ -156,7 +158,7 @@ impl Collection {
 
 	pub fn get_random_albums(
 		&self,
-		strings: &RodeoReader,
+		dictionary: &Dictionary,
 		seed: Option<u64>,
 		offset: usize,
 		count: usize,
@@ -175,13 +177,13 @@ impl Collection {
 			.into_iter()
 			.skip(offset)
 			.take(count)
-			.filter_map(|k| self.get_album(strings, k.clone()))
+			.filter_map(|k| self.get_album(dictionary, k.clone()))
 			.collect()
 	}
 
 	pub fn get_recent_albums(
 		&self,
-		strings: &RodeoReader,
+		dictionary: &Dictionary,
 		offset: usize,
 		count: usize,
 	) -> Vec<Album> {
@@ -189,21 +191,21 @@ impl Collection {
 			.iter()
 			.skip(offset)
 			.take(count)
-			.filter_map(|k| self.get_album(strings, k.clone()))
+			.filter_map(|k| self.get_album(dictionary, k.clone()))
 			.collect()
 	}
 
-	pub fn get_genres(&self, strings: &RodeoReader) -> Vec<GenreHeader> {
+	pub fn get_genres(&self, dictionary: &Dictionary) -> Vec<GenreHeader> {
 		let mut genres = self
 			.genres
 			.values()
-			.map(|a| make_genre_header(a, strings))
+			.map(|a| make_genre_header(a, dictionary))
 			.collect::<Vec<_>>();
 		genres.sort_by(|a, b| a.name.cmp(&b.name));
 		genres
 	}
 
-	pub fn get_genre(&self, strings: &RodeoReader, genre_key: GenreKey) -> Option<Genre> {
+	pub fn get_genre(&self, dictionary: &Dictionary, genre_key: GenreKey) -> Option<Genre> {
 		self.genres.get(&genre_key).map(|genre| {
 			let mut albums = genre
 				.albums
@@ -211,7 +213,7 @@ impl Collection {
 				.filter_map(|album_key| {
 					self.albums
 						.get(album_key)
-						.map(|a| make_album_header(a, strings))
+						.map(|a| make_album_header(a, dictionary))
 				})
 				.collect::<Vec<_>>();
 			albums.sort_by(|a, b| a.name.cmp(&b.name));
@@ -222,7 +224,7 @@ impl Collection {
 				.filter_map(|artist_key| {
 					self.artists
 						.get(artist_key)
-						.map(|a| make_artist_header(a, strings))
+						.map(|a| make_artist_header(a, dictionary))
 				})
 				.collect::<Vec<_>>();
 			artists.sort_by(|a, b| a.name.cmp(&b.name));
@@ -230,7 +232,7 @@ impl Collection {
 			let songs = genre
 				.songs
 				.iter()
-				.filter_map(|k| self.get_song(strings, *k))
+				.filter_map(|k| self.get_song(dictionary, *k))
 				.collect::<Vec<_>>();
 			// TODO sort songs
 
@@ -238,12 +240,12 @@ impl Collection {
 				.related_genres
 				.iter()
 				.map(|(genre_key, song_count)| {
-					(strings.resolve(&genre_key.0).to_owned(), *song_count)
+					(dictionary.resolve(&genre_key.0).to_owned(), *song_count)
 				})
 				.collect();
 
 			Genre {
-				header: make_genre_header(genre, strings),
+				header: make_genre_header(genre, dictionary),
 				albums,
 				artists,
 				related_genres,
@@ -256,32 +258,33 @@ impl Collection {
 		self.songs.len()
 	}
 
-	pub fn get_song(&self, strings: &RodeoReader, song_key: SongKey) -> Option<Song> {
-		self.songs.get(&song_key).map(|s| fetch_song(strings, s))
+	pub fn get_song(&self, dictionary: &Dictionary, song_key: SongKey) -> Option<Song> {
+		self.songs.get(&song_key).map(|s| fetch_song(dictionary, s))
 	}
 }
 
-fn make_album_header(album: &storage::Album, strings: &RodeoReader) -> AlbumHeader {
+fn make_album_header(album: &storage::Album, dictionary: &Dictionary) -> AlbumHeader {
 	AlbumHeader {
-		name: strings.resolve(&album.name).to_string(),
+		name: dictionary.resolve(&album.name).to_string(),
 		artwork: album
 			.artwork
 			.as_ref()
-			.map(|a| strings.resolve(&a.0))
+			.map(|a| dictionary.resolve(&a.0))
 			.map(PathBuf::from),
 		artists: album
 			.artists
 			.iter()
-			.map(|a| strings.resolve(&a.0).to_string())
+			.map(|a| dictionary.resolve(&a.0).to_string())
 			.collect(),
 		year: album.year,
 		date_added: album.date_added,
 	}
 }
 
-fn make_artist_header(artist: &storage::Artist, strings: &RodeoReader) -> ArtistHeader {
+fn make_artist_header(artist: &storage::Artist, dictionary: &Dictionary) -> ArtistHeader {
+	// TODO drop unicase
 	ArtistHeader {
-		name: UniCase::new(strings.resolve(&artist.name).to_owned()),
+		name: UniCase::new(dictionary.resolve(&artist.name).to_owned()),
 		num_albums_as_performer: artist.albums_as_performer.len() as u32,
 		num_albums_as_additional_performer: artist.albums_as_additional_performer.len() as u32,
 		num_albums_as_composer: artist.albums_as_composer.len() as u32,
@@ -289,15 +292,15 @@ fn make_artist_header(artist: &storage::Artist, strings: &RodeoReader) -> Artist
 		num_songs_by_genre: artist
 			.num_songs_by_genre
 			.iter()
-			.map(|(genre, num)| (strings.resolve(genre).to_string(), *num))
+			.map(|(genre, num)| (dictionary.resolve(genre).to_string(), *num))
 			.collect(),
 		num_songs: artist.num_songs,
 	}
 }
 
-fn make_genre_header(genre: &storage::Genre, strings: &RodeoReader) -> GenreHeader {
+fn make_genre_header(genre: &storage::Genre, dictionary: &Dictionary) -> GenreHeader {
 	GenreHeader {
-		name: strings.resolve(&genre.name).to_string(),
+		name: dictionary.resolve(&genre.name).to_string(),
 	}
 }
 
@@ -504,28 +507,26 @@ impl Builder {
 #[cfg(test)]
 mod test {
 
-	use lasso2::Rodeo;
 	use tinyvec::tiny_vec;
 
-	use crate::app::scanner;
+	use crate::app::{index::dictionary, scanner};
 	use storage::{store_song, InternPath};
 
 	use super::*;
 
-	fn setup_test(songs: Vec<scanner::Song>) -> (Collection, RodeoReader) {
-		let mut strings = Rodeo::new();
-		let mut canon = HashMap::new();
+	fn setup_test(songs: Vec<scanner::Song>) -> (Collection, Dictionary) {
+		let mut dictionary_builder = dictionary::Builder::default();
 		let mut builder = Builder::default();
 
 		for song in songs {
-			let song = store_song(&mut strings, &mut canon, &song).unwrap();
+			let song = store_song(&mut dictionary_builder, &song).unwrap();
 			builder.add_song(&song);
 		}
 
 		let browser = builder.build();
-		let strings = strings.into_reader();
+		let dictionary = dictionary_builder.build();
 
-		(browser, strings)
+		(browser, dictionary)
 	}
 
 	#[test]
