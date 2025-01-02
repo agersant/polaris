@@ -615,6 +615,12 @@ mod test {
 	fn results_are_sorted() {
 		let ctx = setup_test(vec![
 			scanner::Song {
+				virtual_path: PathBuf::from("accented.mp3"),
+				artists: vec!["à la maison".to_owned()],
+				genres: vec!["Metal".to_owned()],
+				..Default::default()
+			},
+			scanner::Song {
 				virtual_path: PathBuf::from("cry thunder.mp3"),
 				artists: vec!["Dragonforce".to_owned()],
 				album: Some("The Power Within".to_owned()),
@@ -655,10 +661,11 @@ mod test {
 		]);
 
 		let songs = ctx.search("metal");
-		assert_eq!(songs.len(), 5);
+		assert_eq!(songs.len(), 6);
 		assert_eq!(
 			songs,
 			vec![
+				PathBuf::from("accented.mp3"),
 				PathBuf::from("alchemy.mp3"),
 				PathBuf::from("starfire.mp3"),
 				PathBuf::from("revelations.mp3"),
