@@ -24,6 +24,7 @@
 - The file browser now omits the top-level directory when only one music folder has been configured.
 - The current playlist now has two display modes: compact or with album art.
 - Songs in the current playlist can now be selected and re-ordered with the mouse.
+- Added a button to display statistics about the current playlist.
 - Added new pages to browse the music collection by genre.
 - Added new pages to browse the music collection by artist.
 - Added a new page to browse the music collection by album.
@@ -31,6 +32,7 @@
 - When navigating back to the Random Albums page, the shuffle ordering is now preserved.
 - The current playlist now supports common navigation keyboard shortcuts.
 - The seekbar for the current song being played has been replaced with a waveform visualization.
+- The title of the current song in the player can be clicked to display its metadata
 - Improved responsiveness when queuing large amounts of songs at once.
 - The `Settings > Collection` page now shows the current status of collection scanning.
 - Theme preferences have been reset and are now stored client-side.
