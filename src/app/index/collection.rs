@@ -5,7 +5,9 @@ use std::{
 	path::PathBuf,
 };
 
+use icu_collator::Collator;
 use rand::{rngs::StdRng, seq::SliceRandom, SeedableRng};
+use rayon::slice::ParallelSliceMut;
 use serde::{Deserialize, Serialize};
 use tinyvec::TinyVec;
 use unicase::UniCase;
@@ -116,6 +118,7 @@ impl Collection {
 	}
 
 	pub fn get_artist(&self, dictionary: &Dictionary, artist_key: ArtistKey) -> Option<Artist> {
+		let collator = dictionary::make_collator();
 		self.artists.get(&artist_key).map(|artist| {
 			let header = make_artist_header(artist, dictionary);
 			let albums = {
@@ -125,7 +128,7 @@ impl Collection {
 					.filter_map(|key| self.get_album(dictionary, key.clone()))
 					.collect::<Vec<_>>();
 				albums.sort_by(|a, b| match a.header.year.cmp(&b.header.year) {
-					Ordering::Equal => a.header.name.cmp(&b.header.name),
+					Ordering::Equal => collator.compare(&a.header.name, &b.header.name),
 					o => o,
 				});
 				albums
@@ -239,7 +242,10 @@ impl Collection {
 				.iter()
 				.filter_map(|k| self.get_song(dictionary, *k))
 				.collect::<Vec<_>>();
-			songs.sort_by(compare_songs);
+			songs.par_sort_unstable_by(|a, b| {
+				let collator = dictionary::make_collator();
+				compare_songs(a, b, &collator)
+			});
 
 			let related_genres = genre
 				.related_genres
@@ -268,26 +274,46 @@ impl Collection {
 	}
 }
 
-pub fn compare_songs(a: &Song, b: &Song) -> Ordering {
-	let a_key = {
-		let artists = if a.album_artists.is_empty() {
-			&a.artists
-		} else {
-			&a.album_artists
-		};
-		(artists, a.year, &a.album, a.disc_number, a.track_number)
+pub fn compare_songs(a: &Song, b: &Song, collator: &Collator) -> Ordering {
+	let a_artists = if a.album_artists.is_empty() {
+		&a.artists
+	} else {
+		&a.album_artists
 	};
 
-	let b_key = {
-		let artists = if b.album_artists.is_empty() {
-			&b.artists
-		} else {
-			&b.album_artists
-		};
-		(artists, b.year, &b.album, b.disc_number, b.track_number)
+	let b_artists = if b.album_artists.is_empty() {
+		&b.artists
+	} else {
+		&b.album_artists
 	};
 
-	// TODO collator
+	for (a_artist, b_artist) in a_artists.iter().zip(b_artists) {
+		match collator.compare(a_artist, b_artist) {
+			Ordering::Equal => (),
+			o => return o,
+		}
+	}
+
+	match a_artists.len().cmp(&b_artists.len()) {
+		Ordering::Equal => (),
+		o => return o,
+	}
+
+	match a.year.cmp(&b.year) {
+		Ordering::Equal => (),
+		o => return o,
+	}
+
+	let a_album = a.album.as_ref().map(|s| s.as_str()).unwrap_or(&"");
+	let b_album = b.album.as_ref().map(|s| s.as_str()).unwrap_or(&"");
+	match collator.compare(a_album, b_album) {
+		Ordering::Equal => (),
+		o => return o,
+	}
+
+	let a_key = (a.disc_number, a.track_number);
+	let b_key = (b.disc_number, b.track_number);
+
 	a_key.cmp(&b_key)
 }
 

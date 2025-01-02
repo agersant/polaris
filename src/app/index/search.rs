@@ -2,6 +2,7 @@ use chumsky::Parser;
 use enum_map::EnumMap;
 use lasso2::Spur;
 use nohash_hasher::IntSet;
+use rayon::slice::ParallelSliceMut;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 use tinyvec::TinyVec;
@@ -15,7 +16,12 @@ use crate::app::{
 	scanner, Error,
 };
 
-use super::{collection, dictionary::sanitize, query::make_parser, storage};
+use super::{
+	collection,
+	dictionary::{self, sanitize},
+	query::make_parser,
+	storage,
+};
 
 #[derive(Serialize, Deserialize)]
 pub struct Search {
@@ -50,7 +56,10 @@ impl Search {
 			.filter_map(|song_key| collection.get_song(dictionary, song_key))
 			.collect::<Vec<_>>();
 
-		songs.sort_by(collection::compare_songs);
+		songs.par_sort_unstable_by(|a, b| {
+			let collator = dictionary::make_collator();
+			collection::compare_songs(a, b, &collator)
+		});
 
 		Ok(songs)
 	}
