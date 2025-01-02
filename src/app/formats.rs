@@ -390,3 +390,26 @@ fn reads_embedded_artwork() {
 			.has_artwork
 	);
 }
+
+#[test]
+fn reads_multivalue_fields() {
+	let expected = SongMetadata {
+		disc_number: Some(3),
+		track_number: Some(1),
+		title: Some("TEST TITLE".into()),
+		artists: vec!["TEST ARTIST".into(), "OTHER ARTIST".into()],
+		album_artists: vec!["TEST ALBUM ARTIST".into(), "OTHER ALBUM ARTIST".into()],
+		album: Some("TEST ALBUM".into()),
+		duration: Some(0),
+		year: Some(2016),
+		has_artwork: false,
+		lyricists: vec!["TEST LYRICIST".into(), "OTHER LYRICIST".into()],
+		composers: vec!["TEST COMPOSER".into(), "OTHER COMPOSER".into()],
+		genres: vec!["TEST GENRE".into(), "OTHER GENRE".into()],
+		labels: vec!["TEST LABEL".into(), "OTHER LABEL".into()],
+	};
+	assert_eq!(
+		read_metadata(Path::new("test-data/multivalue.mp3")).unwrap(),
+		expected
+	);
+}
