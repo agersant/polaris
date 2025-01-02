@@ -234,12 +234,12 @@ impl Collection {
 				.collect::<Vec<_>>();
 			artists.sort_by(|a, b| collator.compare(&a.name, &b.name));
 
-			let songs = genre
+			let mut songs = genre
 				.songs
 				.iter()
 				.filter_map(|k| self.get_song(dictionary, *k))
 				.collect::<Vec<_>>();
-			// TODO sort songs
+			songs.sort_by(compare_songs);
 
 			let related_genres = genre
 				.related_genres
@@ -266,6 +266,29 @@ impl Collection {
 	pub fn get_song(&self, dictionary: &Dictionary, song_key: SongKey) -> Option<Song> {
 		self.songs.get(&song_key).map(|s| fetch_song(dictionary, s))
 	}
+}
+
+pub fn compare_songs(a: &Song, b: &Song) -> Ordering {
+	let a_key = {
+		let artists = if a.album_artists.is_empty() {
+			&a.artists
+		} else {
+			&a.album_artists
+		};
+		(artists, a.year, &a.album, a.disc_number, a.track_number)
+	};
+
+	let b_key = {
+		let artists = if b.album_artists.is_empty() {
+			&b.artists
+		} else {
+			&b.album_artists
+		};
+		(artists, b.year, &b.album, b.disc_number, b.track_number)
+	};
+
+	// TODO collator
+	a_key.cmp(&b_key)
 }
 
 fn make_album_header(album: &storage::Album, dictionary: &Dictionary) -> AlbumHeader {

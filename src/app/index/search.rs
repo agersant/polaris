@@ -3,10 +3,7 @@ use enum_map::EnumMap;
 use lasso2::Spur;
 use nohash_hasher::IntSet;
 use serde::{Deserialize, Serialize};
-use std::{
-	cmp::Ordering,
-	collections::{BTreeMap, HashMap},
-};
+use std::collections::{BTreeMap, HashMap};
 use tinyvec::TinyVec;
 
 use crate::app::{
@@ -35,28 +32,6 @@ impl Default for Search {
 	}
 }
 
-fn compare_songs(a: &collection::Song, b: &collection::Song) -> Ordering {
-	let a_key = {
-		let artists = if a.album_artists.is_empty() {
-			&a.artists
-		} else {
-			&a.album_artists
-		};
-		(artists, a.year, &a.album, a.disc_number, a.track_number)
-	};
-
-	let b_key = {
-		let artists = if b.album_artists.is_empty() {
-			&b.artists
-		} else {
-			&b.album_artists
-		};
-		(artists, b.year, &b.album, b.disc_number, b.track_number)
-	};
-
-	a_key.cmp(&b_key)
-}
-
 impl Search {
 	pub fn find_songs(
 		&self,
@@ -75,7 +50,7 @@ impl Search {
 			.filter_map(|song_key| collection.get_song(dictionary, song_key))
 			.collect::<Vec<_>>();
 
-		songs.sort_by(compare_songs);
+		songs.sort_by(collection::compare_songs);
 
 		Ok(songs)
 	}
