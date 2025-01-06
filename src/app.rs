@@ -1,9 +1,13 @@
+use std::cmp::min;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
+use log::info;
 use rand::rngs::OsRng;
 use rand::RngCore;
 
+use crate::app::legacy::*;
 use crate::paths::Paths;
 
 pub mod auth;
@@ -11,6 +15,7 @@ pub mod config;
 pub mod ddns;
 pub mod formats;
 pub mod index;
+pub mod legacy;
 pub mod ndb;
 pub mod peaks;
 pub mod playlist;
@@ -183,7 +188,7 @@ impl App {
 		let playlist_manager = playlist::Manager::new(ndb_manager);
 		let thumbnail_manager = thumbnail::Manager::new(thumbnails_dir_path);
 
-		Ok(Self {
+		let app = Self {
 			port,
 			web_dir_path: paths.web_dir_path,
 			swagger_dir_path: paths.swagger_dir_path,
@@ -194,7 +199,65 @@ impl App {
 			peaks_manager,
 			playlist_manager,
 			thumbnail_manager,
-		})
+		};
+
+		app.migrate_legacy_db(&paths.db_file_path).await?;
+
+		Ok(app)
+	}
+
+	async fn migrate_legacy_db(&self, db_file_path: &PathBuf) -> Result<(), Error> {
+		let Some(config) = read_legacy_config(db_file_path)? else {
+			return Ok(());
+		};
+
+		info!(
+			"Found usable data in legacy database at `{}`, beginning migration process",
+			db_file_path.to_string_lossy()
+		);
+
+		info!("Migrating configuration");
+		self.config_manager.apply_config(config).await?;
+		self.config_manager.save_config().await?;
+
+		self.scanner.try_trigger_scan();
+		let mut wait_seconds = 1;
+		loop {
+			tokio::time::sleep(Duration::from_secs(wait_seconds)).await;
+			if matches!(
+				self.scanner.get_status().await.state,
+				scanner::State::UpToDate
+			) {
+				break;
+			} else {
+				info!("Migration is waiting for collection scan to finish");
+				wait_seconds = min(2 * wait_seconds, 30);
+			}
+		}
+
+		info!("Migrating playlists");
+		for (name, owner, songs) in read_legacy_playlists(
+			db_file_path,
+			self.config_manager.clone(),
+			self.index_manager.clone(),
+		)? {
+			self.playlist_manager
+				.save_playlist(&name, &owner, songs)
+				.await?;
+		}
+
+		info!(
+			"Deleting legacy database at `{}`",
+			db_file_path.to_string_lossy()
+		);
+		delete_legacy_db(db_file_path).await?;
+
+		info!(
+			"Completed migration from `{}`",
+			db_file_path.to_string_lossy()
+		);
+
+		Ok(())
 	}
 
 	async fn get_or_create_auth_secret(path: &Path) -> Result<auth::Secret, Error> {

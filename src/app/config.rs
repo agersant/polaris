@@ -133,7 +133,7 @@ impl Manager {
 		toml::de::from_str::<storage::Config>(&config_content).map_err(Error::ConfigDeserialization)
 	}
 
-	async fn save_config(&self) -> Result<(), Error> {
+	pub async fn save_config(&self) -> Result<(), Error> {
 		let serialized = toml::ser::to_string_pretty::<storage::Config>(
 			&self.config.read().await.clone().into(),
 		)
