@@ -92,6 +92,8 @@ impl From<app::Error> for APIError {
 			app::Error::ThreadJoining(_) => APIError::Internal,
 
 			app::Error::Io(p, e) => APIError::Io(p, e),
+			app::Error::InvalidDirectory(_) => APIError::Internal,
+			app::Error::SQL(_) => APIError::Internal,
 			app::Error::FileWatch(_) => APIError::Internal,
 			app::Error::Ape(_) => APIError::Internal,
 			app::Error::Id3(p, e) => APIError::ThumbnailId3Decoding(p, e),

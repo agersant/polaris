@@ -6,6 +6,8 @@ use std::time::Duration;
 use log::info;
 use rand::rngs::OsRng;
 use rand::RngCore;
+use tokio::fs::try_exists;
+use tokio::task::spawn_blocking;
 
 use crate::app::legacy::*;
 use crate::paths::Paths;
@@ -36,6 +38,8 @@ pub enum Error {
 	Io(PathBuf, std::io::Error),
 	#[error(transparent)]
 	FileWatch(#[from] notify::Error),
+	#[error(transparent)]
+	SQL(#[from] rusqlite::Error),
 	#[error(transparent)]
 	Ape(#[from] ape::Error),
 	#[error("ID3 error in `{0}`: `{1}`")]
@@ -101,6 +105,8 @@ pub enum Error {
 	#[error("Could not serialize collection")]
 	IndexSerializationError,
 
+	#[error("Invalid Directory")]
+	InvalidDirectory(String),
 	#[error("The following virtual path could not be mapped to a real path: `{0}`")]
 	CouldNotMapToRealPath(PathBuf),
 	#[error("User not found")]
@@ -177,6 +183,7 @@ impl App {
 			.map_err(|e| Error::Io(thumbnails_dir_path.clone(), e))?;
 
 		let auth_secret_file_path = paths.data_dir_path.join("auth.secret");
+		Self::migrate_legacy_auth_secret(&paths.db_file_path, &auth_secret_file_path).await?;
 		let auth_secret = Self::get_or_create_auth_secret(&auth_secret_file_path).await?;
 
 		let config_manager = config::Manager::new(&paths.config_file_path, auth_secret).await?;
@@ -206,13 +213,61 @@ impl App {
 		Ok(app)
 	}
 
+	async fn migrate_legacy_auth_secret(
+		db_file_path: &PathBuf,
+		secret_file_path: &PathBuf,
+	) -> Result<(), Error> {
+		if !try_exists(db_file_path)
+			.await
+			.map_err(|e| Error::Io(db_file_path.clone(), e))?
+		{
+			return Ok(());
+		}
+
+		if try_exists(secret_file_path)
+			.await
+			.map_err(|e| Error::Io(secret_file_path.clone(), e))?
+		{
+			return Ok(());
+		}
+
+		info!(
+			"Migrating auth secret from database at `{}`",
+			db_file_path.to_string_lossy()
+		);
+
+		let secret = spawn_blocking({
+			let db_file_path = db_file_path.clone();
+			move || read_legacy_auth_secret(&db_file_path)
+		})
+		.await??;
+
+		tokio::fs::write(secret_file_path, &secret)
+			.await
+			.map_err(|e| Error::Io(secret_file_path.clone(), e))?;
+
+		Ok(())
+	}
+
 	async fn migrate_legacy_db(&self, db_file_path: &PathBuf) -> Result<(), Error> {
-		let Some(config) = read_legacy_config(db_file_path)? else {
+		if !try_exists(db_file_path)
+			.await
+			.map_err(|e| Error::Io(db_file_path.clone(), e))?
+		{
+			return Ok(());
+		}
+
+		let Some(config) = tokio::task::spawn_blocking({
+			let db_file_path = db_file_path.clone();
+			move || read_legacy_config(&db_file_path)
+		})
+		.await??
+		else {
 			return Ok(());
 		};
 
 		info!(
-			"Found usable data in legacy database at `{}`, beginning migration process",
+			"Found usable config in legacy database at `{}`, beginning migration process",
 			db_file_path.to_string_lossy()
 		);
 
