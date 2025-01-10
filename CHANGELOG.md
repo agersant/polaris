@@ -8,11 +8,13 @@
 - Added support for multi-value metadata for the following song fields: `artist`, `album artist`, `composer`, `genre`, `label` and `lyricist`.
 - Added support for structured search query syntax.
 - Added capability to extract audio waveform data.
-- Configuration data (user credentials, music directories, etc.) is now stored in a plain-text file ([documentation](docs/CONFIGURATION.md)).
+- Configuration data (user credentials, music directories, etc.) is now stored in a plain-text file which Polaris can read and write to.
+- ⚠️ The configuration format is now ([documented](docs/CONFIGURATION.md)) and slightly simpler than in previous versions.
 - Persistent data, such as playlists, is now saved in a directory that may be configured with the `--data` CLI option or the `POLARIS_DATA_DIR` environment variable.
+- ⚠️ Upon first launch, configuration data and playlists will be migrated from the Polaris 0.14.0 database into their new homes. The database will be deleted automatically. This migration functionality will be removed in future Polaris versions.
 - Collection scans are now automatically triggered when configuration changes or files are added/removed.
-- Dynamic DNS now works with any provider that supports updates over HTTP, not just YDNS.
-- Removed last.fm integration due to maintenance concerns (abandoned libraries, broken account linking) and mismatch with project goals.
+- ⚠️ Dynamic DNS now works with any provider that supports updates over HTTP without header-based auth. This means YDNS is no longer an option, and you need to input a new URL for DDNS updates.
+- ⚠️ Removed last.fm integration due to maintenance concerns (abandoned libraries, broken account linking) and mismatch with project goals.
 - Removed periodic collection scans.
 
 ### Web client
