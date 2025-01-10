@@ -132,6 +132,7 @@ impl From<app::Error> for APIError {
 			app::Error::IndexSerializationError => APIError::Internal,
 
 			app::Error::CouldNotMapToRealPath(_) => APIError::VFSPathNotFound,
+			app::Error::CouldNotMapToVirtualPath(_) => APIError::Internal,
 			app::Error::UserNotFound => APIError::UserNotFound,
 			app::Error::DirectoryNotFound(d) => APIError::DirectoryNotFound(d),
 			app::Error::ArtistNotFound => APIError::ArtistNotFound,

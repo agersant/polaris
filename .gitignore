@@ -11,9 +11,6 @@ test-output
 TestConfig.toml
 
 # Runtime artifacts
-*.sqlite
-**/*.sqlite-shm
-**/*.sqlite-wal
 auth.secret
 collection.index
 polaris.log

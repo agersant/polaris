@@ -1,7 +1,5 @@
-use std::cmp::min;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::time::Duration;
 
 use log::info;
 use rand::rngs::OsRng;
@@ -109,6 +107,8 @@ pub enum Error {
 	InvalidDirectory(String),
 	#[error("The following virtual path could not be mapped to a real path: `{0}`")]
 	CouldNotMapToRealPath(PathBuf),
+	#[error("The following real path could not be mapped to a virtual path: `{0}`")]
+	CouldNotMapToVirtualPath(PathBuf),
 	#[error("User not found")]
 	UserNotFound,
 	#[error("Directory not found: {0}")]
@@ -275,27 +275,14 @@ impl App {
 		self.config_manager.apply_config(config).await?;
 		self.config_manager.save_config().await?;
 
-		self.scanner.try_trigger_scan();
-		let mut wait_seconds = 1;
-		loop {
-			tokio::time::sleep(Duration::from_secs(wait_seconds)).await;
-			if matches!(
-				self.scanner.get_status().await.state,
-				scanner::State::UpToDate
-			) {
-				break;
-			} else {
-				info!("Migration is waiting for collection scan to finish");
-				wait_seconds = min(2 * wait_seconds, 30);
-			}
-		}
-
 		info!("Migrating playlists");
 		for (name, owner, songs) in read_legacy_playlists(
 			db_file_path,
-			self.config_manager.clone(),
 			self.index_manager.clone(),
-		)? {
+			self.scanner.clone(),
+		)
+		.await?
+		{
 			self.playlist_manager
 				.save_playlist(&name, &owner, songs)
 				.await?;
