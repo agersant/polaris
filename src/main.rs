@@ -73,6 +73,7 @@ fn init_logging<T: AsRef<Path>>(
 ) -> Result<(), Error> {
 	let log_config = simplelog::ConfigBuilder::new()
 		.set_location_level(LevelFilter::Error)
+		.add_filter_ignore_str("symphonia")
 		.build();
 
 	let mut loggers: Vec<Box<dyn SharedLogger>> = vec![TermLogger::new(
