@@ -11,6 +11,7 @@ use crate::app::{self, App};
 mod api;
 mod auth;
 mod error;
+mod logger;
 mod version;
 
 #[cfg(test)]
@@ -27,7 +28,8 @@ pub fn make_router(app: App) -> NormalizePath<Router> {
 		.nest("/api", api::router())
 		.with_state(app.clone())
 		.nest_service("/swagger", swagger)
-		.nest("/", static_files);
+		.nest("/", static_files)
+		.layer(logger::LogLayer::new());
 
 	NormalizePathLayer::trim_trailing_slash().layer(router)
 }
