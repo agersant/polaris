@@ -43,11 +43,10 @@ fn read_mount_dirs(db_file_path: &PathBuf) -> Result<Vec<config::storage::MountD
 	let connection = Connection::open(db_file_path)?;
 
 	let mut mount_dirs_statement = connection.prepare("SELECT source, name FROM mount_points")?;
-	let mount_dirs_rows = mount_dirs_statement.query_and_then([], |row| {
+	let mount_dirs_rows = mount_dirs_statement.query_and_then::<_, Error, _, _>([], |row| {
 		let source_string = row.get::<_, String>(0)?;
-		let Ok(source) = PathBuf::from_str(&source_string) else {
-			return Err(Error::InvalidDirectory(source_string));
-		};
+		let source = PathBuf::from_str(&source_string)
+			.map_err(|_| Error::InvalidDirectory(source_string))?;
 		Ok(config::storage::MountDir {
 			source,
 			name: row.get::<_, String>(1)?,
