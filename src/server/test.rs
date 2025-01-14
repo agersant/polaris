@@ -14,11 +14,11 @@ mod admin;
 mod auth;
 mod browser;
 mod collection;
+mod docs;
 mod media;
 mod playlist;
 mod search;
 mod settings;
-mod swagger;
 mod user;
 mod web;
 

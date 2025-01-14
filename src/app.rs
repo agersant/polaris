@@ -154,7 +154,6 @@ pub enum Error {
 pub struct App {
 	pub port: u16,
 	pub web_dir_path: PathBuf,
-	pub swagger_dir_path: PathBuf,
 	pub ddns_manager: ddns::Manager,
 	pub scanner: scanner::Scanner,
 	pub index_manager: index::Manager,
@@ -171,9 +170,6 @@ impl App {
 
 		fs::create_dir_all(&paths.web_dir_path)
 			.map_err(|e| Error::Io(paths.web_dir_path.clone(), e))?;
-
-		fs::create_dir_all(&paths.swagger_dir_path)
-			.map_err(|e| Error::Io(paths.swagger_dir_path.clone(), e))?;
 
 		let peaks_dir_path = paths.cache_dir_path.join("peaks");
 		fs::create_dir_all(&peaks_dir_path).map_err(|e| Error::Io(peaks_dir_path.clone(), e))?;
@@ -198,7 +194,6 @@ impl App {
 		let app = Self {
 			port,
 			web_dir_path: paths.web_dir_path,
-			swagger_dir_path: paths.swagger_dir_path,
 			ddns_manager,
 			scanner,
 			index_manager,

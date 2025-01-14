@@ -66,8 +66,8 @@ trie-rs = { version = "0.4.2", features = ["serde"] }
 unicase = "2.7.0"
 ureq = { version = "2.10.0", default-features = false, features = ["tls"] }
 utoipa = { version = "5.3", features = ["axum_extras"] }
-utoipa-swagger-ui = { version = "8.1", features = ["axum", "vendored"] }
 utoipa-axum = { version = "0.1" }
+utoipa-scalar = { version = "0.2", features = ["axum"] }
 
 [dependencies.axum]
 version = "0.8.1"

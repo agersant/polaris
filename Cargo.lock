@@ -1851,7 +1851,11 @@ dependencies = [
  "ureq",
  "utoipa",
  "utoipa-axum",
+<<<<<<< HEAD
  "utoipa-swagger-ui",
+=======
+ "utoipa-scalar",
+>>>>>>> 7653e4b (Working utoipa setup)
  "winres",
 ]
 
@@ -2711,6 +2715,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.96",
+<<<<<<< HEAD
 ]
 
 [[package]]
@@ -2722,6 +2727,8 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.96",
+=======
+>>>>>>> 7653e4b (Working utoipa setup)
 ]
 
 [[package]]
@@ -3106,6 +3113,7 @@ dependencies = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "utoipa-swagger-ui"
 version = "8.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3131,6 +3139,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2eebbbfe4093922c2b6734d7c679ebfebd704a0d7e56dfcb0d05818ce28977d"
 
 [[package]]
+=======
+name = "utoipa-scalar"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "088e93bf19f6bd06e0aacb02ca432b3c5a449c4aec2e4aa9fc333a667f2b2c55"
+dependencies = [
+ "axum",
+ "serde",
+ "serde_json",
+ "utoipa",
+]
+
+[[package]]
+>>>>>>> 7653e4b (Working utoipa setup)
 name = "vcpkg"
 version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3525,37 +3547,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.96",
-]
-
-[[package]]
-name = "zip"
-version = "2.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ae9c1ea7b3a5e1f4b922ff856a129881167511563dc219869afe3787fc0c1a45"
-dependencies = [
- "arbitrary",
- "crc32fast",
- "crossbeam-utils",
- "displaydoc",
- "flate2",
- "indexmap",
- "memchr",
- "thiserror 2.0.11",
- "zopfli",
-]
-
-[[package]]
-name = "zopfli"
-version = "0.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5019f391bac5cf252e93bbcc53d039ffd62c7bfb7c150414d61369afe57e946"
-dependencies = [
- "bumpalo",
- "crc32fast",
- "lockfree-object-pool",
- "log",
- "once_cell",
- "simd-adler32",
 ]
 
 [[package]]

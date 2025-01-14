@@ -12,7 +12,6 @@ pub struct CLIOptions {
 	pub cache_dir_path: Option<PathBuf>,
 	pub data_dir_path: Option<PathBuf>,
 	pub web_dir_path: Option<PathBuf>,
-	pub swagger_dir_path: Option<PathBuf>,
 	pub port: Option<u16>,
 	pub log_level: Option<LevelFilter>,
 }
@@ -45,7 +44,6 @@ impl Manager {
 			cache_dir_path: matches.opt_str("cache").map(PathBuf::from),
 			data_dir_path: matches.opt_str("data").map(PathBuf::from),
 			web_dir_path: matches.opt_str("w").map(PathBuf::from),
-			swagger_dir_path: matches.opt_str("s").map(PathBuf::from),
 			port: matches.opt_str("p").and_then(|p| p.parse().ok()),
 			log_level: matches.opt_str("log-level").and_then(|l| l.parse().ok()),
 		})
@@ -62,7 +60,6 @@ fn get_options() -> getopts::Options {
 	options.optopt("p", "port", "set polaris to run on a custom port", "PORT");
 	options.optopt("d", "database", "set the path to index database", "FILE");
 	options.optopt("w", "web", "set the path to web client files", "DIRECTORY");
-	options.optopt("s", "swagger", "set the path to swagger files", "DIRECTORY");
 	options.optopt(
 		"",
 		"cache",

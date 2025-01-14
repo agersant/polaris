@@ -40,7 +40,7 @@ Password: `demo_password`
 
 ### API Documentation
 
-The Polaris server API is documented via [Swagger](https://demo.polaris.stream/swagger/). Every installation of Polaris distributes this documentation, with the ability to use the `Try it out` buttons. To access it, simply open http://localhost:5050/swagger/ in your browser on the machine running Polaris.
+The Polaris server API is documented via [OpenAPI](https://demo.polaris.stream/docs/). Every installation of Polaris distributes this interactive documentation. To access it, simply open http://localhost:5050/docs/ in your browser on the machine running Polaris.
 
 ## Credits & License Information
 

@@ -9,7 +9,7 @@ use tower_http::{
 };
 use utoipa::OpenApi;
 use utoipa_axum::router::OpenApiRouter;
-use utoipa_swagger_ui::SwaggerUi;
+use utoipa_scalar::{Scalar, Servable};
 
 mod api;
 mod auth;
@@ -21,20 +21,18 @@ mod version;
 pub mod test;
 
 pub fn make_router(app: App) -> NormalizePath<Router> {
-	let swagger = ServeDir::new(&app.swagger_dir_path);
-
 	let static_files = Router::new()
 		.fallback_service(ServeDir::new(&app.web_dir_path))
 		.layer(CompressionLayer::new());
 
-	let (open_api_router, open_api) =
-		OpenApiRouter::with_openapi(doc::ApiDoc::openapi()).split_for_parts();
+	let (open_api_router, open_api) = OpenApiRouter::with_openapi(doc::ApiDoc::openapi())
+		.nest("/api", api::router())
+		.split_for_parts();
 
 	let router = open_api_router
-		.merge(SwaggerUi::new("/swagger-ui"))
-		.nest("/api", api::router())
 		.with_state(app.clone())
-		.nest("/", static_files)
+		.merge(Scalar::with_url("/docs", open_api))
+		.fallback_service(static_files)
 		.layer(logger::LogLayer::new());
 
 	NormalizePathLayer::trim_trailing_slash().layer(router)

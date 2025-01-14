@@ -49,7 +49,6 @@
       <ComponentRef Id="ProgramMenuDir" />
       <ComponentRef Id="CleanupExtraData" />
       <ComponentGroupRef Id="WebUI" />
-      <ComponentGroupRef Id="SwaggerUI" />
     </Feature>
     <Icon Id="polaris.exe" SourceFile="polaris.exe" />
     <Property Id="ARPPRODUCTICON" Value="polaris.exe" />

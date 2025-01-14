@@ -29,7 +29,6 @@ impl TestService for AxumTestService {
 			#[cfg(unix)]
 			pid_file_path: output_dir.join("polaris.pid"),
 			log_file_path: None,
-			swagger_dir_path: ["docs", "swagger"].iter().collect(),
 			web_dir_path: ["test-data", "web"].iter().collect(),
 		};
 

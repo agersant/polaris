@@ -4,13 +4,14 @@ use axum::{
 	extract::{DefaultBodyLimit, Path, Query, State},
 	response::{IntoResponse, Response},
 	routing::{delete, get, post, put},
-	Json, Router,
+	Json,
 };
 use axum_extra::headers::Range;
 use axum_extra::TypedHeader;
 use axum_range::{KnownSize, Ranged};
 use regex::Regex;
 use tower_http::{compression::CompressionLayer, CompressionLevel};
+use utoipa_axum::{router::OpenApiRouter, routes};
 
 use crate::{
 	app::{auth, config, ddns, index, peaks, playlist, scanner, thumbnail, App},
@@ -22,11 +23,11 @@ use crate::{
 
 use super::auth::{AdminRights, Auth};
 
-pub fn router() -> Router<App> {
-	Router::new()
+pub fn router() -> OpenApiRouter<App> {
+	OpenApiRouter::new()
 		// Basic
-		.route("/version", get(get_version))
-		.route("/initial_setup", get(get_initial_setup))
+		.routes(routes!(get_version))
+		.routes(routes!(get_initial_setup))
 		.route("/auth", post(post_auth))
 		// Configuration
 		.route("/settings", get(get_settings))
@@ -77,6 +78,13 @@ pub fn router() -> Router<App> {
 		.route("/audio/{*path}", get(get_audio))
 }
 
+#[utoipa::path(
+	get,
+	path = "/version",
+	responses(
+		(status = 200, body = dto::Version),
+	),
+)]
 async fn get_version() -> Json<dto::Version> {
 	let current_version = dto::Version {
 		major: API_MAJOR_VERSION,

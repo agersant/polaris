@@ -32,10 +32,10 @@ pub fn web_index() -> Request<()> {
 		.unwrap()
 }
 
-pub fn swagger_index() -> Request<()> {
+pub fn docs_index() -> Request<()> {
 	Request::builder()
 		.method(Method::GET)
-		.uri("/swagger")
+		.uri("/docs")
 		.body(())
 		.unwrap()
 }

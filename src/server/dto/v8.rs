@@ -4,7 +4,7 @@ use utoipa::ToSchema;
 use crate::app::{config, index, peaks, playlist, scanner, thumbnail};
 use std::{collections::HashMap, convert::From, path::PathBuf, time::UNIX_EPOCH};
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, ToSchema)]
 pub struct Version {
 	pub major: i32,
 	pub minor: i32,

@@ -135,7 +135,6 @@ fn main() -> Result<(), Error> {
 	if !cli_options.foreground {
 		info!("Pid file location is {:#?}", paths.pid_file_path);
 	}
-	info!("Swagger files location is {:#?}", paths.swagger_dir_path);
 	info!("Web client files location is {:#?}", paths.web_dir_path);
 
 	async_main(cli_options, paths)
