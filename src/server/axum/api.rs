@@ -28,7 +28,7 @@ pub fn router() -> OpenApiRouter<App> {
 		// Basic
 		.routes(routes!(get_version))
 		.routes(routes!(get_initial_setup))
-		.route("/auth", post(post_auth))
+		.routes(routes!(post_auth))
 		// Configuration
 		.route("/settings", get(get_settings))
 		.route("/settings", put(put_settings))
@@ -178,6 +178,14 @@ async fn put_mount_dirs(
 	Ok(())
 }
 
+#[utoipa::path(
+	post,
+	path = "/auth",
+	responses(
+		(status = 200, body = dto::Authorization),
+		(status = 401),
+	),
+)]
 async fn post_auth(
 	State(config_manager): State<config::Manager>,
 	credentials: Json<dto::Credentials>,

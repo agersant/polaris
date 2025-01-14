@@ -15,13 +15,13 @@ pub struct InitialSetup {
 	pub has_any_users: bool,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, ToSchema)]
 pub struct Credentials {
 	pub username: String,
 	pub password: String,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, ToSchema)]
 pub struct Authorization {
 	pub username: String,
 	pub token: String,
