@@ -37,44 +37,44 @@ pub fn router() -> Router<App> {
 		.route("/index_status", get(get_index_status))
 		// User management
 		.route("/user", post(post_user))
-		.route("/user/:name", delete(delete_user))
-		.route("/user/:name", put(put_user))
+		.route("/user/{name}", delete(delete_user))
+		.route("/user/{name}", put(put_user))
 		.route("/users", get(get_users))
 		// File browser
 		.route("/browse", get(get_browse_root))
-		.route("/browse/*path", get(get_browse))
+		.route("/browse/{*path}", get(get_browse))
 		.route("/flatten", get(get_flatten_root))
-		.route("/flatten/*path", get(get_flatten))
+		.route("/flatten/{*path}", get(get_flatten))
 		// Semantic
 		.route("/albums", get(get_albums))
 		.route("/albums/recent", get(get_recent_albums))
 		.route("/albums/random", get(get_random_albums))
 		.route("/artists", get(get_artists))
-		.route("/artists/:artist", get(get_artist))
-		.route("/artists/:artists/albums/:name", get(get_album))
+		.route("/artists/{artist}", get(get_artist))
+		.route("/artists/{artists}/albums/{name}", get(get_album))
 		.route("/genres", get(get_genres))
-		.route("/genres/:genre", get(get_genre))
-		.route("/genres/:genre/albums", get(get_genre_albums))
-		.route("/genres/:genre/artists", get(get_genre_artists))
-		.route("/genres/:genre/songs", get(get_genre_songs))
+		.route("/genres/{genre}", get(get_genre))
+		.route("/genres/{genre}/albums", get(get_genre_albums))
+		.route("/genres/{genre}/artists", get(get_genre_artists))
+		.route("/genres/{genre}/songs", get(get_genre_songs))
 		.route("/random", get(get_random_albums)) // Deprecated
 		.route("/recent", get(get_recent_albums)) // Deprecated
 		// Search
-		.route("/search/*query", get(get_search))
+		.route("/search/{*query}", get(get_search))
 		// Playlist management
 		.route("/playlists", get(get_playlists))
-		.route("/playlist/:name", put(put_playlist))
-		.route("/playlist/:name", get(get_playlist))
-		.route("/playlist/:name", delete(delete_playlist))
+		.route("/playlist/{name}", put(put_playlist))
+		.route("/playlist/{name}", get(get_playlist))
+		.route("/playlist/{name}", delete(delete_playlist))
 		// Media
 		.route("/songs", post(get_songs)) // post because of https://github.com/whatwg/fetch/issues/551
-		.route("/peaks/*path", get(get_peaks))
-		.route("/thumbnail/*path", get(get_thumbnail))
+		.route("/peaks/{*path}", get(get_peaks))
+		.route("/thumbnail/{*path}", get(get_thumbnail))
 		// Layers
 		.layer(CompressionLayer::new().quality(CompressionLevel::Fastest))
 		.layer(DefaultBodyLimit::max(10 * 1024 * 1024)) // 10MB
 		// Uncompressed
-		.route("/audio/*path", get(get_audio))
+		.route("/audio/{*path}", get(get_audio))
 }
 
 async fn get_version() -> Json<dto::Version> {

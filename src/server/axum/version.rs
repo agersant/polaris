@@ -1,9 +1,8 @@
-use axum::{async_trait, extract::FromRequestParts};
+use axum::extract::FromRequestParts;
 use http::request::Parts;
 
 use crate::server::{error::APIError, APIMajorVersion};
 
-#[async_trait]
 impl<S> FromRequestParts<S> for APIMajorVersion
 where
 	S: Send + Sync,

@@ -13,8 +13,8 @@ lto = "thin"
 
 [dependencies]
 ape = "0.5"
-axum-extra = { version = "0.9.3", features = ["typed-header"] }
-axum-range = "0.4.0"
+axum-extra = { version = "0.10.0", features = ["typed-header"] }
+axum-range = { git = "https://github.com/agersant/axum-range", branch = "axum-0.8" }
 bitcode = { version = "0.6.3", features = ["serde"] }
 branca = "0.10.1"
 chumsky = "0.9.3"
@@ -56,8 +56,8 @@ thiserror = "1.0.62"
 tokio = { version = "1.39", features = ["macros", "rt-multi-thread"] }
 tokio-util = { version = "0.7.11", features = ["io"] }
 toml = "0.8.19"
-tower = { version = "0.5.0" }
-tower-http = { version = "0.5.2", features = [
+tower = { version = "0.5.2" }
+tower-http = { version = "0.6.2", features = [
 	"compression-gzip",
 	"fs",
 	"normalize-path",
@@ -67,7 +67,7 @@ unicase = "2.7.0"
 ureq = { version = "2.10.0", default-features = false, features = ["tls"] }
 
 [dependencies.axum]
-version = "0.7.5"
+version = "0.8.1"
 default-features = false
 features = ["http1", "json", "tokio", "tower-log", "query"]
 
@@ -95,6 +95,6 @@ embed-resource = "2.4.2"
 winres = "0.1"
 
 [dev-dependencies]
-axum-test = "15.7"
+axum-test = "17.0"
 bytes = "1.7.1"
 percent-encoding = "2.2"

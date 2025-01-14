@@ -1,7 +1,4 @@
-use axum::{
-	async_trait,
-	extract::{FromRef, FromRequestParts, Query},
-};
+use axum::extract::{FromRef, FromRequestParts, Query};
 use headers::authorization::{Bearer, Credentials};
 use http::request::Parts;
 
@@ -21,7 +18,6 @@ impl Auth {
 	}
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for Auth
 where
 	config::Manager: FromRef<S>,
@@ -67,7 +63,6 @@ impl AdminRights {
 	}
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for AdminRights
 where
 	config::Manager: FromRef<S>,

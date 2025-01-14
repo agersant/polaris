@@ -21,14 +21,14 @@ pub fn make_router(app: App) -> NormalizePath<Router> {
 	let swagger = ServeDir::new(&app.swagger_dir_path);
 
 	let static_files = Router::new()
-		.nest_service("/", ServeDir::new(&app.web_dir_path))
+		.fallback_service(ServeDir::new(&app.web_dir_path))
 		.layer(CompressionLayer::new());
 
 	let router = Router::new()
 		.nest("/api", api::router())
 		.with_state(app.clone())
 		.nest_service("/swagger", swagger)
-		.nest("/", static_files)
+		.fallback_service(static_files)
 		.layer(logger::LogLayer::new());
 
 	NormalizePathLayer::trim_trailing_slash().layer(router)
