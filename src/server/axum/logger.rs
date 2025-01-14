@@ -44,7 +44,7 @@ where
 	}
 
 	fn call(&mut self, request: Request) -> Self::Future {
-		let uri = request.uri().clone();
+		let uri = request.uri().path().to_owned();
 		let future = self.inner.call(request);
 		Box::pin(async move {
 			let response: Response = future.await?;
