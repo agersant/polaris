@@ -85,6 +85,13 @@ async fn get_version() -> Json<dto::Version> {
 	Json(current_version)
 }
 
+#[utoipa::path(
+	get,
+	path = "/initial_setup",
+	responses(
+		(status = 200, body = dto::InitialSetup),
+	),
+)]
 async fn get_initial_setup(
 	State(config_manager): State<config::Manager>,
 ) -> Result<Json<dto::InitialSetup>, APIError> {

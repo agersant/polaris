@@ -1,5 +1,6 @@
 use error::APIError;
 
+mod doc;
 mod dto;
 mod error;
 

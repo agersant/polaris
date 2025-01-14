@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
 use crate::app::{config, index, peaks, playlist, scanner, thumbnail};
 use std::{collections::HashMap, convert::From, path::PathBuf, time::UNIX_EPOCH};
@@ -9,7 +10,7 @@ pub struct Version {
 	pub minor: i32,
 }
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, ToSchema)]
 pub struct InitialSetup {
 	pub has_any_users: bool,
 }
