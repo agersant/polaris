@@ -44,17 +44,17 @@ pub fn router() -> OpenApiRouter<App> {
 		.routes(routes!(get_flatten_root))
 		.routes(routes!(get_flatten))
 		// Semantic
-		.route("/albums", get(get_albums))
-		.route("/albums/recent", get(get_recent_albums))
-		.route("/albums/random", get(get_random_albums))
-		.route("/artists", get(get_artists))
-		.route("/artists/{artist}", get(get_artist))
-		.route("/artists/{artists}/albums/{name}", get(get_album))
-		.route("/genres", get(get_genres))
-		.route("/genres/{genre}", get(get_genre))
-		.route("/genres/{genre}/albums", get(get_genre_albums))
-		.route("/genres/{genre}/artists", get(get_genre_artists))
-		.route("/genres/{genre}/songs", get(get_genre_songs))
+		.routes(routes!(get_albums))
+		.routes(routes!(get_recent_albums))
+		.routes(routes!(get_random_albums))
+		.routes(routes!(get_artists))
+		.routes(routes!(get_artist))
+		.routes(routes!(get_album))
+		.routes(routes!(get_genres))
+		.routes(routes!(get_genre))
+		.routes(routes!(get_genre_albums))
+		.routes(routes!(get_genre_artists))
+		.routes(routes!(get_genre_songs))
 		.route("/random", get(get_random_albums)) // Deprecated
 		.route("/recent", get(get_recent_albums)) // Deprecated
 		// Search
@@ -492,6 +492,13 @@ async fn get_flatten(
 	song_list_to_response(song_list, api_version)
 }
 
+#[utoipa::path(
+	get,
+	path = "/albums",
+	responses(
+		(status = 200, body = Vec<dto::AlbumHeader>),
+	)
+)]
 async fn get_albums(
 	_auth: Auth,
 	State(index_manager): State<index::Manager>,
@@ -507,6 +514,13 @@ async fn get_albums(
 	))
 }
 
+#[utoipa::path(
+	get,
+	path = "/artists",
+	responses(
+		(status = 200, body = Vec<dto::ArtistHeader>),
+	)
+)]
 async fn get_artists(
 	_auth: Auth,
 	State(index_manager): State<index::Manager>,
@@ -522,6 +536,14 @@ async fn get_artists(
 	))
 }
 
+#[utoipa::path(
+	get,
+	path = "/artists/{artist}",
+	params(("artist" = String, Path)),
+	responses(
+		(status = 200, body = dto::Artist),
+	)
+)]
 async fn get_artist(
 	_auth: Auth,
 	State(index_manager): State<index::Manager>,
@@ -530,6 +552,17 @@ async fn get_artist(
 	Ok(Json(index_manager.get_artist(artist).await?.into()))
 }
 
+#[utoipa::path(
+	get,
+	path = "/artists/{artists}/albums/{album}",
+	params(
+		("artists" = String, Path),
+		("album" = String, Path),
+	),
+	responses(
+		(status = 200, body = dto::Album),
+	)
+)]
 async fn get_album(
 	_auth: Auth,
 	State(index_manager): State<index::Manager>,
@@ -575,6 +608,13 @@ async fn get_peaks(
 	Ok(peaks.interleaved)
 }
 
+#[utoipa::path(
+	get,
+	path = "/albums/random",
+	responses(
+		(status = 200, body = Vec<dto::AlbumHeader>),
+	)
+)]
 async fn get_random_albums(
 	_auth: Auth,
 	api_version: APIMajorVersion,
@@ -593,6 +633,13 @@ async fn get_random_albums(
 	albums_to_response(albums, api_version)
 }
 
+#[utoipa::path(
+	get,
+	path = "/albums/recent",
+	responses(
+		(status = 200, body = Vec<dto::AlbumHeader>),
+	)
+)]
 async fn get_recent_albums(
 	_auth: Auth,
 	api_version: APIMajorVersion,
@@ -608,6 +655,13 @@ async fn get_recent_albums(
 	albums_to_response(albums, api_version)
 }
 
+#[utoipa::path(
+	get,
+	path = "/genres",
+	responses(
+		(status = 200, body = Vec<dto::GenreHeader>),
+	)
+)]
 async fn get_genres(
 	_auth: Auth,
 	State(index_manager): State<index::Manager>,
@@ -622,6 +676,14 @@ async fn get_genres(
 	))
 }
 
+#[utoipa::path(
+	get,
+	path = "/genres/{genre}",
+	params(("genre" = String, Path)),
+	responses(
+		(status = 200, body = Vec<dto::Genre>),
+	)
+)]
 async fn get_genre(
 	_auth: Auth,
 	State(index_manager): State<index::Manager>,
@@ -630,6 +692,14 @@ async fn get_genre(
 	Ok(Json(index_manager.get_genre(genre).await?.into()))
 }
 
+#[utoipa::path(
+	get,
+	path = "/genres/{genre}/albums",
+	params(("genre" = String, Path)),
+	responses(
+		(status = 200, body = Vec<dto::AlbumHeader>),
+	)
+)]
 async fn get_genre_albums(
 	_auth: Auth,
 	State(index_manager): State<index::Manager>,
@@ -645,6 +715,14 @@ async fn get_genre_albums(
 	Ok(Json(albums))
 }
 
+#[utoipa::path(
+	get,
+	path = "/genres/{genre}/artists",
+	params(("genre" = String, Path)),
+	responses(
+		(status = 200, body = Vec<dto::ArtistHeader>),
+	)
+)]
 async fn get_genre_artists(
 	_auth: Auth,
 	State(index_manager): State<index::Manager>,
@@ -660,6 +738,14 @@ async fn get_genre_artists(
 	Ok(Json(artists))
 }
 
+#[utoipa::path(
+	get,
+	path = "/genres/{genre}/songs",
+	params(("genre" = String, Path)),
+	responses(
+		(status = 200, body = dto::SongList),
+	)
+)]
 async fn get_genre_songs(
 	_auth: Auth,
 	State(index_manager): State<index::Manager>,

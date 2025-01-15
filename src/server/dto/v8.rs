@@ -297,7 +297,7 @@ impl From<index::File> for BrowserEntry {
 	}
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct GenreHeader {
 	pub name: String,
 }
@@ -310,7 +310,7 @@ impl From<index::GenreHeader> for GenreHeader {
 	}
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct Genre {
 	#[serde(flatten)]
 	pub header: GenreHeader,
@@ -355,7 +355,7 @@ impl From<index::Genre> for Genre {
 	}
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct ArtistHeader {
 	pub name: String,
 	pub num_albums_as_performer: u32,
@@ -380,21 +380,21 @@ impl From<index::ArtistHeader> for ArtistHeader {
 	}
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct Artist {
 	#[serde(flatten)]
 	pub header: ArtistHeader,
 	pub albums: Vec<ArtistAlbum>,
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct ArtistAlbum {
 	#[serde(flatten)]
 	pub album: AlbumHeader,
 	pub contributions: Vec<Contribution>,
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct Contribution {
 	pub performer: bool,
 	pub composer: bool,
@@ -424,7 +424,7 @@ impl From<index::Artist> for Artist {
 	}
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct AlbumHeader {
 	pub name: String,
 	#[serde(default, skip_serializing_if = "Option::is_none")]
@@ -446,7 +446,7 @@ impl From<index::AlbumHeader> for AlbumHeader {
 	}
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct Album {
 	#[serde(flatten)]
 	pub header: AlbumHeader,
