@@ -35,7 +35,7 @@ pub fn web_index() -> Request<()> {
 pub fn docs_index() -> Request<()> {
 	Request::builder()
 		.method(Method::GET)
-		.uri("/docs")
+		.uri("/api-docs")
 		.body(())
 		.unwrap()
 }

@@ -31,7 +31,7 @@ pub fn make_router(app: App) -> NormalizePath<Router> {
 
 	let router = open_api_router
 		.with_state(app.clone())
-		.merge(Scalar::with_url("/docs", open_api))
+		.merge(Scalar::with_url("/api-docs", open_api))
 		.fallback_service(static_files)
 		.layer(logger::LogLayer::new());
 
