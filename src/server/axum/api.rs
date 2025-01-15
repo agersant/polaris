@@ -39,10 +39,10 @@ pub fn router() -> OpenApiRouter<App> {
 		.routes(routes!(delete_user, put_user))
 		.routes(routes!(get_users))
 		// File browser
-		.route("/browse", get(get_browse_root))
-		.route("/browse/{*path}", get(get_browse))
-		.route("/flatten", get(get_flatten_root))
-		.route("/flatten/{*path}", get(get_flatten))
+		.routes(routes!(get_browse_root))
+		.routes(routes!(get_browse))
+		.routes(routes!(get_flatten_root))
+		.routes(routes!(get_flatten))
 		// Semantic
 		.route("/albums", get(get_albums))
 		.route("/albums/recent", get(get_recent_albums))
@@ -410,6 +410,13 @@ fn albums_to_response(albums: Vec<index::Album>, api_version: APIMajorVersion) -
 	}
 }
 
+#[utoipa::path(
+	get,
+	path = "/browse",
+	responses(
+		(status = 200, body = Vec<dto::BrowserEntry>),
+	)
+)]
 async fn get_browse_root(
 	_auth: Auth,
 	api_version: APIMajorVersion,
@@ -422,6 +429,14 @@ async fn get_browse_root(
 	index_files_to_response(result, api_version)
 }
 
+#[utoipa::path(
+	get,
+	path = "/browse/{*path}",
+	params(("path" = String, Path, allow_reserved)),
+	responses(
+		(status = 200, body = Vec<dto::BrowserEntry>),
+	)
+)]
 async fn get_browse(
 	_auth: Auth,
 	api_version: APIMajorVersion,
@@ -435,6 +450,13 @@ async fn get_browse(
 	index_files_to_response(result, api_version)
 }
 
+#[utoipa::path(
+	get,
+	path = "/flatten",
+	responses(
+		(status = 200, body = dto::SongList),
+	)
+)]
 async fn get_flatten_root(
 	_auth: Auth,
 	api_version: APIMajorVersion,
@@ -448,6 +470,14 @@ async fn get_flatten_root(
 	song_list_to_response(song_list, api_version)
 }
 
+#[utoipa::path(
+	get,
+	path = "/flatten/{*path}",
+	params(("path" = String, Path, allow_reserved)),
+	responses(
+		(status = 200, body = dto::SongList),
+	)
+)]
 async fn get_flatten(
 	_auth: Auth,
 	api_version: APIMajorVersion,

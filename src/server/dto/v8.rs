@@ -214,8 +214,9 @@ impl From<scanner::Status> for IndexStatus {
 	}
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct Song {
+	#[schema(value_type = String)]
 	pub path: PathBuf,
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub track_number: Option<i64>,
@@ -231,6 +232,7 @@ pub struct Song {
 	pub year: Option<i64>,
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub album: Option<String>,
+	#[schema(value_type = Option<String>)]
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub artwork: Option<PathBuf>,
 	#[serde(default, skip_serializing_if = "Option::is_none")]
@@ -266,14 +268,16 @@ impl From<index::Song> for Song {
 	}
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct SongList {
+	#[schema(value_type = Vec<String>)]
 	pub paths: Vec<PathBuf>,
 	pub first_songs: Vec<Song>,
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct BrowserEntry {
+	#[schema(value_type = String)]
 	pub path: PathBuf,
 	pub is_directory: bool,
 }
