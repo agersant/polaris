@@ -48,10 +48,11 @@ where
 		let future = self.inner.call(request);
 		Box::pin(async move {
 			let response: Response = future.await?;
-			let level = if response.status().is_success() {
-				Level::Info
-			} else {
+			let status = response.status();
+			let level = if status.is_client_error() || status.is_server_error() {
 				Level::Error
+			} else {
+				Level::Info
 			};
 			log!(level, "[{}] {}", response.status(), uri);
 			Ok(response)
