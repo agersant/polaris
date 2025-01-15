@@ -464,14 +464,16 @@ impl From<index::Album> for Album {
 	}
 }
 
-#[derive(Clone, Default, Serialize, Deserialize)]
+#[derive(Clone, Default, Serialize, Deserialize, ToSchema)]
 pub struct GetSongsBulkInput {
+	#[schema(value_type = Vec<String>)]
 	pub paths: Vec<PathBuf>,
 }
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Default, Serialize, Deserialize, ToSchema)]
 pub struct GetSongsBulkOutput {
 	pub songs: Vec<Song>,
+	#[schema(value_type = Vec<String>)]
 	pub not_found: Vec<PathBuf>,
 }
 

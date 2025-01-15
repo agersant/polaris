@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use axum::{
 	extract::{DefaultBodyLimit, Path, Query, State},
 	response::{IntoResponse, Response},
-	routing::{get, post},
+	routing::get,
 	Json,
 };
 use axum_extra::headers::Range;
@@ -63,14 +63,14 @@ pub fn router() -> OpenApiRouter<App> {
 		.routes(routes!(get_playlists))
 		.routes(routes!(put_playlist, get_playlist, delete_playlist))
 		// Media
-		.route("/songs", post(get_songs)) // post because of https://github.com/whatwg/fetch/issues/551
-		.route("/peaks/{*path}", get(get_peaks))
-		.route("/thumbnail/{*path}", get(get_thumbnail))
+		.routes(routes!(get_songs))
+		.routes(routes!(get_peaks))
+		.routes(routes!(get_thumbnail))
 		// Layers
 		.layer(CompressionLayer::new().quality(CompressionLevel::Fastest))
 		.layer(DefaultBodyLimit::max(10 * 1024 * 1024)) // 10MB
 		// Uncompressed
-		.route("/audio/{*path}", get(get_audio))
+		.routes(routes!(get_audio))
 }
 
 #[utoipa::path(
@@ -573,6 +573,14 @@ async fn get_album(
 	Ok(Json(index_manager.get_album(artists, name).await?.into()))
 }
 
+#[utoipa::path(
+	post, // post because of https://github.com/whatwg/fetch/issues/551
+	path = "/songs",
+	request_body = dto::GetSongsBulkInput,
+	responses(
+		(status = 200, body = dto::GetSongsBulkOutput),
+	)
+)]
 async fn get_songs(
 	_auth: Auth,
 	State(index_manager): State<index::Manager>,
@@ -595,6 +603,14 @@ async fn get_songs(
 	Ok(Json(output))
 }
 
+#[utoipa::path(
+	get,
+	path = "/peaks/{*path}",
+	params(("path" = String, Path, allow_reserved)),
+	responses(
+		(status = 200, body = dto::Peaks),
+	)
+)]
 async fn get_peaks(
 	_auth: Auth,
 	State(config_manager): State<config::Manager>,
@@ -893,6 +909,15 @@ async fn delete_playlist(
 	Ok(())
 }
 
+#[utoipa::path(
+	get,
+	path = "/audio/{*path}",
+	params(("path" = String, Path, allow_reserved)),
+	responses(
+		(status = 206, body = [u8]),
+		(status = 200, body = [u8]),
+	)
+)]
 async fn get_audio(
 	_auth: Auth,
 	State(config_manager): State<config::Manager>,
@@ -913,6 +938,15 @@ async fn get_audio(
 	Ok(Ranged::new(range, body))
 }
 
+#[utoipa::path(
+	get,
+	path = "/thumbnail/{*path}",
+	params(("path" = String, Path, allow_reserved)),
+	responses(
+		(status = 206, body = [u8]),
+		(status = 200, body = [u8]),
+	)
+)]
 async fn get_thumbnail(
 	_auth: Auth,
 	State(config_manager): State<config::Manager>,
