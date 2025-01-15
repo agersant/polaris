@@ -430,7 +430,7 @@ async fn get_browse_root(
 #[utoipa::path(
 	get,
 	path = "/browse/{*path}",
-	params(("path" = String, Path, allow_reserved)),
+	params(("path", allow_reserved)),
 	responses(
 		(status = 200, body = Vec<dto::BrowserEntry>),
 	)
@@ -471,7 +471,7 @@ async fn get_flatten_root(
 #[utoipa::path(
 	get,
 	path = "/flatten/{*path}",
-	params(("path" = String, Path, allow_reserved)),
+	params(("path", allow_reserved)),
 	responses(
 		(status = 200, body = dto::SongList),
 	)
@@ -537,7 +537,7 @@ async fn get_artists(
 #[utoipa::path(
 	get,
 	path = "/artists/{artist}",
-	params(("artist" = String, Path)),
+	params(("artist",)),
 	responses(
 		(status = 200, body = dto::Artist),
 	)
@@ -554,8 +554,8 @@ async fn get_artist(
 	get,
 	path = "/artists/{artists}/albums/{album}",
 	params(
-		("artists" = String, Path),
-		("album" = String, Path),
+		("artists",),
+		("album",),
 	),
 	responses(
 		(status = 200, body = dto::Album),
@@ -606,7 +606,7 @@ async fn get_songs(
 #[utoipa::path(
 	get,
 	path = "/peaks/{*path}",
-	params(("path" = String, Path, allow_reserved)),
+	params(("path", allow_reserved)),
 	responses(
 		(status = 200, body = dto::Peaks),
 	)
@@ -693,7 +693,7 @@ async fn get_genres(
 #[utoipa::path(
 	get,
 	path = "/genres/{genre}",
-	params(("genre" = String, Path)),
+	params(("genre",)),
 	responses(
 		(status = 200, body = Vec<dto::Genre>),
 	)
@@ -709,7 +709,7 @@ async fn get_genre(
 #[utoipa::path(
 	get,
 	path = "/genres/{genre}/albums",
-	params(("genre" = String, Path)),
+	params(("genre",)),
 	responses(
 		(status = 200, body = Vec<dto::AlbumHeader>),
 	)
@@ -732,7 +732,7 @@ async fn get_genre_albums(
 #[utoipa::path(
 	get,
 	path = "/genres/{genre}/artists",
-	params(("genre" = String, Path)),
+	params(("genre",)),
 	responses(
 		(status = 200, body = Vec<dto::ArtistHeader>),
 	)
@@ -755,7 +755,7 @@ async fn get_genre_artists(
 #[utoipa::path(
 	get,
 	path = "/genres/{genre}/songs",
-	params(("genre" = String, Path)),
+	params(("genre",)),
 	responses(
 		(status = 200, body = dto::SongList),
 	)
@@ -780,7 +780,7 @@ async fn get_genre_songs(
 #[utoipa::path(
 	get,
 	path = "/search/{*query}",
-	params(("query" = String, Path, allow_reserved)),
+	params(("query", allow_reserved)),
 	responses(
 		(status = 200, body = dto::SongList),
 	)
@@ -838,7 +838,7 @@ async fn get_playlists(
 #[utoipa::path(
 	put,
 	path = "/playlist/{name}",
-	params(("name" = String, Path)),
+	params(("name",)),
 	request_body = dto::SavePlaylistInput,
 )]
 async fn put_playlist(
@@ -863,7 +863,7 @@ async fn put_playlist(
 #[utoipa::path(
 	get,
 	path = "/playlist/{name}",
-	params(("name" = String, Path)),
+	params(("name",)),
 	responses(
 		(status = 200, body = dto::Playlist),
 	)
@@ -896,7 +896,7 @@ async fn get_playlist(
 #[utoipa::path(
 	delete,
 	path = "/playlist/{name}",
-	params(("name" = String, Path)),
+	params(("name",)),
 )]
 async fn delete_playlist(
 	auth: Auth,
@@ -912,7 +912,7 @@ async fn delete_playlist(
 #[utoipa::path(
 	get,
 	path = "/audio/{*path}",
-	params(("path" = String, Path, allow_reserved)),
+	params(("path", allow_reserved)),
 	responses(
 		(status = 206, body = [u8]),
 		(status = 200, body = [u8]),
@@ -941,7 +941,10 @@ async fn get_audio(
 #[utoipa::path(
 	get,
 	path = "/thumbnail/{*path}",
-	params(("path" = String, Path, allow_reserved)),
+	params(
+		("path", allow_reserved),
+		dto::ThumbnailOptions
+	),
 	responses(
 		(status = 206, body = [u8]),
 		(status = 200, body = [u8]),

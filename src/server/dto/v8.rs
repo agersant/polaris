@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
+use utoipa::{IntoParams, ToSchema};
 
 use crate::app::{config, index, peaks, playlist, scanner, thumbnail};
 use std::{collections::HashMap, convert::From, path::PathBuf, time::UNIX_EPOCH};
@@ -33,7 +33,7 @@ pub struct AuthQueryParameters {
 	pub auth_token: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, IntoParams)]
 pub struct ThumbnailOptions {
 	pub size: Option<ThumbnailSize>,
 	pub pad: Option<bool>,
@@ -48,7 +48,7 @@ impl From<ThumbnailOptions> for thumbnail::Options {
 	}
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Clone, Copy, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ThumbnailSize {
 	Tiny,
