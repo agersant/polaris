@@ -14,7 +14,7 @@ lto = "thin"
 [dependencies]
 ape = "0.5"
 axum-extra = { version = "0.10.0", features = ["typed-header"] }
-axum-range = { git = "https://github.com/agersant/axum-range", branch = "axum-0.8" }
+axum-range = { version = "0.5.0" }
 bitcode = { version = "0.6.3", features = ["serde"] }
 branca = "0.10.1"
 chumsky = "0.9.3"

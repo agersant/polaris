@@ -179,7 +179,8 @@ dependencies = [
 [[package]]
 name = "axum-range"
 version = "0.5.0"
-source = "git+https://github.com/agersant/axum-range?branch=axum-0.8#71028e28d09a10b9c85fa4db16ae96dc299f68f4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e8b09d24c2cfcf6596afc4b9d139ad62c53637c7e0f791ef8a25ce1cc431f73a"
 dependencies = [
  "axum",
  "axum-extra",
