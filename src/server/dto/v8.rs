@@ -106,7 +106,7 @@ pub struct SavePlaylistInput {
 	pub tracks: Vec<PathBuf>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, ToSchema)]
 pub struct User {
 	pub name: String,
 	pub is_admin: bool,
@@ -121,14 +121,14 @@ impl From<config::User> for User {
 	}
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct NewUser {
 	pub name: String,
 	pub password: String,
 	pub admin: bool,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct UserUpdate {
 	pub new_password: Option<String>,
 	pub new_is_admin: Option<bool>,

@@ -35,10 +35,9 @@ pub fn router() -> OpenApiRouter<App> {
 		.routes(routes!(post_trigger_index))
 		.routes(routes!(get_index_status))
 		// User management
-		.route("/user", post(post_user))
-		.route("/user/{name}", delete(delete_user))
-		.route("/user/{name}", put(put_user))
-		.route("/users", get(get_users))
+		.routes(routes!(post_user))
+		.routes(routes!(delete_user, put_user))
+		.routes(routes!(get_users))
 		// File browser
 		.route("/browse", get(get_browse_root))
 		.route("/browse/{*path}", get(get_browse))
@@ -229,6 +228,13 @@ async fn post_auth(
 	Ok(Json(authorization))
 }
 
+#[utoipa::path(
+	get,
+	path = "/users",
+	responses(
+		(status = 200, body = Vec<dto::User>),
+	),
+)]
 async fn get_users(
 	_admin_rights: AdminRights,
 	State(config_manager): State<config::Manager>,
@@ -238,6 +244,16 @@ async fn get_users(
 	Ok(Json(users))
 }
 
+#[utoipa::path(
+	post,
+	path = "/user",
+	request_body = dto::NewUser,
+	responses(
+		(status = 200),
+		(status = 400),
+		(status = 409)
+	)
+)]
 async fn post_user(
 	_admin_rights: AdminRights,
 	State(config_manager): State<config::Manager>,
@@ -249,6 +265,16 @@ async fn post_user(
 	Ok(())
 }
 
+#[utoipa::path(
+	put,
+	path = "/user/{name}",
+	request_body = dto::UserUpdate,
+	responses(
+		(status = 200),
+		(status = 404),
+		(status = 409)
+	)
+)]
 async fn put_user(
 	admin_rights: AdminRights,
 	State(config_manager): State<config::Manager>,
@@ -272,6 +298,15 @@ async fn put_user(
 	Ok(())
 }
 
+#[utoipa::path(
+	delete,
+	path = "/user/{name}",
+	responses(
+		(status = 200),
+		(status = 404),
+		(status = 409)
+	)
+)]
 async fn delete_user(
 	admin_rights: AdminRights,
 	State(config_manager): State<config::Manager>,
