@@ -6,36 +6,51 @@ use std::{collections::HashMap, convert::From, path::PathBuf, time::UNIX_EPOCH};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, ToSchema)]
 pub struct Version {
+	#[schema(examples(8))]
 	pub major: i32,
+	#[schema(examples(0))]
 	pub minor: i32,
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, ToSchema)]
 pub struct InitialSetup {
+	#[schema(examples(true, false))]
 	pub has_any_users: bool,
 }
 
 #[derive(Clone, Serialize, Deserialize, ToSchema)]
 pub struct Credentials {
+	#[schema(examples("alice"))]
 	pub username: String,
+	#[schema(examples("secret_password!!"))]
 	pub password: String,
 }
 
 #[derive(Clone, Serialize, Deserialize, ToSchema)]
 pub struct Authorization {
+	#[schema(examples("alice"))]
 	pub username: String,
+	#[schema(
+		examples("2U9OOdG2xAblxbhX1EhhjnjJJhw9SAeN1jIVdJ8UYGBBjgD73xeSFHECiYsB7ueBPwJ9ljR4WjlxU0jvcUw94LWbX2OHINKyvCneQgcf5YxjuXI8RTdqrxxTrpjR19p")
+	)]
 	pub token: String,
+	#[schema(examples(true, false))]
 	pub is_admin: bool,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, ToSchema)]
 pub struct AuthQueryParameters {
+	#[schema(
+		examples("2U9OOdG2xAblxbhX1EhhjnjJJhw9SAeN1jIVdJ8UYGBBjgD73xeSFHECiYsB7ueBPwJ9ljR4WjlxU0jvcUw94LWbX2OHINKyvCneQgcf5YxjuXI8RTdqrxxTrpjR19p")
+	)]
 	pub auth_token: String,
 }
 
-#[derive(Serialize, Deserialize, IntoParams)]
+#[derive(Serialize, Deserialize, IntoParams, ToSchema)]
 pub struct ThumbnailOptions {
+	#[schema(examples("tiny", "small", "large", "native"))]
 	pub size: Option<ThumbnailSize>,
+	#[schema(examples(true, false))]
 	pub pad: Option<bool>,
 }
 
@@ -79,8 +94,12 @@ impl From<peaks::Peaks> for Peaks {
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct PlaylistHeader {
+	#[schema(examples("Hotel Lounge Jazz", "Chill Beats 🏝️"))]
 	pub name: String,
+	#[schema(examples(json!({ "Jazz": 2, "Classical": 11 })))]
 	pub num_songs_by_genre: HashMap<String, u32>,
+	#[schema(examples(2309))]
+	/// Playlist duration in seconds
 	pub duration: u64,
 }
 
@@ -103,13 +122,15 @@ pub struct Playlist {
 
 #[derive(Clone, Serialize, Deserialize, ToSchema)]
 pub struct SavePlaylistInput {
-	#[schema(value_type = Vec<String>)]
+	#[schema(value_type = Vec<String>, examples(json!(["my_music/destiny.mp3", "my_music/dancing_all_night.mp3"])))]
 	pub tracks: Vec<PathBuf>,
 }
 
 #[derive(Serialize, Deserialize, ToSchema)]
 pub struct User {
+	#[schema(examples("alice"))]
 	pub name: String,
+	#[schema(examples(true, false))]
 	pub is_admin: bool,
 }
 
@@ -124,21 +145,27 @@ impl From<config::User> for User {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct NewUser {
+	#[schema(examples("alice"))]
 	pub name: String,
+	#[schema(examples("secret-password!!"))]
 	pub password: String,
+	#[schema(examples(true, false))]
 	pub admin: bool,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct UserUpdate {
+	#[schema(examples("secret-password!!"))]
 	pub new_password: Option<String>,
+	#[schema(examples(true, false))]
 	pub new_is_admin: Option<bool>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize, ToSchema)]
 pub struct MountDir {
-	#[schema(value_type = String)]
+	#[schema(value_type = String, examples("/home/alice/music", "C:\\Users\\alice\\Documents\\Music"))]
 	pub source: PathBuf,
+	#[schema(examples("my_music", "root"))]
 	pub name: String,
 }
 
@@ -162,13 +189,17 @@ impl From<config::MountDir> for MountDir {
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct NewSettings {
+	#[schema(examples("Folder.(jpeg|jpg|png)"))]
 	pub album_art_pattern: Option<String>,
+	#[schema(examples("https://myddnsprovider.com?token=abcdef"))]
 	pub ddns_update_url: Option<String>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct Settings {
+	#[schema(examples("Folder.(jpeg|jpg|png)"))]
 	pub album_art_pattern: String,
+	#[schema(examples("https://myddnsprovider.com?token=abcdef"))]
 	pub ddns_update_url: String,
 }
 
@@ -193,8 +224,11 @@ impl From<scanner::State> for IndexState {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct IndexStatus {
 	state: IndexState,
+	#[schema(examples(1736929092))]
 	last_start_time: Option<u64>,
+	#[schema(examples(1736929992))]
 	last_end_time: Option<u64>,
+	#[schema(examples(289))]
 	num_songs_indexed: u32,
 }
 
@@ -217,34 +251,48 @@ impl From<scanner::Status> for IndexStatus {
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct Song {
-	#[schema(value_type = String)]
+	#[schema(value_type = String, examples("my_music/destiny.mp3"))]
 	pub path: PathBuf,
 	#[serde(default, skip_serializing_if = "Option::is_none")]
+	#[schema(examples(1))]
 	pub track_number: Option<i64>,
 	#[serde(default, skip_serializing_if = "Option::is_none")]
+	#[schema(examples(1))]
 	pub disc_number: Option<i64>,
 	#[serde(default, skip_serializing_if = "Option::is_none")]
+	#[schema(examples("Destiny", "Dancing All Night"))]
 	pub title: Option<String>,
 	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	#[schema(examples(json!(["Stratovarius"]), json!(["Cool Groove", "Smooth Doot"])))]
 	pub artists: Vec<String>,
 	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	#[schema(examples(json!(["Stratovarius"]), json!(["Various Artists"])))]
 	pub album_artists: Vec<String>,
 	#[serde(default, skip_serializing_if = "Option::is_none")]
+	#[schema(examples(2018))]
 	pub year: Option<i64>,
 	#[serde(default, skip_serializing_if = "Option::is_none")]
+	#[schema(examples("Swing Tunes"))]
 	pub album: Option<String>,
 	#[schema(value_type = Option<String>)]
 	#[serde(default, skip_serializing_if = "Option::is_none")]
+	#[schema(examples("/my_music/destiny.jpg"))]
 	pub artwork: Option<PathBuf>,
 	#[serde(default, skip_serializing_if = "Option::is_none")]
+	/// Duration in seconds
+	#[schema(examples(192))]
 	pub duration: Option<i64>,
 	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	#[schema(examples(json!(["John Writer", "Isabel Editor"])))]
 	pub lyricists: Vec<String>,
 	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	#[schema(examples(json!(["Jane Composer"])))]
 	pub composers: Vec<String>,
 	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	#[schema(examples(json!(["Jazz", "Classical"])))]
 	pub genres: Vec<String>,
 	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	#[schema(examples(json!(["Ninja Tuna"])))]
 	pub labels: Vec<String>,
 }
 
@@ -271,15 +319,16 @@ impl From<index::Song> for Song {
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct SongList {
-	#[schema(value_type = Vec<String>)]
+	#[schema(value_type = Vec<String>, examples(json!(["my_music/destiny.mp3", "my_music/sos.mp3"])))]
 	pub paths: Vec<PathBuf>,
 	pub first_songs: Vec<Song>,
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct BrowserEntry {
-	#[schema(value_type = String)]
+	#[schema(value_type = String, examples("my_music/stratovarius/destiny"))]
 	pub path: PathBuf,
+	#[schema(examples(true, false))]
 	pub is_directory: bool,
 }
 
@@ -300,6 +349,7 @@ impl From<index::File> for BrowserEntry {
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct GenreHeader {
+	#[schema(examples("Jazz", "Classical"))]
 	pub name: String,
 }
 
@@ -315,6 +365,7 @@ impl From<index::GenreHeader> for GenreHeader {
 pub struct Genre {
 	#[serde(flatten)]
 	pub header: GenreHeader,
+	#[schema(examples(json!({ "Jazz": 20, "Classical": 90 })))]
 	pub related_genres: HashMap<String, u32>,
 	pub main_artists: Vec<ArtistHeader>,
 	pub recently_added: Vec<AlbumHeader>,
@@ -358,12 +409,19 @@ impl From<index::Genre> for Genre {
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct ArtistHeader {
+	#[schema(examples("Stratovarius", "Parov Stelar"))]
 	pub name: String,
+	#[schema(examples(0, 5))]
 	pub num_albums_as_performer: u32,
+	#[schema(examples(0, 5))]
 	pub num_albums_as_additional_performer: u32,
+	#[schema(examples(0, 5))]
 	pub num_albums_as_composer: u32,
+	#[schema(examples(0, 5))]
 	pub num_albums_as_lyricist: u32,
+	#[schema(examples(json!({ "Jazz": 2, "Classical": 11 })))]
 	pub num_songs_by_genre: HashMap<String, u32>,
+	#[schema(examples(12))]
 	pub num_songs: u32,
 }
 
@@ -397,8 +455,11 @@ pub struct ArtistAlbum {
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct Contribution {
+	#[schema(examples(true, false))]
 	pub performer: bool,
+	#[schema(examples(true, false))]
 	pub composer: bool,
+	#[schema(examples(true, false))]
 	pub lyricist: bool,
 }
 
@@ -427,12 +488,16 @@ impl From<index::Artist> for Artist {
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct AlbumHeader {
+	#[schema(examples("Destiny", "Swing Tunes"))]
 	pub name: String,
 	#[serde(default, skip_serializing_if = "Option::is_none")]
-	pub artwork: Option<String>,
+	#[schema(value_type = String, examples("my_music/destiny.jpg"))]
+	pub artwork: Option<PathBuf>,
 	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	#[schema(examples(json!(["Stratovarius"]), json!(["Various Artists"]), json!(["Shirley Music", "Chris Solo"])))]
 	pub main_artists: Vec<String>,
 	#[serde(default, skip_serializing_if = "Option::is_none")]
+	#[schema(examples(2010, 2024))]
 	pub year: Option<i64>,
 }
 
@@ -440,7 +505,7 @@ impl From<index::AlbumHeader> for AlbumHeader {
 	fn from(a: index::AlbumHeader) -> Self {
 		Self {
 			name: a.name,
-			artwork: a.artwork.map(|a| a.to_string_lossy().to_string()),
+			artwork: a.artwork,
 			main_artists: a.artists,
 			year: a.year,
 		}
@@ -466,26 +531,32 @@ impl From<index::Album> for Album {
 
 #[derive(Clone, Default, Serialize, Deserialize, ToSchema)]
 pub struct GetSongsBulkInput {
-	#[schema(value_type = Vec<String>)]
+	#[schema(value_type = Vec<String>, examples(json!(["my_music/destiny.mp3", "my_music/sos.mp3"])))]
 	pub paths: Vec<PathBuf>,
 }
 
 #[derive(Default, Serialize, Deserialize, ToSchema)]
 pub struct GetSongsBulkOutput {
 	pub songs: Vec<Song>,
-	#[schema(value_type = Vec<String>)]
+	/// Path to requested songs that could not be found in the collection
+	#[schema(value_type = Vec<String>, examples(json!(["my_music/destiny.mp3", "my_music/sos.mp3"])))]
 	pub not_found: Vec<PathBuf>,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, IntoParams, ToSchema)]
 pub struct GetRandomAlbumsParameters {
+	#[schema(examples(976878))]
 	pub seed: Option<u64>,
+	#[schema(examples(0, 100))]
 	pub offset: Option<usize>,
+	#[schema(examples(100, 1000))]
 	pub count: Option<usize>,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, IntoParams, ToSchema)]
 pub struct GetRecentAlbumsParameters {
+	#[schema(examples(0, 100))]
 	pub offset: Option<usize>,
+	#[schema(examples(100, 1000))]
 	pub count: Option<usize>,
 }
