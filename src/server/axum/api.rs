@@ -423,6 +423,9 @@ fn albums_to_response(albums: Vec<index::Album>, api_version: APIMajorVersion) -
 	get,
 	path = "/browse",
 	tag = "File Browser",
+	params(
+		("Accept-Version" = Option<i32>, Header, minimum = 7, maximum = 8)
+	),
 	responses(
 		(status = 200, body = Vec<dto::BrowserEntry>),
 	)
@@ -443,7 +446,10 @@ async fn get_browse_root(
 	get,
 	path = "/browse/{*path}",
 	tag = "File Browser",
-	params(("path", allow_reserved)),
+	params(
+		("Accept-Version" = Option<i32>, Header, minimum = 7, maximum = 8),
+		("path", allow_reserved),
+	),
 	responses(
 		(status = 200, body = Vec<dto::BrowserEntry>),
 	)
@@ -465,6 +471,9 @@ async fn get_browse(
 	get,
 	path = "/flatten",
 	tag = "File Browser",
+	params(
+		("Accept-Version" = Option<i32>, Header, minimum = 7, maximum = 8),
+	),
 	responses(
 		(status = 200, body = dto::SongList),
 	)
@@ -486,7 +495,10 @@ async fn get_flatten_root(
 	get,
 	path = "/flatten/{*path}",
 	tag = "File Browser",
-	params(("path", allow_reserved)),
+	params(
+		("Accept-Version" = Option<i32>, Header, minimum = 7, maximum = 8),
+		("path", allow_reserved),
+	),
 	responses(
 		(status = 200, body = dto::SongList),
 	)
@@ -647,6 +659,10 @@ async fn get_peaks(
 	get,
 	path = "/albums/random",
 	tag = "Collection",
+	params(
+		("Accept-Version" = Option<i32>, Header, minimum = 7, maximum = 8),
+		dto::GetRandomAlbumsParameters,
+	),
 	responses(
 		(status = 200, body = Vec<dto::AlbumHeader>),
 	)
@@ -673,6 +689,10 @@ async fn get_random_albums(
 	get,
 	path = "/albums/recent",
 	tag = "Collection",
+	params(
+		("Accept-Version" = Option<i32>, Header, minimum = 7, maximum = 8),
+		dto::GetRecentAlbumsParameters
+	),
 	responses(
 		(status = 200, body = Vec<dto::AlbumHeader>),
 	)
@@ -809,7 +829,10 @@ async fn get_genre_songs(
 	get,
 	path = "/search/{*query}",
 	tag = "Collection",
-	params(("query", allow_reserved)),
+	params(
+		("Accept-Version" = Option<i32>, Header, minimum = 7, maximum = 8),
+		("query", allow_reserved),
+	),
 	responses(
 		(status = 200, body = dto::SongList),
 	)
@@ -895,7 +918,10 @@ async fn put_playlist(
 	get,
 	path = "/playlist/{name}",
 	tag = "Playlists",
-	params(("name",)),
+	params(
+		("Accept-Version" = Option<i32>, Header, minimum = 7, maximum = 8),
+		("name",),
+	),
 	responses(
 		(status = 200, body = dto::Playlist),
 	)
