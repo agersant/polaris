@@ -134,8 +134,9 @@ pub struct UserUpdate {
 	pub new_is_admin: Option<bool>,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize, ToSchema)]
 pub struct MountDir {
+	#[schema(value_type = String)]
 	pub source: PathBuf,
 	pub name: String,
 }
@@ -158,19 +159,19 @@ impl From<config::MountDir> for MountDir {
 	}
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct NewSettings {
 	pub album_art_pattern: Option<String>,
 	pub ddns_update_url: Option<String>,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct Settings {
 	pub album_art_pattern: String,
 	pub ddns_update_url: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub enum IndexState {
 	OutOfDate,
 	InProgress,
@@ -188,7 +189,7 @@ impl From<scanner::State> for IndexState {
 	}
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct IndexStatus {
 	state: IndexState,
 	last_start_time: Option<u64>,

@@ -30,12 +30,10 @@ pub fn router() -> OpenApiRouter<App> {
 		.routes(routes!(get_initial_setup))
 		.routes(routes!(post_auth))
 		// Configuration
-		.route("/settings", get(get_settings))
-		.route("/settings", put(put_settings))
-		.route("/mount_dirs", get(get_mount_dirs))
-		.route("/mount_dirs", put(put_mount_dirs))
-		.route("/trigger_index", post(post_trigger_index))
-		.route("/index_status", get(get_index_status))
+		.routes(routes!(get_settings, put_settings))
+		.routes(routes!(get_mount_dirs, put_mount_dirs))
+		.routes(routes!(post_trigger_index))
+		.routes(routes!(get_index_status))
 		// User management
 		.route("/user", post(post_user))
 		.route("/user/{name}", delete(delete_user))
@@ -113,6 +111,13 @@ async fn get_initial_setup(
 	Ok(Json(initial_setup))
 }
 
+#[utoipa::path(
+	get,
+	path = "/settings",
+	responses(
+		(status = 200, body = dto::Settings),
+	),
+)]
 async fn get_settings(
 	_admin_rights: AdminRights,
 	State(config_manager): State<config::Manager>,
@@ -133,6 +138,11 @@ async fn get_settings(
 	Ok(Json(settings))
 }
 
+#[utoipa::path(
+	put,
+	path = "/settings",
+	request_body = dto::NewSettings,
+)]
 async fn put_settings(
 	_admin_rights: AdminRights,
 	State(config_manager): State<config::Manager>,
@@ -158,6 +168,13 @@ async fn put_settings(
 	Ok(())
 }
 
+#[utoipa::path(
+	get,
+	path = "/mount_dirs",
+	responses(
+		(status = 200, body = Vec<dto::MountDir>),
+	),
+)]
 async fn get_mount_dirs(
 	_admin_rights: AdminRights,
 	State(config_manager): State<config::Manager>,
@@ -167,6 +184,11 @@ async fn get_mount_dirs(
 	Ok(Json(mount_dirs))
 }
 
+#[utoipa::path(
+	put,
+	path = "/mount_dirs",
+	request_body = Vec<dto::MountDir>,
+)]
 async fn put_mount_dirs(
 	_admin_rights: AdminRights,
 	State(config_manager): State<config::Manager>,
@@ -264,6 +286,7 @@ async fn delete_user(
 	Ok(())
 }
 
+#[utoipa::path(post, path = "/trigger_index")]
 async fn post_trigger_index(
 	_admin_rights: AdminRights,
 	State(scanner): State<scanner::Scanner>,
@@ -272,6 +295,13 @@ async fn post_trigger_index(
 	Ok(())
 }
 
+#[utoipa::path(
+	get,
+	path = "/index_status",
+	responses(
+		(status = 200, body = dto::IndexStatus),
+	)
+)]
 async fn get_index_status(
 	_admin_rights: AdminRights,
 	State(scanner): State<scanner::Scanner>,
