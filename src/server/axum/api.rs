@@ -25,16 +25,15 @@ use super::auth::{AdminRights, Auth};
 
 pub fn router() -> OpenApiRouter<App> {
 	OpenApiRouter::new()
-		// Basic
+		// Configuration
 		.routes(routes!(get_version))
 		.routes(routes!(get_initial_setup))
-		.routes(routes!(post_auth))
-		// Configuration
 		.routes(routes!(get_settings, put_settings))
 		.routes(routes!(get_mount_dirs, put_mount_dirs))
 		.routes(routes!(post_trigger_index))
 		.routes(routes!(get_index_status))
 		// User management
+		.routes(routes!(post_auth))
 		.routes(routes!(post_user))
 		.routes(routes!(delete_user, put_user))
 		.routes(routes!(get_users))
@@ -76,6 +75,7 @@ pub fn router() -> OpenApiRouter<App> {
 #[utoipa::path(
 	get,
 	path = "/version",
+	tag = "Configuration",
 	responses(
 		(status = 200, body = dto::Version),
 	),
@@ -91,6 +91,7 @@ async fn get_version() -> Json<dto::Version> {
 #[utoipa::path(
 	get,
 	path = "/initial_setup",
+	tag = "Configuration",
 	responses(
 		(status = 200, body = dto::InitialSetup),
 	),
@@ -111,6 +112,7 @@ async fn get_initial_setup(
 #[utoipa::path(
 	get,
 	path = "/settings",
+	tag = "Configuration",
 	responses(
 		(status = 200, body = dto::Settings),
 	),
@@ -138,6 +140,7 @@ async fn get_settings(
 #[utoipa::path(
 	put,
 	path = "/settings",
+	tag = "Configuration",
 	request_body = dto::NewSettings,
 )]
 async fn put_settings(
@@ -168,6 +171,7 @@ async fn put_settings(
 #[utoipa::path(
 	get,
 	path = "/mount_dirs",
+	tag = "Configuration",
 	responses(
 		(status = 200, body = Vec<dto::MountDir>),
 	),
@@ -184,6 +188,7 @@ async fn get_mount_dirs(
 #[utoipa::path(
 	put,
 	path = "/mount_dirs",
+	tag = "Configuration",
 	request_body = Vec<dto::MountDir>,
 )]
 async fn put_mount_dirs(
@@ -200,6 +205,7 @@ async fn put_mount_dirs(
 #[utoipa::path(
 	post,
 	path = "/auth",
+	tag = "User Management",
 	responses(
 		(status = 200, body = dto::Authorization),
 		(status = 401),
@@ -229,6 +235,7 @@ async fn post_auth(
 #[utoipa::path(
 	get,
 	path = "/users",
+	tag = "User Management",
 	responses(
 		(status = 200, body = Vec<dto::User>),
 	),
@@ -245,6 +252,7 @@ async fn get_users(
 #[utoipa::path(
 	post,
 	path = "/user",
+	tag = "User Management",
 	request_body = dto::NewUser,
 	responses(
 		(status = 200),
@@ -266,6 +274,7 @@ async fn post_user(
 #[utoipa::path(
 	put,
 	path = "/user/{name}",
+	tag = "User Management",
 	request_body = dto::UserUpdate,
 	responses(
 		(status = 200),
@@ -299,6 +308,7 @@ async fn put_user(
 #[utoipa::path(
 	delete,
 	path = "/user/{name}",
+	tag = "User Management",
 	responses(
 		(status = 200),
 		(status = 404),
@@ -319,7 +329,7 @@ async fn delete_user(
 	Ok(())
 }
 
-#[utoipa::path(post, path = "/trigger_index")]
+#[utoipa::path(post, path = "/trigger_index", tag = "Configuration")]
 async fn post_trigger_index(
 	_admin_rights: AdminRights,
 	State(scanner): State<scanner::Scanner>,
@@ -331,6 +341,7 @@ async fn post_trigger_index(
 #[utoipa::path(
 	get,
 	path = "/index_status",
+	tag = "Configuration",
 	responses(
 		(status = 200, body = dto::IndexStatus),
 	)
@@ -411,6 +422,7 @@ fn albums_to_response(albums: Vec<index::Album>, api_version: APIMajorVersion) -
 #[utoipa::path(
 	get,
 	path = "/browse",
+	tag = "File Browser",
 	responses(
 		(status = 200, body = Vec<dto::BrowserEntry>),
 	)
@@ -430,6 +442,7 @@ async fn get_browse_root(
 #[utoipa::path(
 	get,
 	path = "/browse/{*path}",
+	tag = "File Browser",
 	params(("path", allow_reserved)),
 	responses(
 		(status = 200, body = Vec<dto::BrowserEntry>),
@@ -451,6 +464,7 @@ async fn get_browse(
 #[utoipa::path(
 	get,
 	path = "/flatten",
+	tag = "File Browser",
 	responses(
 		(status = 200, body = dto::SongList),
 	)
@@ -471,6 +485,7 @@ async fn get_flatten_root(
 #[utoipa::path(
 	get,
 	path = "/flatten/{*path}",
+	tag = "File Browser",
 	params(("path", allow_reserved)),
 	responses(
 		(status = 200, body = dto::SongList),
@@ -493,6 +508,7 @@ async fn get_flatten(
 #[utoipa::path(
 	get,
 	path = "/albums",
+	tag = "Collection",
 	responses(
 		(status = 200, body = Vec<dto::AlbumHeader>),
 	)
@@ -515,6 +531,7 @@ async fn get_albums(
 #[utoipa::path(
 	get,
 	path = "/artists",
+	tag = "Collection",
 	responses(
 		(status = 200, body = Vec<dto::ArtistHeader>),
 	)
@@ -537,6 +554,7 @@ async fn get_artists(
 #[utoipa::path(
 	get,
 	path = "/artists/{artist}",
+	tag = "Collection",
 	params(("artist",)),
 	responses(
 		(status = 200, body = dto::Artist),
@@ -553,6 +571,7 @@ async fn get_artist(
 #[utoipa::path(
 	get,
 	path = "/artists/{artists}/albums/{album}",
+	tag = "Collection",
 	params(
 		("artists",),
 		("album",),
@@ -576,6 +595,7 @@ async fn get_album(
 #[utoipa::path(
 	post, // post because of https://github.com/whatwg/fetch/issues/551
 	path = "/songs",
+	tag = "Collection",
 	request_body = dto::GetSongsBulkInput,
 	responses(
 		(status = 200, body = dto::GetSongsBulkOutput),
@@ -606,9 +626,10 @@ async fn get_songs(
 #[utoipa::path(
 	get,
 	path = "/peaks/{*path}",
+	tag = "Media",
 	params(("path", allow_reserved)),
 	responses(
-		(status = 200, body = dto::Peaks),
+		(status = 200, body = [u8]),
 	)
 )]
 async fn get_peaks(
@@ -625,6 +646,7 @@ async fn get_peaks(
 #[utoipa::path(
 	get,
 	path = "/albums/random",
+	tag = "Collection",
 	responses(
 		(status = 200, body = Vec<dto::AlbumHeader>),
 	)
@@ -650,6 +672,7 @@ async fn get_random_albums(
 #[utoipa::path(
 	get,
 	path = "/albums/recent",
+	tag = "Collection",
 	responses(
 		(status = 200, body = Vec<dto::AlbumHeader>),
 	)
@@ -672,6 +695,7 @@ async fn get_recent_albums(
 #[utoipa::path(
 	get,
 	path = "/genres",
+	tag = "Collection",
 	responses(
 		(status = 200, body = Vec<dto::GenreHeader>),
 	)
@@ -693,6 +717,7 @@ async fn get_genres(
 #[utoipa::path(
 	get,
 	path = "/genres/{genre}",
+	tag = "Collection",
 	params(("genre",)),
 	responses(
 		(status = 200, body = Vec<dto::Genre>),
@@ -709,6 +734,7 @@ async fn get_genre(
 #[utoipa::path(
 	get,
 	path = "/genres/{genre}/albums",
+	tag = "Collection",
 	params(("genre",)),
 	responses(
 		(status = 200, body = Vec<dto::AlbumHeader>),
@@ -732,6 +758,7 @@ async fn get_genre_albums(
 #[utoipa::path(
 	get,
 	path = "/genres/{genre}/artists",
+	tag = "Collection",
 	params(("genre",)),
 	responses(
 		(status = 200, body = Vec<dto::ArtistHeader>),
@@ -755,6 +782,7 @@ async fn get_genre_artists(
 #[utoipa::path(
 	get,
 	path = "/genres/{genre}/songs",
+	tag = "Collection",
 	params(("genre",)),
 	responses(
 		(status = 200, body = dto::SongList),
@@ -780,6 +808,7 @@ async fn get_genre_songs(
 #[utoipa::path(
 	get,
 	path = "/search/{*query}",
+	tag = "Collection",
 	params(("query", allow_reserved)),
 	responses(
 		(status = 200, body = dto::SongList),
@@ -821,6 +850,7 @@ async fn get_search(
 #[utoipa::path(
 	get,
 	path = "/playlists",
+	tag = "Playlists",
 	responses(
 		(status = 200, body = Vec<dto::PlaylistHeader>),
 	)
@@ -838,6 +868,7 @@ async fn get_playlists(
 #[utoipa::path(
 	put,
 	path = "/playlist/{name}",
+	tag = "Playlists",
 	params(("name",)),
 	request_body = dto::SavePlaylistInput,
 )]
@@ -863,6 +894,7 @@ async fn put_playlist(
 #[utoipa::path(
 	get,
 	path = "/playlist/{name}",
+	tag = "Playlists",
 	params(("name",)),
 	responses(
 		(status = 200, body = dto::Playlist),
@@ -896,6 +928,7 @@ async fn get_playlist(
 #[utoipa::path(
 	delete,
 	path = "/playlist/{name}",
+	tag = "Playlists",
 	params(("name",)),
 )]
 async fn delete_playlist(
@@ -912,6 +945,7 @@ async fn delete_playlist(
 #[utoipa::path(
 	get,
 	path = "/audio/{*path}",
+	tag = "Media",
 	params(("path", allow_reserved)),
 	responses(
 		(status = 206, body = [u8]),
@@ -941,6 +975,7 @@ async fn get_audio(
 #[utoipa::path(
 	get,
 	path = "/thumbnail/{*path}",
+	tag = "Media",
 	params(
 		("path", allow_reserved),
 		dto::ThumbnailOptions
