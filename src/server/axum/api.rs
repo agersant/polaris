@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use axum::{
 	extract::{DefaultBodyLimit, Path, Query, State},
 	response::{IntoResponse, Response},
-	routing::{delete, get, post, put},
+	routing::{get, post},
 	Json,
 };
 use axum_extra::headers::Range;
@@ -58,12 +58,10 @@ pub fn router() -> OpenApiRouter<App> {
 		.route("/random", get(get_random_albums)) // Deprecated
 		.route("/recent", get(get_recent_albums)) // Deprecated
 		// Search
-		.route("/search/{*query}", get(get_search))
+		.routes(routes!(get_search))
 		// Playlist management
-		.route("/playlists", get(get_playlists))
-		.route("/playlist/{name}", put(put_playlist))
-		.route("/playlist/{name}", get(get_playlist))
-		.route("/playlist/{name}", delete(delete_playlist))
+		.routes(routes!(get_playlists))
+		.routes(routes!(put_playlist, get_playlist, delete_playlist))
 		// Media
 		.route("/songs", post(get_songs)) // post because of https://github.com/whatwg/fetch/issues/551
 		.route("/peaks/{*path}", get(get_peaks))
@@ -763,6 +761,14 @@ async fn get_genre_songs(
 	Ok(Json(song_list))
 }
 
+#[utoipa::path(
+	get,
+	path = "/search/{*query}",
+	params(("query" = String, Path, allow_reserved)),
+	responses(
+		(status = 200, body = dto::SongList),
+	)
+)]
 async fn get_search(
 	_auth: Auth,
 	api_version: APIMajorVersion,
@@ -796,6 +802,13 @@ async fn get_search(
 	}
 }
 
+#[utoipa::path(
+	get,
+	path = "/playlists",
+	responses(
+		(status = 200, body = Vec<dto::PlaylistHeader>),
+	)
+)]
 async fn get_playlists(
 	auth: Auth,
 	State(playlist_manager): State<playlist::Manager>,
@@ -806,6 +819,12 @@ async fn get_playlists(
 	Ok(Json(playlists))
 }
 
+#[utoipa::path(
+	put,
+	path = "/playlist/{name}",
+	params(("name" = String, Path)),
+	request_body = dto::SavePlaylistInput,
+)]
 async fn put_playlist(
 	auth: Auth,
 	State(playlist_manager): State<playlist::Manager>,
@@ -825,6 +844,14 @@ async fn put_playlist(
 	Ok(())
 }
 
+#[utoipa::path(
+	get,
+	path = "/playlist/{name}",
+	params(("name" = String, Path)),
+	responses(
+		(status = 200, body = dto::Playlist),
+	)
+)]
 async fn get_playlist(
 	auth: Auth,
 	api_version: APIMajorVersion,
@@ -850,6 +877,11 @@ async fn get_playlist(
 	}
 }
 
+#[utoipa::path(
+	delete,
+	path = "/playlist/{name}",
+	params(("name" = String, Path)),
+)]
 async fn delete_playlist(
 	auth: Auth,
 	State(playlist_manager): State<playlist::Manager>,

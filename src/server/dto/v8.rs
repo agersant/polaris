@@ -77,7 +77,7 @@ impl From<peaks::Peaks> for Peaks {
 	}
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct PlaylistHeader {
 	pub name: String,
 	pub num_songs_by_genre: HashMap<String, u32>,
@@ -94,15 +94,16 @@ impl From<playlist::PlaylistHeader> for PlaylistHeader {
 	}
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct Playlist {
 	#[serde(flatten)]
 	pub header: PlaylistHeader,
 	pub songs: SongList,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, ToSchema)]
 pub struct SavePlaylistInput {
+	#[schema(value_type = Vec<String>)]
 	pub tracks: Vec<PathBuf>,
 }
 
