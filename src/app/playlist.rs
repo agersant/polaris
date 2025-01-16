@@ -1,5 +1,5 @@
 use core::clone::Clone;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -38,13 +38,13 @@ pub mod v1 {
 
 	#[derive(Debug, Default, Serialize, Deserialize)]
 	#[native_model(id = 1, version = 1)]
-	#[native_db(primary_key(custom_id))]
+	#[native_db(primary_key(custom_id -> (&str, &str)))]
 	pub struct PlaylistModel {
 		#[secondary_key]
 		pub owner: String,
 		pub name: String,
 		pub duration: Duration,
-		pub num_songs_by_genre: HashMap<String, u32>,
+		pub num_songs_by_genre: BTreeMap<String, u32>,
 		pub virtual_paths: Vec<PathBuf>,
 	}
 
@@ -60,7 +60,7 @@ impl From<PlaylistModel> for PlaylistHeader {
 		Self {
 			name: p.name,
 			duration: p.duration,
-			num_songs_by_genre: p.num_songs_by_genre,
+			num_songs_by_genre: p.num_songs_by_genre.into_iter().collect(),
 		}
 	}
 }
@@ -126,7 +126,7 @@ impl Manager {
 					.filter_map(|s| s.duration.map(|d| d as u64))
 					.sum();
 
-				let mut num_songs_by_genre = HashMap::<String, u32>::new();
+				let mut num_songs_by_genre = BTreeMap::<String, u32>::new();
 				for song in &songs {
 					for genre in &song.genres {
 						*num_songs_by_genre.entry(genre.clone()).or_default() += 1;
@@ -158,7 +158,7 @@ impl Manager {
 			let name = name.to_owned();
 			move || {
 				let transaction = manager.db.r_transaction()?;
-				match transaction.get().primary::<PlaylistModel>((&owner, &name)) {
+				match transaction.get().primary::<PlaylistModel>((owner, name)) {
 					Ok(Some(p)) => Ok(Playlist::from(p)),
 					Ok(None) => Err(Error::PlaylistNotFound),
 					Err(e) => Err(Error::NativeDatabase(e)),
@@ -175,11 +175,15 @@ impl Manager {
 			let name = name.to_owned();
 			move || {
 				let transaction = manager.db.rw_transaction()?;
-				transaction.remove::<PlaylistModel>(PlaylistModel {
-					name: name.to_owned(),
-					owner: owner.to_owned(),
-					..Default::default()
-				})?;
+				let playlist = match transaction
+					.get()
+					.primary::<PlaylistModel>((owner.as_str(), name.as_str()))
+				{
+					Ok(Some(p)) => Ok(p),
+					Ok(None) => Err(Error::PlaylistNotFound),
+					Err(e) => Err(Error::NativeDatabase(e)),
+				}?;
+				transaction.remove::<PlaylistModel>(playlist)?;
 				transaction.commit()?;
 				Ok(())
 			}
@@ -278,11 +282,15 @@ mod test {
 	async fn delete_playlist_golden_path() {
 		let ctx = test::ContextBuilder::new(test_name!())
 			.user(TEST_USER, TEST_PASSWORD, false)
+			.mount(TEST_MOUNT_NAME, "test-data/small-collection")
 			.build()
 			.await;
 
+		ctx.scanner.run_scan().await.unwrap();
+		let songs = list_all_songs(&ctx).await;
+
 		ctx.playlist_manager
-			.save_playlist(TEST_PLAYLIST_NAME, TEST_USER, Vec::new())
+			.save_playlist(TEST_PLAYLIST_NAME, TEST_USER, songs)
 			.await
 			.unwrap();
 
