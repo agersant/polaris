@@ -1,5 +1,6 @@
 use utoipa::openapi::{
 	security::{ApiKey, ApiKeyValue, HttpAuthScheme, HttpBuilder, SecurityScheme},
+	tag::TagBuilder,
 	ComponentsBuilder, ContactBuilder, InfoBuilder, License, OpenApi, OpenApiBuilder,
 };
 
@@ -17,6 +18,32 @@ pub fn open_api() -> OpenApi {
 				))
 				.build(),
 		)
+		.tags(Some([
+            TagBuilder::new()
+			.name("Collection")
+			.description(Some("These endpoints provide information about the available songs, albums, artists and genres."))
+			.build(),
+            TagBuilder::new()
+			.name("Media")
+			.description(Some("These endpoints serve song audio and album covers."))
+			.build(),
+            TagBuilder::new()
+			.name("User Management")
+			.description(Some("These endpoints can be used to manage or sign in users of this Polaris server."))
+			.build(),
+            TagBuilder::new()
+			.name("File Browser")
+			.description(Some("These endpoints allow the music collection to be browsed according to its file hierarchy."))
+			.build(),
+            TagBuilder::new()
+			.name("Configuration")
+			.description(Some("These endpoints allow administrators to manage the server's configuration."))
+			.build(),
+            TagBuilder::new()
+			.name("Playlists")
+			.description(Some("These endpoints allow users to create, retrieve, update or delete playlists."))
+			.build(),
+        ]))
 		.components(Some(
 			ComponentsBuilder::new()
 				.security_scheme(
