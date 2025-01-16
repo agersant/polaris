@@ -48,7 +48,6 @@ pub struct AuthQueryParameters {
 
 #[derive(Serialize, Deserialize, IntoParams, ToSchema)]
 pub struct ThumbnailOptions {
-	#[schema(examples("tiny", "small", "large", "native"))]
 	pub size: Option<ThumbnailSize>,
 	#[schema(examples(true, false))]
 	pub pad: Option<bool>,
@@ -65,6 +64,7 @@ impl From<ThumbnailOptions> for thumbnail::Options {
 
 #[derive(Clone, Copy, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "snake_case")]
+#[schema(example = "small")]
 pub enum ThumbnailSize {
 	Tiny,
 	Small,
@@ -321,6 +321,7 @@ impl From<index::Song> for Song {
 pub struct SongList {
 	#[schema(value_type = Vec<String>, examples(json!(["my_music/destiny.mp3", "my_music/sos.mp3"])))]
 	pub paths: Vec<PathBuf>,
+	/// Detailed metadata about the first few hundred songs listed in `.paths`
 	pub first_songs: Vec<Song>,
 }
 

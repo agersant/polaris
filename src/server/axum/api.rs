@@ -1024,7 +1024,7 @@ async fn get_playlists(
 		("auth_token" = []),
 		("auth_query_param" = []),
 	),
-	params(("name",)),
+	params(("name", example = "Chill Jazz")),
 	request_body = dto::SavePlaylistInput,
 )]
 async fn put_playlist(
@@ -1057,7 +1057,7 @@ async fn put_playlist(
 	),
 	params(
 		("Accept-Version" = Option<i32>, Header, minimum = 7, maximum = 8),
-		("name",),
+		("name", example = "Chill Jazz"),
 	),
 	responses(
 		(status = 200, body = dto::Playlist),
@@ -1097,7 +1097,7 @@ async fn get_playlist(
 		("auth_token" = []),
 		("auth_query_param" = []),
 	),
-	params(("name",)),
+	params(("name", example = "Chill Jazz")),
 )]
 async fn delete_playlist(
 	auth: Auth,
