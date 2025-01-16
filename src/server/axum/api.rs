@@ -515,7 +515,7 @@ async fn get_browse_root(
 	),
 	params(
 		("Accept-Version" = Option<i32>, Header, minimum = 7, maximum = 8),
-		("path", allow_reserved),
+		("path", allow_reserved, example = "my_music/classical/beethoven"),
 	),
 	responses(
 		(status = 200, body = Vec<dto::BrowserEntry>),
@@ -574,7 +574,7 @@ async fn get_flatten_root(
 	),
 	params(
 		("Accept-Version" = Option<i32>, Header, minimum = 7, maximum = 8),
-		("path", allow_reserved),
+		("path", allow_reserved, example = "my_music/classical/beethoven"),
 	),
 	responses(
 		(status = 200, body = dto::SongList),
@@ -652,14 +652,14 @@ async fn get_artists(
 
 #[utoipa::path(
 	get,
-	path = "/artist/{artist}",
+	path = "/artist/{name}",
 	tag = "Collection",
 	description = "Returns detailed information about a single artist.",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),
 	),
-	params(("artist",)),
+	params(("name", example = "Claude Frank")),
 	responses(
 		(status = 200, body = dto::Artist),
 	)
@@ -667,14 +667,14 @@ async fn get_artists(
 async fn get_artist(
 	_auth: Auth,
 	State(index_manager): State<index::Manager>,
-	Path(artist): Path<String>,
+	Path(name): Path<String>,
 ) -> Result<Json<dto::Artist>, APIError> {
-	Ok(Json(index_manager.get_artist(artist).await?.into()))
+	Ok(Json(index_manager.get_artist(name).await?.into()))
 }
 
 #[utoipa::path(
 	get,
-	path = "/album/{album}/by/{artists}",
+	path = "/album/{name}/by/{artists}",
 	tag = "Collection",
 	description = "Returns detailed information about a single album.",
 	security(
@@ -682,8 +682,8 @@ async fn get_artist(
 		("auth_query_param" = []),
 	),
 	params(
-		("album",),
-		("artists",),
+		("name", example = "The Piano Sonatas"),
+		("artists", example = "Claude Frank", description = "Artists the album is attributed to, separated by unicode \\u{000C} characters."),
 	),
 	responses(
 		(status = 200, body = dto::Album),
@@ -833,14 +833,14 @@ async fn get_genres(
 
 #[utoipa::path(
 	get,
-	path = "/genre/{genre}",
+	path = "/genre/{name}",
 	tag = "Collection",
 	description = "Returns detailed information about a music genre.",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),
 	),
-	params(("genre",)),
+	params(("name", example = "Classical")),
 	responses(
 		(status = 200, body = Vec<dto::Genre>),
 	)
@@ -848,21 +848,21 @@ async fn get_genres(
 async fn get_genre(
 	_auth: Auth,
 	State(index_manager): State<index::Manager>,
-	Path(genre): Path<String>,
+	Path(name): Path<String>,
 ) -> Result<Json<dto::Genre>, APIError> {
-	Ok(Json(index_manager.get_genre(genre).await?.into()))
+	Ok(Json(index_manager.get_genre(name).await?.into()))
 }
 
 #[utoipa::path(
 	get,
-	path = "/genre/{genre}/albums",
+	path = "/genre/{name}/albums",
 	tag = "Collection",
 	description = "Returns all albums associated with a music genre.",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),
 	),
-	params(("genre",)),
+	params(("name", example = "Classical")),
 	responses(
 		(status = 200, body = Vec<dto::AlbumHeader>),
 	)
@@ -870,10 +870,10 @@ async fn get_genre(
 async fn get_genre_albums(
 	_auth: Auth,
 	State(index_manager): State<index::Manager>,
-	Path(genre): Path<String>,
+	Path(name): Path<String>,
 ) -> Result<Json<Vec<dto::AlbumHeader>>, APIError> {
 	let albums = index_manager
-		.get_genre(genre)
+		.get_genre(name)
 		.await?
 		.albums
 		.into_iter()
@@ -884,14 +884,14 @@ async fn get_genre_albums(
 
 #[utoipa::path(
 	get,
-	path = "/genre/{genre}/artists",
+	path = "/genre/{name}/artists",
 	tag = "Collection",
 	description = "Returns all artists associated with a music genre.",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),
 	),
-	params(("genre",)),
+	params(("name", example = "Classical")),
 	responses(
 		(status = 200, body = Vec<dto::ArtistHeader>),
 	)
@@ -899,10 +899,10 @@ async fn get_genre_albums(
 async fn get_genre_artists(
 	_auth: Auth,
 	State(index_manager): State<index::Manager>,
-	Path(genre): Path<String>,
+	Path(name): Path<String>,
 ) -> Result<Json<Vec<dto::ArtistHeader>>, APIError> {
 	let artists = index_manager
-		.get_genre(genre)
+		.get_genre(name)
 		.await?
 		.artists
 		.into_iter()
@@ -913,14 +913,14 @@ async fn get_genre_artists(
 
 #[utoipa::path(
 	get,
-	path = "/genre/{genre}/songs",
+	path = "/genre/{name}/songs",
 	tag = "Collection",
 	description = "Returns all songs associated with a music genre.",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),
 	),
-	params(("genre",)),
+	params(("name", example = "Classical")),
 	responses(
 		(status = 200, body = dto::SongList),
 	)
@@ -928,9 +928,9 @@ async fn get_genre_artists(
 async fn get_genre_songs(
 	_auth: Auth,
 	State(index_manager): State<index::Manager>,
-	Path(genre): Path<String>,
+	Path(name): Path<String>,
 ) -> Result<Json<dto::SongList>, APIError> {
-	let songs = index_manager.get_genre(genre).await?.songs;
+	let songs = index_manager.get_genre(name).await?.songs;
 	let song_list = dto::SongList {
 		paths: songs.iter().map(|s| s.virtual_path.clone()).collect(),
 		first_songs: songs
@@ -953,7 +953,7 @@ async fn get_genre_songs(
 	),
 	params(
 		("Accept-Version" = Option<i32>, Header, minimum = 7, maximum = 8),
-		("query", allow_reserved),
+		("query", allow_reserved, example = "sonata && moonlight"),
 	),
 	responses(
 		(status = 200, body = dto::SongList),
@@ -1119,7 +1119,7 @@ async fn delete_playlist(
 		("auth_token" = []),
 		("auth_query_param" = []),
 	),
-	params(("path", allow_reserved)),
+	params(("path", allow_reserved, example = "my_music/beethoven/moonlight_sonata.mp3")),
 	responses(
 		(status = 206, body = [u8]),
 		(status = 200, body = [u8]),
@@ -1154,7 +1154,7 @@ async fn get_audio(
 		("auth_token" = []),
 		("auth_query_param" = []),
 	),
-	params(("path", allow_reserved)),
+	params(("path", allow_reserved, example = "my_music/beethoven/moonlight_sonata.mp3")),
 	responses(
 		(status = 200, body = [u8]),
 	)
@@ -1180,7 +1180,7 @@ async fn get_peaks(
 		("auth_query_param" = []),
 	),
 	params(
-		("path", allow_reserved),
+		("path", allow_reserved, example = "my_music/beethoven/sonatas.jpg"),
 		dto::ThumbnailOptions
 	),
 	responses(
