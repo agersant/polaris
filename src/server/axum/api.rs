@@ -76,6 +76,7 @@ pub fn router() -> OpenApiRouter<App> {
 	get,
 	path = "/version",
 	tag = "Configuration",
+	description = "Returns the latest Polaris API version supported by this server.\n\nThe specification of this endpoint is guaranteed to remain consistent all API versions.",
 	responses(
 		(status = 200, body = dto::Version),
 	),
@@ -92,6 +93,7 @@ async fn get_version() -> Json<dto::Version> {
 	get,
 	path = "/initial_setup",
 	tag = "Configuration",
+	description = "Returns the current state of the initial setup flow.",
 	responses(
 		(status = 200, body = dto::InitialSetup),
 	),
@@ -113,6 +115,7 @@ async fn get_initial_setup(
 	get,
 	path = "/settings",
 	tag = "Configuration",
+	description = "Reads current server settings.",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),
@@ -145,6 +148,7 @@ async fn get_settings(
 	put,
 	path = "/settings",
 	tag = "Configuration",
+	description = "Amends the server settings. \n\n`null` fields are left unchanged.",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),
@@ -180,6 +184,7 @@ async fn put_settings(
 	get,
 	path = "/mount_dirs",
 	tag = "Configuration",
+	description = "Returns the list of directories Polaris indexes music from.",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),
@@ -201,6 +206,7 @@ async fn get_mount_dirs(
 	put,
 	path = "/mount_dirs",
 	tag = "Configuration",
+	description = "Replaces the list of directories Polaris indexes music from.",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),
@@ -222,6 +228,7 @@ async fn put_mount_dirs(
 	post,
 	path = "/auth",
 	tag = "User Management",
+	description = "Signs in a user. Tokens returned by this endpoint are required by most other endpoints.",
 	responses(
 		(status = 200, body = dto::Authorization),
 		(status = 401),
@@ -252,6 +259,7 @@ async fn post_auth(
 	get,
 	path = "/users",
 	tag = "User Management",
+	description = "Lists existing user accounts.",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),
@@ -273,6 +281,7 @@ async fn get_users(
 	post,
 	path = "/user",
 	tag = "User Management",
+	description = "Creates a new user account.",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),
@@ -299,6 +308,7 @@ async fn post_user(
 	put,
 	path = "/user/{name}",
 	tag = "User Management",
+	description = "Amends an existing user account.\n\n`null` fields are left unchanged.",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),
@@ -337,6 +347,7 @@ async fn put_user(
 	delete,
 	path = "/user/{name}",
 	tag = "User Management",
+	description = "Deletes a user account.",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),
@@ -363,8 +374,9 @@ async fn delete_user(
 
 #[utoipa::path(
 	post,
-	path = "/trigger_index",
+	path = "/trigger_index",	
 	tag = "Configuration",
+	description = "Starts a scan of the mount directories that contain music files. If a scan is already in progress, it will be interrupted.\n\nThe music collection will update after the scan is fully completed.",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),
@@ -382,6 +394,7 @@ async fn post_trigger_index(
 	get,
 	path = "/index_status",
 	tag = "Configuration",
+	description = "Returns the current state of the collection scanning process.",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),
@@ -467,6 +480,7 @@ fn albums_to_response(albums: Vec<index::Album>, api_version: APIMajorVersion) -
 	get,
 	path = "/browse",
 	tag = "File Browser",
+	description = "Reads the content of the top-level directory in the music collection.",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),
@@ -494,6 +508,7 @@ async fn get_browse_root(
 	get,
 	path = "/browse/{*path}",
 	tag = "File Browser",
+	description = "Reads the content of a directory in the music collection.",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),
@@ -523,6 +538,7 @@ async fn get_browse(
 	get,
 	path = "/flatten",
 	tag = "File Browser",
+	description = "Recursively lists all the songs in the music collection.",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),
@@ -551,6 +567,7 @@ async fn get_flatten_root(
 	get,
 	path = "/flatten/{*path}",
 	tag = "File Browser",
+	description = "Recursively lists all the songs within a directory of the music collection.",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),
@@ -581,6 +598,7 @@ async fn get_flatten(
 	get,
 	path = "/albums",
 	tag = "Collection",
+	description = "Lists all albums in the music collection.",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),
@@ -608,6 +626,7 @@ async fn get_albums(
 	get,
 	path = "/artists",
 	tag = "Collection",
+	description = "Lists all artists in the music collection.",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),
@@ -635,6 +654,7 @@ async fn get_artists(
 	get,
 	path = "/artist/{artist}",
 	tag = "Collection",
+	description = "Returns detailed information about a single artist.",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),
@@ -656,6 +676,7 @@ async fn get_artist(
 	get,
 	path = "/album/{album}/by/{artists}",
 	tag = "Collection",
+	description = "Returns detailed information about a single album.",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),
@@ -684,6 +705,7 @@ async fn get_album(
 	post, // post because of https://github.com/whatwg/fetch/issues/551
 	path = "/songs",
 	tag = "Collection",
+	description = "Returns detailed information about specific songs.\n\nEven though it is a read operation, this endpoint uses the `POST` method in order to facilitate usage of a request body (which is not standard for `GET` requests).",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),
@@ -717,32 +739,9 @@ async fn get_songs(
 
 #[utoipa::path(
 	get,
-	path = "/peaks/{*path}",
-	tag = "Media",
-	security(
-		("auth_token" = []),
-		("auth_query_param" = []),
-	),
-	params(("path", allow_reserved)),
-	responses(
-		(status = 200, body = [u8]),
-	)
-)]
-async fn get_peaks(
-	_auth: Auth,
-	State(config_manager): State<config::Manager>,
-	State(peaks_manager): State<peaks::Manager>,
-	Path(path): Path<PathBuf>,
-) -> Result<dto::Peaks, APIError> {
-	let audio_path = config_manager.resolve_virtual_path(&path).await?;
-	let peaks = peaks_manager.get_peaks(&audio_path).await?;
-	Ok(peaks.interleaved)
-}
-
-#[utoipa::path(
-	get,
 	path = "/albums/random",
 	tag = "Collection",
+	description = "Returns a random selection of albums from the collection.\n\nRe-using the same seed will return the same albums only as long as the collection does not change.",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),
@@ -777,6 +776,7 @@ async fn get_random_albums(
 	get,
 	path = "/albums/recent",
 	tag = "Collection",
+	description = "Returns the albums most recently added to the collection.",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),
@@ -808,6 +808,7 @@ async fn get_recent_albums(
 	get,
 	path = "/genres",
 	tag = "Collection",
+	description = "Lists all music genres in the collection.",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),
@@ -834,6 +835,7 @@ async fn get_genres(
 	get,
 	path = "/genre/{genre}",
 	tag = "Collection",
+	description = "Returns detailed information about a music genre.",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),
@@ -855,6 +857,7 @@ async fn get_genre(
 	get,
 	path = "/genre/{genre}/albums",
 	tag = "Collection",
+	description = "Returns all albums associated with a music genre.",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),
@@ -883,6 +886,7 @@ async fn get_genre_albums(
 	get,
 	path = "/genre/{genre}/artists",
 	tag = "Collection",
+	description = "Returns all artists associated with a music genre.",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),
@@ -911,6 +915,7 @@ async fn get_genre_artists(
 	get,
 	path = "/genre/{genre}/songs",
 	tag = "Collection",
+	description = "Returns all songs associated with a music genre.",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),
@@ -941,6 +946,7 @@ async fn get_genre_songs(
 	get,
 	path = "/search/{*query}",
 	tag = "Collection",
+	description = "Returns songs matching a search query. The query syntax is documented in the search section of the Polaris web UI.",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),
@@ -990,6 +996,7 @@ async fn get_search(
 	get,
 	path = "/playlists",
 	tag = "Playlists",
+	description = "Lists playlists owned by the current user.",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),
@@ -1012,6 +1019,7 @@ async fn get_playlists(
 	put,
 	path = "/playlist/{name}",
 	tag = "Playlists",
+	description = "Creates or updates a playlist for the current user.",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),
@@ -1042,6 +1050,7 @@ async fn put_playlist(
 	get,
 	path = "/playlist/{name}",
 	tag = "Playlists",
+	description = "Retrieves a playlist owned by the current user.",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),
@@ -1083,6 +1092,7 @@ async fn get_playlist(
 	delete,
 	path = "/playlist/{name}",
 	tag = "Playlists",
+	description = "Deletes a playlist owned by the current user.",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),
@@ -1104,6 +1114,7 @@ async fn delete_playlist(
 	get,
 	path = "/audio/{*path}",
 	tag = "Media",
+	description = "Serves a music file.\n\nThis endpoint supports HTTP range requests to facilitate streaming.",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),
@@ -1136,8 +1147,34 @@ async fn get_audio(
 
 #[utoipa::path(
 	get,
+	path = "/peaks/{*path}",
+	tag = "Media",
+	description = "Returns loudness values regularly sampled throughout the specified song.",
+	security(
+		("auth_token" = []),
+		("auth_query_param" = []),
+	),
+	params(("path", allow_reserved)),
+	responses(
+		(status = 200, body = [u8]),
+	)
+)]
+async fn get_peaks(
+	_auth: Auth,
+	State(config_manager): State<config::Manager>,
+	State(peaks_manager): State<peaks::Manager>,
+	Path(path): Path<PathBuf>,
+) -> Result<dto::Peaks, APIError> {
+	let audio_path = config_manager.resolve_virtual_path(&path).await?;
+	let peaks = peaks_manager.get_peaks(&audio_path).await?;
+	Ok(peaks.interleaved)
+}
+
+#[utoipa::path(
+	get,
 	path = "/thumbnail/{*path}",
 	tag = "Media",
+	description = "Serves an image file. Valid paths can be obtained from the `.artwork` field of `Song`, `Album` and `AlbumHeader` models.\n\nThis endpoint supports HTTP range requests to facilitate streaming.",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),

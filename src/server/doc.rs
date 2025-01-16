@@ -37,7 +37,7 @@ pub fn open_api() -> OpenApi {
 			.build(),
             TagBuilder::new()
 			.name("Configuration")
-			.description(Some("These endpoints allow administrators to manage the server's configuration."))
+			.description(Some("These endpoints allow administrators to manage the server's configuration.\n\nChanges are immediately saved in the Polaris configuration file."))
 			.build(),
             TagBuilder::new()
 			.name("Playlists")
