@@ -633,7 +633,7 @@ async fn get_artists(
 
 #[utoipa::path(
 	get,
-	path = "/artists/{artist}",
+	path = "/artist/{artist}",
 	tag = "Collection",
 	security(
 		("auth_token" = []),
@@ -654,15 +654,15 @@ async fn get_artist(
 
 #[utoipa::path(
 	get,
-	path = "/artists/{artists}/albums/{album}",
+	path = "/album/{album}/by/{artists}",
 	tag = "Collection",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),
 	),
 	params(
-		("artists",),
 		("album",),
+		("artists",),
 	),
 	responses(
 		(status = 200, body = dto::Album),
@@ -671,7 +671,7 @@ async fn get_artist(
 async fn get_album(
 	_auth: Auth,
 	State(index_manager): State<index::Manager>,
-	Path((artists, name)): Path<(String, String)>,
+	Path((name, artists)): Path<(String, String)>,
 ) -> Result<Json<dto::Album>, APIError> {
 	let artists = artists
 		.split(API_ARRAY_SEPARATOR)
@@ -832,7 +832,7 @@ async fn get_genres(
 
 #[utoipa::path(
 	get,
-	path = "/genres/{genre}",
+	path = "/genre/{genre}",
 	tag = "Collection",
 	security(
 		("auth_token" = []),
@@ -853,7 +853,7 @@ async fn get_genre(
 
 #[utoipa::path(
 	get,
-	path = "/genres/{genre}/albums",
+	path = "/genre/{genre}/albums",
 	tag = "Collection",
 	security(
 		("auth_token" = []),
@@ -881,7 +881,7 @@ async fn get_genre_albums(
 
 #[utoipa::path(
 	get,
-	path = "/genres/{genre}/artists",
+	path = "/genre/{genre}/artists",
 	tag = "Collection",
 	security(
 		("auth_token" = []),
@@ -909,7 +909,7 @@ async fn get_genre_artists(
 
 #[utoipa::path(
 	get,
-	path = "/genres/{genre}/songs",
+	path = "/genre/{genre}/songs",
 	tag = "Collection",
 	security(
 		("auth_token" = []),

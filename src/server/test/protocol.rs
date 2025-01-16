@@ -164,7 +164,7 @@ pub fn genres<VERSION: ProtocolVersion>() -> Request<()> {
 }
 
 pub fn genre<VERSION: ProtocolVersion>(genre: &str) -> Request<()> {
-	let endpoint = format!("/api/genres/{}", url_encode(genre));
+	let endpoint = format!("/api/genre/{}", url_encode(genre));
 	Request::builder()
 		.header("Accept-Version", VERSION::header_value())
 		.method(Method::GET)
@@ -174,7 +174,7 @@ pub fn genre<VERSION: ProtocolVersion>(genre: &str) -> Request<()> {
 }
 
 pub fn genre_albums<VERSION: ProtocolVersion>(genre: &str) -> Request<()> {
-	let endpoint = format!("/api/genres/{}/albums", url_encode(genre));
+	let endpoint = format!("/api/genre/{}/albums", url_encode(genre));
 	Request::builder()
 		.header("Accept-Version", VERSION::header_value())
 		.method(Method::GET)
@@ -184,7 +184,7 @@ pub fn genre_albums<VERSION: ProtocolVersion>(genre: &str) -> Request<()> {
 }
 
 pub fn genre_artists<VERSION: ProtocolVersion>(genre: &str) -> Request<()> {
-	let endpoint = format!("/api/genres/{}/artists", url_encode(genre));
+	let endpoint = format!("/api/genre/{}/artists", url_encode(genre));
 	Request::builder()
 		.header("Accept-Version", VERSION::header_value())
 		.method(Method::GET)
@@ -194,7 +194,7 @@ pub fn genre_artists<VERSION: ProtocolVersion>(genre: &str) -> Request<()> {
 }
 
 pub fn genre_songs<VERSION: ProtocolVersion>(genre: &str) -> Request<()> {
-	let endpoint = format!("/api/genres/{}/songs", url_encode(genre));
+	let endpoint = format!("/api/genre/{}/songs", url_encode(genre));
 	Request::builder()
 		.header("Accept-Version", VERSION::header_value())
 		.method(Method::GET)
@@ -207,7 +207,7 @@ pub fn random<VERSION: ProtocolVersion>() -> Request<()> {
 	Request::builder()
 		.header("Accept-Version", VERSION::header_value())
 		.method(Method::GET)
-		.uri("/api/random")
+		.uri("/api/albums/random")
 		.body(())
 		.unwrap()
 }
@@ -216,7 +216,7 @@ pub fn recent<VERSION: ProtocolVersion>() -> Request<()> {
 	Request::builder()
 		.header("Accept-Version", VERSION::header_value())
 		.method(Method::GET)
-		.uri("/api/recent")
+		.uri("/api/albums/recent")
 		.body(())
 		.unwrap()
 }
