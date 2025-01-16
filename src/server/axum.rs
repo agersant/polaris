@@ -7,7 +7,6 @@ use tower_http::{
 	normalize_path::{NormalizePath, NormalizePathLayer},
 	services::ServeDir,
 };
-use utoipa::OpenApi;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_scalar::{Scalar, Servable};
 
@@ -25,7 +24,7 @@ pub fn make_router(app: App) -> NormalizePath<Router> {
 		.fallback_service(ServeDir::new(&app.web_dir_path))
 		.layer(CompressionLayer::new());
 
-	let (open_api_router, open_api) = OpenApiRouter::with_openapi(doc::ApiDoc::openapi())
+	let (open_api_router, open_api) = OpenApiRouter::with_openapi(doc::open_api())
 		.nest("/api", api::router())
 		.split_for_parts();
 
