@@ -44,10 +44,7 @@ jobs:
         run: make preview
       - name: Preview Install w/ Custom Prefix
         run: make preview PREFIX=/some/random/prefix
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
       - name: Install
         run: sudo --preserve-env=PATH make install
       - name: Run Polaris
@@ -76,10 +73,7 @@ jobs:
         run: make preview-xdg
       - name: Preview Install w/ Custom XDG_DATA_HOME
         run: make preview-xdg XDG_DATA_HOME=/my/own/xdg/home
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
       - name: Install
         run: make install-xdg
       - name: Run Polaris
@@ -99,10 +93,7 @@ jobs:
       - name: Checkout Polaris
         uses: actions/checkout@v1
       - name: Install Rust Toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
+        uses: actions-rust-lang/setup-rust-toolchain@v1
       - name: Make release
         uses: ./.github/actions/make-windows-release
         with:

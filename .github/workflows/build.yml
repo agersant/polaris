@@ -18,9 +18,7 @@ jobs:
       if: contains(matrix.os, 'ubuntu') && !contains(matrix.features, 'bundle-sqlite')
       run: sudo apt-get update && sudo apt-get install libsqlite3-dev
     - uses: actions/checkout@v4
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
+    - uses: actions-rust-lang/setup-rust-toolchain@v1
     - uses: actions-rs/cargo@v1
       with:
         command: test
