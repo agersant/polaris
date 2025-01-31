@@ -151,9 +151,12 @@ impl Scanner {
 
 		let mount_dirs = config_manager.get_mounts().await;
 		for mount_dir in &mount_dirs {
-			debouncer
+			if let Err(e) = debouncer
 				.watcher()
-				.watch(&mount_dir.source, notify::RecursiveMode::Recursive)?;
+				.watch(&mount_dir.source, notify::RecursiveMode::Recursive)
+			{
+				error!("Failed to setup file watcher for `{mount_dir:#?}`: {e}");
+			}
 		}
 
 		Ok(debouncer)
