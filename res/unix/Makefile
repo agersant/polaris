@@ -12,7 +12,6 @@ LOCALSTATEDIR ?= $(PREFIX)/var
 RUNSTATEDIR ?= $(LOCALSTATEDIR)/run
 %-system: POLARIS_BIN_PATH := $(BINDIR)/polaris
 %-system: export POLARIS_WEB_DIR := $(DATADIR)/polaris/web
-%-system: export POLARIS_SWAGGER_DIR := $(DATADIR)/polaris/swagger
 %-system: export POLARIS_CONFIG_DIR := $(SYSCONFDIR)/polaris
 %-system: export POLARIS_DATA_DIR := $(LOCALSTATEDIR)/lib/polaris
 %-system: export POLARIS_DB_DIR := $(LOCALSTATEDIR)/lib/polaris
@@ -34,7 +33,6 @@ XDG_PIDDIR ?= /tmp/polaris-$(UID)
 endif
 %-xdg: POLARIS_BIN_PATH := $(XDG_BINDIR)/polaris
 %-xdg: export POLARIS_WEB_DIR := $(XDG_DATADIR)/web
-%-xdg: export POLARIS_SWAGGER_DIR := $(XDG_DATADIR)/swagger
 %-xdg: export POLARIS_CONFIG_DIR := $(XDG_CONFIGDIR)
 %-xdg: export POLARIS_DATA_DIR := $(XDG_DATADIR)
 %-xdg: export POLARIS_DB_DIR := $(XDG_DATADIR)
@@ -64,7 +62,6 @@ preview: preview-system
 list-paths:
 	$(info POLARIS_BIN_PATH is $(POLARIS_BIN_PATH))
 	$(info POLARIS_WEB_DIR is $(POLARIS_WEB_DIR))
-	$(info POLARIS_SWAGGER_DIR is $(POLARIS_SWAGGER_DIR))
 	$(info POLARIS_CONFIG_DIR is $(POLARIS_CONFIG_DIR))
 	$(info POLARIS_DATA_DIR is $(POLARIS_DATA_DIR))
 	$(info POLARIS_DB_DIR is $(POLARIS_DB_DIR))
@@ -83,9 +80,7 @@ install-bin: cargo-build
 
 install-data:
 	install -d $(POLARIS_WEB_DIR)
-	install -d $(POLARIS_SWAGGER_DIR)
 	cp -rT ./web $(POLARIS_WEB_DIR)
-	cp -rT ./swagger $(POLARIS_SWAGGER_DIR)
 
 # Uninstall
 
@@ -98,7 +93,6 @@ uninstall-bin:
 
 uninstall-data:
 	rm -rf $(POLARIS_WEB_DIR)
-	rm -rf $(POLARIS_SWAGGER_DIR)
 	rm -rf $(POLARIS_CONFIG_DIR)
 	rm -rf $(POLARIS_DATA_DIR)
 	rm -rf $(POLARIS_DB_DIR)
