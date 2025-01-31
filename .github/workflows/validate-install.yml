@@ -31,7 +31,7 @@ jobs:
 
     steps:
       - name: Download release
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: linux-release
           path: .
@@ -60,7 +60,7 @@ jobs:
 
     steps:
       - name: Download release
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: linux-release
           path: .
@@ -110,7 +110,7 @@ jobs:
 
     steps:
       - name: Download release
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: windows-release
           path: .
