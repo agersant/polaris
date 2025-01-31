@@ -1,10 +1,6 @@
 on:
   pull_request:
-    branches:
-      - master
   push:
-    branches:
-      - master
 
 name: Validate Install
 
@@ -22,8 +18,9 @@ jobs:
           version-number: "0.0.0"
           output-file: polaris.tar.gz
       - name: Upload packaged release
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
+          if-no-files-found: error
           name: linux-release
           path: polaris.tar.gz
 
@@ -100,8 +97,9 @@ jobs:
           version-number: "0.0.0"
           output-file: polaris.msi
       - name: Upload packaged release
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
+          if-no-files-found: error
           name: windows-release
           path: polaris.msi
 
