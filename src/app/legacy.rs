@@ -181,7 +181,7 @@ mod test {
 		assert_eq!(
 			secret,
 			[
-				0x8b as u8, 0x88, 0x50, 0x17, 0x20, 0x09, 0x7e, 0x60, 0x31, 0x80, 0xCE, 0xE3, 0xF0,
+				0x8B as u8, 0x88, 0x50, 0x17, 0x20, 0x09, 0x7E, 0x60, 0x31, 0x80, 0xCE, 0xE3, 0xF0,
 				0x5A, 0x00, 0xBC, 0x3A, 0xF4, 0xDC, 0xFD, 0x2E, 0xB7, 0x5D, 0x33, 0x5D, 0x81, 0x2F,
 				0x9A, 0xB4, 0x3A, 0x27, 0x2D
 			]
@@ -217,7 +217,7 @@ mod test {
 		let expected = config::storage::Config {
 			album_art_pattern: Some("Folder.(jpeg|jpg|png)".to_owned()),
 			mount_dirs: vec![config::storage::MountDir {
-				source: PathBuf::from_iter(["/", "home", "agersant", "music", "Electronic", "Bitpop"]),
+				source: PathBuf::from_iter(["test-data", "small-collection"]),
 				name: "root".to_owned(),
 			}],
 			ddns_update_url: None,
@@ -225,7 +225,7 @@ mod test {
 				name: "example_user".to_owned(),
 				admin: Some(true),
 				initial_password: None,
-				hashed_password: Some("$pbkdf2-sha256$i=10000,l=32$feX5cP9SyQrZdBZsOQfO3Q$vqdraNc8ecco+CdFr+2Vp+PcIK6R75rs72YovNCwd7s".to_owned()),
+				hashed_password: Some("$pbkdf2-sha256$i=10000,l=32$ADvDnwBv3kLUtjTJEwGcFA$oK43ICpNt2rbH21diMo6cSXL62qqLWOM7qs8f0s/9Oo".to_owned()),
 			}],
 		};
 
@@ -267,21 +267,11 @@ mod test {
 
 		#[rustfmt::skip]
 		let song_paths = vec![
-			PathBuf::from_iter(["root", "Omodaka","2011 - Cantata No.147", "01 - Otemoyan.mp3"]),
-			PathBuf::from_iter(["root", "Omodaka","2011 - Cantata No.147", "02 - Asadoya Yunta.mp3"]),
-			PathBuf::from_iter(["root", "Omodaka","2011 - Cantata No.147", "03 - Fortunate 1mark (A-4 Mix).mp3"]),
-			PathBuf::from_iter(["root", "Omodaka","2011 - Cantata No.147", "04 - Hanagasa Ondo.mp3"]),
-			PathBuf::from_iter(["root", "Omodaka","2011 - Cantata No.147", "05 - Cantata No.147 (Video Mix).mp3"]),
-			PathBuf::from_iter(["root", "Omodaka","2011 - Cantata No.147", "06 - Kokirikobushi (Video Mix).mp3"]),
-			PathBuf::from_iter(["root", "Omodaka","2011 - Cantata No.147", "07 - Monkey Turn (Mahoroba Mix).mp3"]),
-			PathBuf::from_iter(["root", "Omodaka","2011 - Cantata No.147", "08 - Otemoyan (Inst).mp3"]),
-			PathBuf::from_iter(["root", "Omodaka","2011 - Cantata No.147", "09 - Asadoya Yunta (Inst).mp3"]),
-			PathBuf::from_iter(["root", "Omodaka","2011 - Cantata No.147", "10 - Hanagasa Ondo (Inst).mp3"]),
-			PathBuf::from_iter(["root", "Holy Konni","2013 - Fetushouse", "01 - Kate Moss Magic.mp3"]),
-			PathBuf::from_iter(["root", "Holy Konni","2013 - Fetushouse", "02 - Self Portrait 19.mp3"]),
-			PathBuf::from_iter(["root", "Holy Konni","2013 - Fetushouse", "03 - Vlieg Berg-Stop Nie.mp3"]),
-			PathBuf::from_iter(["root", "Holy Konni","2013 - Fetushouse", "04 - DREAM CRY BREAST LIFE.mp3"]),
-			PathBuf::from_iter(["root", "Holy Konni","2013 - Fetushouse", "05 - Natalie Reborn.mp3"]),
+			PathBuf::from_iter(["root", "Khemmis", "Hunted", "01 - Above The Water.mp3"]),
+			PathBuf::from_iter(["root", "Khemmis", "Hunted", "02 - Candlelight.mp3"]),
+			PathBuf::from_iter(["root", "Khemmis", "Hunted", "03 - Three Gates.mp3"]),
+			PathBuf::from_iter(["root", "Khemmis", "Hunted", "04 - Beyond The Door.mp3"]),
+			PathBuf::from_iter(["root", "Khemmis", "Hunted", "05 - Hunted.mp3"]),
 		];
 
 		let songs: Vec<index::Song> = ctx
