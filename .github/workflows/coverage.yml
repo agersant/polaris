@@ -16,16 +16,31 @@ jobs:
     steps:
       - name: Checkout Polaris
         uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-      - name: Run Tarpaulin
-        uses: actions-rs/tarpaulin@v0.1
-        with:
-          args: "--all-features --ignore-tests"
-          out-type: Xml
-          timeout: 240
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        components: llvm-tools-preview
+      - name: Install grcov
+        run: cargo install grcov
+      - name: Run tests
+        run: cargo test --no-fail-fast
+        env:
+          RUSTFLAGS: "-Cinstrument-coverage"
+      - name: Gather coverage results
+        run: >
+          grcov
+          .
+          -t lcov
+          -o coverage.txt
+          --llvm
+          --branch
+          --ignore-not-existing
+          --excl-line "#\[derive\("
+          --excl-br-line "#\[derive\("
+          --excl-start "mod tests \{"
+          --excl-br-start "mod tests \{"
       - name: Upload Results
         uses: codecov/codecov-action@v2
         with:
           fail_ci_if_error: true
+          verbose: true
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
