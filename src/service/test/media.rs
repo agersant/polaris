@@ -170,13 +170,11 @@ fn thumbnail_size_small() {
 }
 
 #[test]
-#[cfg(not(tarpaulin))]
 fn thumbnail_size_large() {
 	thumbnail_size(&test_name!(), Some(ThumbnailSize::Large), None, 1200);
 }
 
 #[test]
-#[cfg(not(tarpaulin))]
 fn thumbnail_size_native() {
 	thumbnail_size(&test_name!(), Some(ThumbnailSize::Native), None, 1423);
 }

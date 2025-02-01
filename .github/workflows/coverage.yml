@@ -34,6 +34,7 @@ jobs:
           --llvm
           --branch
           --ignore-not-existing
+          --binary-path ./target/debug
           --excl-line "#\[derive\("
           --excl-br-line "#\[derive\("
           --excl-start "mod tests \{"
