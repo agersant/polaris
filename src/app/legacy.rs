@@ -1,9 +1,11 @@
 use std::{
 	collections::HashMap,
+	ops::Deref,
 	path::{Path, PathBuf},
 	str::FromStr,
 };
 
+use regex::Regex;
 use rusqlite::Connection;
 
 use crate::app::{config, index, scanner, Error};
@@ -86,12 +88,22 @@ fn read_users(db_file_path: &PathBuf) -> Result<HashMap<u32, config::storage::Us
 	Ok(users)
 }
 
+fn sanitize_path(source: &PathBuf) -> PathBuf {
+	let path_string = source.to_string_lossy();
+	let separator_regex = Regex::new(r"\\|/").unwrap();
+	let mut correct_separator = String::new();
+	correct_separator.push(std::path::MAIN_SEPARATOR);
+	let path_string = separator_regex.replace_all(&path_string, correct_separator.as_str());
+	PathBuf::from(path_string.deref())
+}
+
 fn virtualize_path(
 	real_path: &PathBuf,
 	mount_dirs: &Vec<config::storage::MountDir>,
 ) -> Result<PathBuf, Error> {
+	let sanitized = sanitize_path(real_path); // Paths in test database use `/` separators, but need `\` when running tests on Windows
 	for mount_dir in mount_dirs {
-		if let Ok(tail) = real_path.strip_prefix(&mount_dir.source) {
+		if let Ok(tail) = sanitized.strip_prefix(&mount_dir.source) {
 			return Ok(Path::new(&mount_dir.name).join(tail));
 		}
 	}
