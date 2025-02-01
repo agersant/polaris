@@ -1,5 +1,5 @@
 [![Actions Status](https://github.com/agersant/polaris/workflows/Build/badge.svg)](https://github.com/agersant/polaris/actions)
-[![codecov.io](http://codecov.io/github/agersant/polaris/branch/master/graphs/badge.svg)](http://codecov.io/github/agersant/polaris)
+[![codecov](https://codecov.io/github/agersant/polaris/graph/badge.svg?token=EQqCmBEf2T)](https://codecov.io/github/agersant/polaris)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE-MIT)
 
 <img src="res/readme/logo.png?raw=true"/>
