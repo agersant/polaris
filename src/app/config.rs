@@ -76,7 +76,20 @@ pub struct Manager {
 
 impl Manager {
 	pub async fn new(config_file_path: &Path, auth_secret: auth::Secret) -> Result<Self, Error> {
-		tokio::fs::File::create_new(config_file_path).await.ok();
+		if let Some(parent) = config_file_path.parent() {
+			tokio::fs::create_dir_all(parent)
+				.await
+				.map_err(|e| Error::Io(parent.to_owned(), e))?;
+		}
+
+		match tokio::fs::File::create_new(config_file_path).await {
+			Ok(_) => (),
+			Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => (),
+			Err(e) => {
+				error!("Failed to create config file at {config_file_path:#?}: {e}");
+				return Err(Error::Io(config_file_path.to_owned(), e));
+			}
+		};
 
 		let notify = Arc::new(Notify::new());
 		let mut debouncer = notify_debouncer_full::new_debouncer(Duration::from_secs(1), None, {
