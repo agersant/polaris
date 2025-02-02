@@ -56,7 +56,7 @@ Password: `demo_password`
 - 👷 [Contribute to Polaris](docs/CONTRIBUTING.md)
 - 🛟 [Maintenance Runbooks](docs/MAINTENANCE.md)
 
-The Polaris server API is documented via [OpenAPI](https://demo.polaris.stream/api-docs/). Every installation of Polaris distributes this interactive documentation. To access it, simply open http://localhost:5050/api-docs/ in your browser on the machine running Polaris.
+The Polaris server API is documented via [OpenAPI](https://demo.polaris.stream/api-docs/). Every installation of Polaris distributes this interactive documentation. To access it, open http://localhost:5050/api-docs/ in your browser on the machine running Polaris.
 
 # Credits & License Information
 
