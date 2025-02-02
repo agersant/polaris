@@ -8,6 +8,7 @@ While Polaris is free and open-source software, it is not very open to code cont
 
 This still leave room for a few avenues to contribute:
 - Help answering questions in the issue tracker.
+- Package Polaris for a Linux distribution
 - Documentation improvements or writing user guides.
 - Satellite projects (eg. [docker-polaris](https://github.com/ogarcia/docker-polaris), [polarios](https://gitlab.com/elise/Polarios))
 - Bug fixes.
