@@ -1,13 +1,17 @@
 # Installation
 
-## Windows
+## On Windows
 
 1. Download the [latest installer](https://github.com/agersant/polaris/releases/latest) (you want the .msi file)
 2. Run the installer
 3. Launch Polaris from the start menu
 4. In your web browser, access http://localhost:5050
 
-## Linux
+## In a docker container
+
+To run polaris from a Docker container, please follow instructions from the [docker-polaris](https://github.com/ogarcia/docker-polaris) repository.
+
+## From source on Linux
 
 ### Dependencies
 
@@ -24,7 +28,3 @@
 From here, you might want to adjust your system to run Polaris on login using Systemd, Cron or whichever method your distribution endorses.
 
 If you want to uninstall Polaris, execute `make uninstall-xdg` from the extracted archive's directory (or `make uninstall` if you made a system-wide install). This will delete all the files and directories listed above (including your configuration, playlists, etc.). If you customized the install process by specifying environment variables like `PREFIX`, make sure they are set to the same values when running the uninstall command.
-
-## In a docker container
-
-To run polaris from a Docker container, please follow instructions from the [docker-polaris](https://github.com/ogarcia/docker-polaris) repository.

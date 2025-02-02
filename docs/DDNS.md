@@ -1,8 +1,8 @@
-# Streaming From Other Devices
+# Streaming from other devices
 
 These instructions apply to users running Polaris on a home network. When deploying to cloud services or VPS, configurations requirements will differ.
 
-## Port Forwarding
+## Port forwarding
 
 Configure port forwarding on your router to redirect port 80 traffic towards port 5050 towards the computer running Polaris. The exact way to do this depends on your router manufacturer and model.
 
