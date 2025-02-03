@@ -203,7 +203,8 @@ impl Collection {
 		let mut genres = self
 			.genres
 			.values()
-			.map(|a| make_genre_header(a, dictionary))
+			.filter(|g| !g.albums.is_empty())
+			.map(|g| make_genre_header(g, dictionary))
 			.collect::<Vec<_>>();
 		let collator = dictionary::make_collator();
 		genres.sort_by(|a, b| collator.compare(&a.name, &b.name));
