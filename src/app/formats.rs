@@ -132,7 +132,12 @@ mod ape_ext {
 	}
 
 	pub fn read_strings(items: Vec<&ape::Item>) -> Vec<String> {
-		items.iter().filter_map(|i| read_string(i)).collect()
+		items
+			.iter()
+			.filter_map(|i| read_string(i))
+			// TODO This is a workaround for https://github.com/rossnomann/ape/issues/10
+			.flat_map(|s| s.split('\0').map(str::to_string).collect::<Vec<_>>())
+			.collect()
 	}
 
 	pub fn read_i32(item: &ape::Item) -> Option<i32> {
@@ -301,7 +306,7 @@ fn read_mp4<P: AsRef<Path>>(path: P) -> Result<SongMetadata, Error> {
 
 #[test]
 fn reads_file_metadata() {
-	let sample_tags = SongMetadata {
+	let expected_without_duration = SongMetadata {
 		disc_number: Some(3),
 		track_number: Some(1),
 		title: Some("TEST TITLE".into()),
@@ -316,49 +321,41 @@ fn reads_file_metadata() {
 		genres: vec!["TEST GENRE".into()],
 		labels: vec!["TEST LABEL".into()],
 	};
-	let flac_sample_tag = SongMetadata {
+	let expected_with_duration = SongMetadata {
 		duration: Some(0),
-		..sample_tags.clone()
-	};
-	let mp3_sample_tag = SongMetadata {
-		duration: Some(0),
-		..sample_tags.clone()
-	};
-	let m4a_sample_tag = SongMetadata {
-		duration: Some(0),
-		..sample_tags.clone()
+		..expected_without_duration.clone()
 	};
 	assert_eq!(
 		read_metadata(Path::new("test-data/formats/sample.aif")).unwrap(),
-		sample_tags
+		expected_without_duration
 	);
 	assert_eq!(
 		read_metadata(Path::new("test-data/formats/sample.mp3")).unwrap(),
-		mp3_sample_tag
+		expected_with_duration
 	);
 	assert_eq!(
 		read_metadata(Path::new("test-data/formats/sample.ogg")).unwrap(),
-		sample_tags
+		expected_without_duration
 	);
 	assert_eq!(
 		read_metadata(Path::new("test-data/formats/sample.flac")).unwrap(),
-		flac_sample_tag
+		expected_with_duration
 	);
 	assert_eq!(
 		read_metadata(Path::new("test-data/formats/sample.m4a")).unwrap(),
-		m4a_sample_tag
+		expected_with_duration
 	);
 	assert_eq!(
 		read_metadata(Path::new("test-data/formats/sample.opus")).unwrap(),
-		sample_tags
+		expected_without_duration
 	);
 	assert_eq!(
 		read_metadata(Path::new("test-data/formats/sample.ape")).unwrap(),
-		sample_tags
+		expected_without_duration
 	);
 	assert_eq!(
 		read_metadata(Path::new("test-data/formats/sample.wav")).unwrap(),
-		sample_tags
+		expected_without_duration
 	);
 }
 
@@ -393,14 +390,14 @@ fn reads_embedded_artwork() {
 
 #[test]
 fn reads_multivalue_fields() {
-	let expected = SongMetadata {
+	let expected_without_duration = SongMetadata {
 		disc_number: Some(3),
 		track_number: Some(1),
 		title: Some("TEST TITLE".into()),
 		artists: vec!["TEST ARTIST".into(), "OTHER ARTIST".into()],
 		album_artists: vec!["TEST ALBUM ARTIST".into(), "OTHER ALBUM ARTIST".into()],
 		album: Some("TEST ALBUM".into()),
-		duration: Some(0),
+		duration: None,
 		year: Some(2016),
 		has_artwork: false,
 		lyricists: vec!["TEST LYRICIST".into(), "OTHER LYRICIST".into()],
@@ -408,8 +405,16 @@ fn reads_multivalue_fields() {
 		genres: vec!["TEST GENRE".into(), "OTHER GENRE".into()],
 		labels: vec!["TEST LABEL".into(), "OTHER LABEL".into()],
 	};
+	let expected_with_duration = SongMetadata {
+		duration: Some(0),
+		..expected_without_duration.clone()
+	};
 	assert_eq!(
-		read_metadata(Path::new("test-data/multivalue.mp3")).unwrap(),
-		expected
+		read_metadata(Path::new("test-data/multivalue/multivalue.mp3")).unwrap(),
+		expected_with_duration
+	);
+	assert_eq!(
+		read_metadata(Path::new("test-data/multivalue/multivalue.ape")).unwrap(),
+		expected_without_duration
 	);
 }
