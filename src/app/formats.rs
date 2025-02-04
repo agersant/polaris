@@ -125,57 +125,53 @@ mod ape_ext {
 	use std::sync::LazyLock;
 
 	pub fn read_string(item: &ape::Item) -> Option<String> {
-		match item.value {
-			ape::ItemValue::Text(ref s) => Some(s.clone()),
-			_ => None,
-		}
+		item.try_into().ok().map(str::to_string)
 	}
 
-	pub fn read_strings(items: Vec<&ape::Item>) -> Vec<String> {
-		items
-			.iter()
-			.filter_map(|i| read_string(i))
-			// TODO This is a workaround for https://github.com/rossnomann/ape/issues/10
-			.flat_map(|s| s.split('\0').map(str::to_string).collect::<Vec<_>>())
-			.collect()
+	pub fn read_strings(item: Option<&ape::Item>) -> Vec<String> {
+		let Some(item) = item else {
+			return vec![];
+		};
+		let strings: Vec<&str> = item.try_into().unwrap_or_default();
+		strings.into_iter().map(str::to_string).collect()
 	}
 
 	pub fn read_i32(item: &ape::Item) -> Option<i32> {
-		match item.value {
-			ape::ItemValue::Text(ref s) => s.parse::<i32>().ok(),
-			_ => None,
-		}
+		item.try_into()
+			.ok()
+			.map(|s: &str| s.parse::<i32>().ok())
+			.flatten()
 	}
 
 	static X_OF_Y_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"^\d+"#).unwrap());
 
 	pub fn read_x_of_y(item: &ape::Item) -> Option<u32> {
-		match item.value {
-			ape::ItemValue::Text(ref s) => {
+		item.try_into()
+			.ok()
+			.map(|s: &str| {
 				if let Some(m) = X_OF_Y_REGEX.find(s) {
 					s[m.start()..m.end()].parse().ok()
 				} else {
 					None
 				}
-			}
-			_ => None,
-		}
+			})
+			.flatten()
 	}
 }
 
 fn read_ape<P: AsRef<Path>>(path: P) -> Result<SongMetadata, Error> {
 	let tag = ape::read_from_path(path)?;
-	let artists = ape_ext::read_strings(tag.items("Artist"));
+	let artists = ape_ext::read_strings(tag.item("Artist"));
 	let album = tag.item("Album").and_then(ape_ext::read_string);
-	let album_artists = ape_ext::read_strings(tag.items("Album artist"));
+	let album_artists = ape_ext::read_strings(tag.item("Album artist"));
 	let title = tag.item("Title").and_then(ape_ext::read_string);
 	let year = tag.item("Year").and_then(ape_ext::read_i32);
 	let disc_number = tag.item("Disc").and_then(ape_ext::read_x_of_y);
 	let track_number = tag.item("Track").and_then(ape_ext::read_x_of_y);
-	let lyricists = ape_ext::read_strings(tag.items("LYRICIST"));
-	let composers = ape_ext::read_strings(tag.items("COMPOSER"));
-	let genres = ape_ext::read_strings(tag.items("GENRE"));
-	let labels = ape_ext::read_strings(tag.items("PUBLISHER"));
+	let lyricists = ape_ext::read_strings(tag.item("LYRICIST"));
+	let composers = ape_ext::read_strings(tag.item("COMPOSER"));
+	let genres = ape_ext::read_strings(tag.item("GENRE"));
+	let labels = ape_ext::read_strings(tag.item("PUBLISHER"));
 	Ok(SongMetadata {
 		artists,
 		album_artists,

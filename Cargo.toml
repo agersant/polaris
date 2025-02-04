@@ -12,7 +12,7 @@ ui = ["native-windows-gui", "native-windows-derive"]
 lto = "thin"
 
 [dependencies]
-ape = "0.5"
+ape = "0.6"
 axum-extra = { version = "0.10.0", features = ["typed-header"] }
 axum-range = { version = "0.5.0" }
 bitcode = { version = "0.6.3", features = ["serde"] }
