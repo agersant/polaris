@@ -111,12 +111,11 @@ fn read_id3<P: AsRef<Path>>(path: P) -> Result<SongMetadata, Error> {
 
 fn read_mp3<P: AsRef<Path>>(path: P) -> Result<SongMetadata, Error> {
 	let mut metadata = read_id3(&path)?;
-	let duration = {
+	metadata.duration = metadata.duration.or_else(|| {
 		mp3_duration::from_path(path)
 			.map(|d| d.as_secs() as u32)
 			.ok()
-	};
-	metadata.duration = duration;
+	});
 	Ok(metadata)
 }
 
