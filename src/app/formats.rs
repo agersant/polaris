@@ -2,6 +2,7 @@ use id3::TagLike;
 use lewton::inside_ogg::OggStreamReader;
 use log::error;
 use std::fs;
+use std::io::{Seek, SeekFrom};
 use std::path::Path;
 
 use crate::app::Error;
@@ -64,7 +65,12 @@ impl ID3Ext for id3::Tag {
 }
 
 fn read_id3<P: AsRef<Path>>(path: P) -> Result<SongMetadata, Error> {
-	let tag = id3::Tag::read_from_path(&path)
+	let file = fs::File::open(path.as_ref()).map_err(|e| Error::Io(path.as_ref().to_owned(), e))?;
+	read_id3_from_file(&file, path)
+}
+
+fn read_id3_from_file<P: AsRef<Path>>(file: &fs::File, path: P) -> Result<SongMetadata, Error> {
+	let tag = id3::Tag::read_from2(file)
 		.or_else(|error| {
 			if let Some(tag) = error.partial_tag {
 				Ok(tag)
@@ -110,9 +116,11 @@ fn read_id3<P: AsRef<Path>>(path: P) -> Result<SongMetadata, Error> {
 }
 
 fn read_mp3<P: AsRef<Path>>(path: P) -> Result<SongMetadata, Error> {
-	let mut metadata = read_id3(&path)?;
+	let mut file = fs::File::open(&path).unwrap();
+	let mut metadata = read_id3_from_file(&file, &path)?;
 	metadata.duration = metadata.duration.or_else(|| {
-		mp3_duration::from_path(path)
+		file.seek(SeekFrom::Start(0)).unwrap();
+		mp3_duration::from_file(&file)
 			.map(|d| d.as_secs() as u32)
 			.ok()
 	});
