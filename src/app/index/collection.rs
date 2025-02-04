@@ -1044,12 +1044,16 @@ mod test {
 			scanner::Song {
 				virtual_path: PathBuf::from("Kai.mp3"),
 				title: Some("Kai".to_owned()),
+				album: Some("ISDN".to_owned()),
+				artists: vec!["FSOL".to_owned()],
 				genres: vec!["Ambient".to_owned()],
 				..Default::default()
 			},
 			scanner::Song {
 				virtual_path: PathBuf::from("Fantasy.mp3"),
 				title: Some("Fantasy".to_owned()),
+				album: Some("Nemesis".to_owned()),
+				artists: vec!["Stratovarius".to_owned()],
 				genres: vec!["Metal".to_owned()],
 				..Default::default()
 			},
