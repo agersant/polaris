@@ -419,22 +419,34 @@ fn process_directory<P: AsRef<Path>, Q: AsRef<Path>>(
 	let mut artwork_file = None;
 
 	for entry in read_dir {
-		let name = match entry {
-			Ok(ref f) => f.file_name(),
+		let entry = match entry {
+			Ok(e) => e,
 			Err(e) => {
 				error!(
 					"File read error within `{}`: {}",
 					real_path.as_ref().display(),
 					e
 				);
-				break;
+				continue;
 			}
 		};
 
+		let is_dir = match entry.file_type().map(|f| f.is_dir()) {
+			Ok(d) => d,
+			Err(e) => {
+				error!(
+					"Could not determine file type for `{}`: {}",
+					entry.path().to_string_lossy(),
+					e
+				);
+				continue;
+			}
+		};
+		let name = entry.file_name();
 		let entry_real_path = real_path.as_ref().join(&name);
 		let entry_virtual_path = virtual_path.as_ref().join(&name);
 
-		if entry_real_path.is_dir() {
+		if is_dir {
 			scope.spawn({
 				let directories_output = directories_output.clone();
 				let songs_output = songs_output.clone();
