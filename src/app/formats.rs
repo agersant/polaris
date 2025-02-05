@@ -429,7 +429,10 @@ fn reads_multivalue_fields() {
 		expected_with_duration
 	);
 	// TODO Test m4a support (likely working). Pending https://tickets.metabrainz.org/browse/PICARD-3029
-	// TODO Opus support.
+	assert_eq!(
+		read_metadata(Path::new("test-data/multivalue/multivalue.opus")).unwrap(),
+		expected_without_duration
+	);
 	assert_eq!(
 		read_metadata(Path::new("test-data/multivalue/multivalue.ape")).unwrap(),
 		expected_without_duration

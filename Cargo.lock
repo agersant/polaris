@@ -1635,8 +1635,7 @@ checksum = "3fdb12b2476b595f9358c5161aa467c2438859caa136dec86c26fdd2efe17b92"
 [[package]]
 name = "opus_headers"
 version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "afbb993947f111397c2bc536944f8dac7f54a4e73383d478efe1990b56404b60"
+source = "git+https://github.com/agersant/opus_headers?branch=multivalue#9850b2d369b12794ad62d4c2bf61e4645183ff49"
 
 [[package]]
 name = "orion"
