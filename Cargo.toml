@@ -1,6 +1,6 @@
 [package]
 name = "polaris"
-version = "0.14.3"
+version = "0.15.0"
 authors = ["Antoine Gersant <antoine.gersant@lesforges.org>"]
 edition = "2021"
 build = "build.rs"
