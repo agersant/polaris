@@ -1,12 +1,8 @@
 #![cfg_attr(all(windows, feature = "ui"), windows_subsystem = "windows")]
 #![recursion_limit = "256"]
 
-#[macro_use]
-extern crate diesel;
-#[macro_use]
-extern crate diesel_migrations;
-
-use log::info;
+use log::{error, info};
+use options::CLIOptions;
 use simplelog::{
 	ColorChoice, CombinedLogger, LevelFilter, SharedLogger, TermLogger, TerminalMode, WriteLogger,
 };
@@ -14,10 +10,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 mod app;
-mod db;
 mod options;
 mod paths;
-mod service;
+mod server;
 #[cfg(test)]
 mod test;
 mod ui;
@@ -27,6 +22,8 @@ mod utils;
 pub enum Error {
 	#[error(transparent)]
 	App(#[from] app::Error),
+	#[error("Could not start web services")]
+	ServiceStartup(std::io::Error),
 	#[error("Could not parse command line arguments:\n\n{0}")]
 	CliArgsParsing(getopts::Fail),
 	#[cfg(unix)]
@@ -76,6 +73,7 @@ fn init_logging<T: AsRef<Path>>(
 ) -> Result<(), Error> {
 	let log_config = simplelog::ConfigBuilder::new()
 		.set_location_level(LevelFilter::Error)
+		.add_filter_ignore_str("symphonia")
 		.build();
 
 	let mut loggers: Vec<Box<dyn SharedLogger>> = vec![TermLogger::new(
@@ -129,26 +127,31 @@ fn main() -> Result<(), Error> {
 	daemonize(cli_options.foreground, &paths.pid_file_path)?;
 
 	info!("Cache files location is {:#?}", paths.cache_dir_path);
-	info!("Config files location is {:#?}", paths.config_file_path);
-	info!("Database file location is {:#?}", paths.db_file_path);
+	info!("Data files location is {:#?}", paths.data_dir_path);
+	info!("Config file location is {:#?}", paths.config_file_path);
+	info!("Legacy database file location is {:#?}", paths.db_file_path);
 	info!("Log file location is {:#?}", paths.log_file_path);
 	#[cfg(unix)]
 	if !cli_options.foreground {
 		info!("Pid file location is {:#?}", paths.pid_file_path);
 	}
-	info!("Swagger files location is {:#?}", paths.swagger_dir_path);
 	info!("Web client files location is {:#?}", paths.web_dir_path);
 
+	async_main(cli_options, paths)
+}
+
+#[tokio::main]
+async fn async_main(cli_options: CLIOptions, paths: paths::Paths) -> Result<(), Error> {
 	// Create and run app
-	let app = app::App::new(cli_options.port.unwrap_or(5050), paths)?;
-	app.index.begin_periodic_updates();
+	let app = app::App::new(cli_options.port.unwrap_or(5050), paths).await?;
+	app.scanner.queue_scan();
 	app.ddns_manager.begin_periodic_updates();
 
 	// Start server
 	info!("Starting up server");
-	std::thread::spawn(move || {
-		let _ = service::run(app);
-	});
+	if let Err(e) = server::launch(app).await {
+		return Err(Error::ServiceStartup(e));
+	}
 
 	// Send readiness notification
 	#[cfg(unix)]

@@ -1,3 +1,6 @@
+# Dev environment
+.direnv
+
 # Build output
 target
 
@@ -8,9 +11,13 @@ test-output
 TestConfig.toml
 
 # Runtime artifacts
-*.sqlite
+auth.secret
+collection.index
 polaris.log
+polaris.ndb
 polaris.pid
+profile.json
+/peaks
 /thumbnails
 
 # Release process artifacts (usually runs on CI)

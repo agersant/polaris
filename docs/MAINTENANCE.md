@@ -8,8 +8,3 @@
 - Input a user-facing version name (eg: **0.13.0**)
 - Click the **Run workflow** button
 - After CI completes, move the release from Draft to Published
-
-## How to change the database schema
-
-- Add a new folder under `migrations` following the existing pattern
-- Run `update_db_schema.bat`

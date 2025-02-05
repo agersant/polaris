@@ -27,8 +27,8 @@ pub enum AudioFormat {
 	M4B,
 }
 
-pub fn get_audio_format(path: &Path) -> Option<AudioFormat> {
-	let extension = match path.extension() {
+pub fn get_audio_format<P: AsRef<Path>>(path: P) -> Option<AudioFormat> {
+	let extension = match path.as_ref().extension() {
 		Some(e) => e,
 		_ => return None,
 	};

@@ -1,186 +1,478 @@
-use diesel::dsl::sql;
-use diesel::prelude::*;
-use diesel::sql_types;
-use std::path::{Path, PathBuf};
+use std::collections::HashSet;
 
-use super::*;
-use crate::db::{self, directories, songs};
+use chumsky::{
+	error::Simple,
+	prelude::{choice, end, filter, just, none_of, recursive},
+	text::{int, keyword, whitespace, TextParser},
+	Parser,
+};
+use enum_map::Enum;
+use serde::{Deserialize, Serialize};
 
-#[derive(thiserror::Error, Debug)]
-pub enum QueryError {
-	#[error(transparent)]
-	Database(#[from] diesel::result::Error),
-	#[error(transparent)]
-	DatabaseConnection(#[from] db::Error),
-	#[error("Song was not found: `{0}`")]
-	SongNotFound(PathBuf),
-	#[error(transparent)]
-	Vfs(#[from] vfs::Error),
+#[derive(Clone, Copy, Debug, Deserialize, Enum, Eq, Hash, PartialEq, Serialize)]
+pub enum TextField {
+	Album,
+	AlbumArtist,
+	Artist,
+	Composer,
+	Genre,
+	Label,
+	Lyricist,
+	Path,
+	Title,
 }
 
-sql_function!(
-	#[aggregate]
-	fn random() -> Integer;
-);
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum TextOp {
+	Eq,
+	Like,
+}
 
-impl Index {
-	pub fn browse<P>(&self, virtual_path: P) -> Result<Vec<CollectionFile>, QueryError>
-	where
-		P: AsRef<Path>,
-	{
-		let mut output = Vec::new();
-		let vfs = self.vfs_manager.get_vfs()?;
-		let mut connection = self.db.connect()?;
+#[derive(Clone, Copy, Debug, Deserialize, Enum, Eq, Hash, PartialEq, Serialize)]
+pub enum NumberField {
+	DiscNumber,
+	TrackNumber,
+	Year,
+}
 
-		if virtual_path.as_ref().components().count() == 0 {
-			// Browse top-level
-			let real_directories: Vec<Directory> = directories::table
-				.filter(directories::parent.is_null())
-				.load(&mut connection)?;
-			let virtual_directories = real_directories
-				.into_iter()
-				.filter_map(|d| d.virtualize(&vfs));
-			output.extend(virtual_directories.map(CollectionFile::Directory));
-		} else {
-			// Browse sub-directory
-			let real_path = vfs.virtual_to_real(virtual_path)?;
-			let real_path_string = real_path.as_path().to_string_lossy().into_owned();
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum NumberOp {
+	Eq,
+	Greater,
+	GreaterOrEq,
+	Less,
+	LessOrEq,
+}
 
-			let real_directories: Vec<Directory> = directories::table
-				.filter(directories::parent.eq(&real_path_string))
-				.order(sql::<sql_types::Bool>("path COLLATE NOCASE ASC"))
-				.load(&mut connection)?;
-			let virtual_directories = real_directories
-				.into_iter()
-				.filter_map(|d| d.virtualize(&vfs));
-			output.extend(virtual_directories.map(CollectionFile::Directory));
+#[derive(Debug, Eq, PartialEq)]
+pub enum Literal {
+	Text(String),
+	Number(i32),
+}
 
-			let real_songs: Vec<Song> = songs::table
-				.filter(songs::parent.eq(&real_path_string))
-				.order(sql::<sql_types::Bool>("path COLLATE NOCASE ASC"))
-				.load(&mut connection)?;
-			let virtual_songs = real_songs.into_iter().filter_map(|s| s.virtualize(&vfs));
-			output.extend(virtual_songs.map(CollectionFile::Song));
-		}
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum BoolOp {
+	And,
+	Or,
+	Not,
+}
 
-		Ok(output)
-	}
+#[derive(Debug, Eq, PartialEq)]
+pub enum Expr {
+	Fuzzy(Literal),
+	TextCmp(TextField, TextOp, String),
+	NumberCmp(NumberField, NumberOp, i32),
+	Combined(Box<Expr>, BoolOp, Box<Expr>),
+}
 
-	pub fn flatten<P>(&self, virtual_path: P) -> Result<Vec<Song>, QueryError>
-	where
-		P: AsRef<Path>,
-	{
-		use self::songs::dsl::*;
-		let vfs = self.vfs_manager.get_vfs()?;
-		let mut connection = self.db.connect()?;
+pub fn make_parser() -> impl Parser<char, Expr, Error = Simple<char>> {
+	recursive(|expr| {
+		let quoted_str = just('"')
+			.ignore_then(none_of('"').repeated().collect::<String>())
+			.then_ignore(just('"'));
 
-		let real_songs: Vec<Song> = if virtual_path.as_ref().parent().is_some() {
-			let real_path = vfs.virtual_to_real(virtual_path)?;
-			let song_path_filter = {
-				let mut path_buf = real_path;
-				path_buf.push("%");
-				path_buf.as_path().to_string_lossy().into_owned()
-			};
-			songs
-				.filter(path.like(&song_path_filter))
-				.order(path)
-				.load(&mut connection)?
-		} else {
-			songs.order(path).load(&mut connection)?
-		};
+		let symbols = r#"()<>"|&=!"#.chars().collect::<HashSet<_>>();
 
-		let virtual_songs = real_songs.into_iter().filter_map(|s| s.virtualize(&vfs));
-		Ok(virtual_songs.collect::<Vec<_>>())
-	}
+		let raw_str = filter(move |c: &char| !c.is_whitespace() && !symbols.contains(c))
+			.repeated()
+			.at_least(1)
+			.collect::<String>();
 
-	pub fn get_random_albums(&self, count: i64) -> Result<Vec<Directory>, QueryError> {
-		use self::directories::dsl::*;
-		let vfs = self.vfs_manager.get_vfs()?;
-		let mut connection = self.db.connect()?;
-		let real_directories: Vec<Directory> = directories
-			.filter(album.is_not_null())
-			.limit(count)
-			.order(random())
-			.load(&mut connection)?;
-		let virtual_directories = real_directories
-			.into_iter()
-			.filter_map(|d| d.virtualize(&vfs));
-		Ok(virtual_directories.collect::<Vec<_>>())
-	}
+		let str_ = choice((quoted_str, raw_str)).padded();
 
-	pub fn get_recent_albums(&self, count: i64) -> Result<Vec<Directory>, QueryError> {
-		use self::directories::dsl::*;
-		let vfs = self.vfs_manager.get_vfs()?;
-		let mut connection = self.db.connect()?;
-		let real_directories: Vec<Directory> = directories
-			.filter(album.is_not_null())
-			.order(date_added.desc())
-			.limit(count)
-			.load(&mut connection)?;
-		let virtual_directories = real_directories
-			.into_iter()
-			.filter_map(|d| d.virtualize(&vfs));
-		Ok(virtual_directories.collect::<Vec<_>>())
-	}
+		let number = int(10).from_str().unwrapped().padded();
 
-	pub fn search(&self, query: &str) -> Result<Vec<CollectionFile>, QueryError> {
-		let vfs = self.vfs_manager.get_vfs()?;
-		let mut connection = self.db.connect()?;
-		let like_test = format!("%{}%", query);
-		let mut output = Vec::new();
+		let text_field = choice((
+			keyword("album").to(TextField::Album),
+			keyword("albumartist").to(TextField::AlbumArtist),
+			keyword("artist").to(TextField::Artist),
+			keyword("composer").to(TextField::Composer),
+			keyword("genre").to(TextField::Genre),
+			keyword("label").to(TextField::Label),
+			keyword("lyricist").to(TextField::Lyricist),
+			keyword("path").to(TextField::Path),
+			keyword("title").to(TextField::Title),
+		))
+		.padded();
 
-		// Find dirs with matching path and parent not matching
-		{
-			use self::directories::dsl::*;
-			let real_directories: Vec<Directory> = directories
-				.filter(path.like(&like_test))
-				.filter(parent.not_like(&like_test))
-				.load(&mut connection)?;
+		let text_op = choice((just("=").to(TextOp::Eq), just("%").to(TextOp::Like))).padded();
 
-			let virtual_directories = real_directories
-				.into_iter()
-				.filter_map(|d| d.virtualize(&vfs));
+		let text_cmp = text_field
+			.then(text_op)
+			.then(str_.clone())
+			.map(|((a, b), c)| Expr::TextCmp(a, b, c));
 
-			output.extend(virtual_directories.map(CollectionFile::Directory));
-		}
+		let number_field = choice((
+			keyword("discnumber").to(NumberField::DiscNumber),
+			keyword("tracknumber").to(NumberField::TrackNumber),
+			keyword("year").to(NumberField::Year),
+		))
+		.padded();
 
-		// Find songs with matching title/album/artist and non-matching parent
-		{
-			use self::songs::dsl::*;
-			let real_songs: Vec<Song> = songs
-				.filter(
-					path.like(&like_test)
-						.or(title.like(&like_test))
-						.or(album.like(&like_test))
-						.or(artist.like(&like_test))
-						.or(album_artist.like(&like_test)),
-				)
-				.filter(parent.not_like(&like_test))
-				.load(&mut connection)?;
+		let number_op = choice((
+			just("=").to(NumberOp::Eq),
+			just(">=").to(NumberOp::GreaterOrEq),
+			just(">").to(NumberOp::Greater),
+			just("<=").to(NumberOp::LessOrEq),
+			just("<").to(NumberOp::Less),
+		))
+		.padded();
 
-			let virtual_songs = real_songs.into_iter().filter_map(|d| d.virtualize(&vfs));
+		let number_cmp = number_field
+			.then(number_op)
+			.then(number)
+			.map(|((a, b), c)| Expr::NumberCmp(a, b, c));
 
-			output.extend(virtual_songs.map(CollectionFile::Song));
-		}
+		let literal = choice((number.map(Literal::Number), str_.map(Literal::Text)));
+		let fuzzy = literal.map(Expr::Fuzzy);
 
-		Ok(output)
-	}
+		let filter = choice((text_cmp, number_cmp, fuzzy));
+		let atom = choice((filter, expr.delimited_by(just('('), just(')'))));
 
-	pub fn get_song(&self, virtual_path: &Path) -> Result<Song, QueryError> {
-		let vfs = self.vfs_manager.get_vfs()?;
-		let mut connection = self.db.connect()?;
+		let bool_op = choice((
+			just("&&").to(BoolOp::And),
+			just("||").to(BoolOp::Or),
+			just("!!").to(BoolOp::Not),
+		))
+		.padded();
 
-		let real_path = vfs.virtual_to_real(virtual_path)?;
-		let real_path_string = real_path.as_path().to_string_lossy();
+		let combined = atom
+			.clone()
+			.then(bool_op.then(atom).repeated())
+			.foldl(|a, (b, c)| Expr::Combined(Box::new(a), b, Box::new(c)));
 
-		use self::songs::dsl::*;
-		let real_song: Song = songs
-			.filter(path.eq(real_path_string))
-			.get_result(&mut connection)?;
+		let implicit_and = combined
+			.clone()
+			.then(whitespace().ignore_then(combined).repeated())
+			.foldl(|a: Expr, b: Expr| Expr::Combined(Box::new(a), BoolOp::And, Box::new(b)));
 
-		match real_song.virtualize(&vfs) {
-			Some(s) => Ok(s),
-			None => Err(QueryError::SongNotFound(real_path)),
-		}
-	}
+		implicit_and
+	})
+	.then_ignore(end())
+}
+
+#[test]
+fn can_parse_fuzzy_query() {
+	let parser = make_parser();
+	assert_eq!(
+		parser.parse(r#"rhapsody"#).unwrap(),
+		Expr::Fuzzy(Literal::Text("rhapsody".to_owned())),
+	);
+	assert_eq!(
+		parser.parse(r#"2005"#).unwrap(),
+		Expr::Fuzzy(Literal::Number(2005)),
+	);
+}
+
+#[test]
+fn can_repeat_fuzzy_queries() {
+	let parser = make_parser();
+	assert_eq!(
+		parser.parse(r#"rhapsody "of victory""#).unwrap(),
+		Expr::Combined(
+			Box::new(Expr::Fuzzy(Literal::Text("rhapsody".to_owned()))),
+			BoolOp::And,
+			Box::new(Expr::Fuzzy(Literal::Text("of victory".to_owned()))),
+		),
+	);
+}
+
+#[test]
+fn can_mix_fuzzy_and_structured() {
+	let parser = make_parser();
+	assert_eq!(
+		parser.parse(r#"rhapsody album % dragonflame"#).unwrap(),
+		Expr::Combined(
+			Box::new(Expr::Fuzzy(Literal::Text("rhapsody".to_owned()))),
+			BoolOp::And,
+			Box::new(Expr::TextCmp(
+				TextField::Album,
+				TextOp::Like,
+				"dragonflame".to_owned()
+			)),
+		),
+	);
+}
+
+#[test]
+fn can_parse_text_fields() {
+	let parser = make_parser();
+	assert_eq!(
+		parser.parse(r#"album = "legendary tales""#).unwrap(),
+		Expr::TextCmp(TextField::Album, TextOp::Eq, "legendary tales".to_owned()),
+	);
+	assert_eq!(
+		parser.parse(r#"albumartist = "rhapsody""#).unwrap(),
+		Expr::TextCmp(TextField::AlbumArtist, TextOp::Eq, "rhapsody".to_owned()),
+	);
+	assert_eq!(
+		parser.parse(r#"artist = "rhapsody""#).unwrap(),
+		Expr::TextCmp(TextField::Artist, TextOp::Eq, "rhapsody".to_owned()),
+	);
+	assert_eq!(
+		parser.parse(r#"composer = "yoko kanno""#).unwrap(),
+		Expr::TextCmp(TextField::Composer, TextOp::Eq, "yoko kanno".to_owned()),
+	);
+	assert_eq!(
+		parser.parse(r#"genre = "jazz""#).unwrap(),
+		Expr::TextCmp(TextField::Genre, TextOp::Eq, "jazz".to_owned()),
+	);
+	assert_eq!(
+		parser.parse(r#"label = "diverse system""#).unwrap(),
+		Expr::TextCmp(TextField::Label, TextOp::Eq, "diverse system".to_owned()),
+	);
+	assert_eq!(
+		parser.parse(r#"lyricist = "dalida""#).unwrap(),
+		Expr::TextCmp(TextField::Lyricist, TextOp::Eq, "dalida".to_owned()),
+	);
+	assert_eq!(
+		parser.parse(r#"path = "electronic/big beat""#).unwrap(),
+		Expr::TextCmp(
+			TextField::Path,
+			TextOp::Eq,
+			"electronic/big beat".to_owned()
+		),
+	);
+	assert_eq!(
+		parser.parse(r#"title = "emerald sword""#).unwrap(),
+		Expr::TextCmp(TextField::Title, TextOp::Eq, "emerald sword".to_owned()),
+	);
+}
+
+#[test]
+fn can_parse_text_operators() {
+	let parser = make_parser();
+	assert_eq!(
+		parser.parse(r#"album = "legendary tales""#).unwrap(),
+		Expr::TextCmp(TextField::Album, TextOp::Eq, "legendary tales".to_owned()),
+	);
+	assert_eq!(
+		parser.parse(r#"album % "legendary tales""#).unwrap(),
+		Expr::TextCmp(TextField::Album, TextOp::Like, "legendary tales".to_owned()),
+	);
+}
+
+#[test]
+fn can_parse_number_fields() {
+	let parser = make_parser();
+	assert_eq!(
+		parser.parse(r#"discnumber = 6"#).unwrap(),
+		Expr::NumberCmp(NumberField::DiscNumber, NumberOp::Eq, 6),
+	);
+	assert_eq!(
+		parser.parse(r#"tracknumber = 12"#).unwrap(),
+		Expr::NumberCmp(NumberField::TrackNumber, NumberOp::Eq, 12),
+	);
+	assert_eq!(
+		parser.parse(r#"year = 1999"#).unwrap(),
+		Expr::NumberCmp(NumberField::Year, NumberOp::Eq, 1999),
+	);
+}
+
+#[test]
+fn can_parse_number_operators() {
+	let parser = make_parser();
+	assert_eq!(
+		parser.parse(r#"discnumber = 6"#).unwrap(),
+		Expr::NumberCmp(NumberField::DiscNumber, NumberOp::Eq, 6),
+	);
+	assert_eq!(
+		parser.parse(r#"discnumber > 6"#).unwrap(),
+		Expr::NumberCmp(NumberField::DiscNumber, NumberOp::Greater, 6),
+	);
+	assert_eq!(
+		parser.parse(r#"discnumber >= 6"#).unwrap(),
+		Expr::NumberCmp(NumberField::DiscNumber, NumberOp::GreaterOrEq, 6),
+	);
+	assert_eq!(
+		parser.parse(r#"discnumber < 6"#).unwrap(),
+		Expr::NumberCmp(NumberField::DiscNumber, NumberOp::Less, 6),
+	);
+	assert_eq!(
+		parser.parse(r#"discnumber <= 6"#).unwrap(),
+		Expr::NumberCmp(NumberField::DiscNumber, NumberOp::LessOrEq, 6),
+	);
+}
+
+#[test]
+fn can_use_and_operator() {
+	let parser = make_parser();
+
+	assert_eq!(
+		parser.parse(r#"album % lands && title % "sword""#).unwrap(),
+		Expr::Combined(
+			Box::new(Expr::TextCmp(
+				TextField::Album,
+				TextOp::Like,
+				"lands".to_owned()
+			)),
+			BoolOp::And,
+			Box::new(Expr::TextCmp(
+				TextField::Title,
+				TextOp::Like,
+				"sword".to_owned()
+			))
+		),
+	);
+}
+
+#[test]
+fn can_use_or_operator() {
+	let parser = make_parser();
+
+	assert_eq!(
+		parser.parse(r#"album % lands || title % "sword""#).unwrap(),
+		Expr::Combined(
+			Box::new(Expr::TextCmp(
+				TextField::Album,
+				TextOp::Like,
+				"lands".to_owned()
+			)),
+			BoolOp::Or,
+			Box::new(Expr::TextCmp(
+				TextField::Title,
+				TextOp::Like,
+				"sword".to_owned()
+			))
+		),
+	);
+}
+
+#[test]
+fn can_use_not_operator() {
+	let parser = make_parser();
+
+	assert_eq!(
+		parser.parse(r#"album % lands !! title % "sword""#).unwrap(),
+		Expr::Combined(
+			Box::new(Expr::TextCmp(
+				TextField::Album,
+				TextOp::Like,
+				"lands".to_owned()
+			)),
+			BoolOp::Not,
+			Box::new(Expr::TextCmp(
+				TextField::Title,
+				TextOp::Like,
+				"sword".to_owned()
+			))
+		),
+	);
+}
+
+#[test]
+fn boolean_operators_share_precedence() {
+	let parser = make_parser();
+
+	assert_eq!(
+		parser
+			.parse(r#"album % lands || album % tales && title % "sword""#)
+			.unwrap(),
+		Expr::Combined(
+			Box::new(Expr::Combined(
+				Box::new(Expr::TextCmp(
+					TextField::Album,
+					TextOp::Like,
+					"lands".to_owned()
+				)),
+				BoolOp::Or,
+				Box::new(Expr::TextCmp(
+					TextField::Album,
+					TextOp::Like,
+					"tales".to_owned()
+				))
+			)),
+			BoolOp::And,
+			Box::new(Expr::TextCmp(
+				TextField::Title,
+				TextOp::Like,
+				"sword".to_owned()
+			))
+		),
+	);
+
+	assert_eq!(
+		parser
+			.parse(r#"album % lands && album % tales || title % "sword""#)
+			.unwrap(),
+		Expr::Combined(
+			Box::new(Expr::Combined(
+				Box::new(Expr::TextCmp(
+					TextField::Album,
+					TextOp::Like,
+					"lands".to_owned()
+				)),
+				BoolOp::And,
+				Box::new(Expr::TextCmp(
+					TextField::Album,
+					TextOp::Like,
+					"tales".to_owned()
+				))
+			)),
+			BoolOp::Or,
+			Box::new(Expr::TextCmp(
+				TextField::Title,
+				TextOp::Like,
+				"sword".to_owned()
+			))
+		),
+	);
+}
+
+#[test]
+fn can_use_parenthesis_for_precedence() {
+	let parser = make_parser();
+	assert_eq!(
+		parser
+			.parse(r#"album % lands || (album % tales && title % sword)"#)
+			.unwrap(),
+		Expr::Combined(
+			Box::new(Expr::TextCmp(
+				TextField::Album,
+				TextOp::Like,
+				"lands".to_owned()
+			)),
+			BoolOp::Or,
+			Box::new(Expr::Combined(
+				Box::new(Expr::TextCmp(
+					TextField::Album,
+					TextOp::Like,
+					"tales".to_owned()
+				)),
+				BoolOp::And,
+				Box::new(Expr::TextCmp(
+					TextField::Title,
+					TextOp::Like,
+					"sword".to_owned()
+				)),
+			))
+		),
+	);
+
+	assert_eq!(
+		parser
+			.parse(r#"(album % lands || album % tales) && title % "sword""#)
+			.unwrap(),
+		Expr::Combined(
+			Box::new(Expr::Combined(
+				Box::new(Expr::TextCmp(
+					TextField::Album,
+					TextOp::Like,
+					"lands".to_owned()
+				)),
+				BoolOp::Or,
+				Box::new(Expr::TextCmp(
+					TextField::Album,
+					TextOp::Like,
+					"tales".to_owned()
+				))
+			)),
+			BoolOp::And,
+			Box::new(Expr::TextCmp(
+				TextField::Title,
+				TextOp::Like,
+				"sword".to_owned()
+			))
+		),
+	);
 }
