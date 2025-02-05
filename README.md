@@ -47,7 +47,7 @@ Password: `demo_password`
 
 [Streaming from remote devices](docs/DDNS.md)
 
-[![Packaging status](https://repology.org/badge/vertical-allrepos/polaris-streaming.svg)](https://repology.org/project/polaris-streaming/versions)
+[![Packaging status](https://repology.org/badge/vertical-allrepos/polaris-streaming.svg?columns=3)](https://repology.org/project/polaris-streaming/versions)
 
 # Documentation
 
