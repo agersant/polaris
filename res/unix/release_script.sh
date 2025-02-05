@@ -3,7 +3,7 @@ echo "Creating output directory"
 mkdir -p release/tmp/polaris
 
 echo "Copying package files"
-cp -r web docs/swagger src migrations test-data build.rs Cargo.toml Cargo.lock rust-toolchain res/unix/Makefile release/tmp/polaris
+cp -r web src test-data build.rs Cargo.toml Cargo.lock rust-toolchain.toml res/unix/Makefile release/tmp/polaris
 
 echo "Creating tarball"
 tar -zc -C release/tmp -f release/polaris.tar.gz polaris

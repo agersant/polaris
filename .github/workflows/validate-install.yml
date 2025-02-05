@@ -1,10 +1,6 @@
 on:
   pull_request:
-    branches:
-      - master
   push:
-    branches:
-      - master
 
 name: Validate Install
 
@@ -22,8 +18,9 @@ jobs:
           version-number: "0.0.0"
           output-file: polaris.tar.gz
       - name: Upload packaged release
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
+          if-no-files-found: error
           name: linux-release
           path: polaris.tar.gz
 
@@ -34,7 +31,7 @@ jobs:
 
     steps:
       - name: Download release
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: linux-release
           path: .
@@ -44,9 +41,7 @@ jobs:
         run: make preview
       - name: Preview Install w/ Custom Prefix
         run: make preview PREFIX=/some/random/prefix
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
       - name: Install
         run: sudo --preserve-env=PATH make install
       - name: Run Polaris
@@ -65,7 +60,7 @@ jobs:
 
     steps:
       - name: Download release
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: linux-release
           path: .
@@ -75,9 +70,7 @@ jobs:
         run: make preview-xdg
       - name: Preview Install w/ Custom XDG_DATA_HOME
         run: make preview-xdg XDG_DATA_HOME=/my/own/xdg/home
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
       - name: Install
         run: make install-xdg
       - name: Run Polaris
@@ -97,17 +90,16 @@ jobs:
       - name: Checkout Polaris
         uses: actions/checkout@v1
       - name: Install Rust Toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
+        uses: actions-rust-lang/setup-rust-toolchain@v1
       - name: Make release
         uses: ./.github/actions/make-windows-release
         with:
           version-number: "0.0.0"
           output-file: polaris.msi
       - name: Upload packaged release
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
+          if-no-files-found: error
           name: windows-release
           path: polaris.msi
 
@@ -118,7 +110,7 @@ jobs:
 
     steps:
       - name: Download release
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: windows-release
           path: .
