@@ -413,11 +413,29 @@ fn reads_multivalue_fields() {
 		..expected_without_duration.clone()
 	};
 	assert_eq!(
+		read_metadata(Path::new("test-data/multivalue/multivalue.aif")).unwrap(),
+		expected_without_duration
+	);
+	assert_eq!(
 		read_metadata(Path::new("test-data/multivalue/multivalue.mp3")).unwrap(),
 		expected_with_duration
 	);
 	assert_eq!(
+		read_metadata(Path::new("test-data/multivalue/multivalue.ogg")).unwrap(),
+		expected_without_duration
+	);
+	assert_eq!(
+		read_metadata(Path::new("test-data/multivalue/multivalue.flac")).unwrap(),
+		expected_with_duration
+	);
+	// TODO Test m4a support (likely working). Pending https://tickets.metabrainz.org/browse/PICARD-3029
+	// TODO Opus support.
+	assert_eq!(
 		read_metadata(Path::new("test-data/multivalue/multivalue.ape")).unwrap(),
+		expected_without_duration
+	);
+	assert_eq!(
+		read_metadata(Path::new("test-data/multivalue/multivalue.wav")).unwrap(),
 		expected_without_duration
 	);
 }
