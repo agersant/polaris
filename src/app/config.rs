@@ -119,7 +119,7 @@ impl Manager {
 					if let Err(e) = manager.reload_config().await {
 						error!("Configuration error: {e}");
 					} else {
-						info!("Sucessfully applied configuration change");
+						info!("Successfully applied configuration change");
 					}
 				}
 			}
