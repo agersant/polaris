@@ -146,8 +146,7 @@ mod ape_ext {
 	pub fn read_i32(item: &ape::Item) -> Option<i32> {
 		item.try_into()
 			.ok()
-			.map(|s: &str| s.parse::<i32>().ok())
-			.flatten()
+			.and_then(|s: &str| s.parse::<i32>().ok())
 	}
 
 	static X_OF_Y_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"^\d+"#).unwrap());
@@ -155,14 +154,13 @@ mod ape_ext {
 	pub fn read_x_of_y(item: &ape::Item) -> Option<u32> {
 		item.try_into()
 			.ok()
-			.map(|s: &str| {
+			.and_then(|s: &str| {
 				if let Some(m) = X_OF_Y_REGEX.find(s) {
 					s[m.start()..m.end()].parse().ok()
 				} else {
 					None
 				}
 			})
-			.flatten()
 	}
 }
 

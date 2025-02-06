@@ -8,10 +8,7 @@ use serde::{Deserialize, Serialize};
 pub fn sanitize(s: &str) -> String {
 	// TODO merge inconsistent diacritic usage
 	let mut cleaned = s.to_owned();
-	cleaned.retain(|c| match c {
-		' ' | '_' | '-' | '\'' => false,
-		_ => true,
-	});
+	cleaned.retain(|c| !matches!(c, ' ' | '_' | '-' | '\''));
 	cleaned.to_lowercase()
 }
 

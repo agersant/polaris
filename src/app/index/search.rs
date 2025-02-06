@@ -60,7 +60,7 @@ impl Search {
 	fn eval(&self, dictionary: &Dictionary, expr: &Expr) -> IntSet<SongKey> {
 		match expr {
 			Expr::Fuzzy(s) => self.eval_fuzzy(dictionary, s),
-			Expr::TextCmp(field, op, s) => self.eval_text_operator(dictionary, *field, *op, &s),
+			Expr::TextCmp(field, op, s) => self.eval_text_operator(dictionary, *field, *op, s),
 			Expr::NumberCmp(field, op, n) => self.eval_number_operator(*field, *op, *n),
 			Expr::Combined(e, op, f) => self.combine(dictionary, e, *op, f),
 		}
@@ -69,9 +69,9 @@ impl Search {
 	fn combine(
 		&self,
 		dictionary: &Dictionary,
-		e: &Box<Expr>,
+		e: &Expr,
 		op: BoolOp,
-		f: &Box<Expr>,
+		f: &Expr,
 	) -> IntSet<SongKey> {
 		let is_operable = |expr: &Expr| match expr {
 			Expr::Fuzzy(Literal::Text(s)) if s.chars().count() < BIGRAM_SIZE => false,
@@ -163,7 +163,7 @@ impl TextFieldIndex {
 	fn ascii_bigram_to_index(a: char, b: char) -> usize {
 		assert!(a.is_ascii());
 		assert!(b.is_ascii());
-		(a as usize) * ASCII_RANGE + (b as usize) as usize
+		(a as usize) * ASCII_RANGE + (b as usize)
 	}
 
 	pub fn insert(&mut self, raw_value: &str, value: Spur, song: SongKey) {

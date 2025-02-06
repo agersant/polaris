@@ -117,7 +117,7 @@ impl Browser {
 			for (x, y) in a.iter().zip(b.iter()) {
 				match dictionary.cmp(x, y) {
 					Ordering::Equal => continue,
-					ordering @ _ => return ordering,
+					ordering => return ordering,
 				}
 			}
 			a.len().cmp(&b.len())

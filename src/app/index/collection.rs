@@ -104,7 +104,7 @@ impl Collection {
 	}
 
 	pub fn get_artists(&self, dictionary: &Dictionary) -> Vec<ArtistHeader> {
-		let exceptions = vec![dictionary.get("Various Artists"), dictionary.get("VA")];
+		let exceptions = [dictionary.get("Various Artists"), dictionary.get("VA")];
 		let mut artists = self
 			.artists
 			.values()
@@ -237,7 +237,7 @@ impl Collection {
 				.collect::<Vec<_>>();
 			artists.sort_by(|a, b| collator.compare(&a.name, &b.name));
 
-			let mut songs = genre.songs.iter().copied().collect::<Vec<_>>();
+			let mut songs = genre.songs.to_vec();
 			self.sort_songs(&mut songs, dictionary);
 			let songs = songs
 				.into_iter()
@@ -270,7 +270,7 @@ impl Collection {
 		self.songs.get(&song_key).map(|s| fetch_song(dictionary, s))
 	}
 
-	pub fn sort_songs(&self, songs: &mut Vec<SongKey>, dictionary: &Dictionary) {
+	pub fn sort_songs(&self, songs: &mut [SongKey], dictionary: &Dictionary) {
 		songs.par_sort_unstable_by(|a, b| self.compare_songs(*a, *b, dictionary));
 	}
 
@@ -376,9 +376,9 @@ pub struct Builder {
 
 impl Builder {
 	pub fn add_song(&mut self, song: &storage::Song) {
-		self.add_song_to_album(&song);
-		self.add_song_to_artists(&song);
-		self.add_song_to_genres(&song);
+		self.add_song_to_album(song);
+		self.add_song_to_artists(song);
+		self.add_song_to_genres(song);
 
 		self.songs.insert(
 			SongKey {
