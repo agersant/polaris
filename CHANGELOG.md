@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased Changes
+
+- Fixed a typo in the log message that is written after applying configuration changes. (thanks @luzpaz)
+
 ## Polaris 0.15.0
 
 ### Server
