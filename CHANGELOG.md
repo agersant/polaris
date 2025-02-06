@@ -46,7 +46,7 @@
 - Documentation is now served under `/api-docs` instead of `/swagger` (eg. `http://localhost:5050/api-docs`)
 - Clients are now expected to send their preferred API major version in a `Accept-Version` header. Omitting this currently defaults to `7`, but will become an error in future Polaris releases. Support for API version 7 will be removed entirely in a future release.
 - Most API responses now support gzip compression.
-- The response format of the `/browse`, `/flatten`, `/get_playlist`, `/search/<query>` endpoints has been modified to accomodate large lists.
+- The response format of the `/browse`, `/flatten`, `/get_playlist`, `/search/<query>` endpoints has been modified to accommodate large lists.
 - Added new endpoints to query albums and artists.
 - The `/random` and `/recent` albums are deprecated in favor of `/albums/random` and `/albums/recent`. These endpoints now have optional parameters for RNG seeding and pagination.
 - The `/search/<query>` endpoint now requires a non-empty query (`/search/` now returns HTTP status code 404, regardless of API version).
