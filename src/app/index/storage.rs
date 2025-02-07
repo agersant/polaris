@@ -103,13 +103,10 @@ impl Song {
 			return None;
 		}
 
-		match self.album {
-			None => None,
-			Some(name) => Some(AlbumKey {
-				artists: main_artists.iter().cloned().collect(),
-				name,
-			}),
-		}
+		self.album.map(|name| AlbumKey {
+			artists: main_artists.iter().cloned().collect(),
+			name,
+		})
 	}
 }
 
@@ -117,13 +114,8 @@ pub fn store_song(
 	dictionary_builder: &mut dictionary::Builder,
 	song: &scanner::Song,
 ) -> Option<Song> {
-	let Some(real_path) = (&song.real_path).get_or_intern(dictionary_builder) else {
-		return None;
-	};
-
-	let Some(virtual_path) = (&song.virtual_path).get_or_intern(dictionary_builder) else {
-		return None;
-	};
+	let real_path = (&song.real_path).get_or_intern(dictionary_builder)?;
+	let virtual_path = (&song.virtual_path).get_or_intern(dictionary_builder)?;
 
 	let artwork = match &song.artwork {
 		Some(a) => match a.get_or_intern(dictionary_builder) {
@@ -145,13 +137,13 @@ pub fn store_song(
 			.artists
 			.iter()
 			.filter_map(&mut canonicalize)
-			.map(|k| ArtistKey(k))
+			.map(ArtistKey)
 			.collect(),
 		album_artists: song
 			.album_artists
 			.iter()
 			.filter_map(&mut canonicalize)
-			.map(|k| ArtistKey(k))
+			.map(ArtistKey)
 			.collect(),
 		year: song.year,
 		album: song.album.as_ref().and_then(&mut canonicalize),
@@ -161,13 +153,13 @@ pub fn store_song(
 			.lyricists
 			.iter()
 			.filter_map(&mut canonicalize)
-			.map(|k| ArtistKey(k))
+			.map(ArtistKey)
 			.collect(),
 		composers: song
 			.composers
 			.iter()
 			.filter_map(&mut canonicalize)
-			.map(|k| ArtistKey(k))
+			.map(ArtistKey)
 			.collect(),
 		genres: song.genres.iter().filter_map(&mut canonicalize).collect(),
 		labels: song.labels.iter().filter_map(&mut canonicalize).collect(),
@@ -211,12 +203,12 @@ pub fn fetch_song(dictionary: &Dictionary, song: &Song) -> super::Song {
 		genres: song
 			.genres
 			.iter()
-			.map(|s| dictionary.resolve(&s).to_string())
+			.map(|s| dictionary.resolve(s).to_string())
 			.collect(),
 		labels: song
 			.labels
 			.iter()
-			.map(|s| dictionary.resolve(&s).to_string())
+			.map(|s| dictionary.resolve(s).to_string())
 			.collect(),
 		date_added: song.date_added,
 	}

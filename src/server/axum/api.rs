@@ -617,8 +617,7 @@ async fn get_albums(
 			.await
 			.into_iter()
 			.map(|a| a.into())
-			.collect::<Vec<_>>()
-			.into(),
+			.collect::<Vec<_>>(),
 	))
 }
 
@@ -645,8 +644,7 @@ async fn get_artists(
 			.await
 			.into_iter()
 			.map(|a| a.into())
-			.collect::<Vec<_>>()
-			.into(),
+			.collect::<Vec<_>>(),
 	))
 }
 

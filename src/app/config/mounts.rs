@@ -63,7 +63,7 @@ impl Config {
 	}
 }
 
-fn sanitize_path(source: &PathBuf) -> PathBuf {
+fn sanitize_path(source: &Path) -> PathBuf {
 	let path_string = source.to_string_lossy();
 	let separator_regex = Regex::new(r"\\|/").unwrap();
 	let mut correct_separator = String::new();

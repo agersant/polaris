@@ -25,7 +25,7 @@ impl Manager {
 		let path = directory.join("polaris.ndb");
 		let database = native_db::Builder::new()
 			.create(&MODELS, path)
-			.map_err(|e| Error::NativeDatabaseCreationError(e))?;
+			.map_err(Error::NativeDatabaseCreationError)?;
 		let database = Arc::new(database);
 		Ok(Self { database })
 	}

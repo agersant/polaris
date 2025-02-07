@@ -264,13 +264,8 @@ impl Scanner {
 		secondary_task_set.spawn({
 			let manager = self.clone();
 			async move {
-				loop {
-					match status_receiver.recv().await {
-						Some(n) => {
-							manager.status.write().await.num_songs_indexed = n;
-						}
-						None => break,
-					}
+				while let Some(n) = status_receiver.recv().await {
+					manager.status.write().await.num_songs_indexed = n;
 				}
 			}
 		});

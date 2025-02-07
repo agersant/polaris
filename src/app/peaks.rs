@@ -96,7 +96,7 @@ fn compute_peaks(audio_path: &Path) -> Result<Peaks, Error> {
 	let peaks_per_minute = 4000;
 
 	let file =
-		std::fs::File::open(&audio_path).or_else(|e| Err(Error::Io(audio_path.to_owned(), e)))?;
+		std::fs::File::open(audio_path).map_err(|e| Error::Io(audio_path.to_owned(), e))?;
 	let media_source = MediaSourceStream::new(Box::new(file), MediaSourceStreamOptions::default());
 
 	let mut peaks = Peaks::default();

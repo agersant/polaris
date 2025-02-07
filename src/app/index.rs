@@ -215,7 +215,7 @@ impl Manager {
 					artists: artists
 						.into_iter()
 						.filter_map(|a| index.dictionary.get(a))
-						.map(|k| ArtistKey(k))
+						.map(ArtistKey)
 						.collect(),
 					name,
 				};

@@ -311,7 +311,7 @@ impl App {
 					.map_err(|_| Error::AuthenticationSecretInvalid)?;
 				Ok(secret)
 			}
-			Err(e) => return Err(Error::Io(path.to_owned(), e)),
+			Err(e) => Err(Error::Io(path.to_owned(), e)),
 		}
 	}
 }
