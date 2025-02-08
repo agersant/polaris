@@ -33,12 +33,14 @@ jobs:
           -o coverage.txt
           --llvm
           --branch
-          --ignore-not-existing
           --binary-path ./target/debug/
+          --ignore **/test*
+          --ignore **/test/**
+          --ignore-not-existing
           --excl-line "#\[derive\("
           --excl-br-line "#\[derive\("
-          --excl-start "mod tests \{"
-          --excl-br-start "mod tests \{"
+          --excl-start "mod test \{"
+          --excl-br-start "mod test \{"
       - name: Upload Results
         uses: codecov/codecov-action@v2
         with:
