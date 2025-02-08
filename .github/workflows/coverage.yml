@@ -34,8 +34,8 @@ jobs:
           --llvm
           --branch
           --binary-path ./target/debug/
-          --ignore **/test*
-          --ignore **/test/**
+          --ignore "**/test*"
+          --ignore "**/test/**"
           --ignore-not-existing
           --excl-line "#\[derive\("
           --excl-br-line "#\[derive\("
