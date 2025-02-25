@@ -289,7 +289,7 @@ fn read_mp4<P: AsRef<Path>>(path: P) -> Result<SongMetadata, Error> {
 	};
 	let mut tag = mp4ameta::Tag::read_with_path(&path, &cfg)
 		.map_err(|e| Error::Mp4aMeta(path.as_ref().to_owned(), e))?;
-	let label_ident = mp4ameta::FreeformIdent::new_static("com.apple.iTunes", "Label");
+	let label_ident = mp4ameta::FreeformIdent::new_static("com.apple.iTunes", "LABEL");
 
 	Ok(SongMetadata {
 		artists: tag.take_artists().collect(),
