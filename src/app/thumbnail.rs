@@ -197,8 +197,13 @@ fn read_id3(path: &Path, tag: &id3::Tag) -> Result<DynamicImage, Error> {
 }
 
 fn read_mp4(path: &Path) -> Result<DynamicImage, Error> {
-	let tag =
-		mp4ameta::Tag::read_from_path(path).map_err(|e| Error::Mp4aMeta(path.to_owned(), e))?;
+	let cfg = mp4ameta::ReadConfig {
+		read_meta_items: true,
+		read_image_data: true,
+		..mp4ameta::ReadConfig::NONE
+	};
+	let tag = mp4ameta::Tag::read_with_path(path, &cfg)
+		.map_err(|e| Error::Mp4aMeta(path.to_owned(), e))?;
 	tag.artwork()
 		.ok_or_else(|| Error::EmbeddedArtworkNotFound(path.to_owned()))
 		.and_then(|d| image::load_from_memory(d.data).map_err(|e| Error::Image(path.to_owned(), e)))
