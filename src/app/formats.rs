@@ -152,15 +152,13 @@ mod ape_ext {
 	static X_OF_Y_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"^\d+"#).unwrap());
 
 	pub fn read_x_of_y(item: &ape::Item) -> Option<u32> {
-		item.try_into()
-			.ok()
-			.and_then(|s: &str| {
-				if let Some(m) = X_OF_Y_REGEX.find(s) {
-					s[m.start()..m.end()].parse().ok()
-				} else {
-					None
-				}
-			})
+		item.try_into().ok().and_then(|s: &str| {
+			if let Some(m) = X_OF_Y_REGEX.find(s) {
+				s[m.start()..m.end()].parse().ok()
+			} else {
+				None
+			}
+		})
 	}
 }
 
@@ -284,16 +282,21 @@ fn read_flac<P: AsRef<Path>>(path: P) -> Result<SongMetadata, Error> {
 }
 
 fn read_mp4<P: AsRef<Path>>(path: P) -> Result<SongMetadata, Error> {
-	let mut tag = mp4ameta::Tag::read_from_path(&path)
+	let cfg = mp4ameta::ReadConfig {
+		read_meta_items: true,
+		read_image_data: false,
+		..mp4ameta::ReadConfig::NONE
+	};
+	let mut tag = mp4ameta::Tag::read_with_path(&path, &cfg)
 		.map_err(|e| Error::Mp4aMeta(path.as_ref().to_owned(), e))?;
-	let label_ident = mp4ameta::FreeformIdent::new("com.apple.iTunes", "Label");
+	let label_ident = mp4ameta::FreeformIdent::new_static("com.apple.iTunes", "LABEL");
 
 	Ok(SongMetadata {
 		artists: tag.take_artists().collect(),
 		album_artists: tag.take_album_artists().collect(),
 		album: tag.take_album(),
 		title: tag.take_title(),
-		duration: tag.duration().map(|v| v.as_secs() as u32),
+		duration: Some(tag.duration().as_secs() as u32),
 		disc_number: tag.disc_number().map(|d| d as u32),
 		track_number: tag.track_number().map(|d| d as u32),
 		year: tag.year().and_then(|v| v.parse::<i32>().ok()),
