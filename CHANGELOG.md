@@ -3,6 +3,7 @@
 ## Unreleased Changes
 
 - Fixed a typo in the log message that is written after applying configuration changes. (thanks @luzpaz)
+- Improved performance of indexing m4a files (contribution by @saecki)
 
 ## Polaris 0.15.0
 
