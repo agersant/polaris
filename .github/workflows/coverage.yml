@@ -1,9 +1,6 @@
 name: Test Coverage
 
 on:
-  pull_request:
-    branches:
-      - master
   push:
     branches:
       - master
