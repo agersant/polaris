@@ -1,3 +1,5 @@
+use std::fs;
+use std::io::Read;
 use std::path::PathBuf;
 
 use axum::{
@@ -496,12 +498,17 @@ async fn get_browse_root(
 	_auth: Auth,
 	api_version: APIMajorVersion,
 	State(index_manager): State<index::Manager>,
+	State(config_manager): State<config::Manager>,
 ) -> Response {
 	let result = match index_manager.browse(PathBuf::new()).await {
 		Ok(r) => r,
 		Err(e) => return APIError::from(e).into_response(),
 	};
-	index_files_to_response(result, api_version)
+
+	let current_user = _auth.get_username();
+	let filtered_result = filter_browse_results(result, current_user, &config_manager).await;
+
+	index_files_to_response(filtered_result, api_version)
 }
 
 #[utoipa::path(
@@ -525,13 +532,65 @@ async fn get_browse(
 	_auth: Auth,
 	api_version: APIMajorVersion,
 	State(index_manager): State<index::Manager>,
+	State(config_manager): State<config::Manager>,
 	Path(path): Path<PathBuf>,
 ) -> Response {
 	let result = match index_manager.browse(path).await {
 		Ok(r) => r,
 		Err(e) => return APIError::from(e).into_response(),
 	};
-	index_files_to_response(result, api_version)
+
+	let current_user = _auth.get_username();
+	let filtered_result = filter_browse_results(result, current_user, &config_manager).await;
+
+	index_files_to_response(filtered_result, api_version)
+}
+
+async fn filter_browse_results(
+	files: Vec<index::File>,
+	current_user: &str,
+	config_manager: &config::Manager,
+) -> Vec<index::File> {
+	let mut filtered_files = Vec::new();
+
+	for file_entry in files {
+		match &file_entry {
+			index::File::Directory(virtual_dir_path) => {
+				match config_manager.resolve_virtual_path(virtual_dir_path).await {
+					Ok(real_dir_path) => {
+						let access_file_path = real_dir_path.join(".access");
+						if let Ok(mut file) = fs::File::open(&access_file_path) {
+							let mut content = String::new();
+							if file.read_to_string(&mut content).is_ok() {
+								let allowed_users: Vec<&str> = content.lines().map(str::trim).filter(|s| !s.is_empty()).collect();
+								if allowed_users.contains(&current_user) {
+									filtered_files.push(file_entry);
+								}
+								// If user is not in .access file, we implicitly skip adding it
+							} else {
+								// Error reading file, treat as accessible? Or restricted?
+								// log error
+								log::error!("Could not read .access file at {:?}", access_file_path);
+							}
+						} else {
+							// .access file doesn't exist, accessible to everyone
+							filtered_files.push(file_entry);
+						}
+					}
+					Err(_) => {
+						// Could not resolve path, log an error
+						// For safety, skip this directory if path resolution fails.
+						log::error!("Could not resolve virtual path {:?}", virtual_dir_path);
+					}
+				}
+			}
+			index::File::Song(_) => {
+				// Songs are always included
+				filtered_files.push(file_entry);
+			}
+		}
+	}
+	filtered_files
 }
 
 #[utoipa::path(
