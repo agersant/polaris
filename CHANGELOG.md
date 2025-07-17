@@ -2,8 +2,15 @@
 
 ## Unreleased Changes
 
-- Fixed a typo in the log message that is written after applying configuration changes. (thanks @luzpaz)
-- Improved performance of indexing m4a files (contribution by @saecki)
+### Server
+
+- Fixed a typo in the log message that is written after applying configuration changes. (contribution by @luzpaz)
+- Improved performance of indexing m4a files. (contribution by @saecki)
+
+### Web client
+
+- Fixed a bug where queuing songs while the queue is empty would sometimes skip one song.
+- Fixed a bug where song details would sometimes not display in the queue panel.
 
 ## Polaris 0.15.0
 
