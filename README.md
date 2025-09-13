@@ -40,6 +40,7 @@ Password: `demo_password`
 - 📱 Listen to your music on the go:
   - Polaris Android ([Google Play Store](https://play.google.com/store/apps/details?id=agersant.polaris) · [F-Droid](https://f-droid.org/packages/agersant.polaris/) · [Repository](https://github.com/agersant/polaris-android))
   - Polarios ([App Store](https://apps.apple.com/app/polarios/id1662366309) · [Repository](https://gitlab.com/elise/Polarios)) [third-party]
+  - Polarity ([Demo](https://www.hackster.io/hardcoder/polarity-a-music-player-for-polaris-8cd4eb) · [Repository](https://github.com/p-dial8891/Polarity)) [third-party]
 
 # Installation
 
