@@ -8,7 +8,6 @@ mod error;
 mod test;
 
 pub enum APIMajorVersion {
-	V7,
 	V8,
 }
 
@@ -17,7 +16,6 @@ impl TryFrom<i32> for APIMajorVersion {
 
 	fn try_from(value: i32) -> Result<Self, Self::Error> {
 		match value {
-			7 => Ok(Self::V7),
 			8 => Ok(Self::V8),
 			_ => Err(APIError::UnsupportedAPIVersion),
 		}

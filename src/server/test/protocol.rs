@@ -9,14 +9,7 @@ pub trait ProtocolVersion {
 	fn header_value() -> i32;
 }
 
-pub struct V7;
 pub struct V8;
-
-impl ProtocolVersion for V7 {
-	fn header_value() -> i32 {
-		7
-	}
-}
 
 impl ProtocolVersion for V8 {
 	fn header_value() -> i32 {

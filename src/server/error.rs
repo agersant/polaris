@@ -5,6 +5,8 @@ use crate::app;
 
 #[derive(Error, Debug)]
 pub enum APIError {
+	#[error("API version header is missing")]
+	MissingAPIVersionHeader,
 	#[error("Could not read API version header")]
 	InvalidAPIVersionHeader,
 	#[error("Could not parse API version header")]
