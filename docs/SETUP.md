@@ -15,7 +15,7 @@ To run polaris from a Docker container, please follow instructions from the [doc
 
 ### Dependencies
 
-1. Install OpenSSL, SQLite and their respective headers (eg. `sudo apt-get install libsqlite3-dev libssl-dev`).
+1. Install `OpenSSL` (eg. `sudo apt-get install libssl-dev`).
 2. Install `binutils` and `pkg-config` (eg. `sudo apt-get install binutils pkg-config`).
 2. Install the Rust compiler by executing `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh` or using an [alternative method](https://www.rust-lang.org/en-US/install.html)
 
