@@ -904,18 +904,8 @@ async fn get_search(
 	State(index_manager): State<index::Manager>,
 	Path(query): Path<String>,
 ) -> Result<Json<dto::SongList>, APIError> {
-	let songs = index_manager.search(query).await?;
-
-	let song_list = dto::SongList {
-		paths: songs.iter().map(|s| s.virtual_path.clone()).collect(),
-		first_songs: songs
-			.into_iter()
-			.take(SONG_LIST_CAPACITY)
-			.map(|s| s.into())
-			.collect(),
-	};
-
-	Ok(Json(song_list))
+	let paths = index_manager.search(query).await?;
+	Ok(Json(make_song_list(paths, &index_manager).await))
 }
 
 #[utoipa::path(

@@ -3,7 +3,10 @@ use enum_map::EnumMap;
 use lasso2::Spur;
 use nohash_hasher::IntSet;
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashMap};
+use std::{
+	collections::{BTreeMap, HashMap},
+	path::PathBuf,
+};
 use tinyvec::TinyVec;
 
 use crate::app::{
@@ -29,7 +32,7 @@ impl Search {
 		collection: &collection::Collection,
 		dictionary: &Dictionary,
 		query: &str,
-	) -> Result<Vec<collection::Song>, Error> {
+	) -> Result<Vec<PathBuf>, Error> {
 		let parser = make_parser();
 		let parsed_query = parser.parse(query).map_err(|_| Error::SearchQueryParse)?;
 
@@ -38,11 +41,11 @@ impl Search {
 			.into_iter()
 			.collect::<Vec<_>>();
 		collection.sort_songs(&mut songs, dictionary);
+
 		let songs = songs
 			.into_iter()
-			.filter_map(|song_key| collection.get_song(dictionary, song_key))
-			.collect::<Vec<_>>();
-
+			.map(|song_key| dictionary.resolve(&song_key.virtual_path.0).into())
+			.collect();
 		Ok(songs)
 	}
 
@@ -340,7 +343,6 @@ mod test {
 				.find_songs(&self.collection, &self.dictionary, query)
 				.unwrap()
 				.into_iter()
-				.map(|s| s.virtual_path)
 				.collect()
 		}
 	}

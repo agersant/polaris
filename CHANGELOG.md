@@ -7,6 +7,7 @@
 - ⚠️ The automatic database migration from Polaris 0.14 and below has been removed. This has no effect for users upgrading from version 0.15.
 - Fixed a typo in the log message that is written after applying configuration changes. (contribution by @luzpaz)
 - Improved performance of indexing m4a files. (contribution by @saecki)
+- Improved performance of search functionality.
 
 ### Web client
 

@@ -288,7 +288,7 @@ impl Manager {
 		.unwrap()
 	}
 
-	pub async fn search(&self, query: String) -> Result<Vec<Song>, Error> {
+	pub async fn search(&self, query: String) -> Result<Vec<PathBuf>, Error> {
 		spawn_blocking({
 			let index_manager = self.clone();
 			move || {
