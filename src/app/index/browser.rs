@@ -386,4 +386,26 @@ mod test {
 
 		assert_eq!(files, [song_a]);
 	}
+
+	#[test]
+	fn file_sort_uses_numerical_comparisons() {
+		let directory = PathBuf::from_iter(["Music", "Wild Arms"]);
+		let songs = [
+			directory.join("1 Main Title.mp3"),
+			directory.join("2 Opening.mp3"),
+			directory.join("3 Going Out Preparations.mp3"),
+			directory.join("10 Dungeon: Nature Type 2.mp3"),
+			directory.join("11 A Momentary Respite.mp3"),
+			directory.join("12 From Anxiety to Impatience.mp3"),
+			directory.join("20 1st IGNITION.mp3"),
+			directory.join("21 Field: Wandering.mp3"),
+			directory.join("22 Field: Distorted Sky.mp3"),
+		];
+
+		let (browser, strings) = setup_test(HashSet::from(songs.clone()));
+
+		let files = browser.flatten(&strings, directory).unwrap();
+
+		assert_eq!(files, songs);
+	}
 }

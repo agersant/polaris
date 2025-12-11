@@ -12,6 +12,11 @@
 - Fixed a bug where queuing songs while the queue is empty would sometimes skip one song.
 - Fixed a bug where song details would sometimes not display in the queue panel.
 
+### API
+
+- API version is now 8.1.
+- All responses which are sorted alphabetically now use numerical sorting. This is mostly relevant for file names where `10.mp3` now sorts after `2.mp3`.
+
 ## Polaris 0.15.0
 
 ### Server

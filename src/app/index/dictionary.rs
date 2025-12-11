@@ -1,6 +1,6 @@
 use std::{cmp::Ordering, collections::HashMap};
 
-use icu_collator::{Collator, CollatorOptions, Strength};
+use icu_collator::{Collator, CollatorOptions, Numeric, Strength};
 use lasso2::{Rodeo, RodeoReader, Spur};
 use rayon::slice::ParallelSliceMut;
 use serde::{Deserialize, Serialize};
@@ -16,6 +16,7 @@ pub fn make_collator() -> Collator {
 	let options = {
 		let mut o = CollatorOptions::new();
 		o.strength = Some(Strength::Secondary);
+		o.numeric = Some(Numeric::On);
 		o
 	};
 	Collator::try_new(&Default::default(), options).unwrap()
