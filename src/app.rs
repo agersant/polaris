@@ -67,9 +67,9 @@ pub enum Error {
 	PeaksDeserialization(bitcode::Error),
 
 	#[error(transparent)]
-	NativeDatabase(#[from] native_db::db_type::Error),
+	NativeDatabase(#[from] Box<native_db::db_type::Error>),
 	#[error("Could not initialize database")]
-	NativeDatabaseCreation(native_db::db_type::Error),
+	NativeDatabaseCreation(Box<native_db::db_type::Error>),
 
 	#[error("DDNS update query failed with HTTP status code `{0}`")]
 	UpdateQueryFailed(u16),

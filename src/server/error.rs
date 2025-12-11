@@ -24,7 +24,7 @@ pub enum APIError {
 	#[error("Could not encode Branca token")]
 	BrancaTokenEncoding,
 	#[error("Native Database error:\n\n{0}")]
-	NativeDatabase(native_db::db_type::Error),
+	NativeDatabase(Box<native_db::db_type::Error>),
 	#[error("Directory not found: {0}")]
 	DirectoryNotFound(PathBuf),
 	#[error("Artist not found")]

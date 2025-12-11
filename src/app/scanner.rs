@@ -250,8 +250,7 @@ impl Scanner {
 				loop {
 					partial_index_notify.notified().await;
 					let mut partial_index = partial_index_mutex.clone().lock_owned().await;
-					let partial_index =
-						std::mem::replace(&mut *partial_index, index::Builder::new());
+					let partial_index = std::mem::take(&mut *partial_index);
 					let partial_index = partial_index.build();
 					let num_songs = partial_index.collection.num_songs();
 					index_manager.clone().replace_index(partial_index).await;

@@ -311,7 +311,7 @@ pub struct Index {
 	pub search: search::Search,
 }
 
-#[derive(Clone)]
+#[derive(Default, Clone)]
 pub struct Builder {
 	dictionary_builder: dictionary::Builder,
 	browser_builder: browser::Builder,
@@ -320,15 +320,6 @@ pub struct Builder {
 }
 
 impl Builder {
-	pub fn new() -> Self {
-		Self {
-			dictionary_builder: dictionary::Builder::default(),
-			browser_builder: browser::Builder::default(),
-			collection_builder: collection::Builder::default(),
-			search_builder: search::Builder::default(),
-		}
-	}
-
 	pub fn add_directory(&mut self, directory: scanner::Directory) {
 		self.browser_builder
 			.add_directory(&mut self.dictionary_builder, directory);
@@ -353,12 +344,6 @@ impl Builder {
 	}
 }
 
-impl Default for Builder {
-	fn default() -> Self {
-		Self::new()
-	}
-}
-
 #[cfg(test)]
 mod test {
 	use crate::{
@@ -370,7 +355,7 @@ mod test {
 	async fn can_persist_index() {
 		let ctx = test::ContextBuilder::new(test_name!()).build().await;
 		assert!(!ctx.index_manager.try_restore_index().await.unwrap());
-		let index = index::Builder::new().build();
+		let index = index::Builder::default().build();
 		ctx.index_manager.persist_index(&index).await.unwrap();
 		assert!(ctx.index_manager.try_restore_index().await.unwrap());
 	}

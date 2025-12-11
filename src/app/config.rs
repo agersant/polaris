@@ -130,7 +130,7 @@ impl Manager {
 		Ok(manager)
 	}
 
-	pub fn on_config_change(&self) -> Notified {
+	pub fn on_config_change(&self) -> Notified<'_> {
 		self.change_notify.notified()
 	}
 

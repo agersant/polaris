@@ -106,6 +106,7 @@ impl Manager {
 			}
 		})
 		.await?
+		.map_err(|e| Error::NativeDatabase(Box::new(e)))
 	}
 
 	pub async fn save_playlist(
@@ -149,6 +150,7 @@ impl Manager {
 			}
 		})
 		.await?
+		.map_err(|e| Error::NativeDatabase(Box::new(e)))
 	}
 
 	pub async fn read_playlist(&self, name: &str, owner: &str) -> Result<Playlist, Error> {
@@ -157,11 +159,14 @@ impl Manager {
 			let owner = owner.to_owned();
 			let name = name.to_owned();
 			move || {
-				let transaction = manager.db.r_transaction()?;
+				let transaction = manager
+					.db
+					.r_transaction()
+					.map_err(|e| Error::NativeDatabase(Box::new(e)))?;
 				match transaction.get().primary::<PlaylistModel>((owner, name)) {
 					Ok(Some(p)) => Ok(Playlist::from(p)),
 					Ok(None) => Err(Error::PlaylistNotFound),
-					Err(e) => Err(Error::NativeDatabase(e)),
+					Err(e) => Err(Error::NativeDatabase(Box::new(e))),
 				}
 			}
 		})
@@ -174,17 +179,24 @@ impl Manager {
 			let owner = owner.to_owned();
 			let name = name.to_owned();
 			move || {
-				let transaction = manager.db.rw_transaction()?;
+				let transaction = manager
+					.db
+					.rw_transaction()
+					.map_err(|e| Error::NativeDatabase(Box::new(e)))?;
 				let playlist = match transaction
 					.get()
 					.primary::<PlaylistModel>((owner.as_str(), name.as_str()))
 				{
 					Ok(Some(p)) => Ok(p),
 					Ok(None) => Err(Error::PlaylistNotFound),
-					Err(e) => Err(Error::NativeDatabase(e)),
+					Err(e) => Err(Error::NativeDatabase(Box::new(e))),
 				}?;
-				transaction.remove::<PlaylistModel>(playlist)?;
-				transaction.commit()?;
+				transaction
+					.remove::<PlaylistModel>(playlist)
+					.map_err(|e| Error::NativeDatabase(Box::new(e)))?;
+				transaction
+					.commit()
+					.map_err(|e| Error::NativeDatabase(Box::new(e)))?;
 				Ok(())
 			}
 		})
