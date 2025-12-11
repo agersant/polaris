@@ -17,19 +17,10 @@ use crate::app::{
 
 use super::{collection, dictionary::sanitize, query::make_parser, storage};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Default, Serialize, Deserialize)]
 pub struct Search {
 	text_fields: EnumMap<TextField, TextFieldIndex>,
 	number_fields: EnumMap<NumberField, NumberFieldIndex>,
-}
-
-impl Default for Search {
-	fn default() -> Self {
-		Self {
-			text_fields: Default::default(),
-			number_fields: Default::default(),
-		}
-	}
 }
 
 impl Search {
@@ -40,9 +31,7 @@ impl Search {
 		query: &str,
 	) -> Result<Vec<collection::Song>, Error> {
 		let parser = make_parser();
-		let parsed_query = parser
-			.parse(query)
-			.map_err(|_| Error::SearchQueryParseError)?;
+		let parsed_query = parser.parse(query).map_err(|_| Error::SearchQueryParse)?;
 
 		let mut songs = self
 			.eval(dictionary, &parsed_query)
@@ -66,13 +55,7 @@ impl Search {
 		}
 	}
 
-	fn combine(
-		&self,
-		dictionary: &Dictionary,
-		e: &Expr,
-		op: BoolOp,
-		f: &Expr,
-	) -> IntSet<SongKey> {
+	fn combine(&self, dictionary: &Dictionary, e: &Expr, op: BoolOp, f: &Expr) -> IntSet<SongKey> {
 		let is_operable = |expr: &Expr| match expr {
 			Expr::Fuzzy(Literal::Text(s)) if s.chars().count() < BIGRAM_SIZE => false,
 			Expr::Fuzzy(Literal::Number(n)) if *n < 10 => false,

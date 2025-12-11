@@ -8,11 +8,11 @@ impl IntoResponse for APIError {
 		let message = self.to_string();
 		let status_code = match self {
 			APIError::InvalidAPIVersionHeader => StatusCode::BAD_REQUEST,
-			APIError::APIVersionHeaderParseError => StatusCode::BAD_REQUEST,
+			APIError::APIVersionHeaderParse => StatusCode::BAD_REQUEST,
 			APIError::UnsupportedAPIVersion => StatusCode::NOT_ACCEPTABLE,
 			APIError::AuthorizationTokenEncoding => StatusCode::INTERNAL_SERVER_ERROR,
 			APIError::AdminPermissionRequired => StatusCode::FORBIDDEN,
-			APIError::AudioFileIOError => StatusCode::NOT_FOUND,
+			APIError::AudioFileIO => StatusCode::NOT_FOUND,
 			APIError::AuthenticationRequired => StatusCode::UNAUTHORIZED,
 			APIError::BrancaTokenEncoding => StatusCode::INTERNAL_SERVER_ERROR,
 			APIError::DdnsUpdateQueryFailed(s) => {
@@ -37,9 +37,9 @@ impl IntoResponse for APIError {
 			APIError::OwnAdminPrivilegeRemoval => StatusCode::CONFLICT,
 			APIError::PasswordHashing => StatusCode::INTERNAL_SERVER_ERROR,
 			APIError::PlaylistNotFound => StatusCode::NOT_FOUND,
-			APIError::SearchQueryParseError => StatusCode::BAD_REQUEST,
+			APIError::SearchQueryParse => StatusCode::BAD_REQUEST,
 			APIError::ThumbnailFlacDecoding(_, _) => StatusCode::INTERNAL_SERVER_ERROR,
-			APIError::ThumbnailFileIOError => StatusCode::NOT_FOUND,
+			APIError::ThumbnailFileIO => StatusCode::NOT_FOUND,
 			APIError::ThumbnailId3Decoding(_, _) => StatusCode::INTERNAL_SERVER_ERROR,
 			APIError::ThumbnailImageDecoding(_, _) => StatusCode::INTERNAL_SERVER_ERROR,
 			APIError::ThumbnailMp4Decoding(_, _) => StatusCode::INTERNAL_SERVER_ERROR,

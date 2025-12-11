@@ -1132,11 +1132,11 @@ async fn get_audio(
 	let audio_path = config_manager.resolve_virtual_path(&path).await?;
 
 	let Ok(file) = tokio::fs::File::open(audio_path).await else {
-		return Err(APIError::AudioFileIOError);
+		return Err(APIError::AudioFileIO);
 	};
 
 	let Ok(body) = KnownSize::file(file).await else {
-		return Err(APIError::AudioFileIOError);
+		return Err(APIError::AudioFileIO);
 	};
 
 	let range = range.map(|TypedHeader(r)| r);
@@ -1202,11 +1202,11 @@ async fn get_thumbnail(
 		.await?;
 
 	let Ok(file) = tokio::fs::File::open(thumbnail_path).await else {
-		return Err(APIError::ThumbnailFileIOError);
+		return Err(APIError::ThumbnailFileIO);
 	};
 
 	let Ok(body) = KnownSize::file(file).await else {
-		return Err(APIError::ThumbnailFileIOError);
+		return Err(APIError::ThumbnailFileIO);
 	};
 
 	let range = range.map(|TypedHeader(r)| r);

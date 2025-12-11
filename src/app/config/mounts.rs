@@ -142,7 +142,7 @@ mod test {
 				..Default::default()
 			};
 			let config: Config = raw_config.try_into().unwrap();
-			let converted_path = config.resolve_virtual_path(&PathBuf::from("root")).unwrap();
+			let converted_path = config.resolve_virtual_path(PathBuf::from("root")).unwrap();
 			assert_eq!(converted_path, correct_path);
 		}
 	}

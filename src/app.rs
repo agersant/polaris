@@ -60,13 +60,13 @@ pub enum Error {
 	#[error("No tracks found in audio file: {0}")]
 	MediaEmpty(PathBuf),
 	#[error(transparent)]
-	MediaDecodeError(symphonia::core::errors::Error),
+	MediaDecode(symphonia::core::errors::Error),
 	#[error(transparent)]
-	MediaDecoderError(symphonia::core::errors::Error),
+	MediaDecoder(symphonia::core::errors::Error),
 	#[error(transparent)]
-	MediaPacketError(symphonia::core::errors::Error),
+	MediaPacket(symphonia::core::errors::Error),
 	#[error(transparent)]
-	MediaProbeError(symphonia::core::errors::Error),
+	MediaProbe(symphonia::core::errors::Error),
 
 	#[error(transparent)]
 	PeaksSerialization(bitcode::Error),
@@ -76,7 +76,7 @@ pub enum Error {
 	#[error(transparent)]
 	NativeDatabase(#[from] native_db::db_type::Error),
 	#[error("Could not initialize database")]
-	NativeDatabaseCreationError(native_db::db_type::Error),
+	NativeDatabaseCreation(native_db::db_type::Error),
 
 	#[error("DDNS update query failed with HTTP status code `{0}`")]
 	UpdateQueryFailed(u16),
@@ -99,9 +99,9 @@ pub enum Error {
 	#[error("Could not serialize configuration: `{0}`")]
 	ConfigSerialization(toml::ser::Error),
 	#[error("Could not deserialize collection")]
-	IndexDeserializationError,
+	IndexDeserialization,
 	#[error("Could not serialize collection")]
-	IndexSerializationError,
+	IndexSerialization,
 
 	#[error("Invalid Directory")]
 	InvalidDirectory(String),
@@ -122,7 +122,7 @@ pub enum Error {
 	#[error("Song not found")]
 	SongNotFound,
 	#[error("Invalid search query syntax")]
-	SearchQueryParseError,
+	SearchQueryParse,
 	#[error("Playlist not found")]
 	PlaylistNotFound,
 	#[error("No embedded artwork was found in `{0}`")]

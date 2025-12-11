@@ -95,8 +95,7 @@ impl Manager {
 fn compute_peaks(audio_path: &Path) -> Result<Peaks, Error> {
 	let peaks_per_minute = 4000;
 
-	let file =
-		std::fs::File::open(audio_path).map_err(|e| Error::Io(audio_path.to_owned(), e))?;
+	let file = std::fs::File::open(audio_path).map_err(|e| Error::Io(audio_path.to_owned(), e))?;
 	let media_source = MediaSourceStream::new(Box::new(file), MediaSourceStreamOptions::default());
 
 	let mut peaks = Peaks::default();
@@ -109,7 +108,7 @@ fn compute_peaks(audio_path: &Path) -> Result<Peaks, Error> {
 			&FormatOptions::default(),
 			&MetadataOptions::default(),
 		)
-		.map_err(Error::MediaProbeError)?
+		.map_err(Error::MediaProbe)?
 		.format;
 
 	let track = format
@@ -122,7 +121,7 @@ fn compute_peaks(audio_path: &Path) -> Result<Peaks, Error> {
 
 	let mut decoder = symphonia::default::get_codecs()
 		.make(&track.codec_params, &DecoderOptions::default())
-		.map_err(Error::MediaDecoderError)?;
+		.map_err(Error::MediaDecoder)?;
 
 	let (mut min, mut max) = (u8::MAX, u8::MIN);
 	let mut num_ingested = 0;
@@ -135,7 +134,7 @@ fn compute_peaks(audio_path: &Path) -> Result<Peaks, Error> {
 			{
 				break;
 			}
-			Err(e) => return Err(Error::MediaPacketError(e)),
+			Err(e) => return Err(Error::MediaPacket(e)),
 		};
 
 		if packet.track_id() != track_id {

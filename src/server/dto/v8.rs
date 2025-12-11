@@ -525,7 +525,7 @@ impl From<index::Album> for Album {
 		let songs = a.songs.drain(..).map(|s| s.into()).collect();
 		Self {
 			header: a.header.into(),
-			songs: songs,
+			songs,
 		}
 	}
 }

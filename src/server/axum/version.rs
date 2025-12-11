@@ -18,7 +18,7 @@ where
 
 		let version = match str::parse::<i32>(version_header) {
 			Ok(v) => v,
-			Err(_) => return Err(APIError::APIVersionHeaderParseError),
+			Err(_) => return Err(APIError::APIVersionHeaderParse),
 		};
 
 		APIMajorVersion::try_from(version)

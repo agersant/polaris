@@ -8,7 +8,7 @@ pub enum APIError {
 	#[error("Could not read API version header")]
 	InvalidAPIVersionHeader,
 	#[error("Could not parse API version header")]
-	APIVersionHeaderParseError,
+	APIVersionHeaderParse,
 	#[error("Unsupported API version")]
 	UnsupportedAPIVersion,
 	#[error("Could not encode authorization token")]
@@ -16,7 +16,7 @@ pub enum APIError {
 	#[error("Administrator permission is required")]
 	AdminPermissionRequired,
 	#[error("Audio file could not be opened")]
-	AudioFileIOError,
+	AudioFileIO,
 	#[error("Authentication is required")]
 	AuthenticationRequired,
 	#[error("Could not encode Branca token")]
@@ -62,11 +62,11 @@ pub enum APIError {
 	#[error("Playlist not found")]
 	PlaylistNotFound,
 	#[error("Could not parse search query")]
-	SearchQueryParseError,
+	SearchQueryParse,
 	#[error("Could not decode thumbnail from flac file `{0}`:\n\n{1}")]
 	ThumbnailFlacDecoding(PathBuf, metaflac::Error),
 	#[error("Thumbnail file could not be opened")]
-	ThumbnailFileIOError,
+	ThumbnailFileIO,
 	#[error("Could not decode thumbnail from ID3 tag in `{0}`:\n\n{1}")]
 	ThumbnailId3Decoding(PathBuf, id3::Error),
 	#[error("Could not decode image thumbnail in `{0}`:\n\n{1}")]
@@ -106,15 +106,15 @@ impl From<app::Error> for APIError {
 			app::Error::UnsupportedFormat(f) => APIError::UnsupportedThumbnailFormat(f),
 
 			app::Error::MediaEmpty(p) => APIError::AudioEmpty(p),
-			app::Error::MediaDecodeError(e) => APIError::AudioDecoding(e),
-			app::Error::MediaDecoderError(e) => APIError::AudioDecoding(e),
-			app::Error::MediaPacketError(e) => APIError::AudioDecoding(e),
-			app::Error::MediaProbeError(e) => APIError::AudioDecoding(e),
+			app::Error::MediaDecode(e) => APIError::AudioDecoding(e),
+			app::Error::MediaDecoder(e) => APIError::AudioDecoding(e),
+			app::Error::MediaPacket(e) => APIError::AudioDecoding(e),
+			app::Error::MediaProbe(e) => APIError::AudioDecoding(e),
 
 			app::Error::PeaksSerialization(_) => APIError::Internal,
 			app::Error::PeaksDeserialization(_) => APIError::Internal,
 
-			app::Error::NativeDatabaseCreationError(_) => APIError::Internal,
+			app::Error::NativeDatabaseCreation(_) => APIError::Internal,
 			app::Error::NativeDatabase(e) => APIError::NativeDatabase(e),
 
 			app::Error::UpdateQueryFailed(s) => APIError::DdnsUpdateQueryFailed(s),
@@ -128,8 +128,8 @@ impl From<app::Error> for APIError {
 
 			app::Error::ConfigDeserialization(_) => APIError::Internal,
 			app::Error::ConfigSerialization(_) => APIError::Internal,
-			app::Error::IndexDeserializationError => APIError::Internal,
-			app::Error::IndexSerializationError => APIError::Internal,
+			app::Error::IndexDeserialization => APIError::Internal,
+			app::Error::IndexSerialization => APIError::Internal,
 
 			app::Error::CouldNotMapToRealPath(_) => APIError::VFSPathNotFound,
 			app::Error::CouldNotMapToVirtualPath(_) => APIError::Internal,
@@ -140,7 +140,7 @@ impl From<app::Error> for APIError {
 			app::Error::GenreNotFound => APIError::GenreNotFound,
 			app::Error::SongNotFound => APIError::SongNotFound,
 			app::Error::PlaylistNotFound => APIError::PlaylistNotFound,
-			app::Error::SearchQueryParseError => APIError::SearchQueryParseError,
+			app::Error::SearchQueryParse => APIError::SearchQueryParse,
 			app::Error::EmbeddedArtworkNotFound(_) => APIError::EmbeddedArtworkNotFound,
 
 			app::Error::DuplicateUsername => APIError::DuplicateUsername,

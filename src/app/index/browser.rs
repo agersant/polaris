@@ -230,8 +230,10 @@ mod test {
 		}
 
 		for path in songs {
-			let mut song = scanner::Song::default();
-			song.virtual_path = path.clone();
+			let song = scanner::Song {
+				virtual_path: path.clone(),
+				..Default::default()
+			};
 			builder.add_song(&mut dictionary_builder, &song);
 		}
 

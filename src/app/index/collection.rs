@@ -827,7 +827,6 @@ mod test {
 				composers: vec![artist_name.to_string()],
 				lyricists: vec![artist_name.to_string()],
 				expect_listed: true,
-				..Default::default()
 			},
 			// Only tagged as artist
 			TestCase {

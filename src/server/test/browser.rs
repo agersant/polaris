@@ -28,7 +28,7 @@ async fn browse_root() {
 		.await;
 	assert_eq!(response.status(), StatusCode::OK);
 	let entries = response.body();
-	assert!(entries.len() > 0);
+	assert!(!entries.is_empty());
 }
 
 #[tokio::test]
@@ -81,7 +81,7 @@ async fn browse_directory_api_v7() {
 		dto::v7::CollectionFile::Song(s) => {
 			assert_eq!(s.path, path.join("01 - Above The Water.mp3"))
 		}
-		_ => (),
+		_ => panic!("Expected song"),
 	}
 }
 

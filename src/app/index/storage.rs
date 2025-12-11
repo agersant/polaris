@@ -147,7 +147,7 @@ pub fn store_song(
 			.collect(),
 		year: song.year,
 		album: song.album.as_ref().and_then(&mut canonicalize),
-		artwork: artwork,
+		artwork,
 		duration: song.duration,
 		lyricists: song
 			.lyricists
