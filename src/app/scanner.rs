@@ -253,8 +253,9 @@ impl Scanner {
 					let partial_index = std::mem::take(&mut *partial_index);
 					let partial_index = partial_index.build();
 					let num_songs = partial_index.collection.num_songs();
-					index_manager.clone().replace_index(partial_index).await;
-					info!("Promoted partial collection index ({num_songs} songs)");
+					if let Ok(_) = index_manager.clone().replace_index(partial_index).await {
+						info!("Promoted partial collection index ({num_songs} songs)");
+					}
 				}
 			}
 		});
@@ -319,7 +320,7 @@ impl Scanner {
 		secondary_task_set.abort_all();
 
 		self.index_manager.persist_index(&index).await?;
-		self.index_manager.replace_index(index).await;
+		self.index_manager.replace_index(index).await.unwrap();
 
 		{
 			let mut status = self.status.write().await;

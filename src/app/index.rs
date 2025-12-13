@@ -58,7 +58,7 @@ impl Manager {
 		.unwrap()
 	}
 
-	pub async fn replace_index(&self, new_index: Index) {
+	pub async fn replace_index(&self, new_index: Index) -> Result<(), Error> {
 		spawn_blocking({
 			let index_manager = self.clone();
 			move || {
@@ -67,7 +67,7 @@ impl Manager {
 			}
 		})
 		.await
-		.unwrap()
+		.map_err(|e| e.into())
 	}
 
 	pub async fn persist_index(&self, index: &Index) -> Result<(), Error> {
@@ -97,7 +97,7 @@ impl Manager {
 			Err(_) => return Err(Error::IndexDeserialization),
 		};
 
-		self.replace_index(index).await;
+		self.replace_index(index).await.unwrap();
 
 		Ok(true)
 	}
