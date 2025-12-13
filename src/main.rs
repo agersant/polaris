@@ -1,7 +1,7 @@
 #![cfg_attr(all(windows, feature = "ui"), windows_subsystem = "windows")]
 #![recursion_limit = "256"]
 
-use log::{error, info};
+use log::info;
 use options::CLIOptions;
 use simplelog::{
 	ColorChoice, CombinedLogger, LevelFilter, SharedLogger, TermLogger, TerminalMode, WriteLogger,
