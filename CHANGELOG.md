@@ -16,7 +16,9 @@
 
 ### API
 
-- API version is now 8.1.
+- API version is now `8.1`.
+- Removed support for API version `7.x`.
+- Endpoints may now return an error when requests are missing the `Accept-Version` header.
 - All responses which are sorted alphabetically now use numerical sorting. This is mostly relevant for file names where `10.mp3` now sorts after `2.mp3`.
 
 ## Polaris 0.15.0
