@@ -1,6 +1,7 @@
 use id3::TagLike;
 use lewton::inside_ogg::OggStreamReader;
 use log::error;
+use std::borrow::Cow;
 use std::fs;
 use std::io::{Seek, SeekFrom};
 use std::path::Path;
@@ -95,7 +96,7 @@ fn read_id3_from_file<P: AsRef<Path>>(file: &fs::File, path: P) -> Result<SongMe
 	let has_artwork = tag.pictures().count() > 0;
 	let lyricists = tag.get_text_values("TEXT");
 	let composers = tag.get_text_values("TCOM");
-	let genres = tag.get_text_values("TCON");
+	let genres = tag.genres_parsed().iter().map(Cow::to_string).collect();
 	let labels = tag.get_text_values("TPUB");
 
 	Ok(SongMetadata {
