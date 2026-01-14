@@ -8,6 +8,7 @@
 - Fixed a typo in the log message that is written after applying configuration changes. (contribution by @luzpaz)
 - Improved performance of indexing m4a files. (contribution by @saecki)
 - Improved performance of search functionality.
+- Added support for ID3v1 numerical genre identifiers (eg. '5' for 'Funk').
 
 ### Web client
 
