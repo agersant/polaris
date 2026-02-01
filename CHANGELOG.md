@@ -12,8 +12,11 @@
 
 ### Web client
 
+- All page layouts are now responsive to browser window size, and usable as low as 960px wide. 
+- Reduced primary Javascript bundle size (uncompressed: `914KB` -> `335KB`, compressed: `268KB` -> `113KB` ). Opening the `Stats` panel in the current playlist now loads an additional bundle.
 - Fixed a bug where queuing songs while the queue is empty would sometimes skip one song.
 - Fixed a bug where song details would sometimes not display in the queue panel.
+- Fixed a bug where album details page did not have the intended padding when scrolling
 
 ### API
 
