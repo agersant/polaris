@@ -55,16 +55,16 @@ impl Manager {
 			foreground: matches.opt_present("f"),
 			#[cfg(windows)]
 			foreground: !cfg!(feature = "ui"),
+			log_level: matches.opt_str("log-level").and_then(|l| l.parse().ok()),
 			log_file_path: matches.opt_str("log").map(PathBuf::from),
 			#[cfg(unix)]
 			pid_file_path: matches.opt_str("pid").map(PathBuf::from),
 			config_file_path: matches.opt_str("c").map(PathBuf::from),
+			web_dir_path: matches.opt_str("w").map(PathBuf::from),
 			cache_dir_path: matches.opt_str("cache").map(PathBuf::from),
 			data_dir_path: matches.opt_str("data").map(PathBuf::from),
-			web_dir_path: matches.opt_str("w").map(PathBuf::from),
 			bind_address,
 			port: matches.opt_str("p").and_then(|p| p.parse().ok()),
-			log_level: matches.opt_str("log-level").and_then(|l| l.parse().ok()),
 		})
 	}
 
