@@ -144,10 +144,8 @@ mod ape_ext {
 		strings.into_iter().map(str::to_string).collect()
 	}
 
-	pub fn read_i32(item: &ape::Item) -> Option<i32> {
-		item.try_into()
-			.ok()
-			.and_then(|s: &str| s.parse::<i32>().ok())
+	pub fn read_year(item: &ape::Item) -> Option<i32> {
+		item.try_into().ok().and_then(super::parse_year)
 	}
 
 	static X_OF_Y_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"^\d+"#).unwrap());
@@ -169,7 +167,7 @@ fn read_ape<P: AsRef<Path>>(path: P) -> Result<SongMetadata, Error> {
 	let album = tag.item("Album").and_then(ape_ext::read_string);
 	let album_artists = ape_ext::read_strings(tag.item("Album artist"));
 	let title = tag.item("Title").and_then(ape_ext::read_string);
-	let year = tag.item("Year").and_then(ape_ext::read_i32);
+	let year = tag.item("Year").and_then(ape_ext::read_year);
 	let disc_number = tag.item("Disc").and_then(ape_ext::read_x_of_y);
 	let track_number = tag.item("Track").and_then(ape_ext::read_x_of_y);
 	let lyricists = ape_ext::read_strings(tag.item("LYRICIST"));
@@ -207,7 +205,7 @@ fn read_vorbis<P: AsRef<Path>>(path: P) -> Result<SongMetadata, Error> {
 				"ALBUMARTIST" => metadata.album_artists.push(value),
 				"TRACKNUMBER" => metadata.track_number = value.parse::<u32>().ok(),
 				"DISCNUMBER" => metadata.disc_number = value.parse::<u32>().ok(),
-				"DATE" => metadata.year = value.parse::<i32>().ok(),
+				"DATE" => metadata.year = parse_year(&value),
 				"LYRICIST" => metadata.lyricists.push(value),
 				"COMPOSER" => metadata.composers.push(value),
 				"GENRE" => metadata.genres.push(value),
@@ -233,7 +231,7 @@ fn read_opus<P: AsRef<Path>>(path: P) -> Result<SongMetadata, Error> {
 				"ALBUMARTIST" => metadata.album_artists.push(value),
 				"TRACKNUMBER" => metadata.track_number = value.parse::<u32>().ok(),
 				"DISCNUMBER" => metadata.disc_number = value.parse::<u32>().ok(),
-				"DATE" => metadata.year = value.parse::<i32>().ok(),
+				"DATE" => metadata.year = parse_year(&value),
 				"LYRICIST" => metadata.lyricists.push(value),
 				"COMPOSER" => metadata.composers.push(value),
 				"GENRE" => metadata.genres.push(value),
@@ -255,7 +253,7 @@ fn read_flac<P: AsRef<Path>>(path: P) -> Result<SongMetadata, Error> {
 	let disc_number = vorbis
 		.get("DISCNUMBER")
 		.and_then(|d| d[0].parse::<u32>().ok());
-	let year = vorbis.get("DATE").and_then(|d| d[0].parse::<i32>().ok());
+	let year = vorbis.get("DATE").and_then(|d| parse_year(&d[0]));
 	let mut streaminfo = tag.get_blocks(metaflac::BlockType::StreamInfo);
 	let duration = match streaminfo.next() {
 		Some(metaflac::Block::StreamInfo(s)) => Some(s.total_samples as u32 / s.sample_rate),
@@ -300,13 +298,20 @@ fn read_mp4<P: AsRef<Path>>(path: P) -> Result<SongMetadata, Error> {
 		duration: Some(tag.duration().as_secs() as u32),
 		disc_number: tag.disc_number().map(|d| d as u32),
 		track_number: tag.track_number().map(|d| d as u32),
-		year: tag.year().and_then(|v| v.parse::<i32>().ok()),
+		year: tag.year().and_then(parse_year),
 		has_artwork: tag.artwork().is_some(),
 		lyricists: tag.take_lyricists().collect(),
 		composers: tag.take_composers().collect(),
 		genres: tag.take_genres().collect(),
 		labels: tag.take_strings_of(&label_ident).collect(),
 	})
+}
+
+/// Parse either a plain year or the year of a timestamp.
+fn parse_year(date: &str) -> Option<i32> {
+	// id3 has a lenient date time parser.
+	let timestamp = date.parse::<id3::Timestamp>().ok()?;
+	Some(timestamp.year)
 }
 
 #[test]
