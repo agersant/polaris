@@ -38,10 +38,10 @@ pub fn make_router(app: App) -> NormalizePath<Router> {
 }
 
 pub async fn launch(app: App) -> Result<(), std::io::Error> {
-	let port = app.port;
+	let socket_address = app.socket_address;
 	let router = make_router(app);
 	let make_service = ServiceExt::<axum::extract::Request>::into_make_service(router);
-	let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}")).await?;
+	let listener = tokio::net::TcpListener::bind(socket_address).await?;
 	tokio::spawn(async {
 		axum::serve(listener, make_service).await.unwrap();
 	});

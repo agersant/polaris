@@ -1,12 +1,13 @@
 #![cfg_attr(all(windows, feature = "ui"), windows_subsystem = "windows")]
 #![recursion_limit = "256"]
 
-use log::info;
+use log::{error, info};
 use options::CLIOptions;
 use simplelog::{
 	ColorChoice, CombinedLogger, LevelFilter, SharedLogger, TermLogger, TerminalMode, WriteLogger,
 };
 use std::fs;
+use std::net::{Ipv4Addr, SocketAddr};
 use std::path::{Path, PathBuf};
 
 mod app;
@@ -25,7 +26,7 @@ pub enum Error {
 	#[error("Could not start web services")]
 	ServiceStartup(std::io::Error),
 	#[error("Could not parse command line arguments:\n\n{0}")]
-	CliArgsParsing(getopts::Fail),
+	CliOptions(#[from] options::Error),
 	#[cfg(unix)]
 	#[error("Failed to turn polaris process into a daemon:\n\n{0}")]
 	Daemonize(daemonize::Error),
@@ -101,30 +102,35 @@ fn init_logging<T: AsRef<Path>>(
 	Ok(())
 }
 
-fn main() -> Result<(), Error> {
+fn main() {
 	// Parse CLI options
 	let args: Vec<String> = std::env::args().collect();
 	let options_manager = options::Manager::new();
-	let cli_options = options_manager
-		.parse(&args[1..])
-		.map_err(Error::CliArgsParsing)?;
+	let cli_options = match options_manager.parse(&args[1..]) {
+		Ok(o) => o,
+		Err(e) => return print!("{}", e),
+	};
 
 	if cli_options.show_help {
 		let program = args[0].clone();
 		let brief = format!("Usage: {} [options]", program);
 		print!("{}", options_manager.usage(&brief));
-		return Ok(());
+		return;
 	}
 
 	let paths = paths::Paths::new(&cli_options);
 
 	// Logging
 	let log_level = cli_options.log_level.unwrap_or(LevelFilter::Info);
-	init_logging(log_level, &paths.log_file_path)?;
+	if let Err(e) = init_logging(log_level, &paths.log_file_path) {
+		return print!("Failed to initialize logging: {}", e);
+	}
 
 	// Fork
 	#[cfg(unix)]
-	daemonize(cli_options.foreground, &paths.pid_file_path)?;
+	if let Err(e) = daemonize(cli_options.foreground, &paths.pid_file_path) {
+		return error!("Failed to daemonize process: {}", e);
+	};
 
 	info!("Cache files location is {:#?}", paths.cache_dir_path);
 	info!("Data files location is {:#?}", paths.data_dir_path);
@@ -136,13 +142,22 @@ fn main() -> Result<(), Error> {
 	}
 	info!("Web client files location is {:#?}", paths.web_dir_path);
 
-	async_main(cli_options, paths)
+	if let Err(e) = async_main(cli_options, paths) {
+		error!("{}", e);
+	}
 }
 
 #[tokio::main]
 async fn async_main(cli_options: CLIOptions, paths: paths::Paths) -> Result<(), Error> {
+	let listen_ip = cli_options
+		.bind_address
+		.unwrap_or(Ipv4Addr::UNSPECIFIED.into());
+	let port = cli_options.port.unwrap_or(5050);
+	let socket_address = SocketAddr::from((listen_ip, port));
+	info!("Socket address is {:#?}", socket_address);
+
 	// Create and run app
-	let app = app::App::new(cli_options.port.unwrap_or(5050), paths).await?;
+	let app = app::App::new(socket_address, paths).await?;
 	app.scanner.queue_scan();
 	app.ddns_manager.begin_periodic_updates();
 

@@ -1,5 +1,9 @@
 use simplelog::LevelFilter;
-use std::path::PathBuf;
+use std::{
+	net::{AddrParseError, IpAddr},
+	path::PathBuf,
+	str::FromStr,
+};
 
 pub struct CLIOptions {
 	pub show_help: bool,
@@ -11,8 +15,17 @@ pub struct CLIOptions {
 	pub cache_dir_path: Option<PathBuf>,
 	pub data_dir_path: Option<PathBuf>,
 	pub web_dir_path: Option<PathBuf>,
+	pub bind_address: Option<IpAddr>,
 	pub port: Option<u16>,
 	pub log_level: Option<LevelFilter>,
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum Error {
+	#[error(transparent)]
+	Format(getopts::Fail),
+	#[error("`{0}` is not a valid bind address: {1}")]
+	BindAddress(String, AddrParseError),
 }
 
 pub struct Manager {
@@ -26,8 +39,15 @@ impl Manager {
 		}
 	}
 
-	pub fn parse(&self, input: &[String]) -> Result<CLIOptions, getopts::Fail> {
-		let matches = self.protocol.parse(input)?;
+	pub fn parse(&self, input: &[String]) -> Result<CLIOptions, Error> {
+		let matches = self.protocol.parse(input).map_err(Error::Format)?;
+
+		let bind_address = matches.opt_str("bind-address");
+		let bind_address = bind_address
+			.as_ref()
+			.map(|s| IpAddr::from_str(s))
+			.transpose()
+			.map_err(|e| Error::BindAddress(bind_address.unwrap_or_default(), e))?;
 
 		Ok(CLIOptions {
 			show_help: matches.opt_present("h"),
@@ -42,6 +62,7 @@ impl Manager {
 			cache_dir_path: matches.opt_str("cache").map(PathBuf::from),
 			data_dir_path: matches.opt_str("data").map(PathBuf::from),
 			web_dir_path: matches.opt_str("w").map(PathBuf::from),
+			bind_address,
 			port: matches.opt_str("p").and_then(|p| p.parse().ok()),
 			log_level: matches.opt_str("log-level").and_then(|l| l.parse().ok()),
 		})
@@ -54,30 +75,8 @@ impl Manager {
 
 fn get_options() -> getopts::Options {
 	let mut options = getopts::Options::new();
-	options.optopt("c", "config", "set the configuration file", "FILE");
-	options.optopt("p", "port", "set polaris to run on a custom port", "PORT");
-	options.optopt("d", "database", "set the path to index database", "FILE");
-	options.optopt("w", "web", "set the path to web client files", "DIRECTORY");
-	options.optopt(
-		"",
-		"cache",
-		"set the directory to use as cache",
-		"DIRECTORY",
-	);
-	options.optopt(
-		"",
-		"data",
-		"set the directory for persistent data",
-		"DIRECTORY",
-	);
-	options.optopt("", "log", "set the path to the log file", "FILE");
-	options.optopt("", "pid", "set the path to the pid file", "FILE");
-	options.optopt(
-		"",
-		"log-level",
-		"set the log level to a value between 0 (off) and 3 (debug)",
-		"LEVEL",
-	);
+
+	options.optflag("h", "help", "print this help menu");
 
 	#[cfg(unix)]
 	options.optflag(
@@ -86,6 +85,42 @@ fn get_options() -> getopts::Options {
 		"run polaris in the foreground instead of daemonizing",
 	);
 
-	options.optflag("h", "help", "print this help menu");
+	options.optopt(
+		"",
+		"log-level",
+		"set log level, from 0 (off) to 3 (debug)",
+		"LEVEL",
+	);
+
+	options.optopt("", "log", "set path to log file", "FILE");
+	options.optopt("", "pid", "set path to pid file", "FILE");
+	options.optopt("c", "config", "set path to configuration file", "FILE");
+	options.optopt("d", "database", "set path to music index database", "FILE");
+	options.optopt(
+		"w",
+		"web",
+		"set directory to serve as web client",
+		"DIRECTORY",
+	);
+	options.optopt("", "cache", "set directory to use as cache", "DIRECTORY");
+	options.optopt(
+		"",
+		"data",
+		"set directory where persistent data is saved",
+		"DIRECTORY",
+	);
+
+	options.optopt(
+		"",
+		"bind-address",
+		"bind TCP listener to the specified address",
+		"IP",
+	);
+	options.optopt(
+		"p",
+		"port",
+		"bind TCP listener to the specified port",
+		"PORT",
+	);
 	options
 }

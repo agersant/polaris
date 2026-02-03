@@ -1,4 +1,5 @@
 use std::fs;
+use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 
 use rand::rngs::OsRng;
@@ -145,7 +146,7 @@ pub enum Error {
 
 #[derive(Clone)]
 pub struct App {
-	pub port: u16,
+	pub socket_address: SocketAddr,
 	pub web_dir_path: PathBuf,
 	pub ddns_manager: ddns::Manager,
 	pub scanner: scanner::Scanner,
@@ -157,7 +158,7 @@ pub struct App {
 }
 
 impl App {
-	pub async fn new(port: u16, paths: Paths) -> Result<Self, Error> {
+	pub async fn new(socket_address: SocketAddr, paths: Paths) -> Result<Self, Error> {
 		fs::create_dir_all(&paths.data_dir_path)
 			.map_err(|e| Error::Io(paths.data_dir_path.clone(), e))?;
 
@@ -184,7 +185,7 @@ impl App {
 		let thumbnail_manager = thumbnail::Manager::new(thumbnails_dir_path);
 
 		let app = Self {
-			port,
+			socket_address,
 			web_dir_path: paths.web_dir_path,
 			ddns_manager,
 			scanner,

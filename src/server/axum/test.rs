@@ -1,3 +1,6 @@
+use std::net::SocketAddr;
+use std::str::FromStr;
+
 use axum::body::Bytes;
 use axum_test::TestServer;
 use http::{response::Builder, Method, Request, Response};
@@ -31,7 +34,8 @@ impl TestService for AxumTestService {
 			web_dir_path: ["test-data", "web"].iter().collect(),
 		};
 
-		let app = App::new(5050, paths).await.unwrap();
+		let socket_address = SocketAddr::from_str("0.0.0.0:5050").unwrap();
+		let app = App::new(socket_address, paths).await.unwrap();
 		let router = make_router(app);
 		let make_service = ServiceExt::<axum::extract::Request>::into_make_service(router);
 		let server = TestServer::new(make_service).unwrap();
