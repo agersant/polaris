@@ -26,6 +26,8 @@ pub enum Error {
 	Format(getopts::Fail),
 	#[error("`{0}` is not a valid bind address: {1}")]
 	BindAddress(String, AddrParseError),
+	#[error("`{0}` is not a valid log level. Valid log levels are `off`, `error`, `warn`, `info`, `debug` and `trace`.")]
+	LogLevel(String),
 }
 
 pub struct Manager {
@@ -49,13 +51,20 @@ impl Manager {
 			.transpose()
 			.map_err(|e| Error::BindAddress(bind_address.unwrap_or_default(), e))?;
 
+		let log_level = matches.opt_str("log-level");
+		let log_level: Option<LevelFilter> = log_level
+			.as_ref()
+			.map(|s| s.parse())
+			.transpose()
+			.or(Err(Error::LogLevel(log_level.unwrap_or_default())))?;
+
 		Ok(CLIOptions {
 			show_help: matches.opt_present("h"),
 			#[cfg(unix)]
 			foreground: matches.opt_present("f"),
 			#[cfg(windows)]
 			foreground: !cfg!(feature = "ui"),
-			log_level: matches.opt_str("log-level").and_then(|l| l.parse().ok()),
+			log_level,
 			log_file_path: matches.opt_str("log").map(PathBuf::from),
 			#[cfg(unix)]
 			pid_file_path: matches.opt_str("pid").map(PathBuf::from),
@@ -88,7 +97,7 @@ fn get_options() -> getopts::Options {
 	options.optopt(
 		"",
 		"log-level",
-		"set log level, from 0 (off) to 3 (debug)",
+		"set log level (off/error/warn/info/debug/trace)",
 		"LEVEL",
 	);
 
@@ -121,5 +130,6 @@ fn get_options() -> getopts::Options {
 		"bind TCP listener to the specified port",
 		"PORT",
 	);
+
 	options
 }
