@@ -95,7 +95,6 @@ fn get_options() -> getopts::Options {
 	options.optopt("", "log", "set path to log file", "FILE");
 	options.optopt("", "pid", "set path to pid file", "FILE");
 	options.optopt("c", "config", "set path to configuration file", "FILE");
-	options.optopt("d", "database", "set path to music index database", "FILE");
 	options.optopt(
 		"w",
 		"web",
