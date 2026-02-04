@@ -1,10 +1,12 @@
 use id3::TagLike;
 use lewton::inside_ogg::OggStreamReader;
 use log::error;
+use regex::Regex;
 use std::borrow::Cow;
 use std::fs;
 use std::io::{Seek, SeekFrom};
 use std::path::Path;
+use std::sync::LazyLock;
 
 use crate::app::Error;
 use crate::utils;
@@ -50,6 +52,13 @@ pub fn read_metadata<P: AsRef<Path>>(path: P) -> Option<SongMetadata> {
 			None
 		}
 	}
+}
+
+fn parse_year(date: &str) -> Option<i32> {
+	static YEAR_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"\d{4}"#).unwrap());
+	YEAR_REGEX
+		.find(date)
+		.and_then(|d| d.as_str().parse::<i32>().ok())
 }
 
 trait ID3Ext {
@@ -129,8 +138,7 @@ fn read_mp3<P: AsRef<Path>>(path: P) -> Result<SongMetadata, Error> {
 }
 
 mod ape_ext {
-	use regex::Regex;
-	use std::sync::LazyLock;
+	use super::*;
 
 	pub fn read_string(item: &ape::Item) -> Option<String> {
 		item.try_into().ok().map(str::to_string)
@@ -307,13 +315,6 @@ fn read_mp4<P: AsRef<Path>>(path: P) -> Result<SongMetadata, Error> {
 	})
 }
 
-/// Parse either a plain year or the year of a timestamp.
-fn parse_year(date: &str) -> Option<i32> {
-	// id3 has a lenient date time parser.
-	let timestamp = date.parse::<id3::Timestamp>().ok()?;
-	Some(timestamp.year)
-}
-
 #[test]
 fn reads_file_metadata() {
 	let expected_without_duration = SongMetadata {
@@ -395,6 +396,40 @@ fn reads_embedded_artwork() {
 		read_metadata(Path::new("test-data/artwork/sample.wav"))
 			.unwrap()
 			.has_artwork
+	);
+}
+
+#[test]
+fn reads_complex_date() {
+	assert_eq!(
+		read_metadata(Path::new("test-data/date/date.ape"))
+			.unwrap()
+			.year,
+		Some(2016),
+	);
+	assert_eq!(
+		read_metadata(Path::new("test-data/date/date.flac"))
+			.unwrap()
+			.year,
+		Some(2016),
+	);
+	assert_eq!(
+		read_metadata(Path::new("test-data/date/date.m4a"))
+			.unwrap()
+			.year,
+		Some(2016),
+	);
+	assert_eq!(
+		read_metadata(Path::new("test-data/date/date.mp3"))
+			.unwrap()
+			.year,
+		Some(2016),
+	);
+	assert_eq!(
+		read_metadata(Path::new("test-data/date/date.ogg"))
+			.unwrap()
+			.year,
+		Some(2016),
 	);
 }
 
