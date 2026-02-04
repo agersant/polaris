@@ -16,32 +16,14 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           components: llvm-tools-preview
-      - name: Install grcov
-        run: cargo install grcov
-      - name: Run tests
-        run: cargo test --no-fail-fast
-        env:
-          RUSTFLAGS: "-Cinstrument-coverage"
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
       - name: Gather coverage results
-        run: >
-          grcov
-          .
-          -t lcov
-          -o coverage.txt
-          --llvm
-          --branch
-          --binary-path ./target/debug/
-          --ignore "**/test*"
-          --ignore "**/test/**"
-          --ignore-not-existing
-          --excl-line "#\[derive\("
-          --excl-br-line "#\[derive\("
-          --excl-start "mod test \{"
-          --excl-br-start "mod test \{"
+        run: cargo llvm-cov --codecov --output-path codecov.json
       - name: Upload Results
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v5
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: codecov.json
           fail_ci_if_error: true
           verbose: true
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
