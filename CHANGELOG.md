@@ -7,6 +7,7 @@
 - ⚠️ Support for automatic database migration from Polaris 0.14 and below has been removed. This has no effect for users upgrading from version 0.15.
 - Added a `--bind-address` command line option to specify the IP Polaris binds to (default `0.0.0.0`). Log now mentions the port and IP address being used.
 - Added support for ID3v1 numerical genre identifiers (eg. '5' for 'Funk').
+- Improved parsing of `year` field in song metadata to be more lenient. (contribution by @saecki)
 - Improved performance of indexing m4a files. (contribution by @saecki)
 - Improved performance of search functionality.
 - Fixed a typo in the log message that is written after applying configuration changes. (contribution by @luzpaz)
