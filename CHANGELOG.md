@@ -20,6 +20,7 @@
 - The genre details page (accessed by clicking any music genre tag) has received small visual improvements.
 - Outline around the sidebar has been removed for all dark color schemes (Blue/Brown/Dark). Light color scheme is unchanged.
 - Outlines around sections on the `Settings -> Collection` page have been removed for all dark color schemes (Blue/Brown/Dark). Light color scheme is unchanged.
+- Removed screen blur when the Stats panel or Save Playlist dialog are open.
 - Fixed a bug where queuing songs while the queue is empty would sometimes skip one song.
 - Fixed a bug where song details would sometimes not display in the queue panel.
 - Fixed a bug where album details page did not have the intended padding when scrolling.
