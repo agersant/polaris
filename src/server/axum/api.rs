@@ -1018,6 +1018,13 @@ async fn delete_playlist(
 	Ok(())
 }
 
+// TODO export_playlists endpoint
+// JustMe VS SpecificUser VS AllUsers
+
+// TODO import_playlists endpoint
+// ForMe VS SpecificUser VS User from filename
+// dry_run flag? reports missing songs, compare to existing playlist on name conflict (identical content or song count + duration comparison)
+
 #[utoipa::path(
 	get,
 	path = "/audio/{*path}",
