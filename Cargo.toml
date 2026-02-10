@@ -21,13 +21,13 @@ chumsky = "0.9.3"
 enum-map = { version = "2.7.3", features = ["serde"] }
 getopts = "0.2.24"
 headers = "0.4.1"
-http = "1.1.0"
+http = "1.4.0"
 icu_collator = "1.5.0"
 id3 = "1.16.4"
 lasso2 = { version = "0.8.2", features = ["serialize"] }
 lewton = "0.10.2"
 log = "0.4.22"
-metaflac = "0.2.7"
+metaflac = "0.2.8"
 mp3-duration = "0.1.10"
 mp4ameta = "0.13.0"
 native_db = "0.8.1"
@@ -46,13 +46,13 @@ serde = { version = "1.0.147", features = ["derive"] }
 serde_derive = "1.0.147"
 serde_json = "1.0.122"
 simplelog = "0.12.2"
-symphonia = { version = "0.5.4", features = [
+symphonia = { version = "0.5.5", features = [
 	"all-codecs",
 	"all-formats",
 	"opt-simd",
 ] }
 tinyvec = { version = "1.10.0", features = ["serde"] }
-thiserror = "1.0.62"
+thiserror = "2.0.18"
 tokio = { version = "1.39", features = ["macros", "rt-multi-thread"] }
 tokio-util = { version = "0.7.11", features = ["io"] }
 toml = { version = "0.9.11", features = ["preserve_order"] }
@@ -75,7 +75,7 @@ default-features = false
 features = ["http1", "json", "tokio", "tower-log", "query"]
 
 [dependencies.image]
-version = "0.25.2"
+version = "0.25.9"
 default-features = false
 features = ["bmp", "gif", "jpeg", "png"]
 
