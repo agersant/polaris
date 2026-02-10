@@ -13,8 +13,8 @@ lto = "thin"
 
 [dependencies]
 ape = "0.6"
-axum-extra = { version = "0.10.0", features = ["typed-header"] }
-axum-range = { version = "0.5.0" }
+axum-extra = { version = "0.12.5", features = ["typed-header"] }
+axum-range = { version = "1.0.0" }
 bitcode = { version = "0.6.9", features = ["serde"] }
 branca = "0.10.2"
 chumsky = "0.9.3"
@@ -22,7 +22,7 @@ enum-map = { version = "2.7.3", features = ["serde"] }
 getopts = "0.2.24"
 headers = "0.4.1"
 http = "1.4.0"
-icu_collator = "1.5.0"
+icu_collator = "2.1.1"
 id3 = "1.16.4"
 lasso2 = { version = "0.8.2", features = ["serialize"] }
 lewton = "0.10.2"
@@ -54,10 +54,9 @@ symphonia = { version = "0.5.5", features = [
 tinyvec = { version = "1.10.0", features = ["serde"] }
 thiserror = "2.0.18"
 tokio = { version = "1.39", features = ["macros", "rt-multi-thread"] }
-tokio-util = { version = "0.7.11", features = ["io"] }
 toml = { version = "0.9.11", features = ["preserve_order"] }
 tower = { version = "0.5.2" }
-tower-http = { version = "0.6.2", features = [
+tower-http = { version = "0.6.8", features = [
 	"compression-gzip",
 	"fs",
 	"normalize-path",
@@ -65,12 +64,12 @@ tower-http = { version = "0.6.2", features = [
 trie-rs = { version = "0.4.2", features = ["serde"] }
 unicase = "2.9.0"
 ureq = { version = "3.2.0", default-features = false, features = ["rustls"] }
-utoipa = { version = "5.3", features = ["axum_extras"] }
-utoipa-axum = { version = "0.1" }
-utoipa-scalar = { version = "0.2", features = ["axum"] }
+utoipa = { version = "5.4.0", features = ["axum_extras"] }
+utoipa-axum = { version = "0.2.0" }
+utoipa-scalar = { version = "0.3.0", features = ["axum"] }
 
 [dependencies.axum]
-version = "0.8.1"
+version = "0.8.8"
 default-features = false
 features = ["http1", "json", "tokio", "tower-log", "query"]
 
@@ -98,6 +97,6 @@ embed-resource = "2.4.2"
 winres = "0.1"
 
 [dev-dependencies]
-axum-test = "17.0"
+axum-test = "18.7.0"
 bytes = "1.7.1"
 percent-encoding = "2.3.2"

@@ -3,7 +3,11 @@ use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 use std::time::Duration;
 
-use icu_collator::{Collator, CollatorOptions, Strength};
+use icu_collator::{
+	options::{CollatorOptions, Strength},
+	preferences::CollationNumericOrdering,
+	Collator, CollatorPreferences,
+};
 use native_db::*;
 use native_model::{native_model, Model};
 use serde::{Deserialize, Serialize};
@@ -95,11 +99,18 @@ impl Manager {
 					.collect::<Vec<_>>();
 
 				let collator_options = {
-					let mut o = CollatorOptions::new();
+					let mut o = CollatorOptions::default();
 					o.strength = Some(Strength::Secondary);
 					o
 				};
-				let collator = Collator::try_new(&Default::default(), collator_options).unwrap();
+
+				let collator_preferences = {
+					let mut p = CollatorPreferences::default();
+					p.numeric_ordering = Some(CollationNumericOrdering::True);
+					p
+				};
+
+				let collator = Collator::try_new(collator_preferences, collator_options).unwrap();
 
 				playlists.sort_by(|a, b| collator.compare(&a.name, &b.name));
 				Ok(playlists)

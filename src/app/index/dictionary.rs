@@ -1,6 +1,10 @@
 use std::{cmp::Ordering, collections::HashMap};
 
-use icu_collator::{Collator, CollatorOptions, Numeric, Strength};
+use icu_collator::{
+	options::{CollatorOptions, Strength},
+	preferences::CollationNumericOrdering,
+	Collator, CollatorBorrowed, CollatorPreferences,
+};
 use lasso2::{Rodeo, RodeoReader, Spur};
 use rayon::slice::ParallelSliceMut;
 use serde::{Deserialize, Serialize};
@@ -12,14 +16,20 @@ pub fn sanitize(s: &str) -> String {
 	cleaned.to_lowercase()
 }
 
-pub fn make_collator() -> Collator {
+pub fn make_collator() -> CollatorBorrowed<'static> {
 	let options = {
-		let mut o = CollatorOptions::new();
+		let mut o = CollatorOptions::default();
 		o.strength = Some(Strength::Secondary);
-		o.numeric = Some(Numeric::On);
 		o
 	};
-	Collator::try_new(&Default::default(), options).unwrap()
+
+	let preferences = {
+		let mut p = CollatorPreferences::default();
+		p.numeric_ordering = Some(CollationNumericOrdering::True);
+		p
+	};
+
+	Collator::try_new(preferences, options).unwrap()
 }
 
 #[derive(Serialize, Deserialize)]
