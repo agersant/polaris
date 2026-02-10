@@ -61,6 +61,7 @@ pub fn router() -> OpenApiRouter<App> {
 		// Playlist management
 		.routes(routes!(get_playlists))
 		.routes(routes!(put_playlist, get_playlist, delete_playlist))
+		.routes(routes!(export_playlists))
 		// Media
 		.routes(routes!(get_songs))
 		.routes(routes!(get_peaks))
@@ -1018,9 +1019,24 @@ async fn delete_playlist(
 	Ok(())
 }
 
-// TODO export_playlists endpoint
-// JustMe VS SpecificUser VS AllUsers
-// Returns error OR zip file containing one or more .m3u files
+#[utoipa::path(
+	get,
+	path = "/playlists/export",
+	tag = "Playlists",
+	description = "Export playlist data as m3u files.",
+	security(
+		("auth_token" = []),
+		("auth_query_param" = []),
+	),
+	request_body = dto::ExportPlaylistsOptions,
+)]
+async fn export_playlists(
+	_auth: Auth,
+	State(_playlist_manager): State<playlist::Manager>,
+	_options: Json<dto::ExportPlaylistsOptions>,
+) -> Result<Vec<u8>, APIError> {
+	todo!()
+}
 
 // TODO import_playlists endpoint
 // ForMe VS SpecificUser VS User from filename
