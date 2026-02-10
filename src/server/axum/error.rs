@@ -16,9 +16,10 @@ impl IntoResponse for APIError {
 			APIError::AudioFileIO => StatusCode::NOT_FOUND,
 			APIError::AuthenticationRequired => StatusCode::UNAUTHORIZED,
 			APIError::BrancaTokenEncoding => StatusCode::INTERNAL_SERVER_ERROR,
-			APIError::DdnsUpdateQueryFailed(s) => {
+			APIError::DDNSUpdateRejected(s) => {
 				StatusCode::from_u16(s).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR)
 			}
+			APIError::DDNSUpdate(_) => StatusCode::INTERNAL_SERVER_ERROR,
 			APIError::NativeDatabase(_) => StatusCode::INTERNAL_SERVER_ERROR,
 			APIError::DeletingOwnAccount => StatusCode::CONFLICT,
 			APIError::DirectoryNotFound(_) => StatusCode::NOT_FOUND,

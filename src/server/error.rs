@@ -36,7 +36,9 @@ pub enum APIError {
 	#[error("Song not found")]
 	SongNotFound,
 	#[error("DDNS update query failed with HTTP status {0}")]
-	DdnsUpdateQueryFailed(u16),
+	DDNSUpdateRejected(u16),
+	#[error("DDNS update query failed to complete: `{0}`")]
+	DDNSUpdate(String),
 	#[error("Cannot delete your own account")]
 	DeletingOwnAccount,
 	#[error("Username already exists")]
@@ -118,8 +120,8 @@ impl From<app::Error> for APIError {
 			app::Error::NativeDatabaseCreation(_) => APIError::Internal,
 			app::Error::NativeDatabase(e) => APIError::NativeDatabase(e),
 
-			app::Error::UpdateQueryFailed(s) => APIError::DdnsUpdateQueryFailed(s),
-			app::Error::UpdateQueryTransport => APIError::DdnsUpdateQueryFailed(0),
+			app::Error::DDNSUpdateRejected(s) => APIError::DDNSUpdateRejected(s),
+			app::Error::DDNSUpdate(e) => APIError::DDNSUpdate(e),
 
 			app::Error::AuthenticationSecretNotFound => APIError::Internal,
 			app::Error::AuthenticationSecretInvalid => APIError::Internal,

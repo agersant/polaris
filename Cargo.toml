@@ -15,12 +15,12 @@ lto = "thin"
 ape = "0.6"
 axum-extra = { version = "0.10.0", features = ["typed-header"] }
 axum-range = { version = "0.5.0" }
-bitcode = { version = "0.6.3", features = ["serde"] }
-branca = "0.10.1"
+bitcode = { version = "0.6.9", features = ["serde"] }
+branca = "0.10.2"
 chumsky = "0.9.3"
 enum-map = { version = "2.7.3", features = ["serde"] }
-getopts = "0.2.21"
-headers = "0.4"
+getopts = "0.2.24"
+headers = "0.4.1"
 http = "1.1.0"
 icu_collator = "1.5.0"
 id3 = "1.16.4"
@@ -29,19 +29,19 @@ lewton = "0.10.2"
 log = "0.4.22"
 metaflac = "0.2.7"
 mp3-duration = "0.1.10"
-mp4ameta = "0.12.1"
+mp4ameta = "0.13.0"
 native_db = "0.8.1"
 native_model = "0.4.20"
 nohash-hasher = "0.2.0"
 notify = { version = "6.1.1", default-features = false }
 notify-debouncer-full = { version = "0.3.1", default-features = false }
-num_cpus = "1.14.0"
+num_cpus = "1.17.0"
 # TODO upstream PR: https://github.com/yboettcher/opus_headers/pull/7
 opus_headers = { git = "https://github.com/agersant/opus_headers", branch = "multivalue" }
 pbkdf2 = "0.11"
 rand = "0.8"
-rayon = "1.10.0"
-regex = "1.10.5"
+rayon = "1.11.0"
+regex = "1.12.3"
 serde = { version = "1.0.147", features = ["derive"] }
 serde_derive = "1.0.147"
 serde_json = "1.0.122"
@@ -51,11 +51,11 @@ symphonia = { version = "0.5.4", features = [
 	"all-formats",
 	"opt-simd",
 ] }
-tinyvec = { version = "1.8.0", features = ["serde"] }
+tinyvec = { version = "1.10.0", features = ["serde"] }
 thiserror = "1.0.62"
 tokio = { version = "1.39", features = ["macros", "rt-multi-thread"] }
 tokio-util = { version = "0.7.11", features = ["io"] }
-toml = "0.8.19"
+toml = { version = "0.9.11", features = ["preserve_order"] }
 tower = { version = "0.5.2" }
 tower-http = { version = "0.6.2", features = [
 	"compression-gzip",
@@ -63,8 +63,8 @@ tower-http = { version = "0.6.2", features = [
 	"normalize-path",
 ] }
 trie-rs = { version = "0.4.2", features = ["serde"] }
-unicase = "2.7.0"
-ureq = { version = "2.10.0", default-features = false, features = ["tls"] }
+unicase = "2.9.0"
+ureq = { version = "3.2.0", default-features = false, features = ["rustls"] }
 utoipa = { version = "5.3", features = ["axum_extras"] }
 utoipa-axum = { version = "0.1" }
 utoipa-scalar = { version = "0.2", features = ["axum"] }
@@ -100,4 +100,4 @@ winres = "0.1"
 [dev-dependencies]
 axum-test = "17.0"
 bytes = "1.7.1"
-percent-encoding = "2.2"
+percent-encoding = "2.3.2"

@@ -73,9 +73,9 @@ pub enum Error {
 	NativeDatabaseCreation(Box<native_db::db_type::Error>),
 
 	#[error("DDNS update query failed with HTTP status code `{0}`")]
-	UpdateQueryFailed(u16),
-	#[error("DDNS update query failed due to a transport error")]
-	UpdateQueryTransport,
+	DDNSUpdateRejected(u16),
+	#[error("DDNS update query failed to complete: `{0}`")]
+	DDNSUpdate(String),
 
 	#[error("Auth secret does not have the expected format")]
 	AuthenticationSecretInvalid,

@@ -24,8 +24,8 @@ impl Manager {
 
 		match response {
 			Ok(_) => Ok(()),
-			Err(ureq::Error::Status(code, _)) => Err(Error::UpdateQueryFailed(code)),
-			Err(ureq::Error::Transport(_)) => Err(Error::UpdateQueryTransport),
+			Err(ureq::Error::StatusCode(code)) => Err(Error::DDNSUpdateRejected(code)),
+			Err(e) => Err(Error::DDNSUpdate(e.to_string())),
 		}
 	}
 
