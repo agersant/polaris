@@ -30,7 +30,7 @@ log = "0.4.22"
 metaflac = "0.2.8"
 mp3-duration = "0.1.10"
 mp4ameta = "0.13.0"
-native_db = "0.8.1"
+native_db = "0.8.2"
 native_model = "0.4.20"
 nohash-hasher = "0.2.0"
 notify = { version = "6.1.1", default-features = false }
