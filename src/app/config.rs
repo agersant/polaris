@@ -98,8 +98,10 @@ impl Manager {
 			let notify = notify.clone();
 			move |result: DebounceEventResult| match result {
 				Ok(events) => {
-					let is_read = |e: &DebouncedEvent| matches!(e.kind, EventKind::Access(_));
-					if !events.iter().all(is_read) {
+					let is_ignorable = |e: &DebouncedEvent| {
+						matches!(e.kind, EventKind::Access(_) | EventKind::Other)
+					};
+					if !events.iter().all(is_ignorable) {
 						notify.notify_waiters();
 					}
 				}
