@@ -1,6 +1,8 @@
 use log::{error, info};
-use notify::{RecommendedWatcher, Watcher};
-use notify_debouncer_full::{Debouncer, FileIdMap};
+use notify_debouncer_full::{
+	notify::{EventKind, RecommendedWatcher, RecursiveMode},
+	DebounceEventResult, DebouncedEvent, Debouncer, RecommendedCache,
+};
 use rayon::{Scope, ThreadPoolBuilder};
 use regex::Regex;
 use std::fs;
@@ -77,7 +79,7 @@ pub struct Status {
 pub struct Scanner {
 	index_manager: index::Manager,
 	config_manager: config::Manager,
-	file_watcher: Arc<RwLock<Option<Debouncer<RecommendedWatcher, FileIdMap>>>>,
+	file_watcher: Arc<RwLock<Option<Debouncer<RecommendedWatcher, RecommendedCache>>>>,
 	on_file_change: Arc<Notify>,
 	pending_scan: Arc<Notify>,
 	status: Arc<RwLock<Status>>,
@@ -143,18 +145,24 @@ impl Scanner {
 	async fn setup_file_watcher(
 		config_manager: &config::Manager,
 		on_file_changed: Arc<Notify>,
-	) -> Result<Debouncer<RecommendedWatcher, FileIdMap>, Error> {
-		let mut debouncer =
-			notify_debouncer_full::new_debouncer(Duration::from_millis(100), None, move |_| {
-				on_file_changed.notify_waiters();
-			})?;
+	) -> Result<Debouncer<RecommendedWatcher, RecommendedCache>, Error> {
+		let mut debouncer = notify_debouncer_full::new_debouncer(
+			Duration::from_millis(100),
+			None,
+			move |result: DebounceEventResult| match result {
+				Ok(events) => {
+					let is_read = |e: &DebouncedEvent| matches!(e.kind, EventKind::Access(_));
+					if !events.iter().all(is_read) {
+						on_file_changed.notify_waiters();
+					}
+				}
+				Err(e) => error!("Collection file watcher error: `{e:?}`"),
+			},
+		)?;
 
 		let mount_dirs = config_manager.get_mounts().await;
 		for mount_dir in &mount_dirs {
-			if let Err(e) = debouncer
-				.watcher()
-				.watch(&mount_dir.source, notify::RecursiveMode::Recursive)
-			{
+			if let Err(e) = debouncer.watch(&mount_dir.source, RecursiveMode::Recursive) {
 				error!("Failed to setup file watcher for `{mount_dir:#?}`: {e}");
 			}
 		}

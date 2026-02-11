@@ -5,8 +5,10 @@ use std::{
 };
 
 use log::{error, info};
-use notify::{RecommendedWatcher, RecursiveMode, Watcher};
-use notify_debouncer_full::{Debouncer, FileIdMap};
+use notify_debouncer_full::{
+	notify::{EventKind, RecommendedWatcher, RecursiveMode},
+	DebounceEventResult, DebouncedEvent, Debouncer, RecommendedCache,
+};
 use regex::Regex;
 use tokio::sync::{futures::Notified, Notify, RwLock};
 
@@ -70,7 +72,7 @@ pub struct Manager {
 	config: Arc<RwLock<Config>>,
 	auth_secret: auth::Secret,
 	#[allow(dead_code)]
-	file_watcher: Arc<Debouncer<RecommendedWatcher, FileIdMap>>,
+	file_watcher: Arc<Debouncer<RecommendedWatcher, RecommendedCache>>,
 	change_notify: Arc<Notify>,
 }
 
@@ -94,14 +96,18 @@ impl Manager {
 		let notify = Arc::new(Notify::new());
 		let mut debouncer = notify_debouncer_full::new_debouncer(Duration::from_secs(1), None, {
 			let notify = notify.clone();
-			move |_| {
-				notify.notify_waiters();
+			move |result: DebounceEventResult| match result {
+				Ok(events) => {
+					let is_read = |e: &DebouncedEvent| matches!(e.kind, EventKind::Access(_));
+					if !events.iter().all(is_read) {
+						notify.notify_waiters();
+					}
+				}
+				Err(e) => error!("Config file watcher error: `{e:?}`"),
 			}
 		})?;
 
-		debouncer
-			.watcher()
-			.watch(config_file_path, RecursiveMode::NonRecursive)?;
+		debouncer.watch(config_file_path, RecursiveMode::NonRecursive)?;
 
 		let manager = Self {
 			config_file_path: config_file_path.to_owned(),

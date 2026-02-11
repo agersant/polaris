@@ -33,8 +33,8 @@ mp4ameta = "0.13.0"
 native_db = "0.8.2"
 native_model = "0.4.20"
 nohash-hasher = "0.2.0"
-notify = { version = "6.1.1", default-features = false }
-notify-debouncer-full = { version = "0.3.1", default-features = false }
+notify = { version = "8.2.0", default-features = false }
+notify-debouncer-full = { version = "0.7.0", default-features = false }
 num_cpus = "1.17.0"
 # TODO upstream PR: https://github.com/yboettcher/opus_headers/pull/7
 opus_headers = { git = "https://github.com/agersant/opus_headers", branch = "multivalue" }
