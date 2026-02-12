@@ -14,7 +14,6 @@ RUNSTATEDIR ?= $(LOCALSTATEDIR)/run
 %-system: export POLARIS_WEB_DIR := $(DATADIR)/polaris/web
 %-system: export POLARIS_CONFIG_DIR := $(SYSCONFDIR)/polaris
 %-system: export POLARIS_DATA_DIR := $(LOCALSTATEDIR)/lib/polaris
-%-system: export POLARIS_DB_DIR := $(LOCALSTATEDIR)/lib/polaris
 %-system: export POLARIS_LOG_DIR := $(LOCALSTATEDIR)/log/polaris
 %-system: export POLARIS_CACHE_DIR := $(LOCALSTATEDIR)/cache/polaris
 %-system: export POLARIS_PID_DIR := $(RUNSTATEDIR)/polaris
@@ -35,7 +34,6 @@ endif
 %-xdg: export POLARIS_WEB_DIR := $(XDG_DATADIR)/web
 %-xdg: export POLARIS_CONFIG_DIR := $(XDG_CONFIGDIR)
 %-xdg: export POLARIS_DATA_DIR := $(XDG_DATADIR)
-%-xdg: export POLARIS_DB_DIR := $(XDG_DATADIR)
 %-xdg: export POLARIS_LOG_DIR := $(XDG_CACHEDIR)
 %-xdg: export POLARIS_CACHE_DIR := $(XDG_CACHEDIR)
 %-xdg: export POLARIS_PID_DIR := $(XDG_PIDDIR)
@@ -64,7 +62,6 @@ list-paths:
 	$(info POLARIS_WEB_DIR is $(POLARIS_WEB_DIR))
 	$(info POLARIS_CONFIG_DIR is $(POLARIS_CONFIG_DIR))
 	$(info POLARIS_DATA_DIR is $(POLARIS_DATA_DIR))
-	$(info POLARIS_DB_DIR is $(POLARIS_DB_DIR))
 	$(info POLARIS_LOG_DIR is $(POLARIS_LOG_DIR))
 	$(info POLARIS_CACHE_DIR is $(POLARIS_CACHE_DIR))
 	$(info POLARIS_PID_DIR is $(POLARIS_PID_DIR))
@@ -95,7 +92,6 @@ uninstall-data:
 	rm -rf $(POLARIS_WEB_DIR)
 	rm -rf $(POLARIS_CONFIG_DIR)
 	rm -rf $(POLARIS_DATA_DIR)
-	rm -rf $(POLARIS_DB_DIR)
 	rm -rf $(POLARIS_LOG_DIR)
 	rm -rf $(POLARIS_CACHE_DIR)
 	rm -rf $(POLARIS_PID_DIR)
