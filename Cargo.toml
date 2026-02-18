@@ -67,6 +67,7 @@ ureq = { version = "3.2.0", default-features = false, features = ["rustls"] }
 utoipa = { version = "5.4.0", features = ["axum_extras"] }
 utoipa-axum = { version = "0.2.0" }
 utoipa-scalar = { version = "0.3.0", features = ["axum"] }
+zip = "8.0.0"
 
 [dependencies.axum]
 version = "0.8.8"

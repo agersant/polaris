@@ -9,6 +9,7 @@ use axum::{
 use axum_extra::headers::Range;
 use axum_extra::TypedHeader;
 use axum_range::{KnownSize, Ranged};
+use http::header;
 use regex::Regex;
 use tower_http::{compression::CompressionLayer, CompressionLevel};
 use utoipa_axum::{router::OpenApiRouter, routes};
@@ -1023,19 +1024,57 @@ async fn delete_playlist(
 	get,
 	path = "/playlists/export",
 	tag = "Playlists",
-	description = "Export playlist data as m3u files.",
+	description = "Export playlists as a zip archive of m3u files.",
 	security(
 		("auth_token" = []),
 		("auth_query_param" = []),
 	),
-	request_body = dto::ExportPlaylistsOptions,
+	params(dto::ExportPlaylistsOptions),
 )]
 async fn export_playlists(
-	_auth: Auth,
-	State(_playlist_manager): State<playlist::Manager>,
-	_options: Json<dto::ExportPlaylistsOptions>,
-) -> Result<Vec<u8>, APIError> {
-	todo!()
+	auth: Auth,
+	State(config_manager): State<config::Manager>,
+	State(playlist_manager): State<playlist::Manager>,
+	Query(options): Query<dto::ExportPlaylistsOptions>,
+) -> impl IntoResponse {
+	let user = auth.get_username().to_string();
+	let is_admin = config_manager.get_user(&user).await?.is_admin();
+
+	let all_users = config_manager
+		.get_users()
+		.await
+		.iter()
+		.map(|u| u.name.to_string())
+		.collect();
+
+	let export_users = match options.all_users {
+		None | Some(false) => vec![user.clone()],
+		Some(true) if is_admin => all_users,
+		Some(true) => return Err(APIError::AdminPermissionRequired),
+	};
+
+	let body = playlist_manager.export_playlists(&export_users).await?;
+
+	let user_suffix: Option<String> = match options.all_users {
+		Some(true) => None,
+		None | Some(false) => Some(
+			user.chars()
+				.map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
+				.collect(),
+		),
+	};
+
+	let filename = match user_suffix {
+		Some(suffix) => format!("polaris-playlists-{suffix}.zip"),
+		None => "polaris-playlists.zip".to_owned(),
+	};
+
+	let headers = [(
+		header::CONTENT_DISPOSITION,
+		format!(r#"attachment; filename="{filename}""#),
+	)];
+
+	Ok((headers, body))
 }
 
 // TODO import_playlists endpoint
