@@ -38,6 +38,7 @@ impl IntoResponse for APIError {
 			APIError::OwnAdminPrivilegeRemoval => StatusCode::CONFLICT,
 			APIError::PasswordHashing => StatusCode::INTERNAL_SERVER_ERROR,
 			APIError::PlaylistNotFound => StatusCode::NOT_FOUND,
+			APIError::PlaylistExportError => StatusCode::INTERNAL_SERVER_ERROR,
 			APIError::SearchQueryParse => StatusCode::BAD_REQUEST,
 			APIError::ThumbnailFlacDecoding(_, _) => StatusCode::INTERNAL_SERVER_ERROR,
 			APIError::ThumbnailFileIO => StatusCode::NOT_FOUND,

@@ -325,6 +325,18 @@ pub fn delete_playlist(name: &str) -> Request<()> {
 		.unwrap()
 }
 
+pub fn export_playlists(all_users: Option<bool>) -> Request<()> {
+	let mut endpoint = "/api/playlists/export".to_owned();
+	if let Some(b) = all_users {
+		endpoint.push_str(&format!("?all_users={b}"));
+	}
+	Request::builder()
+		.method(Method::GET)
+		.uri(endpoint)
+		.body(())
+		.unwrap()
+}
+
 fn url_encode(input: &str) -> String {
 	percent_encode(input.as_bytes(), NON_ALPHANUMERIC).to_string()
 }

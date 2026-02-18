@@ -63,6 +63,8 @@ pub enum APIError {
 	PasswordHashing,
 	#[error("Playlist not found")]
 	PlaylistNotFound,
+	#[error("Playlist export error")]
+	PlaylistExportError,
 	#[error("Could not parse search query")]
 	SearchQueryParse,
 	#[error("Could not decode thumbnail from flac file `{0}`:\n\n{1}")]
@@ -141,6 +143,7 @@ impl From<app::Error> for APIError {
 			app::Error::GenreNotFound => APIError::GenreNotFound,
 			app::Error::SongNotFound => APIError::SongNotFound,
 			app::Error::PlaylistNotFound => APIError::PlaylistNotFound,
+			app::Error::PlaylistExportZip => APIError::PlaylistExportError,
 			app::Error::SearchQueryParse => APIError::SearchQueryParse,
 			app::Error::EmbeddedArtworkNotFound(_) => APIError::EmbeddedArtworkNotFound,
 

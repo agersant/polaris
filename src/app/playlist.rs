@@ -1,5 +1,6 @@
 use core::clone::Clone;
 use std::collections::{BTreeMap, HashMap};
+use std::io::{Cursor, Write};
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -8,6 +9,7 @@ use native_db::*;
 use native_model::{native_model, Model};
 use serde::{Deserialize, Serialize};
 use tokio::task::spawn_blocking;
+use zip::{write::FileOptions, ZipWriter};
 
 use crate::app::{index, ndb, Error};
 
@@ -201,6 +203,36 @@ impl Manager {
 			}
 		})
 		.await?
+	}
+
+	pub async fn export_playlist(&self, name: &str, owner: &str) -> Result<Vec<u8>, Error> {
+		let playlist = self.read_playlist(name, owner).await?;
+		let mut m3u = String::with_capacity(playlist.songs.len() * 128);
+		for song in &playlist.songs {
+			m3u.push_str(&song.to_string_lossy());
+			m3u.push('\n');
+		}
+		Ok(m3u.into_bytes())
+	}
+
+	pub async fn export_playlists<T: AsRef<str>>(&self, users: &[T]) -> Result<Vec<u8>, Error> {
+		let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
+		for user in users {
+			let user = user.as_ref();
+			let playlists = self.list_playlists(user).await?;
+			for header in playlists {
+				let name = &header.name;
+				let exported = self.export_playlist(name, user).await?;
+				zip.start_file(format!("{user}-{name}.m3u8"), FileOptions::DEFAULT)
+					.or(Err(Error::PlaylistExportZip))?;
+				zip.write_all(&exported).or(Err(Error::PlaylistExportZip))?;
+			}
+		}
+
+		let zipped = zip
+			.finish_into_readable()
+			.or(Err(Error::PlaylistExportZip))?;
+		Ok(zipped.into_inner().into_inner())
 	}
 }
 

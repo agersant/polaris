@@ -119,6 +119,8 @@ pub enum Error {
 	SearchQueryParse,
 	#[error("Playlist not found")]
 	PlaylistNotFound,
+	#[error("Playlist export zip error")]
+	PlaylistExportZip,
 	#[error("No embedded artwork was found in `{0}`")]
 	EmbeddedArtworkNotFound(PathBuf),
 
