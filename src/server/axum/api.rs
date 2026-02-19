@@ -9,7 +9,7 @@ use axum::{
 use axum_extra::headers::Range;
 use axum_extra::TypedHeader;
 use axum_range::{KnownSize, Ranged};
-use http::header;
+use http::{header, HeaderMap};
 use regex::Regex;
 use tower_http::{compression::CompressionLayer, CompressionLevel};
 use utoipa_axum::{router::OpenApiRouter, routes};
@@ -1029,50 +1029,27 @@ async fn delete_playlist(
 		("auth_token" = []),
 		("auth_query_param" = []),
 	),
-	params(dto::ExportPlaylistsOptions),
 )]
 async fn export_playlists(
 	auth: Auth,
-	State(config_manager): State<config::Manager>,
 	State(playlist_manager): State<playlist::Manager>,
-	Query(options): Query<dto::ExportPlaylistsOptions>,
-) -> impl IntoResponse {
-	let user = auth.get_username().to_string();
-	let is_admin = config_manager.get_user(&user).await?.is_admin();
+) -> Result<(HeaderMap, Vec<u8>), APIError> {
+	let user = auth.get_username();
+	let body = playlist_manager.export_playlists(user).await?;
 
-	let all_users = config_manager
-		.get_users()
-		.await
-		.iter()
-		.map(|u| u.name.to_string())
-		.collect();
+	let suffix = user
+		.chars()
+		.map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
+		.collect::<String>();
 
-	let export_users = match options.all_users {
-		None | Some(false) => vec![user.clone()],
-		Some(true) if is_admin => all_users,
-		Some(true) => return Err(APIError::AdminPermissionRequired),
-	};
+	let filename = format!("polaris-playlists-{suffix}.zip");
 
-	let body = playlist_manager.export_playlists(&export_users).await?;
-
-	let user_suffix: Option<String> = match options.all_users {
-		Some(true) => None,
-		None | Some(false) => Some(
-			user.chars()
-				.map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
-				.collect(),
-		),
-	};
-
-	let filename = match user_suffix {
-		Some(suffix) => format!("polaris-playlists-{suffix}.zip"),
-		None => "polaris-playlists.zip".to_owned(),
-	};
-
-	let headers = [(
+	let headers = HeaderMap::from_iter([(
 		header::CONTENT_DISPOSITION,
-		format!(r#"attachment; filename="{filename}""#),
-	)];
+		format!(r#"attachment; filename="{filename}""#)
+			.parse()
+			.unwrap(),
+	)]);
 
 	Ok((headers, body))
 }

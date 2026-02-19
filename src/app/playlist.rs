@@ -215,18 +215,17 @@ impl Manager {
 		Ok(m3u.into_bytes())
 	}
 
-	pub async fn export_playlists<T: AsRef<str>>(&self, users: &[T]) -> Result<Vec<u8>, Error> {
+	pub async fn export_playlists<T: AsRef<str>>(&self, user: T) -> Result<Vec<u8>, Error> {
+		let user = user.as_ref();
+		let playlists = self.list_playlists(user).await?;
+
 		let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
-		for user in users {
-			let user = user.as_ref();
-			let playlists = self.list_playlists(user).await?;
-			for header in playlists {
-				let name = &header.name;
-				let exported = self.export_playlist(name, user).await?;
-				zip.start_file(format!("{user}-{name}.m3u8"), FileOptions::DEFAULT)
-					.or(Err(Error::PlaylistExportZip))?;
-				zip.write_all(&exported).or(Err(Error::PlaylistExportZip))?;
-			}
+		for header in playlists {
+			let name = &header.name;
+			let exported = self.export_playlist(name, user).await?;
+			zip.start_file(format!("{user}-{name}.m3u8"), FileOptions::DEFAULT)
+				.or(Err(Error::PlaylistExportZip))?;
+			zip.write_all(&exported).or(Err(Error::PlaylistExportZip))?;
 		}
 
 		let zipped = zip

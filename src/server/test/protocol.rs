@@ -325,14 +325,10 @@ pub fn delete_playlist(name: &str) -> Request<()> {
 		.unwrap()
 }
 
-pub fn export_playlists(all_users: Option<bool>) -> Request<()> {
-	let mut endpoint = "/api/playlists/export".to_owned();
-	if let Some(b) = all_users {
-		endpoint.push_str(&format!("?all_users={b}"));
-	}
+pub fn export_playlists() -> Request<()> {
 	Request::builder()
 		.method(Method::GET)
-		.uri(endpoint)
+		.uri("/api/playlists/export")
 		.body(())
 		.unwrap()
 }

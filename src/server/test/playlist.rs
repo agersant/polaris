@@ -158,7 +158,7 @@ async fn export_playlists_golden_path() {
 		assert_eq!(response.status(), StatusCode::OK);
 	}
 
-	let request = protocol::export_playlists(None);
+	let request = protocol::export_playlists();
 	let response = service.fetch_bytes(&request).await;
 	assert_eq!(response.status(), StatusCode::OK);
 	let content_disposition = response.headers().get(header::CONTENT_DISPOSITION).unwrap();
@@ -173,14 +173,4 @@ async fn export_playlists_golden_path() {
 		.read_to_end(&mut expected)
 		.unwrap();
 	assert_eq!(&expected, response.body());
-}
-
-#[tokio::test]
-async fn export_playlists_all_users_needs_admin() {
-	let mut service = ServiceType::new(&test_name!()).await;
-	service.complete_initial_setup().await;
-	service.login().await;
-	let request = protocol::export_playlists(Some(true));
-	let response = service.fetch(&request).await;
-	assert_eq!(response.status(), StatusCode::FORBIDDEN);
 }

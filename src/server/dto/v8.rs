@@ -126,12 +126,6 @@ pub struct SavePlaylistInput {
 	pub tracks: Vec<PathBuf>,
 }
 
-#[derive(Clone, Serialize, Deserialize, IntoParams, ToSchema)]
-pub struct ExportPlaylistsOptions {
-	#[schema(examples(true, false))]
-	pub all_users: Option<bool>,
-}
-
 #[derive(Serialize, Deserialize, ToSchema)]
 pub struct User {
 	#[schema(examples("alice"))]
