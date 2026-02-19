@@ -1,6 +1,6 @@
 use std::fs::File;
 use std::io::Read;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use http::{header, StatusCode};
 
@@ -168,7 +168,20 @@ async fn export_playlists_golden_path() {
 	);
 
 	let mut expected = Vec::new();
-	File::open("test-data/playlists/export-playlists-golden-path.zip")
+
+	let reference_file = [
+		"test-data",
+		"playlists",
+		if cfg!(target_os = "windows") {
+			"export-golden-path-windows.zip"
+		} else {
+			"export-golden-path-unix.zip"
+		},
+	]
+	.iter()
+	.collect::<PathBuf>();
+
+	File::open(reference_file)
 		.unwrap()
 		.read_to_end(&mut expected)
 		.unwrap();
