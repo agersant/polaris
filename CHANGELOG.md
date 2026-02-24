@@ -11,6 +11,7 @@
 - Improved parsing of `year` field in song metadata to be more lenient. (contribution by @saecki)
 - Improved performance of indexing m4a files. (contribution by @saecki)
 - Improved performance of search functionality.
+- Fixed a bug where durations read from TLEN frame within ID3 tags was wildly incorrect.
 - Fixed a typo in the log message that is written after applying configuration changes. (contribution by @luzpaz)
 - Fixed incorrect CLI help message about possible `--log-level` values.
 - Minor improvements to CLI output and options parsing.

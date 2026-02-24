@@ -94,7 +94,7 @@ fn read_id3_from_file<P: AsRef<Path>>(file: &fs::File, path: P) -> Result<SongMe
 	let album_artists = tag.get_text_values("TPE2");
 	let album = tag.album().map(|s| s.to_string());
 	let title = tag.title().map(|s| s.to_string());
-	let duration = tag.duration();
+	let duration = tag.duration().map(|d| d / 1000);
 	let disc_number = tag.disc();
 	let track_number = tag.track();
 	let year = tag
