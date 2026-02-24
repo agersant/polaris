@@ -29,6 +29,7 @@
 - Fixed a bug where song details would sometimes not display in the queue panel.
 - Fixed a bug where opus files would display a broken waveform seekbar (now a plain rectangle).
 - Fixed a bug where album page could display `undefined` as album year.
+- Fixed a bug where long file names could cause slight alignment issues in the file browser.
 - Fixed a bug where album details page did not have the intended padding when scrolling.
 
 ### API
