@@ -35,10 +35,15 @@ impl IntoResponse for APIError {
 			APIError::InvalidAlbumArtPattern => StatusCode::BAD_REQUEST,
 			APIError::InvalidDDNSURL => StatusCode::BAD_REQUEST,
 			APIError::Io(_, _) => StatusCode::INTERNAL_SERVER_ERROR,
+			APIError::MultipartError(_, s) => {
+				StatusCode::from_u16(s).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR)
+			}
 			APIError::OwnAdminPrivilegeRemoval => StatusCode::CONFLICT,
 			APIError::PasswordHashing => StatusCode::INTERNAL_SERVER_ERROR,
 			APIError::PlaylistNotFound => StatusCode::NOT_FOUND,
 			APIError::PlaylistExportError => StatusCode::INTERNAL_SERVER_ERROR,
+			APIError::PlaylistImportError => StatusCode::BAD_REQUEST,
+			APIError::InvalidPlaylistTextEncoding => StatusCode::BAD_REQUEST,
 			APIError::SearchQueryParse => StatusCode::BAD_REQUEST,
 			APIError::ThumbnailFlacDecoding(_, _) => StatusCode::INTERNAL_SERVER_ERROR,
 			APIError::ThumbnailFileIO => StatusCode::NOT_FOUND,

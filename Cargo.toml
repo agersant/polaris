@@ -73,7 +73,7 @@ zip = "8.0.0"
 [dependencies.axum]
 version = "0.8.1"
 default-features = false
-features = ["http1", "json", "tokio", "tower-log", "query"]
+features = ["http1", "json", "tokio", "tower-log", "query", "multipart"]
 
 [dependencies.image]
 version = "0.25.2"

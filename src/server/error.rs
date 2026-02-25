@@ -57,6 +57,8 @@ pub enum APIError {
 	InvalidDDNSURL,
 	#[error("File I/O error for `{0}`:\n\n{1}")]
 	Io(PathBuf, std::io::Error),
+	#[error("HTTP multipart decoding error")]
+	MultipartError(String, u16),
 	#[error("Cannot remove your own admin privilege")]
 	OwnAdminPrivilegeRemoval,
 	#[error("Could not hash password")]
@@ -65,6 +67,10 @@ pub enum APIError {
 	PlaylistNotFound,
 	#[error("Playlist export error")]
 	PlaylistExportError,
+	#[error("Playlist import error")]
+	PlaylistImportError,
+	#[error("Invalid text encoding while parsing playlist (must be utf-8)")]
+	InvalidPlaylistTextEncoding,
 	#[error("Could not parse search query")]
 	SearchQueryParse,
 	#[error("Could not decode thumbnail from flac file `{0}`:\n\n{1}")]
@@ -144,6 +150,8 @@ impl From<app::Error> for APIError {
 			app::Error::SongNotFound => APIError::SongNotFound,
 			app::Error::PlaylistNotFound => APIError::PlaylistNotFound,
 			app::Error::PlaylistExportZip => APIError::PlaylistExportError,
+			app::Error::PlaylistImportZip => APIError::PlaylistImportError,
+			app::Error::InvalidPlaylistTextEncoding => APIError::InvalidPlaylistTextEncoding,
 			app::Error::SearchQueryParse => APIError::SearchQueryParse,
 			app::Error::EmbeddedArtworkNotFound(_) => APIError::EmbeddedArtworkNotFound,
 
