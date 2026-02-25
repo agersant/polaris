@@ -54,7 +54,11 @@ impl ContextBuilder {
 		let scanner = scanner::Scanner::new(index_manager.clone(), config_manager.clone())
 			.await
 			.unwrap();
-		let playlist_manager = playlist::Manager::new(ndb_manager.clone());
+		let playlist_manager = playlist::Manager::new(
+			config_manager.clone(),
+			index_manager.clone(),
+			ndb_manager.clone(),
+		);
 
 		config_manager.apply_config(self.config).await.unwrap();
 
