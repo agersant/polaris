@@ -272,6 +272,17 @@ impl Manager {
 		config.resolve_virtual_path(virtual_path)
 	}
 
+	pub async fn virtualize_paths<P: AsRef<Path>>(
+		&self,
+		real_paths: &[P],
+	) -> Vec<Result<PathBuf, Error>> {
+		let config = self.config.read().await;
+		real_paths
+			.iter()
+			.map(|p| config.virtualize_path(p))
+			.collect()
+	}
+
 	pub async fn set_mounts(&self, mount_dirs: Vec<storage::MountDir>) -> Result<(), Error> {
 		self.mutate_fallible(|c| c.set_mounts(mount_dirs)).await
 	}
