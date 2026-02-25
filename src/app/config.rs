@@ -283,6 +283,7 @@ impl Manager {
 			.collect()
 	}
 
+	#[allow(unused)]
 	pub async fn virtualize_path<P: AsRef<Path>>(&self, real_path: P) -> Result<PathBuf, Error> {
 		let config = self.config.read().await;
 		config.virtualize_path(real_path)
