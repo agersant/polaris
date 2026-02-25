@@ -1,7 +1,8 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 use axum::{
-	extract::{DefaultBodyLimit, Path, Query, State},
+	extract::{multipart::MultipartError, DefaultBodyLimit, Multipart, Path, Query, State},
 	response::IntoResponse,
 	routing::get,
 	Json,
@@ -63,6 +64,7 @@ pub fn router() -> OpenApiRouter<App> {
 		.routes(routes!(get_playlists))
 		.routes(routes!(put_playlist, get_playlist, delete_playlist))
 		.routes(routes!(export_playlists))
+		.routes(routes!(import_playlists))
 		// Media
 		.routes(routes!(get_songs))
 		.routes(routes!(get_peaks))
@@ -948,18 +950,11 @@ async fn get_playlists(
 async fn put_playlist(
 	auth: Auth,
 	State(playlist_manager): State<playlist::Manager>,
-	State(index_manager): State<index::Manager>,
 	Path(name): Path<String>,
 	playlist: Json<dto::SavePlaylistInput>,
 ) -> Result<(), APIError> {
-	let songs = index_manager
-		.get_songs(playlist.tracks.clone())
-		.await
-		.into_iter()
-		.filter_map(|s| s.ok())
-		.collect();
 	playlist_manager
-		.save_playlist(&name, auth.get_username(), songs)
+		.save_playlist(&name, auth.get_username(), playlist.tracks.clone())
 		.await?;
 	Ok(())
 }
@@ -1054,10 +1049,41 @@ async fn export_playlists(
 	Ok((headers, body))
 }
 
-// TODO import_playlists endpoint
-// ForMe VS SpecificUser VS User from filename
-// Body is multipart/form-data w/ m3u files or zip files containing m3u files
-// dry_run flag? reports missing songs, compare to existing playlist on name conflict (identical content or song count + duration comparison)
+#[utoipa::path(
+	put,
+	path = "/playlists/import",
+	tag = "Playlists",
+	description = "Import playlists from files. Each file can be an m3u8 playlist or a zip archive containing one or more m3u8 playlists.",
+	request_body(content_type = "multipart/form-data", description = "Playlist files"),
+	security(
+		("auth_token" = []),
+		("auth_query_param" = []),
+	),
+)]
+async fn import_playlists(
+	auth: Auth,
+	State(playlist_manager): State<playlist::Manager>,
+	mut multipart: Multipart,
+) -> Result<(), APIError> {
+	let multipart_error =
+		|e: MultipartError| APIError::MultipartError(e.body_text(), e.status().as_u16());
+
+	let mut files = HashMap::new();
+	while let Some(field) = multipart.next_field().await.map_err(multipart_error)? {
+		let name = match field.name() {
+			Some(n) => n.to_string(),
+			None => continue,
+		};
+		let data = field.bytes().await.map_err(multipart_error)?.to_vec();
+		files.insert(name.to_string(), data);
+	}
+
+	playlist_manager
+		.import_playlists(auth.get_username(), files)
+		.await?;
+
+	Ok(())
+}
 
 #[utoipa::path(
 	get,
