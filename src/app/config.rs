@@ -272,6 +272,22 @@ impl Manager {
 		config.resolve_virtual_path(virtual_path)
 	}
 
+	pub async fn resolve_virtual_paths<P: AsRef<Path>>(
+		&self,
+		virtual_paths: &[P],
+	) -> Vec<Result<PathBuf, Error>> {
+		let config = self.config.read().await;
+		virtual_paths
+			.iter()
+			.map(|p| config.resolve_virtual_path(p))
+			.collect()
+	}
+
+	pub async fn virtualize_path<P: AsRef<Path>>(&self, real_path: P) -> Result<PathBuf, Error> {
+		let config = self.config.read().await;
+		config.virtualize_path(real_path)
+	}
+
 	pub async fn virtualize_paths<P: AsRef<Path>>(
 		&self,
 		real_paths: &[P],
