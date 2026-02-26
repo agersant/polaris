@@ -31,16 +31,18 @@ pub use crate::server::axum::test::ServiceType;
 pub trait TestService {
 	async fn new(test_name: &str) -> Self;
 
-	async fn execute_request<T: Serialize + Clone + 'static>(
+	async fn send_json<T: Serialize + Clone + 'static>(
 		&mut self,
 		request: &Request<T>,
 	) -> (Builder, Option<Bytes>);
+
+	async fn send_binary(&mut self, request: &Request<Vec<u8>>) -> (Builder, Option<Bytes>);
 
 	async fn fetch<T: Serialize + Clone + 'static>(
 		&mut self,
 		request: &Request<T>,
 	) -> Response<()> {
-		let (response_builder, _body) = self.execute_request(request).await;
+		let (response_builder, _body) = self.send_json(request).await;
 		response_builder.body(()).unwrap()
 	}
 
@@ -48,7 +50,7 @@ pub trait TestService {
 		&mut self,
 		request: &Request<T>,
 	) -> Response<Vec<u8>> {
-		let (response_builder, body) = self.execute_request(request).await;
+		let (response_builder, body) = self.send_json(request).await;
 		response_builder
 			.body(body.unwrap().deref().to_owned())
 			.unwrap()
@@ -58,7 +60,7 @@ pub trait TestService {
 		&mut self,
 		request: &Request<T>,
 	) -> Response<U> {
-		let (response_builder, body) = self.execute_request(request).await;
+		let (response_builder, body) = self.send_json(request).await;
 		let body = serde_json::from_slice(&body.unwrap()).unwrap();
 		response_builder.body(body).unwrap()
 	}

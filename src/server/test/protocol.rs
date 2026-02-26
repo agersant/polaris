@@ -1,5 +1,6 @@
 use http::{Method, Request};
 use percent_encoding::{percent_encode, NON_ALPHANUMERIC};
+use std::collections::HashMap;
 use std::path::Path;
 
 use crate::server::dto;
@@ -330,6 +331,34 @@ pub fn export_playlists() -> Request<()> {
 		.method(Method::GET)
 		.uri("/api/playlists/export")
 		.body(())
+		.unwrap()
+}
+
+pub fn import_playlists(files: HashMap<String, Vec<u8>>) -> Request<Vec<u8>> {
+	let mut body: Vec<u8> = vec![];
+	for (name, mut data) in files {
+		body.append(&mut "--frontier\r\n".bytes().collect());
+		body.append(
+			&mut format!("Content-Disposition: form-data; name=\"{name}\"\r\n")
+				.bytes()
+				.collect(),
+		);
+		body.append(
+			&mut "Content-Type: application/octet-stream\r\n"
+				.bytes()
+				.collect(),
+		);
+		body.append(&mut "\r\n".bytes().collect());
+		body.append(&mut data);
+		body.append(&mut "\r\n".bytes().collect());
+	}
+	body.append(&mut "--frontier--\r\n".bytes().collect());
+
+	Request::builder()
+		.method(Method::PUT)
+		.header("Content-Type", "multipart/form-data; boundary=frontier")
+		.uri("/api/playlists/import")
+		.body(body)
 		.unwrap()
 }
 
