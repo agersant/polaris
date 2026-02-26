@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -186,4 +187,41 @@ async fn export_playlists_golden_path() {
 		.read_to_end(&mut expected)
 		.unwrap();
 	assert_eq!(&expected, response.body());
+}
+
+#[tokio::test]
+async fn import_playlists_golden_path() {
+	let mut service = ServiceType::new(&test_name!()).await;
+	service.complete_initial_setup().await;
+	service.login_admin().await;
+	service.index().await;
+	service.login().await;
+
+	let reference_file = [
+		"test-data",
+		"playlists",
+		if cfg!(target_os = "windows") {
+			"import-golden-path-windows.zip"
+		} else {
+			"import-golden-path-unix.zip"
+		},
+	]
+	.iter()
+	.collect::<PathBuf>();
+
+	let mut zip_data = vec![];
+	File::open(reference_file)
+		.unwrap()
+		.read_to_end(&mut zip_data)
+		.unwrap();
+	let payload = HashMap::from_iter([("file.zip".to_owned(), zip_data)]);
+
+	let request = protocol::import_playlists(payload);
+	let (r, _) = service.send_binary(&request).await;
+	assert_eq!(r.body(()).unwrap().status(), StatusCode::OK);
+
+	let request = protocol::read_playlist::<V8>(TEST_PLAYLIST_NAME);
+	let response = service.fetch_json::<_, dto::Playlist>(&request).await;
+	assert_eq!(response.status(), StatusCode::OK);
+	assert_eq!(response.body().songs.paths.len(), 2)
 }
