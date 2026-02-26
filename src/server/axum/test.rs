@@ -2,7 +2,7 @@ use std::net::SocketAddr;
 use std::str::FromStr;
 
 use axum::body::Bytes;
-use axum_test::TestServer;
+use axum_test::{TestRequest, TestResponse, TestServer};
 use http::{response::Builder, Method, Request, Response};
 use serde::Serialize;
 
@@ -46,12 +46,31 @@ impl TestService for AxumTestService {
 		}
 	}
 
-	async fn execute_request<T: Serialize + Clone + 'static>(
+	async fn send_json<T: Serialize + Clone + 'static>(
 		&mut self,
 		request: &Request<T>,
 	) -> (Builder, Option<Bytes>) {
-		let url = request.uri().to_string();
+		let axum_request = self.prepare_request(request);
 		let body = request.body().clone();
+		let axum_response = axum_request.json(&body).await;
+		Self::prepare_response(axum_response)
+	}
+
+	async fn send_binary(&mut self, request: &Request<Vec<u8>>) -> (Builder, Option<Bytes>) {
+		let axum_request = self.prepare_request(request);
+		let body = request.body().clone();
+		let axum_response = axum_request.bytes(body.into()).await;
+		Self::prepare_response(axum_response)
+	}
+
+	fn set_authorization(&mut self, authorization: Option<dto::Authorization>) {
+		self.authorization = authorization;
+	}
+}
+
+impl AxumTestService {
+	fn prepare_request<T>(&mut self, request: &Request<T>) -> TestRequest {
+		let url = request.uri().to_string();
 
 		let mut axum_request = match *request.method() {
 			Method::GET => self.server.get(&url),
@@ -69,8 +88,10 @@ impl TestService for AxumTestService {
 			axum_request = axum_request.authorization_bearer(authorization.token.clone());
 		}
 
-		let axum_response = axum_request.json(&body).await;
+		axum_request
+	}
 
+	fn prepare_response(axum_response: TestResponse) -> (Builder, Option<Bytes>) {
 		let mut response_builder = Response::builder().status(axum_response.status_code());
 		let headers = response_builder.headers_mut().unwrap();
 		for (name, value) in axum_response.headers().iter() {
@@ -85,9 +106,5 @@ impl TestService for AxumTestService {
 		};
 
 		(response_builder, body)
-	}
-
-	fn set_authorization(&mut self, authorization: Option<dto::Authorization>) {
-		self.authorization = authorization;
 	}
 }
