@@ -123,8 +123,8 @@ pub enum Error {
 	PlaylistExportZip,
 	#[error("Playlist import zip error")]
 	PlaylistImportZip,
-	#[error("Text encoding error in m3u file (must be UTF-8)")]
-	InvalidPlaylistTextEncoding,
+	#[error("Text encoding error in playlist file `{0}` (must be UTF-8)")]
+	InvalidPlaylistTextEncoding(String),
 	#[error("No embedded artwork was found in `{0}`")]
 	EmbeddedArtworkNotFound(PathBuf),
 
