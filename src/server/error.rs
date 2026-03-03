@@ -71,8 +71,8 @@ pub enum APIError {
 	PlaylistExportError,
 	#[error("Playlist import error")]
 	PlaylistImportError,
-	#[error("Invalid text encoding while parsing playlist (must be utf-8)")]
-	InvalidPlaylistTextEncoding,
+	#[error("Text encoding error in playlist file `{0}` (must be UTF-8)")]
+	InvalidPlaylistTextEncoding(String),
 	#[error("Could not parse search query")]
 	SearchQueryParse,
 	#[error("Could not decode thumbnail from flac file `{0}`:\n\n{1}")]
@@ -93,8 +93,8 @@ pub enum APIError {
 	AudioEmpty(PathBuf),
 	#[error("User not found")]
 	UserNotFound,
-	#[error("Path not found in virtual filesystem")]
-	VFSPathNotFound,
+	#[error("Path not found in virtual filesystem: `{0}`")]
+	VFSPathNotFound(PathBuf),
 }
 
 impl From<app::Error> for APIError {
@@ -142,8 +142,8 @@ impl From<app::Error> for APIError {
 			app::Error::IndexDeserialization => APIError::Internal,
 			app::Error::IndexSerialization => APIError::Internal,
 
-			app::Error::CouldNotMapToRealPath(_) => APIError::VFSPathNotFound,
-			app::Error::CouldNotMapToVirtualPath(_) => APIError::Internal,
+			app::Error::CouldNotMapToRealPath(p) => APIError::VFSPathNotFound(p),
+			app::Error::CouldNotMapToVirtualPath(p) => APIError::VFSPathNotFound(p),
 			app::Error::UserNotFound => APIError::UserNotFound,
 			app::Error::DirectoryNotFound(d) => APIError::DirectoryNotFound(d),
 			app::Error::ArtistNotFound => APIError::ArtistNotFound,
@@ -153,7 +153,7 @@ impl From<app::Error> for APIError {
 			app::Error::PlaylistNotFound => APIError::PlaylistNotFound,
 			app::Error::PlaylistExportZip => APIError::PlaylistExportError,
 			app::Error::PlaylistImportZip => APIError::PlaylistImportError,
-			app::Error::InvalidPlaylistTextEncoding => APIError::InvalidPlaylistTextEncoding,
+			app::Error::InvalidPlaylistTextEncoding(s) => APIError::InvalidPlaylistTextEncoding(s),
 			app::Error::SearchQueryParse => APIError::SearchQueryParse,
 			app::Error::EmbeddedArtworkNotFound(_) => APIError::EmbeddedArtworkNotFound,
 

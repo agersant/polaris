@@ -44,7 +44,7 @@ impl IntoResponse for APIError {
 			APIError::PlaylistNotFound => StatusCode::NOT_FOUND,
 			APIError::PlaylistExportError => StatusCode::INTERNAL_SERVER_ERROR,
 			APIError::PlaylistImportError => StatusCode::BAD_REQUEST,
-			APIError::InvalidPlaylistTextEncoding => StatusCode::BAD_REQUEST,
+			APIError::InvalidPlaylistTextEncoding(_) => StatusCode::BAD_REQUEST,
 			APIError::SearchQueryParse => StatusCode::BAD_REQUEST,
 			APIError::ThumbnailFlacDecoding(_, _) => StatusCode::INTERNAL_SERVER_ERROR,
 			APIError::ThumbnailFileIO => StatusCode::NOT_FOUND,
@@ -55,7 +55,7 @@ impl IntoResponse for APIError {
 			APIError::AudioEmpty(_) => StatusCode::INTERNAL_SERVER_ERROR,
 			APIError::AudioDecoding(_) => StatusCode::INTERNAL_SERVER_ERROR,
 			APIError::UserNotFound => StatusCode::NOT_FOUND,
-			APIError::VFSPathNotFound => StatusCode::NOT_FOUND,
+			APIError::VFSPathNotFound(_) => StatusCode::NOT_FOUND,
 		};
 
 		(status_code, message).into_response()

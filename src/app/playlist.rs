@@ -291,7 +291,9 @@ impl Manager {
 				if data.starts_with(&[0x50, 0x4B, 0x03, 0x04]) {
 					read_zipped_playlists(&data)
 				} else {
-					match String::from_utf8(data).map_err(|_| Error::InvalidPlaylistTextEncoding) {
+					match String::from_utf8(data)
+						.map_err(|_| Error::InvalidPlaylistTextEncoding(name.to_owned()))
+					{
 						Ok(data) => vec![Ok((name.to_owned(), data))],
 						Err(e) => vec![Err(e)],
 					}
@@ -346,7 +348,7 @@ fn read_zipped_playlists(data: &Vec<u8>) -> Vec<Result<(String, String), Error>>
 					let filename = file.name().to_owned();
 					let mut content = String::new();
 					file.read_to_string(&mut content)
-						.map_err(|_| Error::InvalidPlaylistTextEncoding)?;
+						.map_err(|_| Error::InvalidPlaylistTextEncoding(filename.clone()))?;
 					Ok((filename, content))
 				})
 		})
