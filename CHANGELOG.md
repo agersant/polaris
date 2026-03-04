@@ -21,6 +21,7 @@
 - All page layouts are now responsive to browser window size, and usable as low as 960px wide. Below 960px, the entire UI squishes into a basic media player.
 - Reduced primary Javascript bundle size (uncompressed: `914KB` -> `335KB`, compressed: `268KB` -> `113KB` ). Opening the `Stats` panel in the current playlist now loads an additional bundle.
 - Added right-click context menus throughout all collection pages and in the playlist panel.
+- Addded buttons to import/export playlists on the Playlists page.
 - The genre details page (accessed by clicking any music genre tag) has received small visual improvements.
 - Outline around the sidebar has been removed for all dark color schemes (Blue/Brown/Dark). Light color scheme is unchanged.
 - Outlines around sections on the `Settings -> Collection` page have been removed for all dark color schemes (Blue/Brown/Dark). Light color scheme is unchanged.
@@ -39,6 +40,7 @@
 - API version is now `8.1`.
 - Removed support for API version `7.x`.
 - Endpoints may now return an error when requests are missing the `Accept-Version` header.
+- Added new `playlists/import` and `playlists/export` endpoints.
 - All responses which are sorted alphabetically now use numerical sorting. This is mostly relevant for file names where `10.mp3` now sorts after `2.mp3`.
 
 ## Polaris 0.15.0
