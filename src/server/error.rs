@@ -93,8 +93,10 @@ pub enum APIError {
 	AudioEmpty(PathBuf),
 	#[error("User not found")]
 	UserNotFound,
-	#[error("Path not found in virtual filesystem: `{0}`")]
-	VFSPathNotFound(PathBuf),
+	#[error("Could not map real->virtual file path: `{0}`")]
+	VirtualPathNotFound(PathBuf),
+	#[error("Could not map virtual->real file path: `{0}`")]
+	RealPathNotFound(PathBuf),
 }
 
 impl From<app::Error> for APIError {
@@ -142,8 +144,8 @@ impl From<app::Error> for APIError {
 			app::Error::IndexDeserialization => APIError::Internal,
 			app::Error::IndexSerialization => APIError::Internal,
 
-			app::Error::CouldNotMapToRealPath(p) => APIError::VFSPathNotFound(p),
-			app::Error::CouldNotMapToVirtualPath(p) => APIError::VFSPathNotFound(p),
+			app::Error::CouldNotMapToRealPath(p) => APIError::RealPathNotFound(p),
+			app::Error::CouldNotMapToVirtualPath(p) => APIError::VirtualPathNotFound(p),
 			app::Error::UserNotFound => APIError::UserNotFound,
 			app::Error::DirectoryNotFound(d) => APIError::DirectoryNotFound(d),
 			app::Error::ArtistNotFound => APIError::ArtistNotFound,

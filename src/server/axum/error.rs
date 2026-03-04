@@ -55,7 +55,8 @@ impl IntoResponse for APIError {
 			APIError::AudioEmpty(_) => StatusCode::INTERNAL_SERVER_ERROR,
 			APIError::AudioDecoding(_) => StatusCode::INTERNAL_SERVER_ERROR,
 			APIError::UserNotFound => StatusCode::NOT_FOUND,
-			APIError::VFSPathNotFound(_) => StatusCode::NOT_FOUND,
+			APIError::RealPathNotFound(_) => StatusCode::NOT_FOUND,
+			APIError::VirtualPathNotFound(_) => StatusCode::NOT_FOUND,
 		};
 
 		(status_code, message).into_response()
