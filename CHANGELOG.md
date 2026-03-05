@@ -2,6 +2,10 @@
 
 ## Unreleased Changes
 
+- No unreleased changes
+
+## Polaris 0.16.0
+
 ### Server
 
 - ⚠️ Support for automatic database migration from Polaris 0.14 and below has been removed. This change has no effect for users upgrading from version 0.15.
