@@ -8,7 +8,7 @@ if (!(Test-Path env:POLARIS_VERSION)) {
 # And remove the code setting these as defaults in `service/mod.rs`
 # $script:INSTALL_DIR = "%LOCALAPPDATA%\Permafrost\Polaris"
 # $env:POLARIS_WEB_DIR = "$INSTALL_DIR\web"
-# $env:POLARIS_DB_DIR = "$INSTALL_DIR"
+# $env:POLARIS_DATA_DIR = "$INSTALL_DIR"
 # $env:POLARIS_LOG_DIR = "$INSTALL_DIR"
 # $env:POLARIS_CACHE_DIR = "$INSTALL_DIR"
 # $env:POLARIS_PID_DIR = "$INSTALL_DIR"

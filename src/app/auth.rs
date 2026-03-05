@@ -3,7 +3,6 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use pbkdf2::password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString};
 use pbkdf2::Pbkdf2;
 use rand::rngs::OsRng;
-
 use serde::{Deserialize, Serialize};
 
 use crate::app::Error;

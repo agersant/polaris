@@ -13,12 +13,12 @@ where
 		let version_header = match parts.headers.get("Accept-Version").map(|h| h.to_str()) {
 			Some(Ok(h)) => h,
 			Some(Err(_)) => return Err(APIError::InvalidAPIVersionHeader),
-			None => return Ok(APIMajorVersion::V7), // TODO Drop support for implicit version in future release
+			None => return Err(APIError::MissingAPIVersionHeader),
 		};
 
 		let version = match str::parse::<i32>(version_header) {
 			Ok(v) => v,
-			Err(_) => return Err(APIError::APIVersionHeaderParseError),
+			Err(_) => return Err(APIError::APIVersionHeaderParse),
 		};
 
 		APIMajorVersion::try_from(version)

@@ -1,6 +1,8 @@
 use log::{error, info};
-use notify::{RecommendedWatcher, Watcher};
-use notify_debouncer_full::{Debouncer, FileIdMap};
+use notify_debouncer_full::{
+	notify::{EventKind, RecommendedWatcher, RecursiveMode},
+	DebounceEventResult, DebouncedEvent, Debouncer, RecommendedCache,
+};
 use rayon::{Scope, ThreadPoolBuilder};
 use regex::Regex;
 use std::fs;
@@ -77,7 +79,7 @@ pub struct Status {
 pub struct Scanner {
 	index_manager: index::Manager,
 	config_manager: config::Manager,
-	file_watcher: Arc<RwLock<Option<Debouncer<RecommendedWatcher, FileIdMap>>>>,
+	file_watcher: Arc<RwLock<Option<Debouncer<RecommendedWatcher, RecommendedCache>>>>,
 	on_file_change: Arc<Notify>,
 	pending_scan: Arc<Notify>,
 	status: Arc<RwLock<Status>>,
@@ -143,18 +145,26 @@ impl Scanner {
 	async fn setup_file_watcher(
 		config_manager: &config::Manager,
 		on_file_changed: Arc<Notify>,
-	) -> Result<Debouncer<RecommendedWatcher, FileIdMap>, Error> {
-		let mut debouncer =
-			notify_debouncer_full::new_debouncer(Duration::from_millis(100), None, move |_| {
-				on_file_changed.notify_waiters();
-			})?;
+	) -> Result<Debouncer<RecommendedWatcher, RecommendedCache>, Error> {
+		let mut debouncer = notify_debouncer_full::new_debouncer(
+			Duration::from_millis(100),
+			None,
+			move |result: DebounceEventResult| match result {
+				Ok(events) => {
+					let is_ignorable = |e: &DebouncedEvent| {
+						matches!(e.kind, EventKind::Access(_) | EventKind::Other)
+					};
+					if !events.iter().all(is_ignorable) {
+						on_file_changed.notify_waiters();
+					}
+				}
+				Err(e) => error!("Collection file watcher error: `{e:?}`"),
+			},
+		)?;
 
 		let mount_dirs = config_manager.get_mounts().await;
 		for mount_dir in &mount_dirs {
-			if let Err(e) = debouncer
-				.watcher()
-				.watch(&mount_dir.source, notify::RecursiveMode::Recursive)
-			{
+			if let Err(e) = debouncer.watch(&mount_dir.source, RecursiveMode::Recursive) {
 				error!("Failed to setup file watcher for `{mount_dir:#?}`: {e}");
 			}
 		}
@@ -250,12 +260,17 @@ impl Scanner {
 				loop {
 					partial_index_notify.notified().await;
 					let mut partial_index = partial_index_mutex.clone().lock_owned().await;
-					let partial_index =
-						std::mem::replace(&mut *partial_index, index::Builder::new());
+					let partial_index = std::mem::take(&mut *partial_index);
 					let partial_index = partial_index.build();
 					let num_songs = partial_index.collection.num_songs();
-					index_manager.clone().replace_index(partial_index).await;
-					info!("Promoted partial collection index ({num_songs} songs)");
+					if index_manager
+						.clone()
+						.replace_index(partial_index)
+						.await
+						.is_ok()
+					{
+						info!("Promoted partial collection index ({num_songs} songs)");
+					}
 				}
 			}
 		});
@@ -264,13 +279,8 @@ impl Scanner {
 		secondary_task_set.spawn({
 			let manager = self.clone();
 			async move {
-				loop {
-					match status_receiver.recv().await {
-						Some(n) => {
-							manager.status.write().await.num_songs_indexed = n;
-						}
-						None => break,
-					}
+				while let Some(n) = status_receiver.recv().await {
+					manager.status.write().await.num_songs_indexed = n;
 				}
 			}
 		});
@@ -325,7 +335,7 @@ impl Scanner {
 		secondary_task_set.abort_all();
 
 		self.index_manager.persist_index(&index).await?;
-		self.index_manager.replace_index(index).await;
+		self.index_manager.replace_index(index).await.unwrap();
 
 		{
 			let mut status = self.status.write().await;

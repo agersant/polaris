@@ -58,7 +58,7 @@ impl Manager {
 		.unwrap()
 	}
 
-	pub async fn replace_index(&self, new_index: Index) {
+	pub async fn replace_index(&self, new_index: Index) -> Result<(), Error> {
 		spawn_blocking({
 			let index_manager = self.clone();
 			move || {
@@ -67,13 +67,13 @@ impl Manager {
 			}
 		})
 		.await
-		.unwrap()
+		.map_err(|e| e.into())
 	}
 
 	pub async fn persist_index(&self, index: &Index) -> Result<(), Error> {
 		let serialized = match bitcode::serialize(index) {
 			Ok(s) => s,
-			Err(_) => return Err(Error::IndexSerializationError),
+			Err(_) => return Err(Error::IndexSerialization),
 		};
 		tokio::fs::write(&self.index_file_path, &serialized[..])
 			.await
@@ -94,10 +94,10 @@ impl Manager {
 
 		let index = match bitcode::deserialize(&serialized[..]) {
 			Ok(i) => i,
-			Err(_) => return Err(Error::IndexDeserializationError),
+			Err(_) => return Err(Error::IndexDeserialization),
 		};
 
-		self.replace_index(index).await;
+		self.replace_index(index).await.unwrap();
 
 		Ok(true)
 	}
@@ -215,7 +215,7 @@ impl Manager {
 					artists: artists
 						.into_iter()
 						.filter_map(|a| index.dictionary.get(a))
-						.map(|k| ArtistKey(k))
+						.map(ArtistKey)
 						.collect(),
 					name,
 				};
@@ -288,7 +288,7 @@ impl Manager {
 		.unwrap()
 	}
 
-	pub async fn search(&self, query: String) -> Result<Vec<Song>, Error> {
+	pub async fn search(&self, query: String) -> Result<Vec<PathBuf>, Error> {
 		spawn_blocking({
 			let index_manager = self.clone();
 			move || {
@@ -303,7 +303,7 @@ impl Manager {
 	}
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Default, Serialize, Deserialize)]
 pub struct Index {
 	pub dictionary: dictionary::Dictionary,
 	pub browser: browser::Browser,
@@ -311,18 +311,7 @@ pub struct Index {
 	pub search: search::Search,
 }
 
-impl Default for Index {
-	fn default() -> Self {
-		Self {
-			dictionary: Default::default(),
-			browser: Default::default(),
-			collection: Default::default(),
-			search: Default::default(),
-		}
-	}
-}
-
-#[derive(Clone)]
+#[derive(Default, Clone)]
 pub struct Builder {
 	dictionary_builder: dictionary::Builder,
 	browser_builder: browser::Builder,
@@ -331,15 +320,6 @@ pub struct Builder {
 }
 
 impl Builder {
-	pub fn new() -> Self {
-		Self {
-			dictionary_builder: dictionary::Builder::default(),
-			browser_builder: browser::Builder::default(),
-			collection_builder: collection::Builder::default(),
-			search_builder: search::Builder::default(),
-		}
-	}
-
 	pub fn add_directory(&mut self, directory: scanner::Directory) {
 		self.browser_builder
 			.add_directory(&mut self.dictionary_builder, directory);
@@ -364,12 +344,6 @@ impl Builder {
 	}
 }
 
-impl Default for Builder {
-	fn default() -> Self {
-		Self::new()
-	}
-}
-
 #[cfg(test)]
 mod test {
 	use crate::{
@@ -380,9 +354,9 @@ mod test {
 	#[tokio::test]
 	async fn can_persist_index() {
 		let ctx = test::ContextBuilder::new(test_name!()).build().await;
-		assert_eq!(ctx.index_manager.try_restore_index().await.unwrap(), false);
-		let index = index::Builder::new().build();
+		assert!(!ctx.index_manager.try_restore_index().await.unwrap());
+		let index = index::Builder::default().build();
 		ctx.index_manager.persist_index(&index).await.unwrap();
-		assert_eq!(ctx.index_manager.try_restore_index().await.unwrap(), true);
+		assert!(ctx.index_manager.try_restore_index().await.unwrap());
 	}
 }

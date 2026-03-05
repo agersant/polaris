@@ -1,9 +1,12 @@
-use std::path::Path;
+use std::collections::HashMap;
+use std::fs::File;
+use std::io::Read;
+use std::path::{Path, PathBuf};
 
-use http::StatusCode;
+use http::{header, StatusCode};
 
 use crate::server::dto::{self};
-use crate::server::test::protocol::{V7, V8};
+use crate::server::test::protocol::V8;
 use crate::server::test::{constants::*, protocol, ServiceType, TestService};
 use crate::test_name;
 
@@ -75,10 +78,18 @@ async fn get_playlist_requires_auth() {
 async fn get_playlist_golden_path() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	service.complete_initial_setup().await;
+	service.login_admin().await;
+	service.index().await;
 	service.login().await;
 
 	{
-		let my_playlist = dto::SavePlaylistInput { tracks: Vec::new() };
+		let my_playlist = dto::SavePlaylistInput {
+			#[rustfmt::skip]
+			tracks: vec![
+				[TEST_MOUNT_NAME, "Khemmis", "Hunted", "02 - Candlelight.mp3"].iter().collect(),
+				[TEST_MOUNT_NAME, "Khemmis", "Hunted", "05 - Hunted.mp3"].iter().collect(),
+			],
+		};
 		let request = protocol::save_playlist(TEST_PLAYLIST_NAME, my_playlist);
 		let response = service.fetch(&request).await;
 		assert_eq!(response.status(), StatusCode::OK);
@@ -87,24 +98,7 @@ async fn get_playlist_golden_path() {
 	let request = protocol::read_playlist::<V8>(TEST_PLAYLIST_NAME);
 	let response = service.fetch_json::<_, dto::Playlist>(&request).await;
 	assert_eq!(response.status(), StatusCode::OK);
-}
-
-#[tokio::test]
-async fn get_playlist_golden_path_api_v7() {
-	let mut service = ServiceType::new(&test_name!()).await;
-	service.complete_initial_setup().await;
-	service.login().await;
-
-	{
-		let my_playlist = dto::SavePlaylistInput { tracks: Vec::new() };
-		let request = protocol::save_playlist(TEST_PLAYLIST_NAME, my_playlist);
-		let response = service.fetch(&request).await;
-		assert_eq!(response.status(), StatusCode::OK);
-	}
-
-	let request = protocol::read_playlist::<V7>(TEST_PLAYLIST_NAME);
-	let response = service.fetch_json::<_, Vec<dto::v7::Song>>(&request).await;
-	assert_eq!(response.status(), StatusCode::OK);
+	assert_eq!(response.body().songs.paths.len(), 2)
 }
 
 #[tokio::test]
@@ -142,4 +136,92 @@ async fn delete_playlist_golden_path() {
 	let request = protocol::delete_playlist(TEST_PLAYLIST_NAME);
 	let response = service.fetch(&request).await;
 	assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn export_playlists_golden_path() {
+	let mut service = ServiceType::new(&test_name!()).await;
+	service.complete_initial_setup().await;
+	service.login_admin().await;
+	service.index().await;
+	service.login().await;
+
+	{
+		let my_playlist = dto::SavePlaylistInput {
+			#[rustfmt::skip]
+			tracks: vec![
+				[TEST_MOUNT_NAME, "Khemmis", "Hunted", "02 - Candlelight.mp3"].iter().collect(),
+				[TEST_MOUNT_NAME, "Khemmis", "Hunted", "05 - Hunted.mp3"].iter().collect(),
+			],
+		};
+		let request = protocol::save_playlist(TEST_PLAYLIST_NAME, my_playlist);
+		let response = service.fetch(&request).await;
+		assert_eq!(response.status(), StatusCode::OK);
+	}
+
+	let request = protocol::export_playlists();
+	let response = service.fetch_bytes(&request).await;
+	assert_eq!(response.status(), StatusCode::OK);
+	let content_disposition = response.headers().get(header::CONTENT_DISPOSITION).unwrap();
+	assert_eq!(
+		content_disposition.to_str().unwrap(),
+		r#"attachment; filename="polaris-playlists-test_user.zip""#
+	);
+
+	let mut expected = Vec::new();
+
+	let reference_file = [
+		"test-data",
+		"playlists",
+		if cfg!(target_os = "windows") {
+			"export-golden-path-windows.zip"
+		} else {
+			"export-golden-path-unix.zip"
+		},
+	]
+	.iter()
+	.collect::<PathBuf>();
+
+	File::open(reference_file)
+		.unwrap()
+		.read_to_end(&mut expected)
+		.unwrap();
+	assert_eq!(&expected, response.body());
+}
+
+#[tokio::test]
+async fn import_playlists_golden_path() {
+	let mut service = ServiceType::new(&test_name!()).await;
+	service.complete_initial_setup().await;
+	service.login_admin().await;
+	service.index().await;
+	service.login().await;
+
+	let reference_file = [
+		"test-data",
+		"playlists",
+		if cfg!(target_os = "windows") {
+			"import-golden-path-windows.zip"
+		} else {
+			"import-golden-path-unix.zip"
+		},
+	]
+	.iter()
+	.collect::<PathBuf>();
+
+	let mut zip_data = vec![];
+	File::open(reference_file)
+		.unwrap()
+		.read_to_end(&mut zip_data)
+		.unwrap();
+	let payload = HashMap::from_iter([("file.zip".to_owned(), zip_data)]);
+
+	let request = protocol::import_playlists(payload);
+	let (r, _) = service.send_binary(&request).await;
+	assert_eq!(r.body(()).unwrap().status(), StatusCode::OK);
+
+	let request = protocol::read_playlist::<V8>(TEST_PLAYLIST_NAME);
+	let response = service.fetch_json::<_, dto::Playlist>(&request).await;
+	assert_eq!(response.status(), StatusCode::OK);
+	assert_eq!(response.body().songs.paths.len(), 2)
 }

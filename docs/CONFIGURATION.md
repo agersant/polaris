@@ -12,7 +12,7 @@ The location of the configuration file is always logged during Polaris startup. 
 
 ## Format
 
-The configuration file uses the [TOML](https://toml.io/) format. Everything in the configuration file is optional and may be ommitted (unless mentioned otherwise).
+The configuration file uses the [TOML](https://toml.io/) format. Everything in the configuration file is optional and may be omitted (unless mentioned otherwise).
 
 ```toml
 # Regular expression used to identify album art in files adjacent to an audio file

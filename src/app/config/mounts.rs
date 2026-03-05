@@ -61,9 +61,22 @@ impl Config {
 		}
 		Err(Error::CouldNotMapToRealPath(virtual_path.as_ref().into()))
 	}
+	pub fn virtualize_path<P: AsRef<Path>>(&self, real_path: P) -> Result<PathBuf, Error> {
+		for mount in &self.mount_dirs {
+			if let Ok(p) = real_path.as_ref().strip_prefix(&mount.source) {
+				let mount_path = Path::new(&mount.name);
+				return if p.components().count() == 0 {
+					Ok(mount_path.to_path_buf())
+				} else {
+					Ok(mount_path.join(p))
+				};
+			}
+		}
+		Err(Error::CouldNotMapToVirtualPath(real_path.as_ref().into()))
+	}
 }
 
-fn sanitize_path(source: &PathBuf) -> PathBuf {
+fn sanitize_path(source: &Path) -> PathBuf {
 	let path_string = source.to_string_lossy();
 	let separator_regex = Regex::new(r"\\|/").unwrap();
 	let mut correct_separator = String::new();
@@ -105,6 +118,34 @@ mod test {
 	}
 
 	#[test]
+	fn can_virtualize_paths() {
+		let raw_config = storage::Config {
+			mount_dirs: vec![storage::MountDir {
+				name: "root".to_owned(),
+				source: PathBuf::from("test_dir"),
+			}],
+			..Default::default()
+		};
+
+		let config: Config = raw_config.try_into().unwrap();
+
+		let test_cases = vec![
+			(vec!["root"], vec!["test_dir"]),
+			(
+				vec!["root", "somewhere", "something.png"],
+				vec!["test_dir", "somewhere", "something.png"],
+			),
+		];
+
+		for (r#virtual, real) in test_cases {
+			let real_path: PathBuf = real.iter().collect();
+			let virtual_path: PathBuf = r#virtual.iter().collect();
+			let converted_path = config.virtualize_path(&real_path).unwrap();
+			assert_eq!(converted_path, virtual_path);
+		}
+	}
+
+	#[test]
 	fn sanitizes_paths() {
 		let mut correct_path = PathBuf::new();
 		if cfg!(target_os = "windows") {
@@ -142,7 +183,7 @@ mod test {
 				..Default::default()
 			};
 			let config: Config = raw_config.try_into().unwrap();
-			let converted_path = config.resolve_virtual_path(&PathBuf::from("root")).unwrap();
+			let converted_path = config.resolve_virtual_path(PathBuf::from("root")).unwrap();
 			assert_eq!(converted_path, correct_path);
 		}
 	}

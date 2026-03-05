@@ -5,10 +5,12 @@ use crate::app;
 
 #[derive(Error, Debug)]
 pub enum APIError {
+	#[error("API version header is missing")]
+	MissingAPIVersionHeader,
 	#[error("Could not read API version header")]
 	InvalidAPIVersionHeader,
 	#[error("Could not parse API version header")]
-	APIVersionHeaderParseError,
+	APIVersionHeaderParse,
 	#[error("Unsupported API version")]
 	UnsupportedAPIVersion,
 	#[error("Could not encode authorization token")]
@@ -16,13 +18,13 @@ pub enum APIError {
 	#[error("Administrator permission is required")]
 	AdminPermissionRequired,
 	#[error("Audio file could not be opened")]
-	AudioFileIOError,
+	AudioFileIO,
 	#[error("Authentication is required")]
 	AuthenticationRequired,
 	#[error("Could not encode Branca token")]
 	BrancaTokenEncoding,
 	#[error("Native Database error:\n\n{0}")]
-	NativeDatabase(native_db::db_type::Error),
+	NativeDatabase(Box<native_db::db_type::Error>),
 	#[error("Directory not found: {0}")]
 	DirectoryNotFound(PathBuf),
 	#[error("Artist not found")]
@@ -34,7 +36,9 @@ pub enum APIError {
 	#[error("Song not found")]
 	SongNotFound,
 	#[error("DDNS update query failed with HTTP status {0}")]
-	DdnsUpdateQueryFailed(u16),
+	DDNSUpdateRejected(u16),
+	#[error("DDNS update query failed to complete: `{0}`")]
+	DDNSUpdate(String),
 	#[error("Cannot delete your own account")]
 	DeletingOwnAccount,
 	#[error("Username already exists")]
@@ -55,18 +59,26 @@ pub enum APIError {
 	InvalidDDNSURL,
 	#[error("File I/O error for `{0}`:\n\n{1}")]
 	Io(PathBuf, std::io::Error),
+	#[error("HTTP multipart decoding error")]
+	MultipartError(String, u16),
 	#[error("Cannot remove your own admin privilege")]
 	OwnAdminPrivilegeRemoval,
 	#[error("Could not hash password")]
 	PasswordHashing,
 	#[error("Playlist not found")]
 	PlaylistNotFound,
+	#[error("Playlist export error")]
+	PlaylistExportError,
+	#[error("Playlist import error")]
+	PlaylistImportError,
+	#[error("Text encoding error in playlist file `{0}` (must be UTF-8)")]
+	InvalidPlaylistTextEncoding(String),
 	#[error("Could not parse search query")]
-	SearchQueryParseError,
+	SearchQueryParse,
 	#[error("Could not decode thumbnail from flac file `{0}`:\n\n{1}")]
 	ThumbnailFlacDecoding(PathBuf, metaflac::Error),
 	#[error("Thumbnail file could not be opened")]
-	ThumbnailFileIOError,
+	ThumbnailFileIO,
 	#[error("Could not decode thumbnail from ID3 tag in `{0}`:\n\n{1}")]
 	ThumbnailId3Decoding(PathBuf, id3::Error),
 	#[error("Could not decode image thumbnail in `{0}`:\n\n{1}")]
@@ -81,8 +93,10 @@ pub enum APIError {
 	AudioEmpty(PathBuf),
 	#[error("User not found")]
 	UserNotFound,
-	#[error("Path not found in virtual filesystem")]
-	VFSPathNotFound,
+	#[error("Could not map real->virtual file path: `{0}`")]
+	VirtualPathNotFound(PathBuf),
+	#[error("Could not map virtual->real file path: `{0}`")]
+	RealPathNotFound(PathBuf),
 }
 
 impl From<app::Error> for APIError {
@@ -93,7 +107,6 @@ impl From<app::Error> for APIError {
 
 			app::Error::Io(p, e) => APIError::Io(p, e),
 			app::Error::InvalidDirectory(_) => APIError::Internal,
-			app::Error::SQL(_) => APIError::Internal,
 			app::Error::FileWatch(_) => APIError::Internal,
 			app::Error::Ape(_) => APIError::Internal,
 			app::Error::Id3(p, e) => APIError::ThumbnailId3Decoding(p, e),
@@ -106,19 +119,19 @@ impl From<app::Error> for APIError {
 			app::Error::UnsupportedFormat(f) => APIError::UnsupportedThumbnailFormat(f),
 
 			app::Error::MediaEmpty(p) => APIError::AudioEmpty(p),
-			app::Error::MediaDecodeError(e) => APIError::AudioDecoding(e),
-			app::Error::MediaDecoderError(e) => APIError::AudioDecoding(e),
-			app::Error::MediaPacketError(e) => APIError::AudioDecoding(e),
-			app::Error::MediaProbeError(e) => APIError::AudioDecoding(e),
+			app::Error::MediaDecode(e) => APIError::AudioDecoding(e),
+			app::Error::MediaDecoder(e) => APIError::AudioDecoding(e),
+			app::Error::MediaPacket(e) => APIError::AudioDecoding(e),
+			app::Error::MediaProbe(e) => APIError::AudioDecoding(e),
 
 			app::Error::PeaksSerialization(_) => APIError::Internal,
 			app::Error::PeaksDeserialization(_) => APIError::Internal,
 
-			app::Error::NativeDatabaseCreationError(_) => APIError::Internal,
+			app::Error::NativeDatabaseCreation(_) => APIError::Internal,
 			app::Error::NativeDatabase(e) => APIError::NativeDatabase(e),
 
-			app::Error::UpdateQueryFailed(s) => APIError::DdnsUpdateQueryFailed(s),
-			app::Error::UpdateQueryTransport => APIError::DdnsUpdateQueryFailed(0),
+			app::Error::DDNSUpdateRejected(s) => APIError::DDNSUpdateRejected(s),
+			app::Error::DDNSUpdate(e) => APIError::DDNSUpdate(e),
 
 			app::Error::AuthenticationSecretNotFound => APIError::Internal,
 			app::Error::AuthenticationSecretInvalid => APIError::Internal,
@@ -128,11 +141,11 @@ impl From<app::Error> for APIError {
 
 			app::Error::ConfigDeserialization(_) => APIError::Internal,
 			app::Error::ConfigSerialization(_) => APIError::Internal,
-			app::Error::IndexDeserializationError => APIError::Internal,
-			app::Error::IndexSerializationError => APIError::Internal,
+			app::Error::IndexDeserialization => APIError::Internal,
+			app::Error::IndexSerialization => APIError::Internal,
 
-			app::Error::CouldNotMapToRealPath(_) => APIError::VFSPathNotFound,
-			app::Error::CouldNotMapToVirtualPath(_) => APIError::Internal,
+			app::Error::CouldNotMapToRealPath(p) => APIError::RealPathNotFound(p),
+			app::Error::CouldNotMapToVirtualPath(p) => APIError::VirtualPathNotFound(p),
 			app::Error::UserNotFound => APIError::UserNotFound,
 			app::Error::DirectoryNotFound(d) => APIError::DirectoryNotFound(d),
 			app::Error::ArtistNotFound => APIError::ArtistNotFound,
@@ -140,7 +153,10 @@ impl From<app::Error> for APIError {
 			app::Error::GenreNotFound => APIError::GenreNotFound,
 			app::Error::SongNotFound => APIError::SongNotFound,
 			app::Error::PlaylistNotFound => APIError::PlaylistNotFound,
-			app::Error::SearchQueryParseError => APIError::SearchQueryParseError,
+			app::Error::PlaylistExportZip => APIError::PlaylistExportError,
+			app::Error::PlaylistImportZip => APIError::PlaylistImportError,
+			app::Error::InvalidPlaylistTextEncoding(s) => APIError::InvalidPlaylistTextEncoding(s),
+			app::Error::SearchQueryParse => APIError::SearchQueryParse,
 			app::Error::EmbeddedArtworkNotFound(_) => APIError::EmbeddedArtworkNotFound,
 
 			app::Error::DuplicateUsername => APIError::DuplicateUsername,

@@ -73,7 +73,7 @@ impl Config {
 			return Err(Error::DuplicateUsername);
 		}
 
-		let password_hash = auth::hash_password(&password)?;
+		let password_hash = auth::hash_password(password)?;
 
 		self.users.push(User {
 			name: username.to_owned(),

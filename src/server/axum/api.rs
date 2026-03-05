@@ -1,14 +1,16 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 use axum::{
-	extract::{DefaultBodyLimit, Path, Query, State},
-	response::{IntoResponse, Response},
+	extract::{multipart::MultipartError, DefaultBodyLimit, Multipart, Path, Query, State},
+	response::IntoResponse,
 	routing::get,
 	Json,
 };
 use axum_extra::headers::Range;
 use axum_extra::TypedHeader;
 use axum_range::{KnownSize, Ranged};
+use http::{header, HeaderMap};
 use regex::Regex;
 use tower_http::{compression::CompressionLayer, CompressionLevel};
 use utoipa_axum::{router::OpenApiRouter, routes};
@@ -61,6 +63,8 @@ pub fn router() -> OpenApiRouter<App> {
 		// Playlist management
 		.routes(routes!(get_playlists))
 		.routes(routes!(put_playlist, get_playlist, delete_playlist))
+		.routes(routes!(export_playlists))
+		.routes(routes!(import_playlists))
 		// Media
 		.routes(routes!(get_songs))
 		.routes(routes!(get_peaks))
@@ -410,25 +414,6 @@ async fn get_index_status(
 	Ok(Json(scanner.get_status().await.into()))
 }
 
-fn index_files_to_response(files: Vec<index::File>, api_version: APIMajorVersion) -> Response {
-	match api_version {
-		APIMajorVersion::V7 => Json(
-			files
-				.into_iter()
-				.map(|f| f.into())
-				.collect::<Vec<dto::v7::CollectionFile>>(),
-		)
-		.into_response(),
-		APIMajorVersion::V8 => Json(
-			files
-				.into_iter()
-				.map(|f| f.into())
-				.collect::<Vec<dto::BrowserEntry>>(),
-		)
-		.into_response(),
-	}
-}
-
 const SONG_LIST_CAPACITY: usize = 200;
 
 async fn make_song_list(paths: Vec<PathBuf>, index_manager: &index::Manager) -> dto::SongList {
@@ -441,39 +426,6 @@ async fn make_song_list(paths: Vec<PathBuf>, index_manager: &index::Manager) -> 
 		.map(dto::Song::from)
 		.collect();
 	dto::SongList { paths, first_songs }
-}
-
-fn song_list_to_response(song_list: dto::SongList, api_version: APIMajorVersion) -> Response {
-	match api_version {
-		APIMajorVersion::V7 => Json(
-			song_list
-				.paths
-				.into_iter()
-				.map(|p| (&p).into())
-				.collect::<Vec<dto::v7::Song>>(),
-		)
-		.into_response(),
-		APIMajorVersion::V8 => Json(song_list).into_response(),
-	}
-}
-
-fn albums_to_response(albums: Vec<index::Album>, api_version: APIMajorVersion) -> Response {
-	match api_version {
-		APIMajorVersion::V7 => Json(
-			albums
-				.into_iter()
-				.map(|f| f.into())
-				.collect::<Vec<dto::v7::Directory>>(),
-		)
-		.into_response(),
-		APIMajorVersion::V8 => Json(
-			albums
-				.into_iter()
-				.map(|f| f.header.into())
-				.collect::<Vec<dto::AlbumHeader>>(),
-		)
-		.into_response(),
-	}
 }
 
 #[utoipa::path(
@@ -494,14 +446,16 @@ fn albums_to_response(albums: Vec<index::Album>, api_version: APIMajorVersion) -
 )]
 async fn get_browse_root(
 	_auth: Auth,
-	api_version: APIMajorVersion,
+	_api_version: APIMajorVersion,
 	State(index_manager): State<index::Manager>,
-) -> Response {
-	let result = match index_manager.browse(PathBuf::new()).await {
-		Ok(r) => r,
-		Err(e) => return APIError::from(e).into_response(),
-	};
-	index_files_to_response(result, api_version)
+) -> Result<Json<Vec<dto::BrowserEntry>>, APIError> {
+	let entries = index_manager
+		.browse(PathBuf::new())
+		.await?
+		.into_iter()
+		.map(|f| f.into())
+		.collect();
+	Ok(Json(entries))
 }
 
 #[utoipa::path(
@@ -523,15 +477,17 @@ async fn get_browse_root(
 )]
 async fn get_browse(
 	_auth: Auth,
-	api_version: APIMajorVersion,
+	_api_version: APIMajorVersion,
 	State(index_manager): State<index::Manager>,
 	Path(path): Path<PathBuf>,
-) -> Response {
-	let result = match index_manager.browse(path).await {
-		Ok(r) => r,
-		Err(e) => return APIError::from(e).into_response(),
-	};
-	index_files_to_response(result, api_version)
+) -> Result<Json<Vec<dto::BrowserEntry>>, APIError> {
+	let entries = index_manager
+		.browse(path)
+		.await?
+		.into_iter()
+		.map(|f| f.into())
+		.collect();
+	Ok(Json(entries))
 }
 
 #[utoipa::path(
@@ -552,15 +508,11 @@ async fn get_browse(
 )]
 async fn get_flatten_root(
 	_auth: Auth,
-	api_version: APIMajorVersion,
+	_api_version: APIMajorVersion,
 	State(index_manager): State<index::Manager>,
-) -> Response {
-	let paths = match index_manager.flatten(PathBuf::new()).await {
-		Ok(s) => s,
-		Err(e) => return APIError::from(e).into_response(),
-	};
-	let song_list = make_song_list(paths, &index_manager).await;
-	song_list_to_response(song_list, api_version)
+) -> Result<Json<dto::SongList>, APIError> {
+	let paths = index_manager.flatten(PathBuf::new()).await?;
+	Ok(Json(make_song_list(paths, &index_manager).await))
 }
 
 #[utoipa::path(
@@ -582,16 +534,12 @@ async fn get_flatten_root(
 )]
 async fn get_flatten(
 	_auth: Auth,
-	api_version: APIMajorVersion,
+	_api_version: APIMajorVersion,
 	State(index_manager): State<index::Manager>,
 	Path(path): Path<PathBuf>,
-) -> Response {
-	let paths = match index_manager.flatten(path).await {
-		Ok(s) => s,
-		Err(e) => return APIError::from(e).into_response(),
-	};
-	let song_list = make_song_list(paths, &index_manager).await;
-	song_list_to_response(song_list, api_version)
+) -> Result<Json<dto::SongList>, APIError> {
+	let paths = index_manager.flatten(path).await?;
+	Ok(Json(make_song_list(paths, &index_manager).await))
 }
 
 #[utoipa::path(
@@ -611,15 +559,13 @@ async fn get_albums(
 	_auth: Auth,
 	State(index_manager): State<index::Manager>,
 ) -> Result<Json<Vec<dto::AlbumHeader>>, APIError> {
-	Ok(Json(
-		index_manager
-			.get_albums()
-			.await
-			.into_iter()
-			.map(|a| a.into())
-			.collect::<Vec<_>>()
-			.into(),
-	))
+	let albums = index_manager
+		.get_albums()
+		.await
+		.into_iter()
+		.map(|a| a.into())
+		.collect();
+	Ok(Json(albums))
 }
 
 #[utoipa::path(
@@ -639,15 +585,13 @@ async fn get_artists(
 	_auth: Auth,
 	State(index_manager): State<index::Manager>,
 ) -> Result<Json<Vec<dto::ArtistHeader>>, APIError> {
-	Ok(Json(
-		index_manager
-			.get_artists()
-			.await
-			.into_iter()
-			.map(|a| a.into())
-			.collect::<Vec<_>>()
-			.into(),
-	))
+	let artists = index_manager
+		.get_artists()
+		.await
+		.into_iter()
+		.map(|a| a.into())
+		.collect();
+	Ok(Json(artists))
 }
 
 #[utoipa::path(
@@ -669,7 +613,8 @@ async fn get_artist(
 	State(index_manager): State<index::Manager>,
 	Path(name): Path<String>,
 ) -> Result<Json<dto::Artist>, APIError> {
-	Ok(Json(index_manager.get_artist(name).await?.into()))
+	let artist = index_manager.get_artist(name).await?.into();
+	Ok(Json(artist))
 }
 
 #[utoipa::path(
@@ -697,8 +642,9 @@ async fn get_album(
 	let artists = artists
 		.split(API_ARRAY_SEPARATOR)
 		.map(str::to_owned)
-		.collect::<Vec<_>>();
-	Ok(Json(index_manager.get_album(artists, name).await?.into()))
+		.collect();
+	let album = index_manager.get_album(artists, name).await?.into();
+	Ok(Json(album))
 }
 
 #[utoipa::path(
@@ -720,11 +666,7 @@ async fn get_songs(
 	State(index_manager): State<index::Manager>,
 	songs: Json<dto::GetSongsBulkInput>,
 ) -> Result<Json<dto::GetSongsBulkOutput>, APIError> {
-	let results = index_manager
-		.get_songs(songs.0.paths.clone())
-		.await
-		.into_iter()
-		.collect::<Vec<_>>();
+	let results = index_manager.get_songs(songs.0.paths.clone()).await;
 
 	let mut output = dto::GetSongsBulkOutput::default();
 	for (i, r) in results.into_iter().enumerate() {
@@ -756,20 +698,19 @@ async fn get_songs(
 )]
 async fn get_random_albums(
 	_auth: Auth,
-	api_version: APIMajorVersion,
+	_api_version: APIMajorVersion,
 	State(index_manager): State<index::Manager>,
 	Query(options): Query<dto::GetRandomAlbumsParameters>,
-) -> Response {
+) -> Result<Json<Vec<dto::AlbumHeader>>, APIError> {
 	let offset = options.offset.unwrap_or(0);
 	let count = options.count.unwrap_or(20);
-	let albums = match index_manager
+	let albums = index_manager
 		.get_random_albums(options.seed, offset, count)
-		.await
-	{
-		Ok(d) => d,
-		Err(e) => return APIError::from(e).into_response(),
-	};
-	albums_to_response(albums, api_version)
+		.await?
+		.into_iter()
+		.map(|f| f.header.into())
+		.collect();
+	Ok(Json(albums))
 }
 
 #[utoipa::path(
@@ -791,17 +732,19 @@ async fn get_random_albums(
 )]
 async fn get_recent_albums(
 	_auth: Auth,
-	api_version: APIMajorVersion,
+	_api_version: APIMajorVersion,
 	State(index_manager): State<index::Manager>,
 	Query(options): Query<dto::GetRecentAlbumsParameters>,
-) -> Response {
+) -> Result<Json<Vec<dto::AlbumHeader>>, APIError> {
 	let offset = options.offset.unwrap_or(0);
 	let count = options.count.unwrap_or(20);
-	let albums = match index_manager.get_recent_albums(offset, count).await {
-		Ok(d) => d,
-		Err(e) => return APIError::from(e).into_response(),
-	};
-	albums_to_response(albums, api_version)
+	let albums = index_manager
+		.get_recent_albums(offset, count)
+		.await?
+		.into_iter()
+		.map(|f| f.header.into())
+		.collect();
+	Ok(Json(albums))
 }
 
 #[utoipa::path(
@@ -821,14 +764,13 @@ async fn get_genres(
 	_auth: Auth,
 	State(index_manager): State<index::Manager>,
 ) -> Result<Json<Vec<dto::GenreHeader>>, APIError> {
-	Ok(Json(
-		index_manager
-			.get_genres()
-			.await
-			.into_iter()
-			.map(|g| g.into())
-			.collect(),
-	))
+	let genres = index_manager
+		.get_genres()
+		.await
+		.into_iter()
+		.map(|g| g.into())
+		.collect();
+	Ok(Json(genres))
 }
 
 #[utoipa::path(
@@ -850,7 +792,8 @@ async fn get_genre(
 	State(index_manager): State<index::Manager>,
 	Path(name): Path<String>,
 ) -> Result<Json<dto::Genre>, APIError> {
-	Ok(Json(index_manager.get_genre(name).await?.into()))
+	let genre = index_manager.get_genre(name).await?.into();
+	Ok(Json(genre))
 }
 
 #[utoipa::path(
@@ -961,35 +904,12 @@ async fn get_genre_songs(
 )]
 async fn get_search(
 	_auth: Auth,
-	api_version: APIMajorVersion,
+	_api_version: APIMajorVersion,
 	State(index_manager): State<index::Manager>,
 	Path(query): Path<String>,
-) -> Response {
-	let songs = match index_manager.search(query).await {
-		Ok(f) => f,
-		Err(e) => return APIError::from(e).into_response(),
-	};
-
-	let song_list = dto::SongList {
-		paths: songs.iter().map(|s| s.virtual_path.clone()).collect(),
-		first_songs: songs
-			.into_iter()
-			.take(SONG_LIST_CAPACITY)
-			.map(|s| s.into())
-			.collect(),
-	};
-
-	match api_version {
-		APIMajorVersion::V7 => Json(
-			song_list
-				.paths
-				.iter()
-				.map(|p| dto::v7::CollectionFile::Song(p.into()))
-				.collect::<Vec<_>>(),
-		)
-		.into_response(),
-		APIMajorVersion::V8 => Json(song_list).into_response(),
-	}
+) -> Result<Json<dto::SongList>, APIError> {
+	let paths = index_manager.search(query).await?;
+	Ok(Json(make_song_list(paths, &index_manager).await))
 }
 
 #[utoipa::path(
@@ -1030,18 +950,11 @@ async fn get_playlists(
 async fn put_playlist(
 	auth: Auth,
 	State(playlist_manager): State<playlist::Manager>,
-	State(index_manager): State<index::Manager>,
 	Path(name): Path<String>,
 	playlist: Json<dto::SavePlaylistInput>,
 ) -> Result<(), APIError> {
-	let songs = index_manager
-		.get_songs(playlist.tracks.clone())
-		.await
-		.into_iter()
-		.filter_map(|s| s.ok())
-		.collect();
 	playlist_manager
-		.save_playlist(&name, auth.get_username(), songs)
+		.save_playlist(&name, auth.get_username(), playlist.tracks.clone())
 		.await?;
 	Ok(())
 }
@@ -1065,27 +978,19 @@ async fn put_playlist(
 )]
 async fn get_playlist(
 	auth: Auth,
-	api_version: APIMajorVersion,
+	_api_version: APIMajorVersion,
 	State(index_manager): State<index::Manager>,
 	State(playlist_manager): State<playlist::Manager>,
 	Path(name): Path<String>,
-) -> Response {
-	let playlist = match playlist_manager
+) -> Result<Json<dto::Playlist>, APIError> {
+	let playlist = playlist_manager
 		.read_playlist(&name, auth.get_username())
-		.await
-	{
-		Ok(s) => s,
-		Err(e) => return APIError::from(e).into_response(),
-	};
-
-	match api_version {
-		APIMajorVersion::V7 => Json(playlist.songs).into_response(),
-		APIMajorVersion::V8 => Json(dto::Playlist {
-			header: playlist.header.into(),
-			songs: make_song_list(playlist.songs, &index_manager).await,
-		})
-		.into_response(),
-	}
+		.await?;
+	let songs = make_song_list(playlist.songs, &index_manager).await;
+	Ok(Json(dto::Playlist {
+		header: playlist.header.into(),
+		songs,
+	}))
 }
 
 #[utoipa::path(
@@ -1107,6 +1012,76 @@ async fn delete_playlist(
 	playlist_manager
 		.delete_playlist(&name, auth.get_username())
 		.await?;
+	Ok(())
+}
+
+#[utoipa::path(
+	get,
+	path = "/playlists/export",
+	tag = "Playlists",
+	description = "Export playlists as a zip archive of m3u files.",
+	security(
+		("auth_token" = []),
+		("auth_query_param" = []),
+	),
+)]
+async fn export_playlists(
+	auth: Auth,
+	State(playlist_manager): State<playlist::Manager>,
+) -> Result<(HeaderMap, Vec<u8>), APIError> {
+	let user = auth.get_username();
+	let body = playlist_manager.export_playlists(user).await?;
+
+	let suffix = user
+		.chars()
+		.map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
+		.collect::<String>();
+
+	let filename = format!("polaris-playlists-{suffix}.zip");
+
+	let headers = HeaderMap::from_iter([(
+		header::CONTENT_DISPOSITION,
+		format!(r#"attachment; filename="{filename}""#)
+			.parse()
+			.unwrap(),
+	)]);
+
+	Ok((headers, body))
+}
+
+#[utoipa::path(
+	put,
+	path = "/playlists/import",
+	tag = "Playlists",
+	description = "Import playlists from files. Each file can be an m3u8 playlist or a zip archive containing one or more m3u8 playlists.",
+	request_body(content_type = "multipart/form-data", description = "Playlist files"),
+	security(
+		("auth_token" = []),
+		("auth_query_param" = []),
+	),
+)]
+async fn import_playlists(
+	auth: Auth,
+	State(playlist_manager): State<playlist::Manager>,
+	mut multipart: Multipart,
+) -> Result<(), APIError> {
+	let multipart_error =
+		|e: MultipartError| APIError::MultipartError(e.body_text(), e.status().as_u16());
+
+	let mut files = HashMap::new();
+	while let Some(field) = multipart.next_field().await.map_err(multipart_error)? {
+		let name = match field.name() {
+			Some(n) => n.to_string(),
+			None => continue,
+		};
+		let data = field.bytes().await.map_err(multipart_error)?.to_vec();
+		files.insert(name.to_string(), data);
+	}
+
+	playlist_manager
+		.import_playlists(auth.get_username(), files)
+		.await?;
+
 	Ok(())
 }
 
@@ -1134,11 +1109,11 @@ async fn get_audio(
 	let audio_path = config_manager.resolve_virtual_path(&path).await?;
 
 	let Ok(file) = tokio::fs::File::open(audio_path).await else {
-		return Err(APIError::AudioFileIOError);
+		return Err(APIError::AudioFileIO);
 	};
 
 	let Ok(body) = KnownSize::file(file).await else {
-		return Err(APIError::AudioFileIOError);
+		return Err(APIError::AudioFileIO);
 	};
 
 	let range = range.map(|TypedHeader(r)| r);
@@ -1204,11 +1179,11 @@ async fn get_thumbnail(
 		.await?;
 
 	let Ok(file) = tokio::fs::File::open(thumbnail_path).await else {
-		return Err(APIError::ThumbnailFileIOError);
+		return Err(APIError::ThumbnailFileIO);
 	};
 
 	let Ok(body) = KnownSize::file(file).await else {
-		return Err(APIError::ThumbnailFileIOError);
+		return Err(APIError::ThumbnailFileIO);
 	};
 
 	let range = range.map(|TypedHeader(r)| r);

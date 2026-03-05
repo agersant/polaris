@@ -123,6 +123,6 @@ jobs:
       - name: Make a request
         run: curl -f http://localhost:5050
       - name: Stop Polaris
-        run: taskkill /IM polaris-cli.exe
+        run: taskkill /F /IM polaris-cli.exe
       - name: Uninstall
         run: msiexec /x polaris.msi /qn

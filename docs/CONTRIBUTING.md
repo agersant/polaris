@@ -6,7 +6,7 @@ While Polaris is free and open-source software, it is not very open to code cont
 - Polaris is a hobby project. I don't want it to feel like my day job, where I do a lot of code reviews, mentoring and tech leadership.
 - I am committed to maintaining this software for a very long time. I would rather maintain code that I mostly wrote myself.
 
-This still leave room for a few avenues to contribute:
+This still leaves room for a few avenues to contribute:
 - Help answering questions in the issue tracker.
 - Package Polaris for a Linux distribution
 - Documentation improvements or writing user guides.

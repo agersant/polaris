@@ -1,13 +1,10 @@
 use std::fs;
+use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 
-use log::info;
 use rand::rngs::OsRng;
 use rand::RngCore;
-use tokio::fs::try_exists;
-use tokio::task::spawn_blocking;
 
-use crate::app::legacy::*;
 use crate::paths::Paths;
 
 pub mod auth;
@@ -15,7 +12,6 @@ pub mod config;
 pub mod ddns;
 pub mod formats;
 pub mod index;
-pub mod legacy;
 pub mod ndb;
 pub mod peaks;
 pub mod playlist;
@@ -36,8 +32,6 @@ pub enum Error {
 	Io(PathBuf, std::io::Error),
 	#[error(transparent)]
 	FileWatch(#[from] notify::Error),
-	#[error(transparent)]
-	SQL(#[from] rusqlite::Error),
 	#[error(transparent)]
 	Ape(#[from] ape::Error),
 	#[error("ID3 error in `{0}`: `{1}`")]
@@ -60,13 +54,13 @@ pub enum Error {
 	#[error("No tracks found in audio file: {0}")]
 	MediaEmpty(PathBuf),
 	#[error(transparent)]
-	MediaDecodeError(symphonia::core::errors::Error),
+	MediaDecode(symphonia::core::errors::Error),
 	#[error(transparent)]
-	MediaDecoderError(symphonia::core::errors::Error),
+	MediaDecoder(symphonia::core::errors::Error),
 	#[error(transparent)]
-	MediaPacketError(symphonia::core::errors::Error),
+	MediaPacket(symphonia::core::errors::Error),
 	#[error(transparent)]
-	MediaProbeError(symphonia::core::errors::Error),
+	MediaProbe(symphonia::core::errors::Error),
 
 	#[error(transparent)]
 	PeaksSerialization(bitcode::Error),
@@ -74,14 +68,14 @@ pub enum Error {
 	PeaksDeserialization(bitcode::Error),
 
 	#[error(transparent)]
-	NativeDatabase(#[from] native_db::db_type::Error),
+	NativeDatabase(#[from] Box<native_db::db_type::Error>),
 	#[error("Could not initialize database")]
-	NativeDatabaseCreationError(native_db::db_type::Error),
+	NativeDatabaseCreation(Box<native_db::db_type::Error>),
 
 	#[error("DDNS update query failed with HTTP status code `{0}`")]
-	UpdateQueryFailed(u16),
-	#[error("DDNS update query failed due to a transport error")]
-	UpdateQueryTransport,
+	DDNSUpdateRejected(u16),
+	#[error("DDNS update query failed to complete: `{0}`")]
+	DDNSUpdate(String),
 
 	#[error("Auth secret does not have the expected format")]
 	AuthenticationSecretInvalid,
@@ -99,9 +93,9 @@ pub enum Error {
 	#[error("Could not serialize configuration: `{0}`")]
 	ConfigSerialization(toml::ser::Error),
 	#[error("Could not deserialize collection")]
-	IndexDeserializationError,
+	IndexDeserialization,
 	#[error("Could not serialize collection")]
-	IndexSerializationError,
+	IndexSerialization,
 
 	#[error("Invalid Directory")]
 	InvalidDirectory(String),
@@ -122,9 +116,15 @@ pub enum Error {
 	#[error("Song not found")]
 	SongNotFound,
 	#[error("Invalid search query syntax")]
-	SearchQueryParseError,
+	SearchQueryParse,
 	#[error("Playlist not found")]
 	PlaylistNotFound,
+	#[error("Playlist export zip error")]
+	PlaylistExportZip,
+	#[error("Playlist import zip error")]
+	PlaylistImportZip,
+	#[error("Text encoding error in playlist file `{0}` (must be UTF-8)")]
+	InvalidPlaylistTextEncoding(String),
 	#[error("No embedded artwork was found in `{0}`")]
 	EmbeddedArtworkNotFound(PathBuf),
 
@@ -152,7 +152,7 @@ pub enum Error {
 
 #[derive(Clone)]
 pub struct App {
-	pub port: u16,
+	pub socket_address: SocketAddr,
 	pub web_dir_path: PathBuf,
 	pub ddns_manager: ddns::Manager,
 	pub scanner: scanner::Scanner,
@@ -164,7 +164,7 @@ pub struct App {
 }
 
 impl App {
-	pub async fn new(port: u16, paths: Paths) -> Result<Self, Error> {
+	pub async fn new(socket_address: SocketAddr, paths: Paths) -> Result<Self, Error> {
 		fs::create_dir_all(&paths.data_dir_path)
 			.map_err(|e| Error::Io(paths.data_dir_path.clone(), e))?;
 
@@ -179,7 +179,6 @@ impl App {
 			.map_err(|e| Error::Io(thumbnails_dir_path.clone(), e))?;
 
 		let auth_secret_file_path = paths.data_dir_path.join("auth.secret");
-		Self::migrate_legacy_auth_secret(&paths.db_file_path, &auth_secret_file_path).await?;
 		let auth_secret = Self::get_or_create_auth_secret(&auth_secret_file_path).await?;
 
 		let config_manager = config::Manager::new(&paths.config_file_path, auth_secret).await?;
@@ -188,11 +187,12 @@ impl App {
 		let index_manager = index::Manager::new(&paths.data_dir_path).await?;
 		let scanner = scanner::Scanner::new(index_manager.clone(), config_manager.clone()).await?;
 		let peaks_manager = peaks::Manager::new(peaks_dir_path);
-		let playlist_manager = playlist::Manager::new(ndb_manager);
+		let playlist_manager =
+			playlist::Manager::new(config_manager.clone(), index_manager.clone(), ndb_manager);
 		let thumbnail_manager = thumbnail::Manager::new(thumbnails_dir_path);
 
 		let app = Self {
-			port,
+			socket_address,
 			web_dir_path: paths.web_dir_path,
 			ddns_manager,
 			scanner,
@@ -203,98 +203,7 @@ impl App {
 			thumbnail_manager,
 		};
 
-		app.migrate_legacy_db(&paths.db_file_path).await?;
-
 		Ok(app)
-	}
-
-	async fn migrate_legacy_auth_secret(
-		db_file_path: &PathBuf,
-		secret_file_path: &PathBuf,
-	) -> Result<(), Error> {
-		if !try_exists(db_file_path)
-			.await
-			.map_err(|e| Error::Io(db_file_path.clone(), e))?
-		{
-			return Ok(());
-		}
-
-		if try_exists(secret_file_path)
-			.await
-			.map_err(|e| Error::Io(secret_file_path.clone(), e))?
-		{
-			return Ok(());
-		}
-
-		info!(
-			"Migrating auth secret from database at `{}`",
-			db_file_path.to_string_lossy()
-		);
-
-		let secret = spawn_blocking({
-			let db_file_path = db_file_path.clone();
-			move || read_legacy_auth_secret(&db_file_path)
-		})
-		.await??;
-
-		tokio::fs::write(secret_file_path, &secret)
-			.await
-			.map_err(|e| Error::Io(secret_file_path.clone(), e))?;
-
-		Ok(())
-	}
-
-	async fn migrate_legacy_db(&self, db_file_path: &PathBuf) -> Result<(), Error> {
-		if !try_exists(db_file_path)
-			.await
-			.map_err(|e| Error::Io(db_file_path.clone(), e))?
-		{
-			return Ok(());
-		}
-
-		let Some(config) = tokio::task::spawn_blocking({
-			let db_file_path = db_file_path.clone();
-			move || read_legacy_config(&db_file_path)
-		})
-		.await??
-		else {
-			return Ok(());
-		};
-
-		info!(
-			"Found usable config in legacy database at `{}`, beginning migration process",
-			db_file_path.to_string_lossy()
-		);
-
-		info!("Migrating configuration");
-		self.config_manager.apply_config(config).await?;
-		self.config_manager.save_config().await?;
-
-		info!("Migrating playlists");
-		for (name, owner, songs) in read_legacy_playlists(
-			db_file_path,
-			self.index_manager.clone(),
-			self.scanner.clone(),
-		)
-		.await?
-		{
-			self.playlist_manager
-				.save_playlist(&name, &owner, songs)
-				.await?;
-		}
-
-		info!(
-			"Deleting legacy database at `{}`",
-			db_file_path.to_string_lossy()
-		);
-		delete_legacy_db(db_file_path).await?;
-
-		info!(
-			"Completed migration from `{}`",
-			db_file_path.to_string_lossy()
-		);
-
-		Ok(())
 	}
 
 	async fn get_or_create_auth_secret(path: &Path) -> Result<auth::Secret, Error> {
@@ -311,7 +220,7 @@ impl App {
 					.map_err(|_| Error::AuthenticationSecretInvalid)?;
 				Ok(secret)
 			}
-			Err(e) => return Err(Error::Io(path.to_owned(), e)),
+			Err(e) => Err(Error::Io(path.to_owned(), e)),
 		}
 	}
 }

@@ -1,5 +1,53 @@
 # Changelog
 
+## Unreleased Changes
+
+- No unreleased changes
+
+## Polaris 0.16.0
+
+### Server
+
+- ⚠️ Support for automatic database migration from Polaris 0.14 and below has been removed. This change has no effect for users upgrading from version 0.15.
+- ⚠️ The `-d` command line option and the `POLARIS_DB_DIR` compile-time environment variable have been removed.
+- Added a `--bind-address` command line option to specify the IP Polaris binds to (default `0.0.0.0`). Log now mentions the port and IP address being used.
+- Added support for ID3v1 numerical genre identifiers (eg. '5' for 'Funk').
+- Improved parsing of `year` field in song metadata to be more lenient. (contribution by @saecki)
+- Improved performance of indexing m4a files. (contribution by @saecki)
+- Improved performance of search functionality.
+- Fixed a bug where durations read from TLEN frame within ID3 tags was wildly incorrect.
+- Fixed a typo in the log message that is written after applying configuration changes. (contribution by @luzpaz)
+- Fixed incorrect CLI help message about possible `--log-level` values.
+- Tentatively fixed a bug where indexing would restart without files being modified.
+- Minor improvements to CLI output and options parsing.
+
+### Web client
+
+- All page layouts are now responsive to browser window size, and usable as low as 960px wide. Below 960px, the entire UI squishes into a basic media player.
+- Reduced primary Javascript bundle size (uncompressed: `914KB` -> `335KB`, compressed: `268KB` -> `113KB` ). Opening the `Stats` panel in the current playlist now loads an additional bundle.
+- Added right-click context menus throughout all collection pages and in the playlist panel.
+- Addded buttons to import/export playlists on the Playlists page.
+- The genre details page (accessed by clicking any music genre tag) has received small visual improvements.
+- Outline around the sidebar has been removed for all dark color schemes (Blue/Brown/Dark). Light color scheme is unchanged.
+- Outlines around sections on the `Settings -> Collection` page have been removed for all dark color schemes (Blue/Brown/Dark). Light color scheme is unchanged.
+- Removed screen blur when the Stats panel or Save Playlist dialog are open.
+- Playback will now automatically restart when queuing music while the current playlist is already done playing.
+- Fixed a bug where queuing songs while the queue is empty would sometimes skip one song.
+- Fixed a bug where song details would sometimes not display in the queue panel.
+- Fixed a bug where opus files would display a broken waveform seekbar (now a plain rectangle).
+- Fixed a bug where album page could display `undefined` as album year.
+- Fixed a bug where long file names could cause slight alignment issues in the file browser.
+- Fixed a bug where typing a filter in the "All" album view would also apply to "Recently Added" and "Random" views.
+- Fixed a bug where album details page did not have the intended padding when scrolling.
+
+### API
+
+- API version is now `8.1`.
+- Removed support for API version `7.x`.
+- Endpoints may now return an error when requests are missing the `Accept-Version` header.
+- Added new `playlists/import` and `playlists/export` endpoints.
+- All responses which are sorted alphabetically now use numerical sorting. This is mostly relevant for file names where `10.mp3` now sorts after `2.mp3`.
+
 ## Polaris 0.15.0
 
 ### Server
@@ -46,7 +94,7 @@
 - Documentation is now served under `/api-docs` instead of `/swagger` (eg. `http://localhost:5050/api-docs`)
 - Clients are now expected to send their preferred API major version in a `Accept-Version` header. Omitting this currently defaults to `7`, but will become an error in future Polaris releases. Support for API version 7 will be removed entirely in a future release.
 - Most API responses now support gzip compression.
-- The response format of the `/browse`, `/flatten`, `/get_playlist`, `/search/<query>` endpoints has been modified to accomodate large lists.
+- The response format of the `/browse`, `/flatten`, `/get_playlist`, `/search/<query>` endpoints has been modified to accommodate large lists.
 - Added new endpoints to query albums and artists.
 - The `/random` and `/recent` albums are deprecated in favor of `/albums/random` and `/albums/recent`. These endpoints now have optional parameters for RNG seeding and pagination.
 - The `/search/<query>` endpoint now requires a non-empty query (`/search/` now returns HTTP status code 404, regardless of API version).

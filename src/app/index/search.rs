@@ -3,7 +3,10 @@ use enum_map::EnumMap;
 use lasso2::Spur;
 use nohash_hasher::IntSet;
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashMap};
+use std::{
+	collections::{BTreeMap, HashMap},
+	path::PathBuf,
+};
 use tinyvec::TinyVec;
 
 use crate::app::{
@@ -17,19 +20,10 @@ use crate::app::{
 
 use super::{collection, dictionary::sanitize, query::make_parser, storage};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Default, Serialize, Deserialize)]
 pub struct Search {
 	text_fields: EnumMap<TextField, TextFieldIndex>,
 	number_fields: EnumMap<NumberField, NumberFieldIndex>,
-}
-
-impl Default for Search {
-	fn default() -> Self {
-		Self {
-			text_fields: Default::default(),
-			number_fields: Default::default(),
-		}
-	}
 }
 
 impl Search {
@@ -38,41 +32,33 @@ impl Search {
 		collection: &collection::Collection,
 		dictionary: &Dictionary,
 		query: &str,
-	) -> Result<Vec<collection::Song>, Error> {
+	) -> Result<Vec<PathBuf>, Error> {
 		let parser = make_parser();
-		let parsed_query = parser
-			.parse(query)
-			.map_err(|_| Error::SearchQueryParseError)?;
+		let parsed_query = parser.parse(query).map_err(|_| Error::SearchQueryParse)?;
 
 		let mut songs = self
 			.eval(dictionary, &parsed_query)
 			.into_iter()
 			.collect::<Vec<_>>();
 		collection.sort_songs(&mut songs, dictionary);
+
 		let songs = songs
 			.into_iter()
-			.filter_map(|song_key| collection.get_song(dictionary, song_key))
-			.collect::<Vec<_>>();
-
+			.map(|song_key| dictionary.resolve(&song_key.virtual_path.0).into())
+			.collect();
 		Ok(songs)
 	}
 
 	fn eval(&self, dictionary: &Dictionary, expr: &Expr) -> IntSet<SongKey> {
 		match expr {
 			Expr::Fuzzy(s) => self.eval_fuzzy(dictionary, s),
-			Expr::TextCmp(field, op, s) => self.eval_text_operator(dictionary, *field, *op, &s),
+			Expr::TextCmp(field, op, s) => self.eval_text_operator(dictionary, *field, *op, s),
 			Expr::NumberCmp(field, op, n) => self.eval_number_operator(*field, *op, *n),
 			Expr::Combined(e, op, f) => self.combine(dictionary, e, *op, f),
 		}
 	}
 
-	fn combine(
-		&self,
-		dictionary: &Dictionary,
-		e: &Box<Expr>,
-		op: BoolOp,
-		f: &Box<Expr>,
-	) -> IntSet<SongKey> {
+	fn combine(&self, dictionary: &Dictionary, e: &Expr, op: BoolOp, f: &Expr) -> IntSet<SongKey> {
 		let is_operable = |expr: &Expr| match expr {
 			Expr::Fuzzy(Literal::Text(s)) if s.chars().count() < BIGRAM_SIZE => false,
 			Expr::Fuzzy(Literal::Number(n)) if *n < 10 => false,
@@ -163,7 +149,7 @@ impl TextFieldIndex {
 	fn ascii_bigram_to_index(a: char, b: char) -> usize {
 		assert!(a.is_ascii());
 		assert!(b.is_ascii());
-		(a as usize) * ASCII_RANGE + (b as usize) as usize
+		(a as usize) * ASCII_RANGE + (b as usize)
 	}
 
 	pub fn insert(&mut self, raw_value: &str, value: Spur, song: SongKey) {
@@ -357,7 +343,6 @@ mod test {
 				.find_songs(&self.collection, &self.dictionary, query)
 				.unwrap()
 				.into_iter()
-				.map(|s| s.virtual_path)
 				.collect()
 		}
 	}

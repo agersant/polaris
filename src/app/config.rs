@@ -5,8 +5,10 @@ use std::{
 };
 
 use log::{error, info};
-use notify::{RecommendedWatcher, RecursiveMode, Watcher};
-use notify_debouncer_full::{Debouncer, FileIdMap};
+use notify_debouncer_full::{
+	notify::{EventKind, RecommendedWatcher, RecursiveMode},
+	DebounceEventResult, DebouncedEvent, Debouncer, RecommendedCache,
+};
 use regex::Regex;
 use tokio::sync::{futures::Notified, Notify, RwLock};
 
@@ -70,7 +72,7 @@ pub struct Manager {
 	config: Arc<RwLock<Config>>,
 	auth_secret: auth::Secret,
 	#[allow(dead_code)]
-	file_watcher: Arc<Debouncer<RecommendedWatcher, FileIdMap>>,
+	file_watcher: Arc<Debouncer<RecommendedWatcher, RecommendedCache>>,
 	change_notify: Arc<Notify>,
 }
 
@@ -94,14 +96,20 @@ impl Manager {
 		let notify = Arc::new(Notify::new());
 		let mut debouncer = notify_debouncer_full::new_debouncer(Duration::from_secs(1), None, {
 			let notify = notify.clone();
-			move |_| {
-				notify.notify_waiters();
+			move |result: DebounceEventResult| match result {
+				Ok(events) => {
+					let is_ignorable = |e: &DebouncedEvent| {
+						matches!(e.kind, EventKind::Access(_) | EventKind::Other)
+					};
+					if !events.iter().all(is_ignorable) {
+						notify.notify_waiters();
+					}
+				}
+				Err(e) => error!("Config file watcher error: `{e:?}`"),
 			}
 		})?;
 
-		debouncer
-			.watcher()
-			.watch(&config_file_path, RecursiveMode::NonRecursive)?;
+		debouncer.watch(config_file_path, RecursiveMode::NonRecursive)?;
 
 		let manager = Self {
 			config_file_path: config_file_path.to_owned(),
@@ -119,7 +127,7 @@ impl Manager {
 					if let Err(e) = manager.reload_config().await {
 						error!("Configuration error: {e}");
 					} else {
-						info!("Sucessfully applied configuration change");
+						info!("Successfully applied configuration change");
 					}
 				}
 			}
@@ -130,7 +138,7 @@ impl Manager {
 		Ok(manager)
 	}
 
-	pub fn on_config_change(&self) -> Notified {
+	pub fn on_config_change(&self) -> Notified<'_> {
 		self.change_notify.notified()
 	}
 
@@ -210,7 +218,7 @@ impl Manager {
 	}
 
 	pub async fn get_users(&self) -> Vec<User> {
-		self.config.read().await.users.iter().cloned().collect()
+		self.config.read().await.users.to_vec()
 	}
 
 	pub async fn get_user(&self, username: &str) -> Result<User, Error> {
@@ -261,7 +269,7 @@ impl Manager {
 
 	pub async fn get_mounts(&self) -> Vec<MountDir> {
 		let config = self.config.read().await;
-		config.mount_dirs.iter().cloned().collect()
+		config.mount_dirs.to_vec()
 	}
 
 	pub async fn resolve_virtual_path<P: AsRef<Path>>(
@@ -270,6 +278,34 @@ impl Manager {
 	) -> Result<PathBuf, Error> {
 		let config = self.config.read().await;
 		config.resolve_virtual_path(virtual_path)
+	}
+
+	pub async fn resolve_virtual_paths<P: AsRef<Path>>(
+		&self,
+		virtual_paths: &[P],
+	) -> Vec<Result<PathBuf, Error>> {
+		let config = self.config.read().await;
+		virtual_paths
+			.iter()
+			.map(|p| config.resolve_virtual_path(p))
+			.collect()
+	}
+
+	#[allow(unused)]
+	pub async fn virtualize_path<P: AsRef<Path>>(&self, real_path: P) -> Result<PathBuf, Error> {
+		let config = self.config.read().await;
+		config.virtualize_path(real_path)
+	}
+
+	pub async fn virtualize_paths<P: AsRef<Path>>(
+		&self,
+		real_paths: &[P],
+	) -> Vec<Result<PathBuf, Error>> {
+		let config = self.config.read().await;
+		real_paths
+			.iter()
+			.map(|p| config.virtualize_path(p))
+			.collect()
 	}
 
 	pub async fn set_mounts(&self, mount_dirs: Vec<storage::MountDir>) -> Result<(), Error> {

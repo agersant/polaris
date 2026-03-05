@@ -173,7 +173,7 @@ async fn peaks_golden_path() {
 	let response = service.fetch_bytes(&request).await;
 	assert_eq!(response.status(), StatusCode::OK);
 	assert!(response.body().len() % 2 == 0);
-	assert!(response.body().len() > 0);
+	assert!(!response.body().is_empty());
 }
 
 #[tokio::test]

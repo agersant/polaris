@@ -5,7 +5,7 @@ use crate::{
 		dto,
 		test::{
 			add_trailing_slash,
-			protocol::{self, V7, V8},
+			protocol::{self, V8},
 			ServiceType, TestService,
 		},
 	},
@@ -56,24 +56,6 @@ async fn random_with_trailing_slash() {
 }
 
 #[tokio::test]
-async fn random_golden_path_api_v7() {
-	let mut service = ServiceType::new(&test_name!()).await;
-	service.complete_initial_setup().await;
-	service.login_admin().await;
-	service.index().await;
-	service.login().await;
-
-	let request = protocol::random::<V7>();
-	let response = service
-		.fetch_json::<_, Vec<dto::v7::Directory>>(&request)
-		.await;
-	assert_eq!(response.status(), StatusCode::OK);
-	let entries = response.body();
-	assert_eq!(entries.len(), 3);
-	assert!(entries[0].path.starts_with("collection/"));
-}
-
-#[tokio::test]
 async fn recent_requires_auth() {
 	let mut service = ServiceType::new(&test_name!()).await;
 	let request = protocol::recent::<V8>();
@@ -114,24 +96,6 @@ async fn recent_with_trailing_slash() {
 	assert_eq!(response.status(), StatusCode::OK);
 	let entries = response.body();
 	assert_eq!(entries.len(), 3);
-}
-
-#[tokio::test]
-async fn recent_golden_path_api_v7() {
-	let mut service = ServiceType::new(&test_name!()).await;
-	service.complete_initial_setup().await;
-	service.login_admin().await;
-	service.index().await;
-	service.login().await;
-
-	let request = protocol::recent::<V7>();
-	let response = service
-		.fetch_json::<_, Vec<dto::v7::Directory>>(&request)
-		.await;
-	assert_eq!(response.status(), StatusCode::OK);
-	let entries = response.body();
-	assert_eq!(entries.len(), 3);
-	assert!(entries[0].path.starts_with("collection/"));
 }
 
 #[tokio::test]
