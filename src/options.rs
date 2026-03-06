@@ -7,6 +7,7 @@ use std::{
 
 pub struct CLIOptions {
 	pub show_help: bool,
+	pub show_paths: bool,
 	pub foreground: bool,
 	pub log_file_path: Option<PathBuf>,
 	#[cfg(unix)]
@@ -60,6 +61,7 @@ impl Manager {
 
 		Ok(CLIOptions {
 			show_help: matches.opt_present("h"),
+			show_paths: matches.opt_present("show-paths"),
 			#[cfg(unix)]
 			foreground: matches.opt_present("f"),
 			#[cfg(windows)]
@@ -86,6 +88,7 @@ fn get_options() -> getopts::Options {
 	let mut options = getopts::Options::new();
 
 	options.optflag("h", "help", "print this help menu");
+	options.optflag("", "show-paths", "print all configured paths and exit");
 
 	#[cfg(unix)]
 	options.optflag(
