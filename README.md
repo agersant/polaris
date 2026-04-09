@@ -20,7 +20,7 @@ The goals of this project are:
 
 # Try It Out!
 
-Check out the demo over at https://demo.polaris.stream, featuring a selection of Creative Commons Music. The credentials to access this server are:
+On your desktop or laptop computer, check out the demo over at https://demo.polaris.stream featuring a selection of Creative Commons Music. The credentials to access this server are:
 
 Username: `demo_user`  
 Password: `demo_password`
