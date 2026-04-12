@@ -2,10 +2,10 @@
 
 ## On Windows
 
-1. Download the [latest installer](https://github.com/agersant/polaris/releases/latest) (you want the .msi file)
-2. Run the installer
-3. Launch Polaris from the start menu
-4. In your web browser, access http://localhost:5050
+1. Download the [latest installer](https://github.com/agersant/polaris/releases/latest) (you want the .msi file).
+2. Run the installer.
+3. Click Polaris in the Start Menu to run the Polaris server. You can see when the server is running by looking for the Polaris icon in the Tray area (near the clock). The Polaris server will automatically start whenever you reboot your PC.
+4. To connect to the server and listen to music, access http://localhost:5050 in your web browser.
 
 ## In a docker container
 
