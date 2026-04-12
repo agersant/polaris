@@ -77,7 +77,9 @@ pub struct PathKey(pub Spur);
 #[derive(Copy, Clone, Debug, Default, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct GenreKey(pub Spur);
 
-#[derive(Copy, Clone, Debug, Default, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(
+	Copy, Clone, Debug, Default, Eq, Hash, PartialEq, Ord, PartialOrd, Serialize, Deserialize,
+)]
 pub struct ArtistKey(pub Spur);
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]

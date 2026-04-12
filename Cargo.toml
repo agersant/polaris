@@ -24,6 +24,7 @@ headers = "0.4.1"
 http = "1.4.0"
 icu_collator = "2.1.1"
 id3 = "1.16.4"
+itertools = "0.14.0"
 lasso2 = { version = "0.8.2", features = ["serialize"] }
 lewton = "0.10.2"
 log = "0.4.22"

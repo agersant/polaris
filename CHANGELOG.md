@@ -2,7 +2,9 @@
 
 ## Unreleased Changes
 
-- No unreleased changes
+### Server
+
+- Fixed a bug where artist song counts would be incorrect when the same artist appears in multiple fields (composer, album artist, etc.) of the same song.
 
 ## Polaris 0.16.0
 
