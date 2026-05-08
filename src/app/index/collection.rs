@@ -5,6 +5,7 @@ use std::{
 	path::PathBuf,
 };
 
+use itertools::Itertools;
 use rand::{rngs::StdRng, seq::SliceRandom, SeedableRng};
 use rayon::slice::ParallelSliceMut;
 use serde::{Deserialize, Serialize};
@@ -449,8 +450,12 @@ impl Builder {
 			}
 		}
 
-		for artist_key in all_artists {
-			let artist = self.get_or_create_artist(artist_key);
+		let unique_artists = {
+			all_artists.sort();
+			all_artists.iter().dedup()
+		};
+		for artist_key in unique_artists {
+			let artist = self.get_or_create_artist(*artist_key);
 			artist.num_songs += 1;
 			if let Some(album_key) = &album_key {
 				artist.all_albums.insert(album_key.clone());
@@ -713,6 +718,26 @@ mod test {
 				UniCase::new("Stratovarius".to_owned()),
 			]
 		);
+	}
+
+	#[test]
+	fn songs_contribute_to_artists_once() {
+		let (collection, strings) = setup_test(Vec::from([scanner::Song {
+			virtual_path: PathBuf::from("Rain of Fury.mp3"),
+			title: Some("Rain of Fury".to_owned()),
+			artists: vec!["Rhapsody Of Fire".to_owned()],
+			album_artists: vec!["Rhapsody Of Fire".to_owned()],
+			composers: vec!["Rhapsody Of Fire".to_owned()],
+			lyricists: vec!["Rhapsody Of Fire".to_owned()],
+			..Default::default()
+		}]));
+
+		let artists = collection
+			.get_artists(&strings)
+			.into_iter()
+			.collect::<Vec<_>>();
+
+		assert_eq!(artists[0].num_songs, 1);
 	}
 
 	#[test]

@@ -2,7 +2,14 @@
 
 ## Unreleased Changes
 
-- No unreleased changes
+- None
+
+## Polaris 0.16.1
+
+### Server
+
+- Fixed a bug where MP3, WAVE and AIFF files that do not contain an ID3 tag were not indexed at all (now indexed with blank metadata).
+- Fixed a bug where artist song counts would be incorrect when the same artist appears in multiple fields (composer, album artist, etc.) of the same song.
 
 ## Polaris 0.16.0
 

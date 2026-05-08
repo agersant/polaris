@@ -1,6 +1,6 @@
 use id3::TagLike;
 use lewton::inside_ogg::OggStreamReader;
-use log::error;
+use log::{error, warn};
 use regex::Regex;
 use std::borrow::Cow;
 use std::fs;
@@ -43,6 +43,10 @@ pub fn read_metadata<P: AsRef<Path>>(path: P) -> Option<SongMetadata> {
 	};
 	match data {
 		Ok(d) => Some(d),
+		Err(Error::Id3(_, e)) if matches!(e.kind, id3::ErrorKind::NoTag) => {
+			warn!("No ID3 tag found in '{:?}'", path.as_ref());
+			Some(SongMetadata::default())
+		}
 		Err(e) => {
 			error!(
 				"Error while reading file metadata for '{:?}': {}",

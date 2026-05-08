@@ -120,6 +120,21 @@ fn main() {
 
 	let paths = paths::Paths::new(&cli_options);
 
+	if cli_options.show_paths {
+		println!("Cache directory:  {:#?}", paths.cache_dir_path);
+		println!("Data directory:   {:#?}", paths.data_dir_path);
+		println!("Config file:      {:#?}", paths.config_file_path);
+		let log_file_path = match paths.log_file_path {
+			Some(log_file_path) => log_file_path,
+			None => "Undefined".into()
+		};
+		println!("Log file:         {:#?}", log_file_path);
+		#[cfg(unix)]
+		println!("Pid file:         {:#?}", paths.pid_file_path);
+		println!("Web directory:    {:#?}", paths.web_dir_path);
+		return;
+	}
+
 	// Logging
 	let log_level = cli_options.log_level.unwrap_or(LevelFilter::Info);
 	if let Err(e) = init_logging(log_level, &paths.log_file_path) {
