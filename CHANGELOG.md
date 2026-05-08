@@ -2,6 +2,10 @@
 
 ## Unreleased Changes
 
+- None
+
+## Polaris 0.16.1
+
 ### Server
 
 - Fixed a bug where MP3, WAVE and AIFF files that do not contain an ID3 tag were not indexed at all (now indexed with blank metadata).
