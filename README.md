@@ -50,6 +50,10 @@ Password: `demo_password`
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/polaris-streaming.svg?columns=3)](https://repology.org/project/polaris-streaming/versions)
 
+# One-Click Deploy
+
+[![Deploy on RepoCloud](https://d16t0pc4846x52.cloudfront.net/deploylobe.svg)](https://repocloud.io/details/Polaris/)
+
 # Documentation
 
 - 📒 [Changelog](CHANGELOG.md)
