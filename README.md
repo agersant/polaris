@@ -18,13 +18,6 @@ The goals of this project are:
 - 📦️ Ease of installation, deployment and maintenance
 - ✨ Beautiful user interface
 
-# Try It Out!
-
-On your desktop or laptop computer, check out the demo over at https://demo.polaris.stream featuring a selection of Creative Commons Music. The credentials to access this server are:
-
-Username: `demo_user`  
-Password: `demo_password`
-
 # Features
 
 - 🖥️ Runs on Windows, Linux, BSD, or through Docker
