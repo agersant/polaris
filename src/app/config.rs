@@ -6,7 +6,7 @@ use std::{
 
 use log::{error, info};
 use notify_debouncer_full::{
-	notify::{EventKind, RecommendedWatcher, RecursiveMode},
+	notify::{event::ModifyKind, EventKind, RecommendedWatcher, RecursiveMode},
 	DebounceEventResult, DebouncedEvent, Debouncer, RecommendedCache,
 };
 use regex::Regex;
@@ -99,7 +99,8 @@ impl Manager {
 			move |result: DebounceEventResult| match result {
 				Ok(events) => {
 					let is_ignorable = |e: &DebouncedEvent| {
-						matches!(e.kind, EventKind::Access(_) | EventKind::Other)
+						use EventKind::*;
+						matches!(e.kind, Access(_) | Modify(ModifyKind::Metadata(_)) | Other)
 					};
 					if !events.iter().all(is_ignorable) {
 						notify.notify_waiters();
