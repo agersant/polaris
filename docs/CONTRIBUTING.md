@@ -2,18 +2,13 @@
 
 ## Guidelines
 
-While Polaris is free and open-source software, it is not very open to code contributions. The reasons behind this are:
-- Polaris is a hobby project. I don't want it to feel like my day job, where I do a lot of code reviews, mentoring and tech leadership.
-- I am committed to maintaining this software for a very long time. I would rather maintain code that I mostly wrote myself.
-
-This still leaves room for a few avenues to contribute:
-- Help answering questions in the issue tracker.
+While Polaris is free and open-source software, it is not open to code contributions. This still leaves room for a few avenues to help:
 - Package Polaris for a Linux distribution
-- Documentation improvements or writing user guides.
-- Satellite projects (eg. [docker-polaris](https://github.com/ogarcia/docker-polaris), [polarios](https://gitlab.com/elise/Polarios))
-- Bug fixes.
+- Answer questions in the issue tracker
+- Start or contribute to satellite projects
+- Maintain your own fork
 
-For non-trivial new features, you are welcome to maintain a fork. If you need help finding your way around the code, feel free to open a [discussion thread](https://github.com/agersant/polaris/discussions).
+Contributions (documentation, issues, pull requests, etc.) making any use of AI/LLMs will be rejected.
 
 ## Compiling and running Polaris
 
@@ -33,5 +28,4 @@ Putting it all together, a typical command to compile and run the program would 
 While Polaris is running, access the web UI at [http://localhost:5050](http://localhost:5050).
 
 ## Running unit tests
-
-That's the easy part, simply run `cargo test`!
+Run `cargo test`!
