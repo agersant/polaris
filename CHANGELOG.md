@@ -2,7 +2,9 @@
 
 ## Unreleased Changes
 
-- None
+### Server
+
+- Fixed a bug where file metadata changes (permissions, access time, etc.) could trigger a re-scan or a config reload.
 
 ## Polaris 0.16.1
 
