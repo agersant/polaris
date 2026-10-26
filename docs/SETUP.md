@@ -9,7 +9,7 @@
 
 ## In a docker container
 
-To run polaris from a Docker container, please follow instructions from the [docker-polaris](https://github.com/ogarcia/docker-polaris) repository.
+To run polaris from a Docker container, please follow instructions from the [polaris-docker](https://github.com/agersant/polaris-docker) repository.
 
 ## From source on Linux
 
@@ -20,6 +20,7 @@ To run polaris from a Docker container, please follow instructions from the [doc
 2. Install the Rust compiler by executing `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh` or using an [alternative method](https://www.rust-lang.org/en-US/install.html)
 
 ### Polaris installation
+
 1. Download the [latest release]((https://github.com/agersant/polaris/releases/latest)) of Polaris (you want the .tar.gz file)
 2. Extract the Polaris archive in a directory and open a terminal in that directory
 3. To install Polaris within your home directory, execute `make install-xdg`. This installation follows the [XDG Base Directory Specification](https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html). You can use `make preview-xdg` to see which directories the install process would use.

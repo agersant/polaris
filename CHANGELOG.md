@@ -2,6 +2,10 @@
 
 ## Unreleased Changes
 
+### General
+
+- Docker images are now published on [Docker Hub](https://hub.docker.com/r/agersant/polaris) and maintained in the [agersant/polaris-docker](https://github.com/agersant/polaris-docker/) repository. Thank you @ogarcia for all the years maintaining `docker-polaris`.
+
 ### Server
 
 - Fixed a bug where file metadata changes (permissions, access time, etc.) could trigger a re-scan or a config reload.
