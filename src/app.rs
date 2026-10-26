@@ -217,7 +217,7 @@ impl App {
 				OsRng.fill_bytes(secret.as_mut());
 				tokio::fs::write(&path, &secret)
 					.await
-					.map_err(|_| Error::AuthenticationSecretInvalid)?;
+					.map_err(|_| Error::Io(path.to_owned(), e))?;
 				Ok(secret)
 			}
 			Err(e) => Err(Error::Io(path.to_owned(), e)),

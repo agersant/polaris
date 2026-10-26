@@ -9,6 +9,7 @@
 ### Server
 
 - Fixed a bug where file metadata changes (permissions, access time, etc.) could trigger a re-scan or a config reload.
+- File permission errors on the data directory will now generate a clearer error message on initial startup.
 
 ## Polaris 0.16.1
 
