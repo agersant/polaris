@@ -5,12 +5,6 @@ authors = ["Antoine Gersant <antoine.gersant@lesforges.org>"]
 edition = "2021"
 build = "build.rs"
 
-[features]
-ui = ["native-windows-gui", "native-windows-derive"]
-
-[profile.release]
-lto = "thin"
-
 [dependencies]
 ape = "0.6"
 axum-extra = { version = "0.12.5", features = ["typed-header"] }
@@ -47,21 +41,27 @@ serde = { version = "1.0.147", features = ["derive"] }
 serde_derive = "1.0.147"
 serde_json = "1.0.122"
 simplelog = "0.12.2"
-symphonia = { version = "0.5.5", features = [
-	"all-codecs",
-	"all-formats",
-	"opt-simd",
-] }
-tinyvec = { version = "1.10.0", features = ["serde"] }
+symphonia = {
+  version = "0.5.5",
+  features = [
+    "all-codecs",
+    "all-formats",
+    "opt-simd",
+  ]
+}
 thiserror = "2.0.18"
+tinyvec = { version = "1.10.0", features = ["serde"] }
 tokio = { version = "1.39", features = ["macros", "rt-multi-thread"] }
 toml = { version = "0.9.11", features = ["preserve_order"] }
 tower = { version = "0.5.2" }
-tower-http = { version = "0.6.8", features = [
-	"compression-gzip",
-	"fs",
-	"normalize-path",
-] }
+tower-http = {
+  version = "0.6.8",
+  features = [
+    "compression-gzip",
+    "fs",
+    "normalize-path",
+  ]
+}
 trie-rs = { version = "0.4.2", features = ["serde"] }
 unicase = "2.9.0"
 ureq = { version = "3.2.0", default-features = false, features = ["rustls"] }
@@ -73,32 +73,43 @@ zip = "8.0.0"
 [dependencies.axum]
 version = "0.8.8"
 default-features = false
-features = ["http1", "json", "tokio", "tower-log", "query", "multipart"]
+features = ["http1", "json", "multipart", "query", "tokio", "tower-log"]
 
 [dependencies.image]
 version = "0.25.9"
 default-features = false
 features = ["bmp", "gif", "jpeg", "png"]
 
-[target.'cfg(windows)'.dependencies]
-native-windows-gui = { version = "1.0.13", default-features = false, features = [
-	"cursor",
-	"image-decoder",
-	"message-window",
-	"menu",
-	"tray-notification",
-], optional = true }
-native-windows-derive = { version = "1.0.5", optional = true }
-
-[target.'cfg(unix)'.dependencies]
-daemonize = "0.5"
-sd-notify = "0.4.2"
-
-[target.'cfg(windows)'.build-dependencies]
-embed-resource = "2.4.2"
-winres = "0.1"
-
 [dev-dependencies]
 axum-test = "18.7.0"
 bytes = "1.7.1"
 percent-encoding = "2.3.2"
+
+[target."cfg(unix)".dependencies]
+daemonize = "0.5"
+sd-notify = "0.4.2"
+
+[target."cfg(windows)".dependencies]
+native-windows-derive = { version = "1.0.5", optional = true }
+native-windows-gui = {
+  version = "1.0.13",
+  default-features = false,
+  features = [
+    "cursor",
+    "image-decoder",
+    "menu",
+    "message-window",
+    "tray-notification",
+  ],
+  optional = true
+}
+
+[target."cfg(windows)".build-dependencies]
+embed-resource = "2.4.2"
+winres = "0.1"
+
+[features]
+ui = ["native-windows-derive", "native-windows-gui"]
+
+[profile.release]
+lto = "thin"
