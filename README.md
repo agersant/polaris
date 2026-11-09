@@ -47,7 +47,7 @@ The goals of this project are:
 
 - 📒 [Changelog](CHANGELOG.md)
 - 🔧 [Configuration](docs/CONFIGURATION.md)
-- 👷 [Contribute to Polaris](docs/CONTRIBUTING.md)
+- 👷 [Contribute to Polaris](CONTRIBUTING.md)
 - 🛟 [Maintenance Runbooks](docs/MAINTENANCE.md)
 
 The Polaris server API is documented via OpenAPI, every installation of Polaris features this interactive documentation. To access it, open http://localhost:5050/api-docs/ in your browser on the machine running Polaris.
