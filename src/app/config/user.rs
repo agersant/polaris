@@ -104,10 +104,13 @@ impl Config {
 		auth_secret: &auth::Secret,
 	) -> Result<auth::Authorization, Error> {
 		let authorization = auth::decode_auth_token(auth_token, scope, auth_secret)?;
-		if self.exists(&authorization.username) {
-			Ok(authorization)
+		let Some(user) = self.get_user(&authorization.username) else {
+			return Err(Error::IncorrectUsername);
+		};
+		if authorization.generation != auth::checksum(&user.hashed_password) {
+			Err(Error::InvalidatedAuthToken)
 		} else {
-			Err(Error::IncorrectUsername)
+			Ok(authorization)
 		}
 	}
 
@@ -122,6 +125,7 @@ impl Config {
 			let authorization = auth::Authorization {
 				username: username.to_owned(),
 				scope: auth::Scope::PolarisAuth,
+				generation: auth::checksum(&user.hashed_password),
 			};
 			auth::generate_auth_token(&authorization, auth_secret)
 		} else {
@@ -260,6 +264,33 @@ mod test {
 	}
 
 	#[tokio::test]
+	async fn password_change_invalidates_token() {
+		let ctx = test::ContextBuilder::new(test_name!()).build().await;
+
+		ctx.config_manager
+			.create_user(TEST_USERNAME, TEST_PASSWORD, false)
+			.await
+			.unwrap();
+
+		let token = ctx
+			.config_manager
+			.login(TEST_USERNAME, TEST_PASSWORD)
+			.await
+			.unwrap();
+
+		ctx.config_manager
+			.set_password(TEST_USERNAME, "new_password")
+			.await
+			.unwrap();
+
+		assert!(ctx
+			.config_manager
+			.authenticate(&token, auth::Scope::PolarisAuth)
+			.await
+			.is_err())
+	}
+
+	#[tokio::test]
 	async fn authenticate_rejects_bad_token() {
 		let ctx = test::ContextBuilder::new(test_name!()).build().await;
 
@@ -297,12 +328,7 @@ mod test {
 			.await
 			.unwrap();
 
-		assert_eq!(
-			authorization,
-			auth::Authorization {
-				username: TEST_USERNAME.to_owned(),
-				scope: auth::Scope::PolarisAuth,
-			}
-		)
+		assert_eq!(&authorization.username, TEST_USERNAME);
+		assert_eq!(authorization.scope, auth::Scope::PolarisAuth);
 	}
 }

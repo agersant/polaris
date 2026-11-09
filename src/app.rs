@@ -140,6 +140,8 @@ pub enum Error {
 	IncorrectPassword,
 	#[error("Invalid auth token")]
 	InvalidAuthToken,
+	#[error("Auth token is no longer valid")]
+	InvalidatedAuthToken,
 	#[error("Incorrect authorization scope")]
 	IncorrectAuthorizationScope,
 	#[error("Failed to hash password")]

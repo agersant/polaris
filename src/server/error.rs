@@ -165,6 +165,7 @@ impl From<app::Error> for APIError {
 			app::Error::IncorrectUsername => APIError::IncorrectCredentials,
 			app::Error::IncorrectPassword => APIError::IncorrectCredentials,
 			app::Error::InvalidAuthToken => APIError::IncorrectCredentials,
+			app::Error::InvalidatedAuthToken => APIError::IncorrectCredentials,
 			app::Error::IncorrectAuthorizationScope => APIError::IncorrectCredentials,
 			app::Error::PasswordHashing => APIError::PasswordHashing,
 			app::Error::AuthorizationTokenEncoding => APIError::AuthorizationTokenEncoding,

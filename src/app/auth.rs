@@ -34,6 +34,11 @@ pub enum Scope {
 pub struct Authorization {
 	pub username: String,
 	pub scope: Scope,
+	pub generation: u32,
+}
+
+pub fn checksum(input: &str) -> u32 {
+	crc32fast::hash(input.as_bytes())
 }
 
 pub fn hash_password(password: &str) -> Result<String, Error> {
