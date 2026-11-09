@@ -2,6 +2,10 @@
 
 ## Unreleased Changes
 
+### Server
+
+- Authentication tokens are now invalidated when a user changes their password.
+
 ### General
 
 - Docker images are now published on [Docker Hub](https://hub.docker.com/r/agersant/polaris) and maintained in the [agersant/polaris-docker](https://github.com/agersant/polaris-docker/) repository. Thank you @ogarcia for all the years maintaining `docker-polaris`.
